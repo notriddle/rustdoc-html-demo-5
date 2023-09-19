@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["OptVersionReq"],"fn":["is_req"],"struct":["PartialVersion","RustVersion"],"trait":["VersionExt","VersionReqExt"]};

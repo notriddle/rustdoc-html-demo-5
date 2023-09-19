@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CHECK_CUSTOM_CODE_CLASSES"],"fn":["check_custom_code_classes","look_for_custom_classes"],"struct":["CustomCodeClassLinter","TestsWithCustomClasses"]};

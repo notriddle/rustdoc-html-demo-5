@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_rustc_errors_DecorateLint_a_FOR_NoValueInOnUnimplementedLint"],"enum":["AppendConstMessage"],"static":["ALLOWED_FORMAT_SYMBOLS"],"struct":["NoValueInOnUnimplementedLint","OnUnimplementedDirective","OnUnimplementedFormatString","OnUnimplementedNote"],"trait":["TypeErrCtxtExt"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["NativeLibKind"],"fn":["extra_compiler_flags"],"struct":["CanonicalizedPath","NativeLib"]};
