@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"attr":["database"],"enum":["Error"],"struct":["Config"],"trait":["Poolable"],"type":["PoolResult"]};

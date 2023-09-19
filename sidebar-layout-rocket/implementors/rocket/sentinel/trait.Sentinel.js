@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"rocket":[],
+"rocket_db_pools":[["impl&lt;D: <a class=\"trait\" href=\"rocket_db_pools/trait.Database.html\" title=\"trait rocket_db_pools::Database\">Database</a>&gt; <a class=\"trait\" href=\"rocket/sentinel/trait.Sentinel.html\" title=\"trait rocket::sentinel::Sentinel\">Sentinel</a> for <a class=\"struct\" href=\"rocket_db_pools/struct.Connection.html\" title=\"struct rocket_db_pools::Connection\">Connection</a>&lt;D&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

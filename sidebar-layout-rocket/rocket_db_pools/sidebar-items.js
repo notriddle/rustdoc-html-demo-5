@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"derive":["Database"],"enum":["Error"],"mod":["figment"],"struct":["Config","Connection","Initializer"],"trait":["Database","Pool"]};

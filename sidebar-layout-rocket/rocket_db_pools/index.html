@@ -1,0 +1,169 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Asynchronous database driver connection pooling integration for Rocket."><title>rocket_db_pools - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="rocket_db_pools" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="icon" href="https://rocket.rs/images/favicon.ico"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../rocket_db_pools/index.html"><img src="https://rocket.rs/images/logo-boxed.png" alt=""></a></nav><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../rocket_db_pools/index.html"><img src="https://rocket.rs/images/logo-boxed.png" alt="logo"></a><h2><a href="../rocket_db_pools/index.html">rocket_db_pools</a><span class="version">0.1.0-rc.3</span></h2></div><div class="sidebar-elems"><ul class="block">
+            <li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#derives">Derive Macros</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">rocket_db_pools</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/rocket_db_pools/lib.rs.html#1-259">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Asynchronous database driver connection pooling integration for Rocket.</p>
+<h2 id="quickstart"><a href="#quickstart">Quickstart</a></h2>
+<ol>
+<li>
+<p>Add <code>rocket_db_pools</code> as a dependency with one or more <a href="#supported-drivers">database driver
+features</a> enabled:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies.rocket_db_pools]
+version = &quot;=0.1.0-rc.3&quot;
+features = [&quot;sqlx_sqlite&quot;]
+</code></pre></div></li>
+<li>
+<p>Choose a name for your database, here <code>sqlite_logs</code>.
+<a href="#configuration">Configure</a> <em>at least</em> a URL for the database:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[default.databases.sqlite_logs]
+url = &quot;/path/to/database.sqlite&quot;
+</code></pre></div></li>
+<li>
+<p><a href="derive.Database.html" title="derive rocket_db_pools::Database">Derive</a> <a href="trait.Database.html" title="trait rocket_db_pools::Database"><code>Database</code></a> for a unit type (<code>Logs</code> here)
+which wraps the selected driver’s <a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> type (see <a href="#supported-drivers">the driver
+table</a>) and is decorated with <code>#[database(&quot;name&quot;)]</code>.
+Attach <code>Type::init()</code> to your application’s <code>Rocket</code> to initialize the
+database pool:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_db_pools::{sqlx, Database};
+
+<span class="attr">#[derive(Database)]
+#[database(<span class="string">&quot;sqlite_logs&quot;</span>)]
+</span><span class="kw">struct </span>Logs(sqlx::SqlitePool);
+
+<span class="attr">#[launch]
+</span><span class="kw">fn </span>rocket() -&gt; <span class="kw">_ </span>{
+    rocket::build().attach(Logs::init())
+}</code></pre></div>
+</li>
+<li>
+<p>Use <a href="struct.Connection.html" title="struct rocket_db_pools::Connection"><code>Connection&lt;Type&gt;</code></a> as a request guard to retrieve an
+active database connection, which dereferences to the native type in the
+<a href="#supported-drivers"><code>Connection</code> deref</a> column.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_db_pools::Connection;
+<span class="kw">use </span>rocket_db_pools::sqlx::Row;
+
+<span class="attr">#[get(<span class="string">&quot;/&lt;id&gt;&quot;</span>)]
+</span><span class="kw">async fn </span>read(<span class="kw-2">mut </span>db: Connection&lt;Logs&gt;, id: i64) -&gt; <span class="prelude-ty">Option</span>&lt;Log&gt; {
+    sqlx::query(<span class="string">&quot;SELECT content FROM logs WHERE id = ?&quot;</span>).bind(id)
+        .fetch_one(<span class="kw-2">&amp;mut **</span>db).<span class="kw">await
+        </span>.and_then(|r| <span class="prelude-val">Ok</span>(Log(r.try_get(<span class="number">0</span>)<span class="question-mark">?</span>)))
+        .ok()
+}</code></pre></div>
+<p>Alternatively, use a reference to the database type as a request guard to
+retrieve the entire pool, but note that unlike retrieving a <code>Connection</code>,
+doing so does <em>not</em> guarantee that a connection is available:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_db_pools::sqlx::Row;
+
+<span class="attr">#[get(<span class="string">&quot;/&lt;id&gt;&quot;</span>)]
+</span><span class="kw">async fn </span>read(db: <span class="kw-2">&amp;</span>Logs, id: i64) -&gt; <span class="prelude-ty">Option</span>&lt;Log&gt; {
+    sqlx::query(<span class="string">&quot;SELECT content FROM logs WHERE id = ?&quot;</span>).bind(id)
+        .fetch_one(<span class="kw-2">&amp;</span>db.<span class="number">0</span>).<span class="kw">await
+        </span>.and_then(|r| <span class="prelude-val">Ok</span>(Log(r.try_get(<span class="number">0</span>)<span class="question-mark">?</span>)))
+        .ok()
+}</code></pre></div>
+</li>
+</ol>
+<h2 id="supported-drivers"><a href="#supported-drivers">Supported Drivers</a></h2>
+<p>At present, this crate supports <em>four</em> drivers: [<code>deadpool</code>], [<code>sqlx</code>],
+[<code>mongodb</code>], and [<code>diesel</code>]. Each driver may support multiple databases.
+Drivers have a varying degree of support for graceful shutdown, affected by
+the <code>Type::init()</code> fairing on Rocket shutdown.</p>
+<h3 id="deadpool-v09"><a href="#deadpool-v09"><code>deadpool</code> (v0.9)</a></h3><div><table><thead><tr><th>Database</th><th>Feature</th><th><a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> Type</th><th><a href="struct.Connection.html" title="struct rocket_db_pools::Connection"><code>Connection</code></a> Deref</th></tr></thead><tbody>
+<tr><td>Postgres</td><td><code>deadpool_postgres</code> (v0.10)</td><td>[<code>deadpool_postgres::Pool</code>]</td><td>[<code>deadpool_postgres::ClientWrapper</code>]</td></tr>
+<tr><td>Redis</td><td><code>deadpool_redis</code> (v0.11)</td><td>[<code>deadpool_redis::Pool</code>]</td><td>[<code>deadpool_redis::Connection</code>]</td></tr>
+</tbody></table>
+</div>
+<p>On shutdown, new connections are denied. Shutdown <em>does not</em> wait for
+connections to be returned.</p>
+<h3 id="sqlx-v07"><a href="#sqlx-v07"><code>sqlx</code> (v0.7)</a></h3><div><table><thead><tr><th>Database</th><th>Feature</th><th><a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> Type</th><th><a href="struct.Connection.html" title="struct rocket_db_pools::Connection"><code>Connection</code></a> Deref</th></tr></thead><tbody>
+<tr><td>Postgres</td><td><code>sqlx_postgres</code></td><td><a href="https://docs.rs/sqlx/0.6/sqlx/type.PgPool.html"><code>sqlx::PgPool</code></a></td><td><a href="https://docs.rs/sqlx/0.6/sqlx/pool/struct.PoolConnection.html"><code>sqlx::pool::PoolConnection&lt;Postgres&gt;</code></a></td></tr>
+<tr><td>MySQL</td><td><code>sqlx_mysql</code></td><td><a href="https://docs.rs/sqlx/0.6/sqlx/type.MySqlPool.html"><code>sqlx::MySqlPool</code></a></td><td><a href="https://docs.rs/sqlx/0.6/sqlx/pool/struct.PoolConnection.html"><code>sqlx::pool::PoolConnection&lt;MySql&gt;</code></a></td></tr>
+<tr><td>SQLite</td><td><code>sqlx_sqlite</code></td><td><a href="https://docs.rs/sqlx/0.6/sqlx/type.SqlitePool.html"><code>sqlx::SqlitePool</code></a></td><td><a href="https://docs.rs/sqlx/0.6/sqlx/pool/struct.PoolConnection.html"><code>sqlx::pool::PoolConnection&lt;Sqlite&gt;</code></a></td></tr>
+</tbody></table>
+</div>
+<p>On shutdown, new connections are denied. Shutdown waits for connections to
+be returned.</p>
+<h3 id="mongodb-v2"><a href="#mongodb-v2"><code>mongodb</code> (v2)</a></h3><div><table><thead><tr><th>Database</th><th>Feature</th><th><a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> Type and <a href="struct.Connection.html" title="struct rocket_db_pools::Connection"><code>Connection</code></a> Deref</th></tr></thead><tbody>
+<tr><td>MongoDB</td><td><code>mongodb</code></td><td>[<code>mongodb::Client</code>]</td></tr>
+</tbody></table>
+</div>
+<p>Graceful shutdown is not supported.</p>
+<h3 id="diesel-v2"><a href="#diesel-v2"><code>diesel</code> (v2)</a></h3><div><table><thead><tr><th>Database</th><th>Feature</th><th><a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> Type</th><th><a href="struct.Connection.html" title="struct rocket_db_pools::Connection"><code>Connection</code></a> Deref</th></tr></thead><tbody>
+<tr><td>Postgres</td><td><code>diesel_postgres</code></td><td>[<code>diesel::PgPool</code>]</td><td>[<code>diesel::AsyncPgConnection</code>]</td></tr>
+<tr><td>MySQL</td><td><code>diesel_mysql</code></td><td>[<code>diesel::MysqlPool</code>]</td><td>[<code>diesel::AsyncMysqlConnection</code>]</td></tr>
+</tbody></table>
+</div>
+<p>See [<code>diesel</code>] for usage details.</p>
+<p>On shutdown, new connections are denied. Shutdown <em>does not</em> wait for
+connections to be returned.</p>
+<h3 id="enabling-additional-driver-features"><a href="#enabling-additional-driver-features">Enabling Additional Driver Features</a></h3>
+<p>Only the minimal features for each driver crate are enabled by
+<code>rocket_db_pools</code>. To use additional driver functionality exposed via its
+crate’s features, you’ll need to depend on the crate directly with those
+features enabled in <code>Cargo.toml</code>:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies.sqlx]
+version = &quot;0.7&quot;
+default-features = false
+features = [&quot;macros&quot;, &quot;migrate&quot;]
+
+[dependencies.rocket_db_pools]
+version = &quot;=0.1.0-rc.3&quot;
+features = [&quot;sqlx_sqlite&quot;]
+</code></pre></div><h2 id="configuration"><a href="#configuration">Configuration</a></h2>
+<p>Configuration for a database named <code>db_name</code> is deserialized from a
+<code>databases.db_name</code> configuration parameter into a <a href="struct.Config.html" title="struct rocket_db_pools::Config"><code>Config</code></a> structure via
+Rocket’s <a href="../rocket/config/index.html" title="mod rocket::config">configuration facilities</a>. By default,
+configuration can be provided in <code>Rocket.toml</code>:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[default.databases.db_name]
+url = &quot;db.sqlite&quot;
+
+# only `url` is required. the rest have defaults and are thus optional
+min_connections = 64
+max_connections = 1024
+connect_timeout = 5
+idle_timeout = 120
+</code></pre></div>
+<p>Or via environment variables:</p>
+<div class="example-wrap"><pre class="language-sh"><code>ROCKET_DATABASES=&#39;{db_name={url=&quot;db.sqlite&quot;,idle_timeout=120}}&#39;
+</code></pre></div>
+<p>See <a href="struct.Config.html" title="struct rocket_db_pools::Config"><code>Config</code></a> for details on configuration parameters.</p>
+<p><strong>Note:</strong> <code>deadpool</code> and <code>diesel</code> drivers do not support and thus ignore the
+<code>min_connections</code> value.</p>
+<h3 id="driver-defaults"><a href="#driver-defaults">Driver Defaults</a></h3>
+<p>Some drivers provide configuration defaults different from the underlying
+database’s defaults. A best-effort attempt is made to document those
+differences below:</p>
+<ul>
+<li>
+<p><code>sqlx_sqlite</code></p>
+<ul>
+<li>foreign keys   : <code>enabled</code></li>
+<li>journal mode   : <code>WAL</code></li>
+<li>create-missing :  <code>enabled</code></li>
+<li>synchronous    : <code>full</code> (even when <code>WAL</code>)</li>
+<li>busy timeout   : <code>connection_timeout</code></li>
+</ul>
+</li>
+<li>
+<p><code>sqlx_postgres</code></p>
+<ul>
+<li>sslmode                  : <code>prefer</code></li>
+<li>statement-cache-capacity : <code>100</code></li>
+<li>user                     : result of <code>whoami</code></li>
+</ul>
+</li>
+<li>
+<p><code>sqlx_mysql</code></p>
+<ul>
+<li>sslmode                  : <code>PREFERRED</code></li>
+<li>statement-cache-capacity : <code>100</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="extending"><a href="#extending">Extending</a></h2>
+<p>Any database driver can implement support for this library by implementing
+the <a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> trait.</p>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><ul class="item-table"><li><div class="item-name" id="reexport.rocket"><code>pub use <a class="mod" href="../rocket/index.html" title="mod rocket">rocket</a>;</code></div></li></ul><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="figment/index.html" title="mod rocket_db_pools::figment">figment</a></div><div class="desc docblock-short">Re-export of the <code>figment</code> crate.
+Semi-hierarchical configuration so con-free, it’s unreal.</div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Config.html" title="struct rocket_db_pools::Config">Config</a></div><div class="desc docblock-short">Base configuration for all database drivers.</div></li><li><div class="item-name"><a class="struct" href="struct.Connection.html" title="struct rocket_db_pools::Connection">Connection</a></div><div class="desc docblock-short">A request guard which retrieves a single connection to a <a href="trait.Database.html" title="trait rocket_db_pools::Database"><code>Database</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.Initializer.html" title="struct rocket_db_pools::Initializer">Initializer</a></div><div class="desc docblock-short">A <a href="../rocket/fairing/trait.Fairing.html" title="trait rocket::fairing::Fairing"><code>Fairing</code></a> which initializes a <a href="trait.Database.html" title="trait rocket_db_pools::Database"><code>Database</code></a> and its connection pool.</div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum rocket_db_pools::Error">Error</a></div><div class="desc docblock-short">A general error type for use by <a href="trait.Pool.html#implementing" title="trait rocket_db_pools::Pool"><code>Pool</code></a>
+implementors and returned by the <a href="struct.Connection.html" title="struct rocket_db_pools::Connection"><code>Connection</code></a> request
+guard.</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Database.html" title="trait rocket_db_pools::Database">Database</a></div><div class="desc docblock-short">Derivable trait which ties a database <a href="trait.Pool.html" title="trait rocket_db_pools::Pool"><code>Pool</code></a> with a configuration name.</div></li><li><div class="item-name"><a class="trait" href="trait.Pool.html" title="trait rocket_db_pools::Pool">Pool</a></div><div class="desc docblock-short">Generic <a href="trait.Database.html" title="trait rocket_db_pools::Database"><code>Database</code></a> driver connection pool trait.</div></li></ul><h2 id="derives" class="small-section-header"><a href="#derives">Derive Macros</a></h2><ul class="item-table"><li><div class="item-name"><a class="derive" href="derive.Database.html" title="derive rocket_db_pools::Database">Database</a></div><div class="desc docblock-short">Automatic derive for the <a href="../rocket_db_pools/trait.Database.html"><code>Database</code></a> trait.</div></li></ul></section></div></main></body></html>

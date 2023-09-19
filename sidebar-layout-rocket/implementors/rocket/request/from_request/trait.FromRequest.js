@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"rocket":[],
+"rocket_db_pools":[["impl&lt;'r, D: <a class=\"trait\" href=\"rocket_db_pools/trait.Database.html\" title=\"trait rocket_db_pools::Database\">Database</a>&gt; <a class=\"trait\" href=\"rocket/request/from_request/trait.FromRequest.html\" title=\"trait rocket::request::from_request::FromRequest\">FromRequest</a>&lt;'r&gt; for <a class=\"struct\" href=\"rocket_db_pools/struct.Connection.html\" title=\"struct rocket_db_pools::Connection\">Connection</a>&lt;D&gt;"]],
+"rocket_ws":[["impl&lt;'r&gt; <a class=\"trait\" href=\"rocket/request/from_request/trait.FromRequest.html\" title=\"trait rocket::request::from_request::FromRequest\">FromRequest</a>&lt;'r&gt; for <a class=\"struct\" href=\"rocket_ws/struct.WebSocket.html\" title=\"struct rocket_ws::WebSocket\">WebSocket</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,213 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Traits, utilities, and a macro for easy database connection pooling."><title>rocket_sync_db_pools - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="rocket_sync_db_pools" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="icon" href="https://rocket.rs/images/favicon.ico"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="logo-container" href="../rocket_sync_db_pools/index.html"><img src="https://rocket.rs/images/logo-boxed.png" alt=""></a></nav><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../rocket_sync_db_pools/index.html"><img src="https://rocket.rs/images/logo-boxed.png" alt="logo"></a><h2><a href="../rocket_sync_db_pools/index.html">rocket_sync_db_pools</a><span class="version">0.1.0-rc.3</span></h2></div><div class="sidebar-elems"><ul class="block">
+            <li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#reexports">Re-exports</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#types">Type Aliases</a></li><li><a href="#attributes">Attribute Macros</a></li></ul></section></div></nav><main><div class="width-limiter"><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">rocket_sync_db_pools</a><button id="copy-path" title="Copy item path to clipboard"><img src="../static.files/clipboard-7571035ce49a181d.svg" width="19" height="18" alt="Copy item path"></button></h1><span class="out-of-band"><a class="src" href="../src/rocket_sync_db_pools/lib.rs.html#1-596">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Traits, utilities, and a macro for easy database connection pooling.</p>
+<h2 id="overview"><a href="#overview">Overview</a></h2>
+<p>This crate provides traits, utilities, and a procedural macro for
+configuring and accessing database connection pools in Rocket. A <em>database
+connection pool</em> is a data structure that maintains active database
+connections for later use in the application. This implementation is backed
+by <a href="../r2d2/index.html" title="mod r2d2"><code>r2d2</code></a> and exposes connections through request guards.</p>
+<p>Databases are individually configured through Rocket’s regular configuration
+mechanisms. Connecting a Rocket application to a database using this library
+occurs in three simple steps:</p>
+<ol>
+<li>Configure your databases in <code>Rocket.toml</code>.
+(see <a href="#configuration">Configuration</a>)</li>
+<li>Associate a request guard type and fairing with each database.
+(see <a href="#guard-types">Guard Types</a>)</li>
+<li>Use the request guard to retrieve a connection in a handler.
+(see <a href="#handlers">Handlers</a>)</li>
+</ol>
+<p>For a list of supported databases, see <a href="#provided">Provided Databases</a>. This
+support can be easily extended by implementing the <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a> trait. See
+<a href="#extending">Extending</a> for more.</p>
+<h3 id="example"><a href="#example">Example</a></h3>
+<p>Before using this library, the feature corresponding to your database type
+in <code>rocket_sync_db_pools</code> must be enabled:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies.rocket_sync_db_pools]
+version = &quot;=0.1.0-rc.3&quot;
+features = [&quot;diesel_sqlite_pool&quot;]
+</code></pre></div>
+<p>See <a href="#provided">Provided</a> for a list of supported database and their
+associated feature name.</p>
+<p>In whichever configuration source you choose, configure a <code>databases</code>
+dictionary with an internal dictionary for each database, here <code>sqlite_logs</code>
+in a TOML source:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[default.databases]
+sqlite_logs = { url = &quot;/path/to/database.sqlite&quot; }
+</code></pre></div>
+<p>In your application’s source code, one-time:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_sync_db_pools::{database, diesel};
+
+<span class="attr">#[database(<span class="string">&quot;sqlite_logs&quot;</span>)]
+</span><span class="kw">struct </span>LogsDbConn(diesel::SqliteConnection);
+
+<span class="attr">#[launch]
+</span><span class="kw">fn </span>rocket() -&gt; <span class="kw">_ </span>{
+    rocket::build().attach(LogsDbConn::fairing())
+}</code></pre></div>
+<p>Whenever a connection to the database is needed:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[get(<span class="string">&quot;/logs/&lt;id&gt;&quot;</span>)]
+</span><span class="kw">async fn </span>get_logs(conn: LogsDbConn, id: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Logs&gt; {
+    conn.run(|c| Logs::by_id(c, id)).<span class="kw">await
+</span>}</code></pre></div>
+<h2 id="usage"><a href="#usage">Usage</a></h2><h3 id="configuration"><a href="#configuration">Configuration</a></h3>
+<p>Databases can be configured as any other values. Using the default
+configuration provider, either via <code>Rocket.toml</code> or environment variables.
+You can also use a custom provider.</p>
+<h4 id="rockettoml"><a href="#rockettoml"><code>Rocket.toml</code></a></h4>
+<p>To configure a database via <code>Rocket.toml</code>, add a table for each database to
+the <code>databases</code> table where the key is a name of your choice. The table
+should have a <code>url</code> key and, optionally, <code>pool_size</code> and <code>timeout</code> keys.
+This looks as follows:</p>
+<div class="example-wrap"><pre class="language-toml"><code># Option 1:
+[global.databases]
+sqlite_db = { url = &quot;db.sqlite&quot; }
+
+# Option 2:
+[global.databases.my_db]
+url = &quot;postgres://root:root@localhost/my_db&quot;
+
+# With `pool_size` and `timeout` keys:
+[global.databases.sqlite_db]
+url = &quot;db.sqlite&quot;
+pool_size = 20
+timeout = 5
+</code></pre></div>
+<p>The table <em>requires</em> one key:</p>
+<ul>
+<li><code>url</code> - the URl to the database</li>
+</ul>
+<p>Additionally, all configurations accept the following <em>optional</em> keys:</p>
+<ul>
+<li><code>pool_size</code> - the size of the pool, i.e., the number of connections to
+pool (defaults to the configured number of workers * 4)</li>
+<li><code>timeout</code> - max number of seconds to wait for a connection to become
+available (defaults to <code>5</code>)</li>
+</ul>
+<p>Additional options may be required or supported by other adapters.</p>
+<h4 id="procedurally"><a href="#procedurally">Procedurally</a></h4>
+<p>Databases can also be configured procedurally via <code>rocket::custom()</code>.
+The example below does just this:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket::figment::{value::{Map, Value}, util::map};
+
+<span class="attr">#[launch]
+</span><span class="kw">fn </span>rocket() -&gt; <span class="kw">_ </span>{
+    <span class="kw">let </span>db: Map&lt;<span class="kw">_</span>, Value&gt; = <span class="macro">map! </span>{
+        <span class="string">&quot;url&quot; </span>=&gt; <span class="string">&quot;db.sqlite&quot;</span>.into(),
+        <span class="string">&quot;pool_size&quot; </span>=&gt; <span class="number">10</span>.into(),
+        <span class="string">&quot;timeout&quot; </span>=&gt; <span class="number">5</span>.into(),
+    };
+
+    <span class="kw">let </span>figment = rocket::Config::figment()
+        .merge((<span class="string">&quot;databases&quot;</span>, <span class="macro">map!</span>[<span class="string">&quot;my_db&quot; </span>=&gt; db]));
+
+    rocket::custom(figment)
+}</code></pre></div>
+<h4 id="environment-variables"><a href="#environment-variables">Environment Variables</a></h4>
+<p>Lastly, databases can be configured via environment variables by specifying
+the <code>databases</code> table as detailed in the <a href="https://rocket.rs/v0.5-rc/guide/configuration/#environment-variables">Environment Variables
+configuration
+guide</a>:</p>
+<div class="example-wrap"><pre class="language-bash"><code>ROCKET_DATABASES=&#39;{my_db={url=&quot;db.sqlite&quot;}}&#39;
+</code></pre></div>
+<p>Multiple databases can be specified in the <code>ROCKET_DATABASES</code> environment variable
+as well by comma separating them:</p>
+<div class="example-wrap"><pre class="language-bash"><code>ROCKET_DATABASES=&#39;{my_db={url=&quot;db.sqlite&quot;},my_pg_db={url=&quot;postgres://root:root@localhost/my_pg_db&quot;}}&#39;
+</code></pre></div><h3 id="guard-types"><a href="#guard-types">Guard Types</a></h3>
+<p>Once a database has been configured, the <code>#[database]</code> attribute can be used
+to tie a type in your application to a configured database. The database
+attribute accepts a single string parameter that indicates the name of the
+database. This corresponds to the database name set as the database’s
+configuration key.</p>
+<p>See <a href="example::ExampleDb"><code>ExampleDb</code></a> for everything that the macro
+generates. Specifically, it generates:</p>
+<ul>
+<li>A <a href="../rocket/request/from_request/trait.FromRequest.html" title="trait rocket::request::from_request::FromRequest"><code>FromRequest</code></a> implementation for the decorated type.</li>
+<li>A <a href="../rocket/sentinel/trait.Sentinel.html" title="trait rocket::sentinel::Sentinel"><code>Sentinel</code></a> implementation for the decorated type.</li>
+<li>A <a href="example::ExampleDb::fairing()"><code>fairing()</code></a> method to initialize the
+database.</li>
+<li>A <a href="example::ExampleDb::run()"><code>run()</code></a> method to execute blocking
+database operations in an <code>async</code>-safe manner.</li>
+<li>A <a href="example::ExampleDb::pool()"><code>pool()</code></a> method to retrieve the
+backing connection pool.</li>
+</ul>
+<p>The attribute can only be applied to tuple structs with one field. The
+internal type of the structure must implement <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a>.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_sync_db_pools::diesel;
+
+<span class="attr">#[database(<span class="string">&quot;my_db&quot;</span>)]
+</span><span class="kw">struct </span>MyDatabase(diesel::SqliteConnection);</code></pre></div>
+<p>Other databases can be used by specifying their respective <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a>
+type:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_sync_db_pools::postgres;
+
+<span class="attr">#[database(<span class="string">&quot;my_pg_db&quot;</span>)]
+</span><span class="kw">struct </span>MyPgDatabase(postgres::Client);</code></pre></div>
+<p>The fairing returned from the generated <code>fairing()</code> method <em>must</em> be
+attached for the request guard implementation to succeed. Putting the pieces
+together, a use of the <code>#[database]</code> attribute looks as follows:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rocket_sync_db_pools::diesel;
+
+<span class="attr">#[database(<span class="string">&quot;my_db&quot;</span>)]
+</span><span class="kw">struct </span>MyDatabase(diesel::SqliteConnection);
+
+<span class="attr">#[launch]
+</span><span class="kw">fn </span>rocket() -&gt; <span class="kw">_ </span>{
+    rocket::custom(figment).attach(MyDatabase::fairing())
+}</code></pre></div>
+<h3 id="handlers"><a href="#handlers">Handlers</a></h3>
+<p>Finally, use your type as a request guard in a handler to retrieve a
+connection wrapper for the database:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[database(<span class="string">&quot;my_db&quot;</span>)]
+</span><span class="kw">struct </span>MyDatabase(diesel::SqliteConnection);
+
+<span class="attr">#[get(<span class="string">&quot;/&quot;</span>)]
+</span><span class="kw">fn </span>my_handler(conn: MyDatabase) {
+    <span class="comment">// ...
+</span>}</code></pre></div>
+<p>A connection can be retrieved and used with the <code>run()</code> method:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[database(<span class="string">&quot;my_db&quot;</span>)]
+</span><span class="kw">struct </span>MyDatabase(diesel::SqliteConnection);
+
+<span class="kw">fn </span>load_from_db(conn: <span class="kw-2">&amp;</span>diesel::SqliteConnection) -&gt; Data {
+    <span class="comment">// Do something with connection, return some data.
+</span>}
+
+<span class="attr">#[get(<span class="string">&quot;/&quot;</span>)]
+</span><span class="kw">async fn </span>my_handler(<span class="kw-2">mut </span>conn: MyDatabase) -&gt; Data {
+    conn.run(|c| load_from_db(c)).<span class="kw">await
+</span>}</code></pre></div>
+<h2 id="database-support"><a href="#database-support">Database Support</a></h2>
+<p>Built-in support is provided for many popular databases and drivers. Support
+can be easily extended by <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a> implementations.</p>
+<h3 id="provided"><a href="#provided">Provided</a></h3>
+<p>The list below includes all presently supported database adapters and their
+corresponding <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a> type.</p>
+<div><table><thead><tr><th>Kind</th><th>Driver</th><th>Version</th><th><code>Poolable</code> Type</th><th>Feature</th></tr></thead><tbody>
+<tr><td>Sqlite</td><td><a href="https://diesel.rs">Diesel</a></td><td><code>2</code></td><td><a href="https://docs.rs/diesel/2/diesel/sqlite/struct.SqliteConnection.html"><code>diesel::SqliteConnection</code></a></td><td><code>diesel_sqlite_pool</code></td></tr>
+<tr><td>Postgres</td><td><a href="https://diesel.rs">Diesel</a></td><td><code>2</code></td><td><a href="https://docs.rs/diesel/2/diesel/pg/struct.PgConnection.html"><code>diesel::PgConnection</code></a></td><td><code>diesel_postgres_pool</code></td></tr>
+<tr><td>MySQL</td><td><a href="https://diesel.rs">Diesel</a></td><td><code>2</code></td><td><a href="https://docs.rs/diesel/2/diesel/mysql/struct.MysqlConnection.html"><code>diesel::MysqlConnection</code></a></td><td><code>diesel_mysql_pool</code></td></tr>
+<tr><td>Postgres</td><td><a href="https://github.com/sfackler/rust-postgres">Rust-Postgres</a></td><td><code>0.19</code></td><td><a href="https://docs.rs/postgres/0.19/postgres/struct.Client.html"><code>postgres::Client</code></a></td><td><code>postgres_pool</code></td></tr>
+<tr><td>Sqlite</td><td><a href="https://github.com/jgallagher/rusqlite"><code>Rusqlite</code></a></td><td><code>0.27</code></td><td><a href="https://docs.rs/rusqlite/0.27/rusqlite/struct.Connection.html"><code>rusqlite::Connection</code></a></td><td><code>sqlite_pool</code></td></tr>
+<tr><td>Memcache</td><td><a href="https://github.com/aisk/rust-memcache"><code>memcache</code></a></td><td><code>0.15</code></td><td><a href="https://docs.rs/memcache/0.15/memcache/struct.Client.html"><code>memcache::Client</code></a></td><td><code>memcache_pool</code></td></tr>
+</tbody></table>
+</div>
+<p>The above table lists all the supported database adapters in this library.
+In order to use particular <code>Poolable</code> type that’s included in this library,
+you must first enable the feature listed in the “Feature” column. The
+interior type of your decorated database type should match the type in the
+“<code>Poolable</code> Type” column.</p>
+<h3 id="extending"><a href="#extending">Extending</a></h3>
+<p>Extending Rocket’s support to your own custom database adapter (or other
+database-like struct that can be pooled by <code>r2d2</code>) is as easy as
+implementing the <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a> trait. See the documentation for <a href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable"><code>Poolable</code></a>
+for more details on how to implement it.</p>
+</div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><ul class="item-table"><li><div class="item-name" id="reexport.r2d2"><code>pub use <a class="mod" href="../r2d2/index.html" title="mod r2d2">r2d2</a>;</code></div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.Config.html" title="struct rocket_sync_db_pools::Config">Config</a></div><div class="desc docblock-short">A base <code>Config</code> for any <code>Poolable</code> type.</div></li></ul><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum rocket_sync_db_pools::Error">Error</a></div><div class="desc docblock-short">A wrapper around <code>r2d2::Error</code>s or a custom database error type.</div></li></ul><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.Poolable.html" title="trait rocket_sync_db_pools::Poolable">Poolable</a></div><div class="desc docblock-short">Trait implemented by <code>r2d2</code>-based database adapters.</div></li></ul><h2 id="types" class="small-section-header"><a href="#types">Type Aliases</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.PoolResult.html" title="type rocket_sync_db_pools::PoolResult">PoolResult</a></div><div class="desc docblock-short">A type alias for the return type of <a href="trait.Poolable.html#tymethod.pool" title="associated function rocket_sync_db_pools::Poolable::pool"><code>Poolable::pool()</code></a>.</div></li></ul><h2 id="attributes" class="small-section-header"><a href="#attributes">Attribute Macros</a></h2><ul class="item-table"><li><div class="item-name"><a class="attr" href="attr.database.html" title="attr rocket_sync_db_pools::database">database</a></div><div class="desc docblock-short">Generates a request guard and fairing for retrieving a database connection.</div></li></ul></section></div></main></body></html>

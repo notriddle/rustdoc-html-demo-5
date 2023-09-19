@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["client"],"macro":["assert_form_parses","assert_form_parses_ok","assert_not_form_parses","bmap","map"]};
