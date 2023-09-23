@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/type_variable.rs`."><title>type_variable.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_infer/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/type_variable.rs`."><title>type_variable.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_infer/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -463,10 +463,10 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.DefId.html">rustc_hir::def_id::DefId</a>;
-<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html">self</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html">Ty</a>, TyVid};
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html">rustc_span::symbol::Symbol</a>;
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_span/def_id/struct.DefId.html">rustc_hir::def_id::DefId</a>;
+<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_type_ir/struct.TyVid.html">TyVid</a>};
+<span class="kw">use </span><a href="../../../rustc_span/symbol/struct.Symbol.html">rustc_span::symbol::Symbol</a>;
+<span class="kw">use </span><a href="../../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
 
 <span class="kw">use </span><a href="undo_log.rs.html#94-97"><span class="kw">crate</span>::infer::InferCtxtUndoLogs</a>;
 
@@ -482,7 +482,7 @@
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span><a href="../../../rustc_infer/infer/type_variable/enum.UndoLog.html">UndoLog</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     EqRelation(sv::UndoLog&lt;ut::Delegate&lt;TyVidEqKey&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;),
-    SubRelation(sv::UndoLog&lt;ut::Delegate&lt;ty::TyVid&gt;&gt;),
+    SubRelation(sv::UndoLog&lt;ut::Delegate&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt;&gt;),
     Values(sv::UndoLog&lt;<a href="#174">Delegate</a>&gt;),
 }
 
@@ -494,8 +494,8 @@
 }
 
 <span class="doccomment">/// Convert from a specific kind of undo to the more general UndoLog
-</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; From&lt;sv::UndoLog&lt;ut::Delegate&lt;ty::TyVid&gt;&gt;&gt; <span class="kw">for </span>UndoLog&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">fn </span>from(l: sv::UndoLog&lt;ut::Delegate&lt;ty::TyVid&gt;&gt;) -&gt; <span class="self">Self </span>{
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; From&lt;sv::UndoLog&lt;ut::Delegate&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt;&gt;&gt; <span class="kw">for </span>UndoLog&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+    <span class="kw">fn </span>from(l: sv::UndoLog&lt;ut::Delegate&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt;&gt;) -&gt; <span class="self">Self </span>{
         <a href="#20">UndoLog::SubRelation</a>(<a href="#33">l</a>)
     }
 }
@@ -566,7 +566,7 @@
     /// as when processing subtype predicates. This is not necessary but is
     /// done to aid diagnostics, as it allows us to be more effective when
     /// we guide the user towards where they should insert type hints.
-    </span>sub_relations: ut::UnificationTableStorage&lt;ty::TyVid&gt;,
+    </span>sub_relations: ut::UnificationTableStorage&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt;,
 }
 
 <span class="kw">pub struct </span><a href="../../../rustc_infer/infer/type_variable/struct.TypeVariableTable.html">TypeVariableTable</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -578,7 +578,7 @@
 <span class="attr">#[derive(Copy, Clone, Debug)]
 </span><span class="kw">pub struct </span><a href="../../../rustc_infer/infer/type_variable/struct.TypeVariableOrigin.html">TypeVariableOrigin</a> {
     <span class="kw">pub </span>kind: <a href="#121-140">TypeVariableOriginKind</a>,
-    <span class="kw">pub </span>span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>,
+    <span class="kw">pub </span>span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
 }
 
 <span class="doccomment">/// Reasons to create a type inference variable
@@ -587,8 +587,8 @@
     MiscVariable,
     NormalizeProjectionType,
     TypeInference,
-    OpaqueTypeInference(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.DefId.html">DefId</a>),
-    TypeParameterDefinition(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html">Symbol</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/def_id/struct.DefId.html">DefId</a>),
+    OpaqueTypeInference(<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
+    TypeParameterDefinition(<a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>, <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
 
     <span class="doccomment">/// One of the upvars or closure kind parameters in a `ClosureArgs`
     /// (before it has been determined).
@@ -612,7 +612,7 @@
 <span class="attr">#[derive(Copy, Clone, Debug)]
 </span><span class="kw">pub enum </span><a href="../../../rustc_infer/infer/type_variable/enum.TypeVariableValue.html">TypeVariableValue</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     Known { value: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; },
-    Unknown { universe: ty::UniverseIndex },
+    Unknown { universe: <a href="../../../rustc_type_ir/struct.UniverseIndex.html">ty::UniverseIndex</a> },
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeVariableValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -666,14 +666,14 @@
     ///
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
-    </span><span class="kw">pub fn </span>var_origin(<span class="kw-2">&amp;</span><span class="self">self</span>, vid: ty::TyVid) -&gt; <span class="kw-2">&amp;</span><a href="#114-117">TypeVariableOrigin</a> {
+    </span><span class="kw">pub fn </span>var_origin(<span class="kw-2">&amp;</span><span class="self">self</span>, vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; <span class="kw-2">&amp;</span><a href="#114-117">TypeVariableOrigin</a> {
         <span class="kw-2">&amp;</span><a class="self" href="#204">self</a>.storage.values.get(<a href="#204">vid</a>.as_usize()).origin
     }
 
     <span class="doccomment">/// Records that `a == b`, depending on `dir`.
     ///
     /// Precondition: neither `a` nor `b` are known.
-    </span><span class="kw">pub fn </span>equate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: ty::TyVid, b: ty::TyVid) {
+    </span><span class="kw">pub fn </span>equate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>, b: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(<span class="self">self</span>.probe(a).is_unknown());
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(<span class="self">self</span>.probe(b).is_unknown());
         <a class="self" href="#211">self</a>.<a href="#341-343">eq_relations</a>().union(<a href="#211">a</a>, <a href="#211">b</a>);
@@ -683,7 +683,7 @@
     <span class="doccomment">/// Records that `a &lt;: b`, depending on `dir`.
     ///
     /// Precondition: neither `a` nor `b` are known.
-    </span><span class="kw">pub fn </span>sub(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: ty::TyVid, b: ty::TyVid) {
+    </span><span class="kw">pub fn </span>sub(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>, b: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(<span class="self">self</span>.probe(a).is_unknown());
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(<span class="self">self</span>.probe(b).is_unknown());
         <a class="self" href="#221">self</a>.<a href="#346-348">sub_relations</a>().union(<a href="#221">a</a>, <a href="#221">b</a>);
@@ -692,7 +692,7 @@
     <span class="doccomment">/// Instantiates `vid` with the type `ty`.
     ///
     /// Precondition: `vid` must not have been previously instantiated.
-    </span><span class="kw">pub fn </span>instantiate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: ty::TyVid, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+    </span><span class="kw">pub fn </span>instantiate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="kw">let </span>vid = <a class="self" href="#230">self</a>.<a href="#286-288">root_var</a>(<a href="#230">vid</a>);
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(<span class="self">self</span>.probe(vid).is_unknown());
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(
@@ -722,9 +722,9 @@
     ///   for improving error messages.
     </span><span class="kw">pub fn </span>new_var(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        universe: ty::UniverseIndex,
+        universe: <a href="../../../rustc_type_ir/struct.UniverseIndex.html">ty::UniverseIndex</a>,
         origin: <a href="#114-117">TypeVariableOrigin</a>,
-    ) -&gt; ty::TyVid {
+    ) -&gt; <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a> {
         <span class="kw">let </span>eq_key = <a class="self" href="#259">self</a>.<a href="#341-343">eq_relations</a>().new_key(<a href="#150">TypeVariableValue::Unknown</a> { <a href="#260">universe</a> });
 
         <span class="kw">let </span>sub_key = <a class="self" href="#259">self</a>.<a href="#346-348">sub_relations</a>().new_key(());
@@ -748,7 +748,7 @@
     /// will yield the same root variable (per the union-find
     /// algorithm), so `root_var(a) == root_var(b)` implies that `a ==
     /// b` (transitively).
-    </span><span class="kw">pub fn </span>root_var(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: ty::TyVid) -&gt; ty::TyVid {
+    </span><span class="kw">pub fn </span>root_var(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a> {
         <a class="self" href="#286">self</a>.<a href="#341-343">eq_relations</a>().find(<a href="#286">vid</a>).vid
     }
 
@@ -760,25 +760,25 @@
     /// ```text
     /// exists X. (a &lt;: X || X &lt;: a) &amp;&amp; (b &lt;: X || X &lt;: b)
     /// ```
-    </span><span class="kw">pub fn </span>sub_root_var(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: ty::TyVid) -&gt; ty::TyVid {
+    </span><span class="kw">pub fn </span>sub_root_var(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a> {
         <a class="self" href="#298">self</a>.<a href="#346-348">sub_relations</a>().find(<a href="#298">vid</a>)
     }
 
     <span class="doccomment">/// Returns `true` if `a` and `b` have same &quot;sub-root&quot; (i.e., exists some
     /// type X such that `forall i in {a, b}. (i &lt;: X || X &lt;: i)`.
-    </span><span class="kw">pub fn </span>sub_unified(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: ty::TyVid, b: ty::TyVid) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    </span><span class="kw">pub fn </span>sub_unified(<span class="kw-2">&amp;mut </span><span class="self">self</span>, a: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>, b: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#304">self</a>.<a href="#298-300">sub_root_var</a>(<a href="#304">a</a>) == <a class="self" href="#304">self</a>.<a href="#298-300">sub_root_var</a>(<a href="#304">b</a>)
     }
 
     <span class="doccomment">/// Retrieves the type to which `vid` has been instantiated, if
     /// any.
-    </span><span class="kw">pub fn </span>probe(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: ty::TyVid) -&gt; TypeVariableValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+    </span><span class="kw">pub fn </span>probe(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; TypeVariableValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <a class="self" href="#310">self</a>.<a href="#316-318">inlined_probe</a>(<a href="#310">vid</a>)
     }
 
     <span class="doccomment">/// An always-inlined variant of `probe`, for very hot call sites.
     </span><span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>inlined_probe(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: ty::TyVid) -&gt; TypeVariableValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+    </span><span class="kw">pub fn </span>inlined_probe(<span class="kw-2">&amp;mut </span><span class="self">self</span>, vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; TypeVariableValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <a class="self" href="#316">self</a>.<a href="#341-343">eq_relations</a>().inlined_probe_value(<a href="#316">vid</a>)
     }
 
@@ -808,7 +808,7 @@
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">fn </span>sub_relations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">super</span>::UnificationTable&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>, ty::TyVid&gt; {
+    </span><span class="kw">fn </span>sub_relations(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">super</span>::UnificationTable&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>, <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt; {
         <a class="self" href="#346">self</a>.storage.sub_relations.with_log(<a class="self" href="#346">self</a>.undo_log)
     }
 
@@ -816,7 +816,7 @@
     </span><span class="kw">pub fn </span>vars_since_snapshot(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         value_count: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
-    ) -&gt; (Range&lt;TyVid&gt;, Vec&lt;<a href="#114-117">TypeVariableOrigin</a>&gt;) {
+    ) -&gt; (Range&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">TyVid</a>&gt;, Vec&lt;<a href="#114-117">TypeVariableOrigin</a>&gt;) {
         <span class="kw">let </span>range = TyVid::from_usize(<a href="#353">value_count</a>)..TyVid::from_usize(<a class="self" href="#352">self</a>.<a href="#277-279">num_vars</a>());
         (
             <a href="#355">range</a>.start..<a href="#355">range</a>.end,
@@ -828,7 +828,7 @@
 
     <span class="doccomment">/// Returns indices of all variables that are not yet
     /// instantiated.
-    </span><span class="kw">pub fn </span>unsolved_variables(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;ty::TyVid&gt; {
+    </span><span class="kw">pub fn </span>unsolved_variables(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt; {
         (<span class="number">0</span>..<a class="self" href="#366">self</a>.storage.values.len())
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|i| {
                 <span class="kw">let </span>vid = ty::TyVid::from_usize(<a href="#368">i</a>);
@@ -868,15 +868,15 @@
 /// with them.
 </span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span><a href="../../../rustc_infer/infer/type_variable/struct.TyVidEqKey.html">TyVidEqKey</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    vid: ty::TyVid,
+    vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>,
 
     <span class="comment">// in the table, we map each ty-vid to one of these:
     </span>phantom: PhantomData&lt;TypeVariableValue&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; From&lt;ty::TyVid&gt; <span class="kw">for </span>TyVidEqKey&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; From&lt;<a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>&gt; <span class="kw">for </span>TyVidEqKey&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="attr">#[inline] </span><span class="comment">// make this function eligible for inlining - it is quite hot.
-    </span><span class="kw">fn </span>from(vid: ty::TyVid) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">fn </span>from(vid: <a href="../../../rustc_type_ir/struct.TyVid.html">ty::TyVid</a>) -&gt; <span class="self">Self </span>{
         <a href="#405-410">TyVidEqKey</a> { <a href="#414">vid</a>, phantom: PhantomData }
     }
 }
@@ -905,7 +905,7 @@
             // have known types. Instead, we recursively equate
             // those types.
             </span>(<span class="kw-2">&amp;</span><a href="#149">TypeVariableValue::Known</a> { .. }, <span class="kw-2">&amp;</span><a href="#149">TypeVariableValue::Known</a> { .. }) =&gt; {
-                <a class="macro" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;equating two type variables, both of which have known types&quot;</span>)
+                <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;equating two type variables, both of which have known types&quot;</span>)
             }
 
             <span class="comment">// If one side is known, prefer that one.

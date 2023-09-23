@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_llvm/src/asm.rs`."><title>asm.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_codegen_llvm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_llvm/src/asm.rs`."><title>asm.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_codegen_llvm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1141,8 +1141,8 @@
 <span class="kw">use </span><a href="llvm/ffi.rs.html#642"><span class="kw">crate</span>::value::Value</a>;
 
 <span class="kw">use </span>rustc_ast::{<a href="../../rustc_ast/ast/struct.InlineAsmOptions.html">InlineAsmOptions</a>, <a href="../../rustc_ast/ast/enum.InlineAsmTemplatePiece.html">InlineAsmTemplatePiece</a>};
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/operand/enum.OperandValue.html">rustc_codegen_ssa::mir::operand::OperandValue</a>;
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/index.html">rustc_codegen_ssa::traits</a>::<span class="kw-2">*</span>;
+<span class="kw">use </span><a href="../../rustc_codegen_ssa/mir/operand/enum.OperandValue.html">rustc_codegen_ssa::mir::operand::OperandValue</a>;
+<span class="kw">use </span><a href="../../rustc_codegen_ssa/traits/index.html">rustc_codegen_ssa::traits</a>::<span class="kw-2">*</span>;
 <span class="kw">use </span>rustc_data_structures::fx::FxHashMap;
 <span class="kw">use </span><a href="../../rustc_middle/ty/layout/type.TyAndLayout.html">rustc_middle::ty::layout::TyAndLayout</a>;
 <span class="kw">use </span>rustc_middle::{<a href="../../rustc_middle/macro.bug.html">bug</a>, <a href="../../rustc_middle/macro.span_bug.html">span_bug</a>, <a href="../../rustc_middle/ty/instance/struct.Instance.html">ty::Instance</a>};
@@ -1409,7 +1409,7 @@
         <span class="kw">let </span>output_type = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#38">output_types</a>[..] {
             [] =&gt; <a class="self" href="#25">self</a>.<a href="type_.rs.html#51-53">type_void</a>(),
             [ty] =&gt; <a href="#278">ty</a>,
-            tys =&gt; <a class="self" href="#25">self</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_struct</a>(<a href="#279">tys</a>, <span class="bool-val">false</span>),
+            tys =&gt; <a class="self" href="#25">self</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_struct</a>(<a href="#279">tys</a>, <span class="bool-val">false</span>),
         };
         <span class="kw">let </span>dialect = <span class="kw">match </span><a href="#33">asm_arch</a> {
             InlineAsmArch::X86 | InlineAsmArch::X86_64
@@ -1451,7 +1451,7 @@
 
         <span class="comment">// Switch to the &#39;normal&#39; basic block if we did an `invoke` instead of a `call`
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>((dest, <span class="kw">_</span>, <span class="kw">_</span>)) = <a href="#31">dest_catch_funclet</a> {
-            <a class="self" href="#25">self</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">switch_to_block</a>(<a href="#320">dest</a>);
+            <a class="self" href="#25">self</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">switch_to_block</a>(<a href="#320">dest</a>);
         }
 
         <span class="comment">// Write results to outputs
@@ -1567,12 +1567,12 @@
         .iter()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|v| {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;Asm Input Type: {:?}&quot;</span>, <span class="kw-2">*</span>v);
-            <a href="#413">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">val_ty</a>(<span class="kw-2">*</span><a href="#435">v</a>)
+            <a href="#413">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">val_ty</a>(<span class="kw-2">*</span><a href="#435">v</a>)
         })
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;Asm Output Type: {:?}&quot;</span>, output);
-    <span class="kw">let </span>fty = <a href="#413">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_func</a>(<span class="kw-2">&amp;</span><a href="#433">argtys</a>, <a href="#417">output</a>);
+    <span class="kw">let </span>fty = <a href="#413">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_func</a>(<span class="kw-2">&amp;</span><a href="#433">argtys</a>, <a href="#417">output</a>);
     <span class="kw">unsafe </span>{
         <span class="comment">// Ask LLVM to verify that the constraints are well-formed.
         </span><span class="kw">let </span>constraints_ok = <a href="llvm/ffi.rs.html#1705-1709">llvm::LLVMRustInlineAsmVerify</a>(<a href="#442">fty</a>, <a href="#415">cons</a>.as_ptr().cast(), <a href="#415">cons</a>.len());
@@ -1591,9 +1591,9 @@
             );
 
             <span class="kw">let </span>call = <span class="kw">if let </span><span class="prelude-val">Some</span>((dest, catch, funclet)) = <a href="#423">dest_catch_funclet</a> {
-                <a href="#413">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">invoke</a>(<a href="#442">fty</a>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <a href="#448">v</a>, <a href="#416">inputs</a>, <a href="#460">dest</a>, <a href="#460">catch</a>, <a href="#460">funclet</a>)
+                <a href="#413">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">invoke</a>(<a href="#442">fty</a>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <a href="#448">v</a>, <a href="#416">inputs</a>, <a href="#460">dest</a>, <a href="#460">catch</a>, <a href="#460">funclet</a>)
             } <span class="kw">else </span>{
-                <a href="#413">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">call</a>(<a href="#442">fty</a>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <a href="#448">v</a>, <a href="#416">inputs</a>, <span class="prelude-val">None</span>)
+                <a href="#413">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">call</a>(<a href="#442">fty</a>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <a href="#448">v</a>, <a href="#416">inputs</a>, <span class="prelude-val">None</span>)
             };
 
             <span class="comment">// Store mark in a metadata node so we can map LLVM errors
@@ -1618,9 +1618,9 @@
                 // due to the asm template string coming from a macro. LLVM will
                 // default to the first srcloc for lines that don&#39;t have an
                 // associated srcloc.
-                </span><a href="#479">srcloc</a>.push(<a href="#413">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>));
+                </span><a href="#479">srcloc</a>.push(<a href="#413">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>));
             }
-            <a href="#479">srcloc</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#421">line_spans</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|span| <a href="#413">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<a href="#490">span</a>.lo().<a href="../../rustc_span/trait.Pos.html">to_u32</a>() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html">i32</a>)));
+            <a href="#479">srcloc</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#421">line_spans</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|span| <a href="#413">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<a href="#490">span</a>.lo().<a href="../../rustc_span/trait.Pos.html">to_u32</a>() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html">i32</a>)));
             <span class="kw">let </span>md = <a href="llvm/ffi.rs.html#918-922">llvm::LLVMMDNodeInContext</a>(<a href="#413">bx</a>.llcx, <a href="#479">srcloc</a>.as_ptr(), <a href="#479">srcloc</a>.len() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>);
             <a href="llvm/ffi.rs.html#899">llvm::LLVMSetMetadata</a>(<a href="#460">call</a>, <a href="#469">kind</a>, <a href="#491">md</a>);
 
@@ -1938,52 +1938,52 @@
 /// the type is, as long as it is valid for the constraint code.
 </span><span class="kw">fn </span><a href="../../rustc_codegen_llvm/asm/fn.dummy_output_type.html">dummy_output_type</a>&lt;<span class="lifetime">&#39;ll</span>&gt;(cx: <span class="kw-2">&amp;</span>CodegenCx&lt;<span class="lifetime">&#39;ll</span>, <span class="lifetime">&#39;_</span>&gt;, reg: <a href="../../rustc_target/asm/enum.InlineAsmRegClass.html">InlineAsmRegClass</a>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;ll </span><a href="llvm/ffi.rs.html#639">Type</a> {
     <span class="kw">match </span><a href="#806">reg</a> {
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) =&gt; {
-            <a href="#806">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(), <span class="number">2</span>)
+            <a href="#806">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(), <span class="number">2</span>)
         }
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;clobber-only&quot;</span>)
         }
-        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
-        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
-        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
+        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low8) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low4) =&gt; {
-            <a href="#806">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(), <span class="number">2</span>)
+            <a href="#806">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(), <span class="number">2</span>)
         }
-        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
-        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
-        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
-        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
-        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::Mips(MipsInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
         InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::cr)
         | InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::xer) =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;clobber-only&quot;</span>)
         }
-        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;clobber-only&quot;</span>)
         }
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
-        | InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
+        | InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::ymm_reg)
-        | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
-        InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        | InlineAsmRegClass::X86(X86InlineAsmRegClass::zmm_reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
         InlineAsmRegClass::X86(
             X86InlineAsmRegClass::x87_reg
             | X86InlineAsmRegClass::mmx_reg
@@ -1992,22 +1992,22 @@
         ) =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;clobber-only&quot;</span>)
         }
-        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
-        InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
-        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
-        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
-        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
-        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
-        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
-        InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
-        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
+        InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
+        InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_data) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::reg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        InlineAsmRegClass::CSKY(CSKYInlineAsmRegClass::freg) =&gt; <a href="#806">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) =&gt; {
             <a class="macro" href="../../rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;LLVM backend does not support SPIR-V&quot;</span>)
         }
@@ -2020,14 +2020,14 @@
 </span><span class="kw">fn </span><a href="../../rustc_codegen_llvm/asm/fn.llvm_asm_scalar_type.html">llvm_asm_scalar_type</a>&lt;<span class="lifetime">&#39;ll</span>&gt;(cx: <span class="kw-2">&amp;</span>CodegenCx&lt;<span class="lifetime">&#39;ll</span>, <span class="lifetime">&#39;_</span>&gt;, scalar: <a href="../../rustc_abi/enum.Scalar.html">Scalar</a>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;ll </span><a href="llvm/ffi.rs.html#639">Type</a> {
     <span class="kw">let </span>dl = <span class="kw-2">&amp;</span><a href="#887">cx</a>.tcx.data_layout;
     <span class="kw">match </span><a href="#887">scalar</a>.primitive() {
-        Primitive::Int(Integer::I8, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
-        Primitive::Int(Integer::I16, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
-        Primitive::Int(Integer::I32, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-        Primitive::Int(Integer::I64, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
-        Primitive::F32 =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
-        Primitive::F64 =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
+        Primitive::Int(Integer::I8, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(),
+        Primitive::Int(Integer::I16, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>(),
+        Primitive::Int(Integer::I32, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+        Primitive::Int(Integer::I64, <span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
+        Primitive::F32 =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>(),
+        Primitive::F64 =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(),
         <span class="comment">// FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-        </span>Primitive::Pointer(<span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.DerivedTypeMethods.html">type_from_integer</a>(<a href="#888">dl</a>.ptr_sized_integer()),
+        </span>Primitive::Pointer(<span class="kw">_</span>) =&gt; <a href="#887">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.DerivedTypeMethods.html">type_from_integer</a>(<a href="#888">dl</a>.ptr_sized_integer()),
         <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
     }
 }
@@ -2043,8 +2043,8 @@
     <span class="kw">match </span>(<a href="#906">reg</a>, <a href="#907">layout</a>.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I8, <span class="kw">_</span>) = <a href="#911">s</a>.primitive() {
-                <span class="kw">let </span>vec_ty = <a href="#904">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(), <span class="number">8</span>);
-                <a href="#904">bx</a>.<a href="builder.rs.html#1288-1295">insert_element</a>(<a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#913">vec_ty</a>), <a href="#905">value</a>, <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>))
+                <span class="kw">let </span>vec_ty = <a href="#904">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(), <span class="number">8</span>);
+                <a href="#904">bx</a>.<a href="builder.rs.html#1288-1295">insert_element</a>(<a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#913">vec_ty</a>), <a href="#905">value</a>, <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>))
             } <span class="kw">else </span>{
                 <a href="#905">value</a>
             }
@@ -2055,10 +2055,10 @@
             <span class="kw">let </span>vec_ty = <a href="#904">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#920">elem_ty</a>, <a href="#921">count</a>);
             <span class="comment">// FIXME(erikdesjardins): handle non-default addrspace ptr sizes
             </span><span class="kw">if let </span>Primitive::Pointer(<span class="kw">_</span>) = <a href="#919">s</a>.primitive() {
-                <span class="kw">let </span>t = <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.DerivedTypeMethods.html">type_from_integer</a>(<a href="#909">dl</a>.ptr_sized_integer());
-                <a href="#905">value</a> = <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">ptrtoint</a>(<a href="#905">value</a>, <a href="#925">t</a>);
+                <span class="kw">let </span>t = <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.DerivedTypeMethods.html">type_from_integer</a>(<a href="#909">dl</a>.ptr_sized_integer());
+                <a href="#905">value</a> = <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">ptrtoint</a>(<a href="#905">value</a>, <a href="#925">t</a>);
             }
-            <a href="#904">bx</a>.<a href="builder.rs.html#1288-1295">insert_element</a>(<a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#922">vec_ty</a>), <a href="#905">value</a>, <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>))
+            <a href="#904">bx</a>.<a href="builder.rs.html#1288-1295">insert_element</a>(<a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#922">vec_ty</a>), <a href="#905">value</a>, <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>))
         }
         (
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16),
@@ -2066,24 +2066,24 @@
         ) <span class="kw">if </span><a href="#907">layout</a>.size.bytes() == <span class="number">8 </span>=&gt; {
             <span class="kw">let </span>elem_ty = <a href="#887-900">llvm_asm_scalar_type</a>(<a href="#904">bx</a>.cx, <a href="#932">element</a>);
             <span class="kw">let </span>vec_ty = <a href="#904">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#934">elem_ty</a>, <a href="#932">count</a>);
-            <span class="kw">let </span>indices: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<a href="#932">count</a> * <span class="number">2</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|x| <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<a href="#936">x</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html">i32</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-            <a href="#904">bx</a>.<a href="builder.rs.html#1297-1304">shuffle_vector</a>(<a href="#905">value</a>, <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#935">vec_ty</a>), <a href="#904">bx</a>.<a href="common.rs.html#101-103">const_vector</a>(<span class="kw-2">&amp;</span><a href="#936">indices</a>))
+            <span class="kw">let </span>indices: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<a href="#932">count</a> * <span class="number">2</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|x| <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<a href="#936">x</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html">i32</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+            <a href="#904">bx</a>.<a href="builder.rs.html#1297-1304">shuffle_vector</a>(<a href="#905">value</a>, <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#935">vec_ty</a>), <a href="#904">bx</a>.<a href="common.rs.html#101-103">const_vector</a>(<span class="kw-2">&amp;</span><a href="#936">indices</a>))
         }
         (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
             <span class="kw">if </span><a href="#939">s</a>.primitive() == Primitive::F64 =&gt;
         {
-            <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>())
+            <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>())
         }
         (
             InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
             <a href="../../rustc_abi/enum.Abi.html">Abi::Vector</a> { .. },
-        ) <span class="kw">if </span><a href="#907">layout</a>.size.bytes() == <span class="number">64 </span>=&gt; <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(), <span class="number">8</span>)),
+        ) <span class="kw">if </span><a href="#907">layout</a>.size.bytes() == <span class="number">64 </span>=&gt; <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(), <span class="number">8</span>)),
         (
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I32, <span class="kw">_</span>) = <a href="#950">s</a>.primitive() {
-                <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>())
+                <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>())
             } <span class="kw">else </span>{
                 <a href="#905">value</a>
             }
@@ -2097,7 +2097,7 @@
             Abi::Scalar(s),
         ) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I64, <span class="kw">_</span>) = <a href="#964">s</a>.primitive() {
-                <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>())
+                <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>())
             } <span class="kw">else </span>{
                 <a href="#905">value</a>
             }
@@ -2105,9 +2105,9 @@
         (InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg), Abi::Scalar(s)) =&gt; {
             <span class="kw">match </span><a href="#972">s</a>.primitive() {
                 <span class="comment">// MIPS only supports register-length arithmetics.
-                </span>Primitive::Int(Integer::I8 | Integer::I16, <span class="kw">_</span>) =&gt; <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">zext</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>()),
-                Primitive::F32 =&gt; <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>()),
-                Primitive::F64 =&gt; <a href="#904">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>()),
+                </span>Primitive::Int(Integer::I8 | Integer::I16, <span class="kw">_</span>) =&gt; <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">zext</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>()),
+                Primitive::F32 =&gt; <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>()),
+                Primitive::F64 =&gt; <a href="#904">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#905">value</a>, <a href="#904">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>()),
                 <span class="kw">_ </span>=&gt; <a href="#905">value</a>,
             }
         }
@@ -2125,15 +2125,15 @@
     <span class="kw">match </span>(<a href="#989">reg</a>, <a href="#990">layout</a>.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I8, <span class="kw">_</span>) = <a href="#993">s</a>.primitive() {
-                <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">extract_element</a>(<a href="#988">value</a>, <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>))
+                <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">extract_element</a>(<a href="#988">value</a>, <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>))
             } <span class="kw">else </span>{
                 <a href="#988">value</a>
             }
         }
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16), Abi::Scalar(s)) =&gt; {
-            <a href="#988">value</a> = <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">extract_element</a>(<a href="#988">value</a>, <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>));
+            <a href="#988">value</a> = <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">extract_element</a>(<a href="#988">value</a>, <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<span class="number">0</span>));
             <span class="kw">if let </span>Primitive::Pointer(<span class="kw">_</span>) = <a href="#1000">s</a>.primitive() {
-                <a href="#988">value</a> = <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">inttoptr</a>(<a href="#988">value</a>, <a href="#990">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#987">bx</a>.cx));
+                <a href="#988">value</a> = <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">inttoptr</a>(<a href="#988">value</a>, <a href="#990">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#987">bx</a>.cx));
             }
             <a href="#988">value</a>
         }
@@ -2143,24 +2143,24 @@
         ) <span class="kw">if </span><a href="#990">layout</a>.size.bytes() == <span class="number">8 </span>=&gt; {
             <span class="kw">let </span>elem_ty = <a href="#887-900">llvm_asm_scalar_type</a>(<a href="#987">bx</a>.cx, <a href="#1009">element</a>);
             <span class="kw">let </span>vec_ty = <a href="#987">bx</a>.cx.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#1011">elem_ty</a>, <a href="#1009">count</a> * <span class="number">2</span>);
-            <span class="kw">let </span>indices: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<a href="#1009">count</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|x| <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<a href="#1013">x</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html">i32</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-            <a href="#987">bx</a>.<a href="builder.rs.html#1297-1304">shuffle_vector</a>(<a href="#988">value</a>, <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#1012">vec_ty</a>), <a href="#987">bx</a>.<a href="common.rs.html#101-103">const_vector</a>(<span class="kw-2">&amp;</span><a href="#1013">indices</a>))
+            <span class="kw">let </span>indices: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<a href="#1009">count</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|x| <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_i32</a>(<a href="#1013">x</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html">i32</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+            <a href="#987">bx</a>.<a href="builder.rs.html#1297-1304">shuffle_vector</a>(<a href="#988">value</a>, <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_undef</a>(<a href="#1012">vec_ty</a>), <a href="#987">bx</a>.<a href="common.rs.html#101-103">const_vector</a>(<span class="kw-2">&amp;</span><a href="#1013">indices</a>))
         }
         (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
             <span class="kw">if </span><a href="#1016">s</a>.primitive() == Primitive::F64 =&gt;
         {
-            <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>())
+            <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>())
         }
         (
             InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
             <a href="../../rustc_abi/enum.Abi.html">Abi::Vector</a> { .. },
-        ) <span class="kw">if </span><a href="#990">layout</a>.size.bytes() == <span class="number">64 </span>=&gt; <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#990">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#987">bx</a>.cx)),
+        ) <span class="kw">if </span><a href="#990">layout</a>.size.bytes() == <span class="number">64 </span>=&gt; <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#990">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#987">bx</a>.cx)),
         (
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I32, <span class="kw">_</span>) = <a href="#1027">s</a>.primitive() {
-                <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>())
+                <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>())
             } <span class="kw">else </span>{
                 <a href="#988">value</a>
             }
@@ -2174,7 +2174,7 @@
             Abi::Scalar(s),
         ) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I64, <span class="kw">_</span>) = <a href="#1041">s</a>.primitive() {
-                <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>())
+                <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>())
             } <span class="kw">else </span>{
                 <a href="#988">value</a>
             }
@@ -2182,10 +2182,10 @@
         (InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg), Abi::Scalar(s)) =&gt; {
             <span class="kw">match </span><a href="#1049">s</a>.primitive() {
                 <span class="comment">// MIPS only supports register-length arithmetics.
-                </span>Primitive::Int(Integer::I8, <span class="kw">_</span>) =&gt; <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">trunc</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>()),
-                Primitive::Int(Integer::I16, <span class="kw">_</span>) =&gt; <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">trunc</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>()),
-                Primitive::F32 =&gt; <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>()),
-                Primitive::F64 =&gt; <a href="#987">bx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>()),
+                </span>Primitive::Int(Integer::I8, <span class="kw">_</span>) =&gt; <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">trunc</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>()),
+                Primitive::Int(Integer::I16, <span class="kw">_</span>) =&gt; <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">trunc</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i16</a>()),
+                Primitive::F32 =&gt; <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>()),
+                Primitive::F64 =&gt; <a href="#987">bx</a>.<a href="../../rustc_codegen_ssa/traits/builder/trait.BuilderMethods.html">bitcast</a>(<a href="#988">value</a>, <a href="#987">bx</a>.cx.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>()),
                 <span class="kw">_ </span>=&gt; <a href="#988">value</a>,
             }
         }
@@ -2202,7 +2202,7 @@
     <span class="kw">match </span>(<a href="#1066">reg</a>, <a href="#1067">layout</a>.abi) {
         (InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg), Abi::Scalar(s)) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I8, <span class="kw">_</span>) = <a href="#1070">s</a>.primitive() {
-                <a href="#1065">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(), <span class="number">8</span>)
+                <a href="#1065">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i8</a>(), <span class="number">8</span>)
             } <span class="kw">else </span>{
                 <a href="#1067">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#1065">cx</a>)
             }
@@ -2222,18 +2222,18 @@
         (InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd), Abi::Scalar(s))
             <span class="kw">if </span><a href="#1089">s</a>.primitive() == Primitive::F64 =&gt;
         {
-            <a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>()
+            <a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>()
         }
         (
             InlineAsmRegClass::X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
             <a href="../../rustc_abi/enum.Abi.html">Abi::Vector</a> { .. },
-        ) <span class="kw">if </span><a href="#1067">layout</a>.size.bytes() == <span class="number">64 </span>=&gt; <a href="#1065">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(), <span class="number">8</span>),
+        ) <span class="kw">if </span><a href="#1067">layout</a>.size.bytes() == <span class="number">64 </span>=&gt; <a href="#1065">cx</a>.<a href="type_.rs.html#68-70">type_vector</a>(<a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>(), <span class="number">8</span>),
         (
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg | ArmInlineAsmRegClass::sreg_low16),
             Abi::Scalar(s),
         ) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I32, <span class="kw">_</span>) = <a href="#1100">s</a>.primitive() {
-                <a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>()
+                <a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f32</a>()
             } <span class="kw">else </span>{
                 <a href="#1067">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#1065">cx</a>)
             }
@@ -2247,7 +2247,7 @@
             Abi::Scalar(s),
         ) =&gt; {
             <span class="kw">if let </span>Primitive::Int(Integer::I64, <span class="kw">_</span>) = <a href="#1114">s</a>.primitive() {
-                <a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>()
+                <a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_f64</a>()
             } <span class="kw">else </span>{
                 <a href="#1067">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#1065">cx</a>)
             }
@@ -2255,9 +2255,9 @@
         (InlineAsmRegClass::Mips(MipsInlineAsmRegClass::reg), Abi::Scalar(s)) =&gt; {
             <span class="kw">match </span><a href="#1122">s</a>.primitive() {
                 <span class="comment">// MIPS only supports register-length arithmetics.
-                </span>Primitive::Int(Integer::I8 | Integer::I16, <span class="kw">_</span>) =&gt; <a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-                Primitive::F32 =&gt; <a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
-                Primitive::F64 =&gt; <a href="#1065">cx</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
+                </span>Primitive::Int(Integer::I8 | Integer::I16, <span class="kw">_</span>) =&gt; <a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+                Primitive::F32 =&gt; <a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i32</a>(),
+                Primitive::F64 =&gt; <a href="#1065">cx</a>.<a href="../../rustc_codegen_ssa/traits/type_/trait.BaseTypeMethods.html">type_i64</a>(),
                 <span class="kw">_ </span>=&gt; <a href="#1067">layout</a>.<a href="type_of.rs.html#177">llvm_type</a>(<a href="#1065">cx</a>),
             }
         }

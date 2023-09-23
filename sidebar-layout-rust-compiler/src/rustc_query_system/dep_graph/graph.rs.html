@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_query_system/src/dep_graph/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_query_system" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_query_system/src/dep_graph/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_query_system" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1430,14 +1430,14 @@
 <a href="#1430" id="1430">1430</a>
 <a href="#1431" id="1431">1431</a>
 <a href="#1432" id="1432">1432</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">rustc_data_structures::fingerprint::Fingerprint</a>;
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">rustc_data_structures::fingerprint::Fingerprint</a>;
 <span class="kw">use </span>rustc_data_structures::fx::{FxHashMap, FxHashSet};
-<span class="kw">use </span>rustc_data_structures::profiling::{EventId, QueryInvocationId, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>};
-<span class="kw">use </span>rustc_data_structures::sharded::{<a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sharded/index.html">self</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sharded/enum.Sharded.html">Sharded</a>};
-<span class="kw">use </span>rustc_data_structures::stable_hasher::{<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/stable_hasher/trait.HashStable.html">HashStable</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/stable_hasher/struct.StableHasher.html">StableHasher</a>};
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/steal/struct.Steal.html">rustc_data_structures::steal::Steal</a>;
-<span class="kw">use </span>rustc_data_structures::sync::{<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/type.AtomicU32.html">AtomicU32</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/type.AtomicU64.html">AtomicU64</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/lock/no_sync/struct.Lock.html">Lock</a>, <a href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html">Lrc</a>, <a href="https://doc.rust-lang.org/nightly/core/sync/atomic/enum.Ordering.html">Ordering</a>};
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/unord/struct.UnordMap.html">rustc_data_structures::unord::UnordMap</a>;
+<span class="kw">use </span>rustc_data_structures::profiling::{EventId, QueryInvocationId, <a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>};
+<span class="kw">use </span>rustc_data_structures::sharded::{<a class="self" href="../../../rustc_data_structures/sharded/index.html">self</a>, <a href="../../../rustc_data_structures/sharded/enum.Sharded.html">Sharded</a>};
+<span class="kw">use </span>rustc_data_structures::stable_hasher::{<a href="../../../rustc_data_structures/stable_hasher/trait.HashStable.html">HashStable</a>, <a href="../../../rustc_data_structures/stable_hasher/struct.StableHasher.html">StableHasher</a>};
+<span class="kw">use </span><a href="../../../rustc_data_structures/steal/struct.Steal.html">rustc_data_structures::steal::Steal</a>;
+<span class="kw">use </span>rustc_data_structures::sync::{<a href="../../../rustc_data_structures/sync/type.AtomicU32.html">AtomicU32</a>, <a href="../../../rustc_data_structures/sync/type.AtomicU64.html">AtomicU64</a>, <a href="../../../rustc_data_structures/sync/lock/no_sync/struct.Lock.html">Lock</a>, <a href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html">Lrc</a>, <a href="https://doc.rust-lang.org/nightly/core/sync/atomic/enum.Ordering.html">Ordering</a>};
+<span class="kw">use </span><a href="../../../rustc_data_structures/unord/struct.UnordMap.html">rustc_data_structures::unord::UnordMap</a>;
 <span class="kw">use </span><a href="../../../rustc_index/vec/struct.IndexVec.html">rustc_index::IndexVec</a>;
 <span class="kw">use </span>rustc_serialize::opaque::{<a href="../../../rustc_serialize/opaque/type.FileEncodeResult.html">FileEncodeResult</a>, <a href="../../../rustc_serialize/opaque/struct.FileEncoder.html">FileEncoder</a>};
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/macros/macro.assert_matches.html">std::assert_matches::assert_matches</a>;
@@ -1465,10 +1465,10 @@
     /// non-incremental mode. Even in non-incremental mode we make sure that
     /// each task has a `DepNodeIndex` that uniquely identifies it. This unique
     /// ID is used for self-profiling.
-    </span>virtual_dep_node_index: Lrc&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/type.AtomicU32.html">AtomicU32</a>&gt;,
+    </span>virtual_dep_node_index: Lrc&lt;<a href="../../../rustc_data_structures/sync/type.AtomicU32.html">AtomicU32</a>&gt;,
 }
 
-<span class="macro">rustc_index::newtype_index! </span>{
+<a class="macro" href="../../../rustc_macros/rustc_macros/macro.newtype_index.html">rustc_index::newtype_index! </a>{
     <span class="kw">pub struct </span><a href="#39-41">DepNodeIndex</a> {}
 }
 
@@ -1478,7 +1478,7 @@
     <span class="kw">pub const </span>FOREVER_RED_NODE: <a href="#39-41">DepNodeIndex</a> = DepNodeIndex::from_u32(<span class="number">1</span>);
 }
 
-<span class="kw">impl </span>From&lt;<a href="#39-41">DepNodeIndex</a>&gt; <span class="kw">for </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.QueryInvocationId.html">QueryInvocationId</a> {
+<span class="kw">impl </span>From&lt;<a href="#39-41">DepNodeIndex</a>&gt; <span class="kw">for </span><a href="../../../rustc_data_structures/profiling/struct.QueryInvocationId.html">QueryInvocationId</a> {
     <span class="attr">#[inline(always)]
     </span><span class="kw">fn </span>from(dep_node_index: <a href="#39-41">DepNodeIndex</a>) -&gt; <span class="self">Self </span>{
         QueryInvocationId(<a href="#51">dep_node_index</a>.<a href="#39-41">as_u32</a>())
@@ -1535,18 +1535,18 @@
     </span>debug_loaded_from_disk: Lock&lt;FxHashSet&lt;DepNode&lt;K&gt;&gt;&gt;,
 }
 
-<span class="kw">pub fn </span><a href="../../../rustc_query_system/dep_graph/graph/fn.hash_result.html">hash_result</a>&lt;R&gt;(hcx: <span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, result: <span class="kw-2">&amp;</span>R) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>
+<span class="kw">pub fn </span><a href="../../../rustc_query_system/dep_graph/graph/fn.hash_result.html">hash_result</a>&lt;R&gt;(hcx: <span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, result: <span class="kw-2">&amp;</span>R) -&gt; <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>
 <span class="kw">where
     </span>R: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; HashStable&lt;StableHashingContext&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
 {
     <span class="kw">let </span><span class="kw-2">mut </span>stable_hasher = StableHasher::new();
-    <a href="#106">result</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/stable_hasher/trait.HashStable.html">hash_stable</a>(<a href="#106">hcx</a>, <span class="kw-2">&amp;mut </span><a href="#110">stable_hasher</a>);
+    <a href="#106">result</a>.<a href="../../../rustc_data_structures/stable_hasher/trait.HashStable.html">hash_stable</a>(<a href="#106">hcx</a>, <span class="kw-2">&amp;mut </span><a href="#110">stable_hasher</a>);
     <a href="#110">stable_hasher</a>.finish()
 }
 
 <span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraph&lt;K&gt; {
     <span class="kw">pub fn </span>new(
-        profiler: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
+        profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
         prev_graph: SerializedDepGraph&lt;K&gt;,
         prev_work_products: <a href="#1049">WorkProductMap</a>,
         encoder: <a href="../../../rustc_serialize/opaque/struct.FileEncoder.html">FileEncoder</a>,
@@ -1713,7 +1713,7 @@
         cx: Ctxt,
         arg: A,
         task: <span class="kw">fn</span>(Ctxt, A) -&gt; R,
-        hash_result: <span class="prelude-ty">Option</span>&lt;<span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>R) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
+        hash_result: <span class="prelude-ty">Option</span>&lt;<span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>R) -&gt; <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
     ) -&gt; (R, <a href="#39-41">DepNodeIndex</a>) {
         <span class="kw">match </span><a class="self" href="#279">self</a>.<a href="#189-191">data</a>() {
             <span class="prelude-val">Some</span>(data) =&gt; <a href="#287">data</a>.<a href="#337-401">with_task</a>(<a href="#280">key</a>, <a href="#281">cx</a>, <a href="#282">arg</a>, <a href="#283">task</a>, <a href="#284">hash_result</a>),
@@ -1772,7 +1772,7 @@
         cx: Ctxt,
         arg: A,
         task: <span class="kw">fn</span>(Ctxt, A) -&gt; R,
-        hash_result: <span class="prelude-ty">Option</span>&lt;<span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>R) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
+        hash_result: <span class="prelude-ty">Option</span>&lt;<span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>R) -&gt; <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
     ) -&gt; (R, <a href="#39-41">DepNodeIndex</a>) {
         <span class="comment">// If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
@@ -1970,7 +1970,7 @@
         cx: Ctxt,
         key: A,
         result: <span class="kw-2">&amp;</span>R,
-        hash_result: <span class="prelude-ty">Option</span>&lt;<span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>R) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
+        hash_result: <span class="prelude-ty">Option</span>&lt;<span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, <span class="kw-2">&amp;</span>R) -&gt; <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
     ) -&gt; <a href="#39-41">DepNodeIndex</a> {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <a class="self" href="#536">self</a>.data.as_ref() {
             <span class="comment">// The caller query has more dependencies than the node we are creating. We may
@@ -2087,7 +2087,7 @@
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>prev_fingerprint_of(<span class="kw-2">&amp;</span><span class="self">self</span>, prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a> {
+    </span><span class="kw">pub fn </span>prev_fingerprint_of(<span class="kw-2">&amp;</span><span class="self">self</span>, prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>) -&gt; <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a> {
         <a class="self" href="#658">self</a>.previous.<a href="serialized.rs.html#147-149">fingerprint_by_index</a>(<a href="#658">prev_index</a>)
     }
 
@@ -2421,7 +2421,7 @@
         }
     }
 
-    <span class="kw">pub fn </span>encode(<span class="kw-2">&amp;</span><span class="self">self</span>, profiler: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>) -&gt; <a href="../../../rustc_serialize/opaque/type.FileEncodeResult.html">FileEncodeResult</a> {
+    <span class="kw">pub fn </span>encode(<span class="kw-2">&amp;</span><span class="self">self</span>, profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>) -&gt; <a href="../../../rustc_serialize/opaque/type.FileEncodeResult.html">FileEncodeResult</a> {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span><a class="self" href="#992">self</a>.data {
             <a href="#993">data</a>.current.encoder.steal().<a href="serialized.rs.html#594-597">finish</a>(<a href="#992">profiler</a>)
         } <span class="kw">else </span>{
@@ -2481,7 +2481,7 @@
 <span class="kw">pub type </span><a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a> = UnordMap&lt;<a href="dep_node.rs.html#232-234">WorkProductId</a>, <a href="#1039-1047">WorkProduct</a>&gt;;
 
 <span class="comment">// Index type for `DepNodeData`&#39;s edges.
-</span><span class="macro">rustc_index::newtype_index! </span>{
+</span><a class="macro" href="../../../rustc_macros/rustc_macros/macro.newtype_index.html">rustc_index::newtype_index! </a>{
     <span class="kw">struct </span><a href="#1052-1054">EdgeIndex</a> {}
 }
 
@@ -2516,7 +2516,7 @@
     <span class="doccomment">/// This is used to verify that fingerprints do not change between the creation of a node
     /// and its recomputation.
     </span><span class="attr">#[cfg(debug_assertions)]
-    </span>fingerprints: Lock&lt;IndexVec&lt;<a href="#39-41">DepNodeIndex</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;&gt;&gt;,
+    </span>fingerprints: Lock&lt;IndexVec&lt;<a href="#39-41">DepNodeIndex</a>, <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;&gt;&gt;,
 
     <span class="doccomment">/// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
@@ -2534,12 +2534,12 @@
     /// This is implemented by mixing a session-key into the ID fingerprint of
     /// each anon node. The session-key is just a random number generated when
     /// the `DepGraph` is created.
-    </span>anon_id_seed: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>,
+    </span>anon_id_seed: <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>,
 
     <span class="doccomment">/// These are simple counters that are for profiling and
     /// debugging and only active with `debug_assertions`.
-    </span>total_read_count: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/type.AtomicU64.html">AtomicU64</a>,
-    total_duplicate_read_count: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/type.AtomicU64.html">AtomicU64</a>,
+    </span>total_read_count: <a href="../../../rustc_data_structures/sync/type.AtomicU64.html">AtomicU64</a>,
+    total_duplicate_read_count: <a href="../../../rustc_data_structures/sync/type.AtomicU64.html">AtomicU64</a>,
 
     <span class="doccomment">/// The cached event id for profiling node interning. This saves us
     /// from having to look up the event id every time we intern a node
@@ -2550,7 +2550,7 @@
 
 <span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; CurrentDepGraph&lt;K&gt; {
     <span class="kw">fn </span>new(
-        profiler: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
+        profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
         prev_graph_node_count: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
         encoder: <a href="../../../rustc_serialize/opaque/struct.FileEncoder.html">FileEncoder</a>,
         record_graph: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
@@ -2610,7 +2610,7 @@
     }
 
     <span class="attr">#[cfg(debug_assertions)]
-    </span><span class="kw">fn </span>record_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node_index: <a href="#39-41">DepNodeIndex</a>, key: DepNode&lt;K&gt;, fingerprint: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>) {
+    </span><span class="kw">fn </span>record_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node_index: <a href="#39-41">DepNodeIndex</a>, key: DepNode&lt;K&gt;, fingerprint: <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(forbidden_edge) = <span class="kw-2">&amp;</span><a class="self" href="#1181">self</a>.forbidden_edge {
             <a href="#1182">forbidden_edge</a>.index_to_node.lock().insert(<a href="#1181">dep_node_index</a>, <a href="#1181">key</a>);
         }
@@ -2623,10 +2623,10 @@
     </span><span class="attr">#[inline(always)]
     </span><span class="kw">fn </span>intern_new_node(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        profiler: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
+        profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
         key: DepNode&lt;K&gt;,
         edges: <a href="edges.rs.html#8-11">EdgesVec</a>,
-        current_fingerprint: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>,
+        current_fingerprint: <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>,
     ) -&gt; <a href="#39-41">DepNodeIndex</a> {
         <span class="kw">let </span>dep_node_index = <span class="kw">match </span><a class="self" href="#1193">self</a>.new_node_to_index.lock_shard_by_value(<span class="kw-2">&amp;</span><a href="#1195">key</a>).entry(<a href="#1195">key</a>) {
             Entry::Occupied(entry) =&gt; <span class="kw-2">*</span><a href="#1200">entry</a>.get(),
@@ -2646,11 +2646,11 @@
 
     <span class="kw">fn </span>intern_node(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        profiler: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
+        profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
         prev_graph: <span class="kw-2">&amp;</span>SerializedDepGraph&lt;K&gt;,
         key: DepNode&lt;K&gt;,
         edges: <a href="edges.rs.html#8-11">EdgesVec</a>,
-        fingerprint: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
+        fingerprint: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
         print_status: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; (<a href="#39-41">DepNodeIndex</a>, <span class="prelude-ty">Option</span>&lt;(<a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>, <a href="#62-65">DepNodeColor</a>)&gt;) {
         <span class="kw">let </span>print_status = <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.cfg.html">cfg!</a>(debug_assertions) &amp;&amp; <a href="#1222">print_status</a>;
@@ -2720,7 +2720,7 @@
 
     <span class="kw">fn </span>promote_node_and_deps_to_current(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        profiler: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
+        profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
         prev_graph: <span class="kw-2">&amp;</span>SerializedDepGraph&lt;K&gt;,
         prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>,
     ) -&gt; <a href="#39-41">DepNodeIndex</a> {
@@ -2805,7 +2805,7 @@
 <span class="comment">// A data structure that stores Option&lt;DepNodeColor&gt; values as a contiguous
 // array, using one u32 per entry.
 </span><span class="kw">struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.DepNodeColorMap.html">DepNodeColorMap</a> {
-    values: IndexVec&lt;<a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/sync/type.AtomicU32.html">AtomicU32</a>&gt;,
+    values: IndexVec&lt;<a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>, <a href="../../../rustc_data_structures/sync/type.AtomicU32.html">AtomicU32</a>&gt;,
 }
 
 <span class="kw">const </span><a href="../../../rustc_query_system/dep_graph/graph/constant.COMPRESSED_NONE.html">COMPRESSED_NONE</a>: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = <span class="number">0</span>;

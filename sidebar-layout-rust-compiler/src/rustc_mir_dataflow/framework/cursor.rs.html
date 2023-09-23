@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/framework/cursor.rs`."><title>cursor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/framework/cursor.rs`."><title>cursor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -324,7 +324,7 @@
 
 <span class="attr">#[cfg(debug_assertions)]
 </span><span class="kw">use </span><a href="../../../rustc_index/bit_set/struct.BitSet.html">rustc_index::bit_set::BitSet</a>;
-<span class="kw">use </span>rustc_middle::mir::{<a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html">self</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>};
+<span class="kw">use </span>rustc_middle::mir::{<a class="self" href="../../../rustc_middle/mir/index.html">self</a>, <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>};
 
 <span class="kw">use super</span>::{<a href="mod.rs.html#137-247">Analysis</a>, <a href="direction.rs.html#9-62">Direction</a>, <a href="mod.rs.html#525-532">Effect</a>, <a href="mod.rs.html#541-544">EffectIndex</a>, <a href="engine.rs.html#32">EntrySets</a>, <a href="engine.rs.html#35-42">Results</a>, <a href="engine.rs.html#45">ResultsCloned</a>};
 
@@ -398,7 +398,7 @@
     </span>state_needs_reset: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 
     <span class="attr">#[cfg(debug_assertions)]
-    </span>reachable_blocks: BitSet&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;,
+    </span>reachable_blocks: BitSet&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, A, R&gt; ResultsCursor&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, A, R&gt;
@@ -493,7 +493,7 @@
     /// For forward dataflow analyses, this is the dataflow state prior to the first statement.
     ///
     /// For backward dataflow analyses, this is the dataflow state after the terminator.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>seek_to_block_entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) {
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>seek_to_block_entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) {
         <span class="attr">#[cfg(debug_assertions)]
         </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.reachable_blocks.contains(block));
 
@@ -508,11 +508,11 @@
     ///
     /// For backward analyses, this is the state that will be propagated to its
     /// predecessors (ignoring edge-specific effects).
-    </span><span class="kw">pub fn </span>seek_to_block_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) {
+    </span><span class="kw">pub fn </span>seek_to_block_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) {
         <span class="kw">if </span>A::Direction::IS_FORWARD {
             <a class="self" href="#194">self</a>.<a href="#179-186">seek_to_block_entry</a>(<a href="#194">block</a>)
         } <span class="kw">else </span>{
-            <a class="self" href="#194">self</a>.<a href="#232-285">seek_after</a>(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a> { <a href="#194">block</a>, statement_index: <span class="number">0 </span>}, <a href="mod.rs.html#531">Effect::Primary</a>)
+            <a class="self" href="#194">self</a>.<a href="#232-285">seek_after</a>(<a href="../../../rustc_middle/mir/struct.Location.html">Location</a> { <a href="#194">block</a>, statement_index: <span class="number">0 </span>}, <a href="mod.rs.html#531">Effect::Primary</a>)
         }
     }
 
@@ -522,7 +522,7 @@
     ///
     /// For forward analyses, this is the state that will be propagated to its
     /// successors (ignoring edge-specific effects).
-    </span><span class="kw">pub fn </span>seek_to_block_end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) {
+    </span><span class="kw">pub fn </span>seek_to_block_end(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) {
         <span class="kw">if </span>A::Direction::IS_BACKWARD {
             <a class="self" href="#208">self</a>.<a href="#179-186">seek_to_block_entry</a>(<a href="#208">block</a>)
         } <span class="kw">else </span>{
@@ -534,7 +534,7 @@
     /// applied.
     ///
     /// The &quot;before&quot; effect at the target location *will be* applied.
-    </span><span class="kw">pub fn </span>seek_before_primary_effect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>) {
+    </span><span class="kw">pub fn </span>seek_before_primary_effect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <a class="self" href="#220">self</a>.<a href="#232-285">seek_after</a>(<a href="#220">target</a>, <a href="mod.rs.html#528">Effect::Before</a>)
     }
 
@@ -542,11 +542,11 @@
     /// applied.
     ///
     /// The &quot;before&quot; effect at the target location will be applied as well.
-    </span><span class="kw">pub fn </span>seek_after_primary_effect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>) {
+    </span><span class="kw">pub fn </span>seek_after_primary_effect(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <a class="self" href="#228">self</a>.<a href="#232-285">seek_after</a>(<a href="#228">target</a>, <a href="mod.rs.html#531">Effect::Primary</a>)
     }
 
-    <span class="kw">fn </span>seek_after(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>, effect: <a href="mod.rs.html#525-532">Effect</a>) {
+    <span class="kw">fn </span>seek_after(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, effect: <a href="mod.rs.html#525-532">Effect</a>) {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(target &lt;= <span class="self">self</span>.body.terminator_loc(target.block));
 
         <span class="comment">// Reset to the entry of the target block if any of the following are true:
@@ -623,12 +623,12 @@
 
 <span class="attr">#[derive(Clone, Copy, Debug)]
 </span><span class="kw">struct </span><a href="../../../rustc_mir_dataflow/framework/cursor/struct.CursorPosition.html">CursorPosition</a> {
-    block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>,
+    block: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>,
     curr_effect_index: <span class="prelude-ty">Option</span>&lt;<a href="mod.rs.html#541-544">EffectIndex</a>&gt;,
 }
 
 <span class="kw">impl </span><a href="#308-311">CursorPosition</a> {
-    <span class="kw">fn </span>block_entry(block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) -&gt; <a href="#308-311">CursorPosition</a> {
+    <span class="kw">fn </span>block_entry(block: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) -&gt; <a href="#308-311">CursorPosition</a> {
         <a href="#308-311">CursorPosition</a> { <a href="#314">block</a>, curr_effect_index: <span class="prelude-val">None </span>}
     }
 }

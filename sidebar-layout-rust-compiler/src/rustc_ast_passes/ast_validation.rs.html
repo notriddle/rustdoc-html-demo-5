@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_ast_passes/src/ast_validation.rs`."><title>ast_validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_ast_passes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_ast_passes/src/ast_validation.rs`."><title>ast_validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_ast_passes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1537,14 +1537,14 @@
 <span class="kw">use </span>rustc_ast_pretty::pprust::{<a class="self" href="../../rustc_ast_pretty/pprust/index.html">self</a>, <a href="../../rustc_ast_pretty/pprust/state/struct.State.html">State</a>};
 <span class="kw">use </span><a href="../../rustc_data_structures/fx/type.FxIndexMap.html">rustc_data_structures::fx::FxIndexMap</a>;
 <span class="kw">use </span><a href="../../rustc_feature/active/struct.Features.html">rustc_feature::Features</a>;
-<span class="kw">use </span>rustc_parse::validate_attr;
+<span class="kw">use </span><a href="../../rustc_parse/validate_attr/index.html">rustc_parse::validate_attr</a>;
 <span class="kw">use </span>rustc_session::lint::builtin::{
     <a href="../../rustc_lint_defs/builtin/static.DEPRECATED_WHERE_CLAUSE_LOCATION.html">DEPRECATED_WHERE_CLAUSE_LOCATION</a>, <a href="../../rustc_lint_defs/builtin/static.MISSING_ABI.html">MISSING_ABI</a>, <a href="../../rustc_lint_defs/builtin/static.PATTERNS_IN_FNS_WITHOUT_BODY.html">PATTERNS_IN_FNS_WITHOUT_BODY</a>,
 };
 <span class="kw">use </span>rustc_session::lint::{<a href="../../rustc_lint_defs/enum.BuiltinLintDiagnostics.html">BuiltinLintDiagnostics</a>, <a href="../../rustc_lint_defs/struct.LintBuffer.html">LintBuffer</a>};
 <span class="kw">use </span><a href="../../rustc_session/session/struct.Session.html">rustc_session::Session</a>;
-<span class="kw">use </span>rustc_span::symbol::{<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/kw/index.html">kw</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/sym/index.html">sym</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>};
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
+<span class="kw">use </span>rustc_span::symbol::{<a href="../../rustc_span/symbol/kw/index.html">kw</a>, <a href="../../rustc_span/symbol/sym/index.html">sym</a>, <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>};
+<span class="kw">use </span><a href="../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
 <span class="kw">use </span><a href="../../rustc_target/spec/abi/index.html">rustc_target::spec::abi</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
 <span class="kw">use </span>std::ops::{<a href="https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html">Deref</a>, <a href="https://doc.rust-lang.org/nightly/core/ops/deref/trait.DerefMut.html">DerefMut</a>};
@@ -1582,7 +1582,7 @@
     <span class="doccomment">/// Used to ban nested `impl Trait`, e.g., `impl Into&lt;impl Debug&gt;`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
     /// e.g., `impl Iterator&lt;Item = impl Debug&gt;`.
-    </span>outer_impl_trait: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>&gt;,
+    </span>outer_impl_trait: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;,
 
     disallow_tilde_const: <span class="prelude-ty">Option</span>&lt;DisallowTildeConstContext&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
 
@@ -1674,7 +1674,7 @@
         })
     }
 
-    <span class="kw">fn </span>with_impl_trait(<span class="kw-2">&amp;mut </span><span class="self">self</span>, outer: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>&gt;, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>)) {
+    <span class="kw">fn </span>with_impl_trait(<span class="kw-2">&amp;mut </span><span class="self">self</span>, outer: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>)) {
         <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#154">self</a>.outer_impl_trait, <a href="#154">outer</a>);
         <a href="#154">f</a>(<a class="self" href="#154">self</a>);
         <a class="self" href="#154">self</a>.outer_impl_trait = <a href="#155">old</a>;
@@ -1746,14 +1746,14 @@
         <span class="kw-2">&amp;</span><a class="self" href="#222">self</a>.session.diagnostic()
     }
 
-    <span class="kw">fn </span>check_lifetime(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>) {
+    <span class="kw">fn </span>check_lifetime(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">let </span>valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
         <span class="kw">if </span>!valid_names.contains(<span class="kw-2">&amp;</span>ident.name) &amp;&amp; ident.without_first_quote().is_reserved() {
             <a class="self" href="#226">self</a>.session.emit_err(<a href="errors.rs.html#12-15">errors::KeywordLifetime</a> { span: <a href="#226">ident</a>.span });
         }
     }
 
-    <span class="kw">fn </span>check_label(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>) {
+    <span class="kw">fn </span>check_label(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">if </span>ident.without_first_quote().is_reserved() {
             <a class="self" href="#233">self</a>.session.emit_err(<a href="errors.rs.html#19-23">errors::InvalidLabel</a> { span: <a href="#233">ident</a>.span, name: <a href="#233">ident</a>.name });
         }
@@ -1767,7 +1767,7 @@
         <a class="self" href="#239">self</a>.session.emit_err(<a href="errors.rs.html#27-32">errors::VisibilityNotPermitted</a> { span: <a href="#239">vis</a>.span, <a href="#239">note</a> });
     }
 
-    <span class="kw">fn </span>check_decl_no_pat(decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>, <span class="kw-2">mut </span>report_err: <span class="kw">impl </span>FnMut(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>)) {
+    <span class="kw">fn </span>check_decl_no_pat(decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>, <span class="kw-2">mut </span>report_err: <span class="kw">impl </span>FnMut(<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>)) {
         <span class="kw">for </span>Param { pat, .. } <span class="kw">in </span><span class="kw-2">&amp;</span>decl.inputs {
             <span class="kw">match </span>pat.kind {
                 PatKind::Ident(BindingAnnotation::NONE, <span class="kw">_</span>, <span class="prelude-val">None</span>) | PatKind::Wild =&gt; {}
@@ -1779,7 +1779,7 @@
         }
     }
 
-    <span class="kw">fn </span>check_unnamed_field_ty(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Ty.html">Ty</a>, span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>check_unnamed_field_ty(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Ty.html">Ty</a>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(
             <span class="kw-2">&amp;</span>ty.kind,
             <span class="comment">// We already checked for `kw::Underscore` before calling this function,
@@ -1890,7 +1890,7 @@
         }
     }
 
-    <span class="kw">fn </span>check_defaultness(<span class="kw-2">&amp;</span><span class="self">self</span>, span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>, defaultness: <a href="../../rustc_ast/ast/enum.Defaultness.html">Defaultness</a>) {
+    <span class="kw">fn </span>check_defaultness(<span class="kw-2">&amp;</span><span class="self">self</span>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, defaultness: <a href="../../rustc_ast/ast/enum.Defaultness.html">Defaultness</a>) {
         <span class="kw">if let </span>Defaultness::Default(def_span) = <a href="#370">defaultness</a> {
             <span class="kw">let </span>span = <a class="self" href="#370">self</a>.session.source_map().guess_head_span(<a href="#370">span</a>);
             <a class="self" href="#370">self</a>.session.emit_err(<a href="errors.rs.html#109-114">errors::ForbiddenDefault</a> { <a href="#372">span</a>, <a href="#371">def_span</a> });
@@ -1899,7 +1899,7 @@
 
     <span class="doccomment">/// If `sp` ends with a semicolon, returns it as a `Span`
     /// Otherwise, returns `sp.shrink_to_hi()`
-    </span><span class="kw">fn </span>ending_semi_or_hi(<span class="kw-2">&amp;</span><span class="self">self</span>, sp: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a> {
+    </span><span class="kw">fn </span>ending_semi_or_hi(<span class="kw-2">&amp;</span><span class="self">self</span>, sp: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
         <span class="kw">let </span>source_map = <a class="self" href="#379">self</a>.session.source_map();
         <span class="kw">let </span>end = <a href="#380">source_map</a>.end_point(<a href="#379">sp</a>);
 
@@ -1948,7 +1948,7 @@
         <a href="#418">check_where_clause</a>(<a href="#403">after_where_clause</a>);
     }
 
-    <span class="kw">fn </span>check_foreign_kind_bodyless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>, kind: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>, body: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) {
+    <span class="kw">fn </span>check_foreign_kind_bodyless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, kind: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>, body: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) {
         <span class="kw">let </span><span class="prelude-val">Some</span>(body) = <a href="#428">body</a> <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
@@ -1961,7 +1961,7 @@
     }
 
     <span class="doccomment">/// An `fn` in `extern { ... }` cannot have a body `{ ... }`.
-    </span><span class="kw">fn </span>check_foreign_fn_bodyless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>, body: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Block.html">Block</a>&gt;) {
+    </span><span class="kw">fn </span>check_foreign_fn_bodyless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, body: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Block.html">Block</a>&gt;) {
         <span class="kw">let </span><span class="prelude-val">Some</span>(body) = <a href="#441">body</a> <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
@@ -1972,12 +1972,12 @@
         });
     }
 
-    <span class="kw">fn </span>current_extern_span(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a> {
+    <span class="kw">fn </span>current_extern_span(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
         <a class="self" href="#452">self</a>.session.source_map().guess_head_span(<a class="self" href="#452">self</a>.extern_mod.unwrap().span)
     }
 
     <span class="doccomment">/// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
-    </span><span class="kw">fn </span>check_foreign_fn_headerless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>, span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>, header: <a href="../../rustc_ast/ast/struct.FnHeader.html">FnHeader</a>) {
+    </span><span class="kw">fn </span>check_foreign_fn_headerless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, header: <a href="../../rustc_ast/ast/struct.FnHeader.html">FnHeader</a>) {
         <span class="kw">if </span>header.has_qualifiers() {
             <a class="self" href="#457">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#251-258">errors::FnQualifierInExtern</a> {
                 span: <a href="#457">ident</a>.span,
@@ -1988,7 +1988,7 @@
     }
 
     <span class="doccomment">/// An item in `extern { ... }` cannot use non-ascii identifier.
-    </span><span class="kw">fn </span>check_foreign_item_ascii_only(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>) {
+    </span><span class="kw">fn </span>check_foreign_item_ascii_only(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">if </span>!ident.as_str().is_ascii() {
             <a class="self" href="#468">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#263-268">errors::ExternItemAscii</a> {
                 span: <a href="#468">ident</a>.span,
@@ -2021,14 +2021,14 @@
         }
     }
 
-    <span class="kw">fn </span>check_item_named(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>, kind: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) {
+    <span class="kw">fn </span>check_item_named(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, kind: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) {
         <span class="kw">if </span>ident.name != kw::Underscore {
             <span class="kw">return</span>;
         }
         <a class="self" href="#501">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#279-284">errors::ItemUnderscore</a> { span: <a href="#501">ident</a>.span, <a href="#501">kind</a> });
     }
 
-    <span class="kw">fn </span>check_nomangle_item_asciionly(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>, item_span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>check_nomangle_item_asciionly(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, item_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>ident.name.as_str().is_ascii() {
             <span class="kw">return</span>;
         }
@@ -2036,37 +2036,37 @@
         <a class="self" href="#508">self</a>.session.emit_err(<a href="errors.rs.html#288-291">errors::NoMangleAscii</a> { <a href="#512">span</a> });
     }
 
-    <span class="kw">fn </span>check_mod_file_item_asciionly(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html">Ident</a>) {
+    <span class="kw">fn </span>check_mod_file_item_asciionly(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">if </span>ident.name.as_str().is_ascii() {
             <span class="kw">return</span>;
         }
         <a class="self" href="#516">self</a>.session.emit_err(<a href="errors.rs.html#296-300">errors::ModuleNonAscii</a> { span: <a href="#516">ident</a>.span, name: <a href="#516">ident</a>.name });
     }
 
-    <span class="kw">fn </span>deny_generic_params(<span class="kw-2">&amp;</span><span class="self">self</span>, generics: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Generics.html">Generics</a>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>deny_generic_params(<span class="kw-2">&amp;</span><span class="self">self</span>, generics: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Generics.html">Generics</a>, ident: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>!generics.params.is_empty() {
             <a class="self" href="#523">self</a>.session.emit_err(<a href="errors.rs.html#304-310">errors::AutoTraitGeneric</a> { span: <a href="#523">generics</a>.span, <a href="#523">ident</a> });
         }
     }
 
-    <span class="kw">fn </span>emit_e0568(<span class="kw-2">&amp;</span><span class="self">self</span>, span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>, ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>emit_e0568(<span class="kw-2">&amp;</span><span class="self">self</span>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, ident: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <a class="self" href="#529">self</a>.session.emit_err(<a href="errors.rs.html#314-320">errors::AutoTraitBounds</a> { <a href="#529">span</a>, <a href="#529">ident</a> });
     }
 
-    <span class="kw">fn </span>deny_super_traits(<span class="kw-2">&amp;</span><span class="self">self</span>, bounds: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/type.GenericBounds.html">GenericBounds</a>, ident_span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>deny_super_traits(<span class="kw-2">&amp;</span><span class="self">self</span>, bounds: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/type.GenericBounds.html">GenericBounds</a>, ident_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if let </span>[.., last] = <span class="kw-2">&amp;</span><a href="#533">bounds</a>[..] {
             <span class="kw">let </span>span = <a href="#533">ident_span</a>.shrink_to_hi().to(<a href="#534">last</a>.span());
             <a class="self" href="#533">self</a>.<a href="#529-531">emit_e0568</a>(<a href="#535">span</a>, <a href="#533">ident_span</a>);
         }
     }
 
-    <span class="kw">fn </span>deny_where_clause(<span class="kw-2">&amp;</span><span class="self">self</span>, where_clause: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.WhereClause.html">WhereClause</a>, ident_span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>deny_where_clause(<span class="kw-2">&amp;</span><span class="self">self</span>, where_clause: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.WhereClause.html">WhereClause</a>, ident_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>!where_clause.predicates.is_empty() {
             <a class="self" href="#540">self</a>.<a href="#529-531">emit_e0568</a>(<a href="#540">where_clause</a>.span, <a href="#540">ident_span</a>);
         }
     }
 
-    <span class="kw">fn </span>deny_items(<span class="kw-2">&amp;</span><span class="self">self</span>, trait_items: <span class="kw-2">&amp;</span>[P&lt;<a href="../../rustc_ast/ast/type.AssocItem.html">AssocItem</a>&gt;], ident: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>) {
+    <span class="kw">fn </span>deny_items(<span class="kw-2">&amp;</span><span class="self">self</span>, trait_items: <span class="kw-2">&amp;</span>[P&lt;<a href="../../rustc_ast/ast/type.AssocItem.html">AssocItem</a>&gt;], ident: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>!trait_items.is_empty() {
             <span class="kw">let </span>spans: Vec&lt;<span class="kw">_</span>&gt; = <a href="#546">trait_items</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|i| <a href="#548">i</a>.ident.span).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
             <span class="kw">let </span>total = <a href="#546">trait_items</a>.first().unwrap().span.to(<a href="#546">trait_items</a>.last().unwrap().span);
@@ -2108,7 +2108,7 @@
             <span class="kw">return</span>;
         }
         <span class="comment">// Find all generic argument coming after the first constraint...
-        </span><span class="kw">let </span>(constraint_spans, arg_spans): (Vec&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>&gt;, Vec&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) =
+        </span><span class="kw">let </span>(constraint_spans, arg_spans): (Vec&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;, Vec&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) =
             <a href="#582">data</a>.args.iter().<a href="https://docs.rs/itertools/0.8/itertools/trait.Itertools.html">partition_map</a>(|arg| <span class="kw">match </span><a href="#589">arg</a> {
                 AngleBracketedArg::Constraint(c) =&gt; Either::Left(<a href="#590">c</a>.span),
                 AngleBracketedArg::Arg(a) =&gt; Either::Right(<a href="#591">a</a>.span()),
@@ -2175,7 +2175,7 @@
         }
     }
 
-    <span class="kw">fn </span>maybe_lint_missing_abi(<span class="kw-2">&amp;mut </span><span class="self">self</span>, span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) {
+    <span class="kw">fn </span>maybe_lint_missing_abi(<span class="kw-2">&amp;mut </span><span class="self">self</span>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) {
         <span class="comment">// FIXME(davidtwco): This is a hack to detect macros which produce spans of the
         // call site which do not have a macro backtrace. See #61963.
         </span><span class="kw">if </span><span class="self">self
@@ -2200,7 +2200,7 @@
 </span><span class="kw">fn </span><a href="../../rustc_ast_passes/ast_validation/fn.validate_generic_param_order.html">validate_generic_param_order</a>(
     handler: <span class="kw-2">&amp;</span><a href="../../rustc_errors/struct.Handler.html">rustc_errors::Handler</a>,
     generics: <span class="kw-2">&amp;</span>[<a href="../../rustc_ast/ast/struct.GenericParam.html">GenericParam</a>],
-    span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>,
+    span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
 ) {
     <span class="kw">let </span><span class="kw-2">mut </span>max_param: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_ast/ast/enum.ParamKindOrd.html">ParamKindOrd</a>&gt; = <span class="prelude-val">None</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>out_of_order = FxIndexMap::default();
@@ -2733,7 +2733,7 @@
         visit::walk_param_bound(<a class="self" href="#1165">self</a>, <a href="#1165">bound</a>)
     }
 
-    <span class="kw">fn </span>visit_fn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fk: FnKind&lt;<span class="lifetime">&#39;a</span>&gt;, span: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/span_encoding/struct.Span.html">Span</a>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) {
+    <span class="kw">fn </span>visit_fn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fk: FnKind&lt;<span class="lifetime">&#39;a</span>&gt;, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) {
         <span class="comment">// Only associated `fn`s can have `self` parameters.
         </span><span class="kw">let </span>self_semantic = <span class="kw">match </span><a href="#1213">fk</a>.ctxt() {
             <span class="prelude-val">Some</span>(FnCtxt::Assoc(<span class="kw">_</span>)) =&gt; <a href="#35">SelfSemantic::Yes</a>,

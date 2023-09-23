@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/move_paths/builder.rs`."><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-626b10a2fd8249ad.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (b2be1c31b 2023-09-18)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-7fdd0f84133eea5d.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/move_paths/builder.rs`."><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -539,9 +539,9 @@
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_index/vec/struct.IndexVec.html">rustc_index::IndexVec</a>;
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/tcx/enum.RvalueInitializationState.html">rustc_middle::mir::tcx::RvalueInitializationState</a>;
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
-<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html">self</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
+<span class="kw">use </span><a href="../../../rustc_middle/mir/tcx/enum.RvalueInitializationState.html">rustc_middle::mir::tcx::RvalueInitializationState</a>;
+<span class="kw">use </span><a href="../../../rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
+<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span>smallvec::{<a href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec</a>, <a href="https://docs.rs/smallvec/1.11.0/smallvec/struct.SmallVec.html">SmallVec</a>};
 
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
@@ -805,12 +805,12 @@
         }
     }
 
-    <span class="kw">fn </span>gather_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, loc: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>, stmt: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+    <span class="kw">fn </span>gather_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, loc: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, stmt: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;gather_statement({:?}, {:?})&quot;</span>, loc, stmt);
         (<a href="#279-282">Gatherer</a> { builder: <a class="self" href="#268">self</a>, <a href="#268">loc</a> }).<a href="#285-334">gather_statement</a>(<a href="#268">stmt</a>);
     }
 
-    <span class="kw">fn </span>gather_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, loc: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>, term: <span class="kw-2">&amp;</span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+    <span class="kw">fn </span>gather_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, loc: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, term: <span class="kw-2">&amp;</span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;gather_terminator({:?}, {:?})&quot;</span>, loc, term);
         (<a href="#279-282">Gatherer</a> { builder: <a class="self" href="#273">self</a>, <a href="#273">loc</a> }).<a href="#363-444">gather_terminator</a>(<a href="#273">term</a>);
     }
@@ -818,7 +818,7 @@
 
 <span class="kw">struct </span><a href="../../../rustc_mir_dataflow/move_paths/builder/struct.Gatherer.html">Gatherer</a>&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     builder: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="kw-2">mut </span>MoveDataBuilder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-    loc: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>,
+    loc: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Gatherer&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -857,13 +857,13 @@
                     <a class="self" href="#285">self</a>.<a href="#456-499">gather_move</a>(Place::from(<span class="kw-2">*</span><a href="#314">local</a>));
                 }
             }
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { .. } | StatementKind::Deinit(..) =&gt; {
-                <a class="macro" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/macro.span_bug.html">span_bug!</a>(
+            <a href="../../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { .. } | StatementKind::Deinit(..) =&gt; {
+                <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                     stmt.source_info.span,
                     <span class="string">&quot;SetDiscriminant/Deinit should not exist during borrowck&quot;
                 </span>);
             }
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::Retag</a> { .. }
+            <a href="../../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::Retag</a> { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
@@ -902,9 +902,9 @@
 
     <span class="kw">fn </span>gather_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, term: <span class="kw-2">&amp;</span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="kw">match </span><a href="#363">term</a>.kind {
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target: <span class="kw">_ </span>}
-            | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseEdge</a> { .. }
-            | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseUnwind</a> { .. }
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target: <span class="kw">_ </span>}
+            | <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseEdge</a> { .. }
+            | <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseUnwind</a> { .. }
             <span class="comment">// In some sense returning moves the return place into the current
             // call&#39;s destination, however, since there are no statements after
             // this that could possibly access the return place, this doesn&#39;t
@@ -914,22 +914,22 @@
             | TerminatorKind::UnwindTerminate(<span class="kw">_</span>)
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Unreachable
-            | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Drop</a> { .. } =&gt; {}
+            | <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Drop</a> { .. } =&gt; {}
 
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Assert</a> { <span class="kw-2">ref </span>cond, .. } =&gt; {
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Assert</a> { <span class="kw-2">ref </span>cond, .. } =&gt; {
                 <a class="self" href="#363">self</a>.<a href="#446-454">gather_operand</a>(<a href="#379">cond</a>);
             }
 
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { <span class="kw-2">ref </span>discr, .. } =&gt; {
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { <span class="kw-2">ref </span>discr, .. } =&gt; {
                 <a class="self" href="#363">self</a>.<a href="#446-454">gather_operand</a>(<a href="#383">discr</a>);
             }
 
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Yield</a> { <span class="kw-2">ref </span>value, resume_arg: place, .. } =&gt; {
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Yield</a> { <span class="kw-2">ref </span>value, resume_arg: place, .. } =&gt; {
                 <a class="self" href="#363">self</a>.<a href="#446-454">gather_operand</a>(<a href="#387">value</a>);
                 <a class="self" href="#363">self</a>.<a href="#201-205">create_move_path</a>(<a href="#387">place</a>);
                 <a class="self" href="#363">self</a>.<a href="#511-539">gather_init</a>(<a href="#387">place</a>.as_ref(), <a href="mod.rs.html#269">InitKind::Deep</a>);
             }
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Call</a> {
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Call</a> {
                 <span class="kw-2">ref </span>func,
                 <span class="kw-2">ref </span>args,
                 destination,
@@ -947,7 +947,7 @@
                     <a class="self" href="#363">self</a>.<a href="#511-539">gather_init</a>(<a href="#395">destination</a>.as_ref(), <a href="mod.rs.html#273">InitKind::NonPanicPathOnly</a>);
                 }
             }
-            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::InlineAsm</a> {
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::InlineAsm</a> {
                 template: <span class="kw">_</span>,
                 <span class="kw-2">ref </span>operands,
                 options: <span class="kw">_</span>,
@@ -995,14 +995,14 @@
 
     <span class="kw">fn </span>gather_move(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;gather_move({:?}, {:?})&quot;</span>, <span class="self">self</span>.loc, place);
-        <span class="kw">if let </span>[<span class="kw-2">ref </span>base @ .., <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::Subslice</a> { from, to, from_end: <span class="bool-val">false </span>}] =
+        <span class="kw">if let </span>[<span class="kw-2">ref </span>base @ .., <a href="../../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::Subslice</a> { from, to, from_end: <span class="bool-val">false </span>}] =
             <span class="kw-2">**</span><a href="#456">place</a>.projection
         {
             <span class="comment">// Split `Subslice` patterns into the corresponding list of
             // `ConstIndex` patterns. This is done to ensure that all move paths
             // are disjoint, which is expected by drop elaboration.
             </span><span class="kw">let </span>base_place =
-                <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/struct.Place.html">Place</a> { local: <a href="#456">place</a>.local, projection: <a class="self" href="#456">self</a>.builder.tcx.mk_place_elems(<a href="#458">base</a>) };
+                <a href="../../../rustc_middle/mir/syntax/struct.Place.html">Place</a> { local: <a href="#456">place</a>.local, projection: <a class="self" href="#456">self</a>.builder.tcx.mk_place_elems(<a href="#458">base</a>) };
             <span class="kw">let </span>base_path = <span class="kw">match </span><a class="self" href="#456">self</a>.<a href="#101-177">move_path_for</a>(<a href="#464">base_place</a>) {
                 <span class="prelude-val">Ok</span>(path) =&gt; <a href="#467">path</a>,
                 <span class="prelude-val">Err</span>(<a href="mod.rs.html#376">MoveError::UnionMove</a> { path }) =&gt; {
@@ -1019,7 +1019,7 @@
                 ty::Array(<span class="kw">_</span>, size) =&gt; {
                     <a href="#479">size</a>.eval_target_usize(<a class="self" href="#456">self</a>.builder.tcx, <a class="self" href="#456">self</a>.builder.param_env)
                 }
-                <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;from_end: false slice pattern of non-array type&quot;</span>),
+                <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;from_end: false slice pattern of non-array type&quot;</span>),
             };
             <span class="kw">for </span>offset <span class="kw">in </span>from..to {
                 <span class="kw">let </span>elem =
