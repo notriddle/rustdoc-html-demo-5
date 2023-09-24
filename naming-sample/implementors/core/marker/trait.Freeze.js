@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"test_dingus":[["impl Freeze for <a class=\"struct\" href=\"test_dingus/struct.Foo.html\" title=\"struct test_dingus::Foo\">Foo</a>",1,["test_dingus::Foo"]],["impl Freeze for <a class=\"struct\" href=\"test_dingus/struct.Bar.html\" title=\"struct test_dingus::Bar\">Bar</a>",1,["test_dingus::Bar"]],["impl Freeze for <a class=\"struct\" href=\"test_dingus/struct.Item.html\" title=\"struct test_dingus::Item\">Item</a>",1,["test_dingus::Item"]]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
