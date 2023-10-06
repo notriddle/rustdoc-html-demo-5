@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/value_analysis.rs`."><title>value_analysis.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-dc4c8a293e77d4e3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_mir_dataflow/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/value_analysis.rs`."><title>value_analysis.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fb515dad35061a81.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_mir_dataflow/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1232,9 +1232,9 @@
 <span class="kw">use </span><a href="../../rustc_data_structures/stack/fn.ensure_sufficient_stack.html">rustc_data_structures::stack::ensure_sufficient_stack</a>;
 <span class="kw">use </span><a href="../../rustc_index/bit_set/struct.BitSet.html">rustc_index::bit_set::BitSet</a>;
 <span class="kw">use </span>rustc_index::{<a href="../../rustc_index/slice/struct.IndexSlice.html">IndexSlice</a>, <a href="../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
-<span class="kw">use </span>rustc_middle::mir::visit::{<a href="../../rustc_middle/mir/visit/enum.MutatingUseContext.html">MutatingUseContext</a>, <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>};
-<span class="kw">use </span><a href="../../rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
-<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
+<span class="kw">use </span>rustc_middle::mir::visit::{<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/enum.MutatingUseContext.html">MutatingUseContext</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>};
+<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
+<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html">self</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>};
 
 <span class="kw">use </span><span class="kw">crate</span>::lattice::{<a href="framework/lattice.rs.html#77-79">HasBottom</a>, <a href="framework/lattice.rs.html#82-84">HasTop</a>};
@@ -1259,7 +1259,7 @@
             StatementKind::Assign(<span class="kw">box </span>(place, rvalue)) =&gt; {
                 <a class="self" href="#65">self</a>.<a href="#142-149">handle_assign</a>(<span class="kw-2">*</span><a href="#67">place</a>, <a href="#67">rvalue</a>, <a href="#65">state</a>);
             }
-            <a href="../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { <span class="kw">box </span>place, variant_index } =&gt; {
+            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { <span class="kw">box </span>place, variant_index } =&gt; {
                 <a class="self" href="#65">self</a>.<a href="#97-104">handle_set_discriminant</a>(<span class="kw-2">*</span><a href="#70">place</a>, <span class="kw-2">*</span><a href="#70">variant_index</a>, <a href="#65">state</a>);
             }
             StatementKind::Intrinsic(<span class="kw">box </span>intrinsic) =&gt; {
@@ -1321,7 +1321,7 @@
             NonDivergingIntrinsic::Assume(..) =&gt; {
                 <span class="comment">// Could use this, but ignoring it is sound.
             </span>}
-            NonDivergingIntrinsic::CopyNonOverlapping(<a href="../../rustc_middle/mir/syntax/struct.CopyNonOverlapping.html">CopyNonOverlapping</a> {
+            NonDivergingIntrinsic::CopyNonOverlapping(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/struct.CopyNonOverlapping.html">CopyNonOverlapping</a> {
                 dst: <span class="kw">_</span>,
                 src: <span class="kw">_</span>,
                 count: <span class="kw">_</span>,
@@ -1447,28 +1447,28 @@
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#254">terminator</a>.kind {
-            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Call</a> { .. } | <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::InlineAsm</a> { .. } =&gt; {
+            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Call</a> { .. } | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::InlineAsm</a> { .. } =&gt; {
                 <span class="comment">// Effect is applied by `handle_call_return`.
             </span>}
-            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Drop</a> { place, .. } =&gt; {
+            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Drop</a> { place, .. } =&gt; {
                 <a href="#255">state</a>.<a href="#484-489">flood_with</a>(<a href="#261">place</a>.as_ref(), <a class="self" href="#253">self</a>.<a href="#59">map</a>(), <span class="self">Self</span>::Value::BOTTOM);
             }
-            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Yield</a> { .. } =&gt; {
+            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Yield</a> { .. } =&gt; {
                 <span class="comment">// They would have an effect, but are not allowed in this phase.
-                </span><a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;encountered disallowed terminator&quot;</span>);
+                </span><a class="macro" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;encountered disallowed terminator&quot;</span>);
             }
-            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { discr, targets } =&gt; {
+            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { discr, targets } =&gt; {
                 <span class="kw">return </span><a class="self" href="#253">self</a>.<a href="#304-311">handle_switch_int</a>(<a href="#268">discr</a>, <a href="#268">targets</a>, <a href="#255">state</a>);
             }
-            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { .. }
+            <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(<span class="kw">_</span>)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Assert</a> { .. }
+            | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Assert</a> { .. }
             | TerminatorKind::GeneratorDrop
-            | <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseEdge</a> { .. }
-            | <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseUnwind</a> { .. } =&gt; {
+            | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseEdge</a> { .. }
+            | <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseUnwind</a> { .. } =&gt; {
                 <span class="comment">// These terminators have no effect on the analysis.
             </span>}
         }
@@ -1496,7 +1496,7 @@
     <span class="kw">fn </span>handle_switch_int&lt;<span class="lifetime">&#39;mir</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         discr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
+        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
         <a class="self" href="#305">self</a>.<a href="#313-320">super_switch_int</a>(<a href="#306">discr</a>, <a href="#307">targets</a>, <a href="#308">state</a>)
@@ -1505,10 +1505,10 @@
     <span class="kw">fn </span>super_switch_int&lt;<span class="lifetime">&#39;mir</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         discr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
+        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
         _state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="../../rustc_middle/mir/terminator/enum.TerminatorEdges.html">TerminatorEdges::SwitchInt</a> { <a href="#315">discr</a>, <a href="#316">targets</a> }
+        <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/terminator/enum.TerminatorEdges.html">TerminatorEdges::SwitchInt</a> { <a href="#315">discr</a>, <a href="#316">targets</a> }
     }
 
     <span class="kw">fn </span>wrap(<span class="self">self</span>) -&gt; ValueAnalysisWrapper&lt;<span class="self">Self</span>&gt;
@@ -1551,7 +1551,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         state: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Domain,
         statement: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        _location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
+        _location: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>,
     ) {
         <span class="kw">if </span>state.is_reachable() {
             <a class="self" href="#359">self</a>.<span class="number">0</span>.<a href="#61-63">handle_statement</a>(<a href="#361">statement</a>, <a href="#360">state</a>);
@@ -1562,7 +1562,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         state: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Domain,
         terminator: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        _location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
+        _location: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">if </span>state.is_reachable() {
             <a class="self" href="#370">self</a>.<span class="number">0</span>.<a href="#244-250">handle_terminator</a>(<a href="#372">terminator</a>, <a href="#371">state</a>)
@@ -1574,7 +1574,7 @@
     <span class="kw">fn </span>apply_call_return_effect(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         state: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Domain,
-        _block: <a href="../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>,
+        _block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>,
         return_places: CallReturnPlaces&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     ) {
         <span class="kw">if </span>state.is_reachable() {
@@ -1584,7 +1584,7 @@
 
     <span class="kw">fn </span>apply_switch_int_edge_effects(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        _block: <a href="../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>,
+        _block: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>,
         _discr: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         _apply_edge_effects: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>SwitchIntEdgeEffects&lt;<span class="self">Self</span>::Domain&gt;,
     ) {
@@ -1816,7 +1816,7 @@
 /// - To directly get the child for a specific projection, there is a `projections` map.
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span><a href="../../rustc_mir_dataflow/value_analysis/struct.Map.html">Map</a> {
-    locals: IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt;&gt;,
+    locals: IndexVec&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html">Local</a>, <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt;&gt;,
     projections: FxHashMap&lt;(<a href="#402-408">PlaceIndex</a>, <a href="#1025-1031">TrackElem</a>), <a href="#402-408">PlaceIndex</a>&gt;,
     places: IndexVec&lt;<a href="#402-408">PlaceIndex</a>, <a href="#965-977">PlaceInfo</a>&gt;,
     value_count: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
@@ -1851,7 +1851,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        exclude: BitSet&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt;,
+        exclude: BitSet&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html">Local</a>&gt;,
         value_limit: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;,
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>worklist = VecDeque::with_capacity(<a href="#663">value_limit</a>.unwrap_or(<a href="#661">body</a>.local_decls.len()));
@@ -1950,7 +1950,7 @@
             <a class="self" href="#732">self</a>.value_count += <span class="number">1</span>;
         }
 
-        <span class="kw">if let </span>ty::Ref(<span class="kw">_</span>, ref_ty, <span class="kw">_</span>) | ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: ref_ty, .. }) = <a href="#736">ty</a>.kind()
+        <span class="kw">if let </span>ty::Ref(<span class="kw">_</span>, ref_ty, <span class="kw">_</span>) | ty::RawPtr(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: ref_ty, .. }) = <a href="#736">ty</a>.kind()
             &amp;&amp; <span class="kw">let </span>ty::Slice(..) = <a href="#761">ref_ty</a>.kind()
         {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.places[place].value_index.is_none(), <span class="string">&quot;slices are not scalars&quot;</span>);
@@ -2270,13 +2270,13 @@
 }
 
 <span class="doccomment">/// Returns all locals with projections that have their reference or address taken.
-</span><span class="kw">pub fn </span><a href="../../rustc_mir_dataflow/value_analysis/fn.excluded_locals.html">excluded_locals</a>(body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; BitSet&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt; {
+</span><span class="kw">pub fn </span><a href="../../rustc_mir_dataflow/value_analysis/fn.excluded_locals.html">excluded_locals</a>(body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; BitSet&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html">Local</a>&gt; {
     <span class="kw">struct </span>Collector {
-        result: BitSet&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt;,
+        result: BitSet&lt;<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html">Local</a>&gt;,
     }
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#1082-1084">Collector</a> {
-        <span class="kw">fn </span>visit_place(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;, context: <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, _location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
+        <span class="kw">fn </span>visit_place(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;, context: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, _location: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>) {
             <span class="kw">if </span>(context.is_borrow()
                 || context.is_address_of()
                 || context.is_drop()
@@ -2291,7 +2291,7 @@
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>collector = <a href="#1082-1084">Collector</a> { result: BitSet::new_empty(<a href="#1081">body</a>.local_decls.len()) };
-    <a href="#1101">collector</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#1081">body</a>);
+    <a href="#1101">collector</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#1081">body</a>);
     <a href="#1101">collector</a>.result
 }
 

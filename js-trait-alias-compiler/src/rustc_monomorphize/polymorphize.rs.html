@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_monomorphize/src/polymorphize.rs`."><title>polymorphize.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_monomorphize" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-dc4c8a293e77d4e3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_monomorphize/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_monomorphize/src/polymorphize.rs`."><title>polymorphize.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_monomorphize" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fb515dad35061a81.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_monomorphize/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -349,15 +349,15 @@
 
 </span><span class="kw">use </span>rustc_hir::{<a href="../../rustc_hir/def/enum.DefKind.html">def::DefKind</a>, <a href="../../rustc_span/def_id/struct.DefId.html">def_id::DefId</a>, <a href="../../rustc_hir/hir/enum.ConstContext.html">ConstContext</a>};
 <span class="kw">use </span>rustc_middle::mir::{
-    <a class="self" href="../../rustc_middle/mir/index.html">self</a>,
-    visit::{<a href="../../rustc_middle/mir/visit/enum.TyContext.html">TyContext</a>, <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>},
-    <a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <a href="../../rustc_middle/mir/struct.LocalDecl.html">LocalDecl</a>, <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
+    <a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/index.html">self</a>,
+    visit::{<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/enum.TyContext.html">TyContext</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>},
+    <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html">Local</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.LocalDecl.html">LocalDecl</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>,
 };
-<span class="kw">use </span><a href="../../rustc_middle/query/struct.Providers.html">rustc_middle::query::Providers</a>;
+<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/struct.Providers.html">rustc_middle::query::Providers</a>;
 <span class="kw">use </span>rustc_middle::ty::{
-    <a class="self" href="../../rustc_middle/ty/index.html">self</a>,
-    visit::{<a href="../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">TypeSuperVisitable</a>, <a href="../../rustc_type_ir/visit/trait.TypeVisitable.html">TypeVisitable</a>, <a href="../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>, <a href="../../rustc_type_ir/visit/trait.TypeVisitor.html">TypeVisitor</a>},
-    <a href="../../rustc_middle/ty/generic_args/type.GenericArgsRef.html">GenericArgsRef</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
+    <a class="self" href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/index.html">self</a>,
+    visit::{<a href="../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">TypeSuperVisitable</a>, <a href="../../rustc_type_ir/visit/trait.TypeVisitable.html">TypeVisitable</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>, <a href="../../rustc_type_ir/visit/trait.TypeVisitor.html">TypeVisitor</a>},
+    <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generic_args/type.GenericArgsRef.html">GenericArgsRef</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
 };
 <span class="kw">use </span><a href="../../rustc_span/symbol/sym/index.html">rustc_span::symbol::sym</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/ops/control_flow/enum.ControlFlow.html">std::ops::ControlFlow</a>;
@@ -365,7 +365,7 @@
 <span class="kw">use </span><a href="errors.rs.html#44-48"><span class="kw">crate</span>::errors::UnusedGenericParamsHint</a>;
 
 <span class="doccomment">/// Provide implementations of queries relating to polymorphization analysis.
-</span><span class="kw">pub fn </span><a href="../../rustc_monomorphize/polymorphize/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../rustc_middle/query/struct.Providers.html">Providers</a>) {
+</span><span class="kw">pub fn </span><a href="../../rustc_monomorphize/polymorphize/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/query/struct.Providers.html">Providers</a>) {
     <a href="#26">providers</a>.unused_generic_params = <a href="#34-85">unused_generic_params</a>;
 }
 
@@ -376,7 +376,7 @@
 </span><span class="kw">fn </span><a href="../../rustc_monomorphize/polymorphize/fn.unused_generic_params.html">unused_generic_params</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     instance: ty::InstanceDef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <a href="../../rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a> {
+) -&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a> {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(instance.def_id().is_local());
 
     <span class="kw">if </span>!tcx.sess.opts.unstable_opts.polymorphize {
@@ -415,7 +415,7 @@
         <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <a href="#35">tcx</a>.mir_for_ctfe(<a href="#45">def_id</a>),
     };
     <span class="kw">let </span><span class="kw-2">mut </span>vis = <a href="#222-226">MarkUsedGenericParams</a> { <a href="#35">tcx</a>, <a href="#45">def_id</a>, unused_parameters: <span class="kw-2">&amp;mut </span><a href="#62">unused_parameters</a> };
-    <a href="#75">vis</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#69">body</a>);
+    <a href="#75">vis</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#69">body</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>unused_parameters, <span class="string">&quot;(end)&quot;</span>);
 
     <span class="comment">// Emit errors for debugging and testing if enabled.
@@ -469,8 +469,8 @@
 </span><span class="kw">fn </span><a href="../../rustc_monomorphize/polymorphize/fn.mark_used_by_default_parameters.html">mark_used_by_default_parameters</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>,
-    generics: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../rustc_middle/ty/generics/struct.Generics.html">ty::Generics</a>,
-    unused_parameters: <span class="kw-2">&amp;mut </span><a href="../../rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
+    generics: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generics/struct.Generics.html">ty::Generics</a>,
+    unused_parameters: <span class="kw-2">&amp;mut </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
 ) {
     <span class="kw">match </span>tcx.def_kind(def_id) {
         DefKind::Closure | DefKind::Generator =&gt; {
@@ -528,8 +528,8 @@
 </span><span class="kw">fn </span><a href="../../rustc_monomorphize/polymorphize/fn.emit_unused_generic_params_error.html">emit_unused_generic_params_error</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>,
-    generics: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../rustc_middle/ty/generics/struct.Generics.html">ty::Generics</a>,
-    unused_parameters: <span class="kw-2">&amp;</span><a href="../../rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
+    generics: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/generics/struct.Generics.html">ty::Generics</a>,
+    unused_parameters: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
 ) {
     <span class="kw">let </span>base_def_id = tcx.typeck_root_def_id(def_id);
     <span class="kw">if </span>!tcx.has_attr(base_def_id, sym::rustc_polymorphize_error) {
@@ -564,7 +564,7 @@
 </span><span class="kw">struct </span><a href="../../rustc_monomorphize/polymorphize/struct.MarkUsedGenericParams.html">MarkUsedGenericParams</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>,
-    unused_parameters: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span><a href="../../rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
+    unused_parameters: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span><a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/instance/struct.UnusedGenericParams.html">UnusedGenericParams</a>,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; MarkUsedGenericParams&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -587,7 +587,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>MarkUsedGenericParams&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(<span class="self">self</span>, local))]
-    </span><span class="kw">fn </span>visit_local_decl(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <a href="../../rustc_middle/mir/struct.Local.html">Local</a>, local_decl: <span class="kw-2">&amp;</span>LocalDecl&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+    </span><span class="kw">fn </span>visit_local_decl(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Local.html">Local</a>, local_decl: <span class="kw-2">&amp;</span>LocalDecl&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="kw">if </span>local == Local::from_usize(<span class="number">1</span>) {
             <span class="kw">let </span>def_kind = <span class="self">self</span>.tcx.def_kind(<span class="self">self</span>.def_id);
             <span class="kw">if </span><span class="macro">matches!</span>(def_kind, DefKind::Closure | DefKind::Generator) {
@@ -603,12 +603,12 @@
         <span class="self">self</span>.super_local_decl(local, local_decl);
     }
 
-    <span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ct: <span class="kw-2">&amp;</span>mir::ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
+    <span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ct: <span class="kw-2">&amp;</span>mir::ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/struct.Location.html">Location</a>) {
         <span class="kw">match </span><a href="#264">ct</a>.const_ {
             mir::Const::Ty(c) =&gt; {
                 <a href="#266">c</a>.<a href="../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#264">self</a>);
             }
-            mir::Const::Unevaluated(<a href="../../rustc_middle/mir/consts/struct.UnevaluatedConst.html">mir::UnevaluatedConst</a> { def, args: <span class="kw">_</span>, promoted }, ty) =&gt; {
+            mir::Const::Unevaluated(<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/consts/struct.UnevaluatedConst.html">mir::UnevaluatedConst</a> { def, args: <span class="kw">_</span>, promoted }, ty) =&gt; {
                 <span class="comment">// Avoid considering `T` unused when constants are of the form:
                 //   `&lt;Self as Foo&lt;T&gt;&gt;::foo::promoted[p]`
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(p) = <a href="#269">promoted</a> {
@@ -616,17 +616,17 @@
                         <span class="comment">// If there is a promoted, don&#39;t look at the args - since it will always contain
                         // the generic parameters, instead, traverse the promoted MIR.
                         </span><span class="kw">let </span>promoted = <a class="self" href="#264">self</a>.tcx.promoted_mir(<a href="#269">def</a>);
-                        <a class="self" href="#264">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<span class="kw-2">&amp;</span><a href="#276">promoted</a>[<a href="#272">p</a>]);
+                        <a class="self" href="#264">self</a>.<a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<span class="kw-2">&amp;</span><a href="#276">promoted</a>[<a href="#272">p</a>]);
                     }
                 }
 
-                <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor::visit_ty</a>(<a class="self" href="#264">self</a>, <a href="#269">ty</a>, TyContext::Location(<a href="#264">location</a>));
+                <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">Visitor::visit_ty</a>(<a class="self" href="#264">self</a>, <a href="#269">ty</a>, TyContext::Location(<a href="#264">location</a>));
             }
-            mir::Const::Val(<span class="kw">_</span>, ty) =&gt; <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor::visit_ty</a>(<a class="self" href="#264">self</a>, <a href="#283">ty</a>, TyContext::Location(<a href="#264">location</a>)),
+            mir::Const::Val(<span class="kw">_</span>, ty) =&gt; <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/trait.Visitor.html">Visitor::visit_ty</a>(<a class="self" href="#264">self</a>, <a href="#283">ty</a>, TyContext::Location(<a href="#264">location</a>)),
         }
     }
 
-    <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="kw">_</span>: <a href="../../rustc_middle/mir/visit/enum.TyContext.html">TyContext</a>) {
+    <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="kw">_</span>: <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/visit/enum.TyContext.html">TyContext</a>) {
         <a href="#287">ty</a>.<a href="../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#287">self</a>);
     }
 }
