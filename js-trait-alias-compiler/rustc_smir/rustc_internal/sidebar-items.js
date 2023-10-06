@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["crate_num","run"],"struct":["CrateNum","DefId","StableMir"]};

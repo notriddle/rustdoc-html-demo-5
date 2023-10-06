@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["rustc_internal","rustc_smir"]};

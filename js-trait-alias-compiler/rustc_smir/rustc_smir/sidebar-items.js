@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MaybeStable"],"fn":["smir_crate"],"mod":["alloc"],"struct":["Tables"],"trait":["Stable"]};

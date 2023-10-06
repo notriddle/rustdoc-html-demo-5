@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"rustc_infer":[["impl <a class=\"trait\" href=\"https://docs.rs/ena/latest/ena/snapshot_vec/trait.SnapshotVecDelegate.html\" title=\"trait ena::snapshot_vec::SnapshotVecDelegate\">SnapshotVecDelegate</a> for <a class=\"struct\" href=\"rustc_infer/infer/type_variable/struct.Delegate.html\" title=\"struct rustc_infer::infer::type_variable::Delegate\">Delegate</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

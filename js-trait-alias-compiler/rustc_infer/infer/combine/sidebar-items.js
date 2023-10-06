@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["effect_unification_error","float_unification_error","int_unification_error"],"struct":["CombineFields"],"trait":["ObligationEmittingRelation"]};
