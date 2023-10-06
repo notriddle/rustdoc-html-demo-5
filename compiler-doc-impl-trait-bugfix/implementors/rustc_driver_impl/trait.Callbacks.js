@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"rustc_driver_impl":[],
+"rustc_smir":[["impl&lt;B, C&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver_impl/trait.Callbacks.html\" title=\"trait rustc_driver_impl::Callbacks\">Callbacks</a> for <a class=\"struct\" href=\"rustc_smir/rustc_internal/struct.StableMir.html\" title=\"struct rustc_smir::rustc_internal::StableMir\">StableMir</a>&lt;B, C&gt;<span class=\"where fmt-newline\">where\n    B: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.Send.html\" title=\"trait core::marker::Send\">Send</a>,\n    C: <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/marker/trait.Send.html\" title=\"trait core::marker::Send\">Send</a>,</span>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

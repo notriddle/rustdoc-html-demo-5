@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MemPlaceMeta","Place"],"struct":["MPlaceTy","MemPlace","PlaceTy"],"trait":["Writeable"]};

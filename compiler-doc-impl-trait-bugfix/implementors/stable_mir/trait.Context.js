@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"rustc_smir":[["impl&lt;'tcx&gt; <a class=\"trait\" href=\"stable_mir/trait.Context.html\" title=\"trait stable_mir::Context\">Context</a> for <a class=\"struct\" href=\"rustc_smir/rustc_smir/struct.Tables.html\" title=\"struct rustc_smir::rustc_smir::Tables\">Tables</a>&lt;'tcx&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Never"],"trait":["Foldable","Folder"]};
