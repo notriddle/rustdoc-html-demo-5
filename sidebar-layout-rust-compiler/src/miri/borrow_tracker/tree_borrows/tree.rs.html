@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/tree_borrows/tree.rs`."><title>tree.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/tree_borrows/tree.rs`."><title>tree.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -694,61 +694,6 @@
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
 <a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! In this file we handle the &quot;Tree&quot; part of Tree Borrows, i.e. all tree
 //! traversal functions, optimizations to trim branches, and keeping track of
 //! the relative position of the access to each node being updated. This of course
@@ -761,7 +706,9 @@
 //!   and the relative position of the access;
 //! - idempotency properties asserted in `perms.rs` (for optimizations)
 
-</span><span class="kw">use </span>smallvec::SmallVec;
+</span><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/alloc/fmt/index.html">std::fmt</a>;
+
+<span class="kw">use </span>smallvec::SmallVec;
 
 <span class="kw">use </span><a href="../../../../miri/type.InterpResult.html">rustc_const_eval::interpret::InterpResult</a>;
 <span class="kw">use </span>rustc_data_structures::fx::FxHashSet;
@@ -770,15 +717,17 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::borrow_tracker::tree_borrows::{
     diagnostics::{<a class="self" href="mod.rs.html#14">self</a>, <a href="diagnostics.rs.html#136-152">NodeDebugInfo</a>, <a href="diagnostics.rs.html#263-278">TbError</a>, <a href="diagnostics.rs.html#222-237">TransitionError</a>},
-    <a href="perms.rs.html#144-147">perms::PermTransition</a>,
+    <a href="perms.rs.html#150-153">perms::PermTransition</a>,
     unimap::{<a href="unimap.rs.html#201-203">UniEntry</a>, <a href="unimap.rs.html#21-23">UniIndex</a>, <a href="unimap.rs.html#27-36">UniKeyMap</a>, <a href="unimap.rs.html#40-44">UniValMap</a>},
-    <a href="perms.rs.html#138-140">Permission</a>,
+    <a href="perms.rs.html#144-146">Permission</a>,
 };
 <span class="kw">use </span><span class="kw">crate</span>::borrow_tracker::{<a href="../mod.rs.html#125-128">AccessKind</a>, <a href="../mod.rs.html#121">GlobalState</a>, <a href="../mod.rs.html#153-169">ProtectorKind</a>};
 <span class="kw">use crate</span>::<span class="kw-2">*</span>;
 
+<span class="kw">mod </span>tests;
+
 <span class="doccomment">/// Data for a single *location*.
-</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/tree/struct.LocationState.html">LocationState</a> {
     <span class="doccomment">/// A location is initialized when it is child-accessed for the first time (and the initial
     /// retag initializes the location for the range covered by the type), and it then stays
@@ -792,7 +741,7 @@
     /// performed.
     </span>initialized: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     <span class="doccomment">/// This pointer&#39;s current permission / future initial permission.
-    </span>permission: <a href="perms.rs.html#138-140">Permission</a>,
+    </span>permission: <a href="perms.rs.html#144-146">Permission</a>,
     <span class="doccomment">/// Strongest foreign access whose effects have already been applied to
     /// this node and all its children since the last child access.
     /// This is `None` if the most recent access is a child access,
@@ -802,26 +751,41 @@
     </span>latest_foreign_access: <span class="prelude-ty">Option</span>&lt;<a href="../mod.rs.html#125-128">AccessKind</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#31-52">LocationState</a> {
+<span class="kw">impl </span><a href="#35-56">LocationState</a> {
     <span class="doccomment">/// Default initial state has never been accessed and has been subjected to no
     /// foreign access.
-    </span><span class="kw">fn </span>new(permission: <a href="perms.rs.html#138-140">Permission</a>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ <a href="#57">permission</a>, initialized: <span class="bool-val">false</span>, latest_foreign_access: <span class="prelude-val">None </span>}
+    </span><span class="kw">fn </span>new(permission: <a href="perms.rs.html#144-146">Permission</a>) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ <a href="#61">permission</a>, initialized: <span class="bool-val">false</span>, latest_foreign_access: <span class="prelude-val">None </span>}
     }
 
     <span class="doccomment">/// Record that this location was accessed through a child pointer by
     /// marking it as initialized
     </span><span class="kw">fn </span>with_access(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <a class="self" href="#63">self</a>.initialized = <span class="bool-val">true</span>;
-        <span class="self"><a href="#63">self</a>
+        <a class="self" href="#67">self</a>.initialized = <span class="bool-val">true</span>;
+        <span class="self"><a href="#67">self</a>
     </span>}
 
-    <span class="kw">pub fn </span>is_initialized(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#68">self</a>.initialized
+    <span class="doccomment">/// Check if the location has been initialized, i.e. if it has
+    /// ever been accessed through a child pointer.
+    </span><span class="kw">pub fn </span>is_initialized(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+        <a class="self" href="#74">self</a>.initialized
     }
 
-    <span class="kw">pub fn </span>permission(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="perms.rs.html#138-140">Permission</a> {
-        <a class="self" href="#72">self</a>.permission
+    <span class="doccomment">/// Check if the state can exist as the initial permission of a pointer.
+    ///
+    /// Do not confuse with `is_initialized`, the two are almost orthogonal
+    /// as apart from `Active` which is not initial and must be initialized,
+    /// any other permission can have an arbitrary combination of being
+    /// initial/initialized.
+    /// FIXME: when the corresponding `assert` in `tree_borrows/mod.rs` finally
+    /// passes and can be uncommented, remove this `#[allow(dead_code)]`.
+    </span><span class="attr">#[cfg_attr(not(test), allow(dead_code))]
+    </span><span class="kw">pub fn </span>is_initial(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+        <a class="self" href="#87">self</a>.permission.<a href="perms.rs.html#157-159">is_initial</a>()
+    }
+
+    <span class="kw">pub fn </span>permission(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="perms.rs.html#144-146">Permission</a> {
+        <a class="self" href="#91">self</a>.permission
     }
 
     <span class="doccomment">/// Apply the effect of an access to one location, including
@@ -831,10 +795,10 @@
     </span><span class="kw">fn </span>perform_access(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         access_kind: <a href="../mod.rs.html#125-128">AccessKind</a>,
-        rel_pos: <a href="#634-648">AccessRelatedness</a>,
+        rel_pos: <a href="#663-677">AccessRelatedness</a>,
         protected: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="perms.rs.html#144-147">PermTransition</a>, <a href="diagnostics.rs.html#222-237">TransitionError</a>&gt; {
-        <span class="kw">let </span>old_perm = <a class="self" href="#81">self</a>.permission;
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="perms.rs.html#150-153">PermTransition</a>, <a href="diagnostics.rs.html#222-237">TransitionError</a>&gt; {
+        <span class="kw">let </span>old_perm = <a class="self" href="#100">self</a>.permission;
         <span class="kw">let </span>transition = Permission::perform_access(access_kind, rel_pos, old_perm, protected)
             .ok_or(TransitionError::ChildAccessForbidden(old_perm))<span class="question-mark">?</span>;
         <span class="comment">// Why do only initialized locations cause protector errors?
@@ -852,11 +816,11 @@
         // See the test `two_mut_protected_same_alloc` in `tests/pass/tree_borrows/tree-borrows.rs`
         // for an example of safe code that would be UB if we forgot to check `self.initialized`.
         </span><span class="kw">if </span>protected &amp;&amp; <span class="self">self</span>.initialized &amp;&amp; transition.produces_disabled() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="diagnostics.rs.html#233">TransitionError::ProtectedDisabled</a>(<a href="#86">old_perm</a>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="diagnostics.rs.html#233">TransitionError::ProtectedDisabled</a>(<a href="#105">old_perm</a>));
         }
-        <a class="self" href="#81">self</a>.permission = <a href="#87">transition</a>.<a href="perms.rs.html#209-211">applied</a>(<a href="#86">old_perm</a>).unwrap();
-        <a class="self" href="#81">self</a>.initialized |= !<a href="#83">rel_pos</a>.<a href="#653-655">is_foreign</a>();
-        <span class="prelude-val">Ok</span>(<a href="#87">transition</a>)
+        <a class="self" href="#100">self</a>.permission = <a href="#106">transition</a>.<a href="perms.rs.html#230-232">applied</a>(<a href="#105">old_perm</a>).unwrap();
+        <a class="self" href="#100">self</a>.initialized |= !<a href="#102">rel_pos</a>.<a href="#682-684">is_foreign</a>();
+        <span class="prelude-val">Ok</span>(<a href="#106">transition</a>)
     }
 
     <span class="comment">// Helper to optimize the tree traversal.
@@ -884,16 +848,16 @@
     </span><span class="kw">fn </span>skip_if_known_noop(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         access_kind: <a href="../mod.rs.html#125-128">AccessKind</a>,
-        rel_pos: <a href="#634-648">AccessRelatedness</a>,
-    ) -&gt; <a href="#251-254">ContinueTraversal</a> {
+        rel_pos: <a href="#663-677">AccessRelatedness</a>,
+    ) -&gt; <a href="#280-283">ContinueTraversal</a> {
         <span class="kw">if </span>rel_pos.is_foreign() {
-            <span class="kw">let </span>new_access_noop = <span class="kw">match </span>(<a class="self" href="#134">self</a>.latest_foreign_access, <a href="#135">access_kind</a>) {
+            <span class="kw">let </span>new_access_noop = <span class="kw">match </span>(<a class="self" href="#153">self</a>.latest_foreign_access, <a href="#154">access_kind</a>) {
                 <span class="comment">// Previously applied transition makes the new one a guaranteed
                 // noop in the two following cases:
                 // (1) justified by `foreign_read_is_noop_after_foreign_write`
                 </span>(<span class="prelude-val">Some</span>(<a href="../mod.rs.html#127">AccessKind::Write</a>), <a href="../mod.rs.html#126">AccessKind::Read</a>) =&gt; <span class="bool-val">true</span>,
                 <span class="comment">// (2) justified by `all_transitions_idempotent`
-                </span>(<span class="prelude-val">Some</span>(old), new) <span class="kw">if </span><a href="#145">old</a> == <a href="#145">new</a> =&gt; <span class="bool-val">true</span>,
+                </span>(<span class="prelude-val">Some</span>(old), new) <span class="kw">if </span><a href="#164">old</a> == <a href="#164">new</a> =&gt; <span class="bool-val">true</span>,
                 <span class="comment">// In all other cases there has been a recent enough
                 // child access that the effects of the new foreign access
                 // need to be applied to this subtree.
@@ -905,21 +869,31 @@
                 // No need to update `self.latest_foreign_access`,
                 // the type of the current streak among nonempty read-only
                 // or nonempty with at least one write has not changed.
-                </span><a href="#253">ContinueTraversal::SkipChildren</a>
+                </span><a href="#282">ContinueTraversal::SkipChildren</a>
             } <span class="kw">else </span>{
                 <span class="comment">// Otherwise propagate this time, and also record the
                 // access that just occurred so that we can skip the propagation
                 // next time.
-                </span><a class="self" href="#134">self</a>.latest_foreign_access = <span class="prelude-val">Some</span>(<a href="#135">access_kind</a>);
-                <a href="#252">ContinueTraversal::Recurse</a>
+                </span><a class="self" href="#153">self</a>.latest_foreign_access = <span class="prelude-val">Some</span>(<a href="#154">access_kind</a>);
+                <a href="#281">ContinueTraversal::Recurse</a>
             }
         } <span class="kw">else </span>{
             <span class="comment">// A child access occurred, this breaks the streak of foreign
             // accesses in a row and the sequence since the previous child access
             // is now empty.
-            </span><a class="self" href="#134">self</a>.latest_foreign_access = <span class="prelude-val">None</span>;
-            <a href="#252">ContinueTraversal::Recurse</a>
+            </span><a class="self" href="#153">self</a>.latest_foreign_access = <span class="prelude-val">None</span>;
+            <a href="#281">ContinueTraversal::Recurse</a>
         }
+    }
+}
+
+<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html">fmt::Display</a> <span class="kw">for </span><a href="#35-56">LocationState</a> {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">fmt::Result</a> {
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.permission)<span class="question-mark">?</span>;
+        <span class="kw">if </span>!<span class="self">self</span>.initialized {
+            <span class="macro">write!</span>(f, <span class="string">&quot;?&quot;</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -935,7 +909,7 @@
     /// `tag_mapping`.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) tag_mapping: UniKeyMap&lt;<a href="../mod.rs.html#20">BorTag</a>&gt;,
     <span class="doccomment">/// All nodes of this tree.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) nodes: UniValMap&lt;<a href="#205-218">Node</a>&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) nodes: UniValMap&lt;<a href="#234-247">Node</a>&gt;,
     <span class="doccomment">/// Maps a tag and a location to a perm, with possible lazy
     /// initialization.
     ///
@@ -945,7 +919,7 @@
     /// `unwrap` any `perm.get(key)`.
     ///
     /// We do uphold the fact that `keys(perms)` is a subset of `keys(nodes)`
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) rperms: RangeMap&lt;UniValMap&lt;<a href="#31-52">LocationState</a>&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) rperms: RangeMap&lt;UniValMap&lt;<a href="#35-56">LocationState</a>&gt;&gt;,
     <span class="doccomment">/// The index of the root node.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) root: <a href="unimap.rs.html#21-23">UniIndex</a>,
 }
@@ -963,7 +937,7 @@
     </span><span class="kw">pub </span>children: SmallVec&lt;[<a href="unimap.rs.html#21-23">UniIndex</a>; <span class="number">4</span>]&gt;,
     <span class="doccomment">/// Either `Reserved` or `Frozen`, the permission this tag will be lazily initialized
     /// to on the first access.
-    </span>default_initial_perm: <a href="perms.rs.html#138-140">Permission</a>,
+    </span>default_initial_perm: <a href="perms.rs.html#144-146">Permission</a>,
     <span class="doccomment">/// Some extra information useful only for debugging purposes
     </span><span class="kw">pub </span>debug_info: <a href="diagnostics.rs.html#136-152">NodeDebugInfo</a>,
 }
@@ -971,11 +945,11 @@
 <span class="doccomment">/// Data given to the transition function
 </span><span class="kw">struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/tree/struct.NodeAppArgs.html">NodeAppArgs</a>&lt;<span class="lifetime">&#39;node</span>&gt; {
     <span class="doccomment">/// Node on which the transition is currently being applied
-    </span>node: <span class="kw-2">&amp;</span><span class="lifetime">&#39;node </span><span class="kw-2">mut </span><a href="#205-218">Node</a>,
+    </span>node: <span class="kw-2">&amp;</span><span class="lifetime">&#39;node </span><span class="kw-2">mut </span><a href="#234-247">Node</a>,
     <span class="doccomment">/// Mutable access to its permissions
-    </span>perm: UniEntry&lt;<span class="lifetime">&#39;node</span>, <a href="#31-52">LocationState</a>&gt;,
+    </span>perm: UniEntry&lt;<span class="lifetime">&#39;node</span>, <a href="#35-56">LocationState</a>&gt;,
     <span class="doccomment">/// Relative position of the access
-    </span>rel_pos: <a href="#634-648">AccessRelatedness</a>,
+    </span>rel_pos: <a href="#663-677">AccessRelatedness</a>,
 }
 <span class="doccomment">/// Data given to the error handler
 </span><span class="kw">struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/tree/struct.ErrHandlerArgs.html">ErrHandlerArgs</a>&lt;<span class="lifetime">&#39;node</span>, InErr&gt; {
@@ -994,8 +968,8 @@
 /// updated but not the tree structure (`tag_mapping` and `nodes`)
 </span><span class="kw">struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/tree/struct.TreeVisitor.html">TreeVisitor</a>&lt;<span class="lifetime">&#39;tree</span>&gt; {
     tag_mapping: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tree </span>UniKeyMap&lt;<a href="../mod.rs.html#20">BorTag</a>&gt;,
-    nodes: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tree </span><span class="kw-2">mut </span>UniValMap&lt;<a href="#205-218">Node</a>&gt;,
-    perms: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tree </span><span class="kw-2">mut </span>UniValMap&lt;<a href="#31-52">LocationState</a>&gt;,
+    nodes: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tree </span><span class="kw-2">mut </span>UniValMap&lt;<a href="#234-247">Node</a>&gt;,
+    perms: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tree </span><span class="kw-2">mut </span>UniValMap&lt;<a href="#35-56">LocationState</a>&gt;,
 }
 
 <span class="doccomment">/// Whether to continue exploring the children recursively or not.
@@ -1018,7 +992,7 @@
     </span><span class="kw">fn </span>traverse_parents_this_children_others&lt;InnErr, OutErr&gt;(
         <span class="kw-2">mut </span><span class="self">self</span>,
         start: <a href="../mod.rs.html#20">BorTag</a>,
-        f_propagate: <span class="kw">impl </span>Fn(NodeAppArgs&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="#251-254">ContinueTraversal</a>, InnErr&gt;,
+        f_propagate: <span class="kw">impl </span>Fn(NodeAppArgs&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="#280-283">ContinueTraversal</a>, InnErr&gt;,
         err_builder: <span class="kw">impl </span>Fn(ErrHandlerArgs&lt;<span class="lifetime">&#39;_</span>, InnErr&gt;) -&gt; OutErr,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OutErr&gt;
 <span class="kw">where </span>{
@@ -1026,15 +1000,15 @@
             accessed_tag: <a href="unimap.rs.html#21-23">UniIndex</a>,
             f_propagate: NodeApp,
             err_builder: ErrHandler,
-            stack: Vec&lt;(<a href="unimap.rs.html#21-23">UniIndex</a>, <a href="#634-648">AccessRelatedness</a>)&gt;,
+            stack: Vec&lt;(<a href="unimap.rs.html#21-23">UniIndex</a>, <a href="#663-677">AccessRelatedness</a>)&gt;,
         }
         <span class="kw">impl</span>&lt;NodeApp, InnErr, OutErr, ErrHandler&gt; TreeVisitAux&lt;NodeApp, ErrHandler&gt;
         <span class="kw">where
-            </span>NodeApp: Fn(NodeAppArgs&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="#251-254">ContinueTraversal</a>, InnErr&gt;,
+            </span>NodeApp: Fn(NodeAppArgs&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="#280-283">ContinueTraversal</a>, InnErr&gt;,
             ErrHandler: Fn(ErrHandlerArgs&lt;<span class="lifetime">&#39;_</span>, InnErr&gt;) -&gt; OutErr,
         {
-            <span class="kw">fn </span>pop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="unimap.rs.html#21-23">UniIndex</a>, <a href="#634-648">AccessRelatedness</a>)&gt; {
-                <a class="self" href="#285">self</a>.stack.pop()
+            <span class="kw">fn </span>pop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="unimap.rs.html#21-23">UniIndex</a>, <a href="#663-677">AccessRelatedness</a>)&gt; {
+                <a class="self" href="#314">self</a>.stack.pop()
             }
 
             <span class="doccomment">/// Apply the function to the current `tag`, and push its children
@@ -1044,10 +1018,10 @@
                 this: <span class="kw-2">&amp;mut </span>TreeVisitor&lt;<span class="lifetime">&#39;_</span>&gt;,
                 tag: <a href="unimap.rs.html#21-23">UniIndex</a>,
                 exclude: <span class="prelude-ty">Option</span>&lt;<a href="unimap.rs.html#21-23">UniIndex</a>&gt;,
-                rel_pos: <a href="#634-648">AccessRelatedness</a>,
+                rel_pos: <a href="#663-677">AccessRelatedness</a>,
             ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OutErr&gt; {
                 <span class="comment">// 1. apply the propagation function
-                </span><span class="kw">let </span>node = <a href="#293">this</a>.nodes.<a href="unimap.rs.html#186-188">get_mut</a>(<a href="#294">tag</a>).unwrap();
+                </span><span class="kw">let </span>node = <a href="#322">this</a>.nodes.<a href="unimap.rs.html#186-188">get_mut</a>(<a href="#323">tag</a>).unwrap();
                 <span class="kw">let </span>recurse =
                     (<span class="self">self</span>.f_propagate)(NodeAppArgs { node, perm: this.perms.entry(tag), rel_pos })
                         .map_err(|error_kind| {
@@ -1061,10 +1035,10 @@
                                     .debug_info,
                             })
                         })<span class="question-mark">?</span>;
-                <span class="kw">let </span>node = <a href="#293">this</a>.nodes.<a href="unimap.rs.html#181-183">get</a>(<a href="#294">tag</a>).unwrap();
+                <span class="kw">let </span>node = <a href="#322">this</a>.nodes.<a href="unimap.rs.html#181-183">get</a>(<a href="#323">tag</a>).unwrap();
                 <span class="comment">// 2. add the children to the stack for future traversal
                 </span><span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(recurse, ContinueTraversal::Recurse) {
-                    <span class="kw">let </span>child_rel = <a href="#296">rel_pos</a>.<a href="#660-666">for_child</a>();
+                    <span class="kw">let </span>child_rel = <a href="#325">rel_pos</a>.<a href="#689-695">for_child</a>();
                     <span class="kw">for </span><span class="kw-2">&amp;</span>child <span class="kw">in </span>node.children.iter() {
                         <span class="comment">// some child might be excluded from here and handled separately
                         </span><span class="kw">if </span><span class="prelude-val">Some</span>(child) != exclude {
@@ -1076,13 +1050,13 @@
             }
         }
 
-        <span class="kw">let </span>start_idx = <a class="self" href="#268">self</a>.tag_mapping.<a href="unimap.rs.html#116-118">get</a>(<span class="kw-2">&amp;</span><a href="#269">start</a>).unwrap();
+        <span class="kw">let </span>start_idx = <a class="self" href="#297">self</a>.tag_mapping.<a href="unimap.rs.html#116-118">get</a>(<span class="kw-2">&amp;</span><a href="#298">start</a>).unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>stack =
-            <a href="#274-279">TreeVisitAux</a> { accessed_tag: <a href="#328">start_idx</a>, <a href="#270">f_propagate</a>, <a href="#271">err_builder</a>, stack: Vec::new() };
+            <a href="#303-308">TreeVisitAux</a> { accessed_tag: <a href="#357">start_idx</a>, <a href="#299">f_propagate</a>, <a href="#300">err_builder</a>, stack: Vec::new() };
         {
             <span class="kw">let </span><span class="kw-2">mut </span>path_ascend = Vec::new();
             <span class="comment">// First climb to the root while recording the path
-            </span><span class="kw">let </span><span class="kw-2">mut </span>curr = <a href="#328">start_idx</a>;
+            </span><span class="kw">let </span><span class="kw-2">mut </span>curr = <a href="#357">start_idx</a>;
             <span class="kw">while let </span><span class="prelude-val">Some</span>(ancestor) = <span class="self">self</span>.nodes.get(curr).unwrap().parent {
                 path_ascend.push((ancestor, curr));
                 curr = ancestor;
@@ -1124,66 +1098,66 @@
     }
 }
 
-<span class="kw">impl </span><a href="#178-200">Tree</a> {
+<span class="kw">impl </span><a href="#207-229">Tree</a> {
     <span class="doccomment">/// Create a new tree, with only a root pointer.
     </span><span class="kw">pub fn </span>new(root_tag: <a href="../mod.rs.html#20">BorTag</a>, size: <a href="../../../../rustc_abi/struct.Size.html">Size</a>, span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>root_perm = Permission::new_active();
         <span class="kw">let </span><span class="kw-2">mut </span>tag_mapping = UniKeyMap::default();
-        <span class="kw">let </span>root_idx = <a href="#380">tag_mapping</a>.<a href="unimap.rs.html#99-113">insert</a>(<a href="#378">root_tag</a>);
+        <span class="kw">let </span>root_idx = <a href="#409">tag_mapping</a>.<a href="unimap.rs.html#99-113">insert</a>(<a href="#407">root_tag</a>);
         <span class="kw">let </span>nodes = {
-            <span class="kw">let </span><span class="kw-2">mut </span>nodes = UniValMap::&lt;<a href="#205-218">Node</a>&gt;::default();
-            <span class="kw">let </span><span class="kw-2">mut </span>debug_info = NodeDebugInfo::new(<a href="#378">root_tag</a>, <a href="#379">root_perm</a>, <a href="#378">span</a>);
+            <span class="kw">let </span><span class="kw-2">mut </span>nodes = UniValMap::&lt;<a href="#234-247">Node</a>&gt;::default();
+            <span class="kw">let </span><span class="kw-2">mut </span>debug_info = NodeDebugInfo::new(<a href="#407">root_tag</a>, <a href="#408">root_perm</a>, <a href="#407">span</a>);
             <span class="comment">// name the root so that all allocations contain one named pointer
-            </span><a href="#384">debug_info</a>.<a href="diagnostics.rs.html#164-171">add_name</a>(<span class="string">&quot;root of the allocation&quot;</span>);
-            <a href="#383">nodes</a>.<a href="unimap.rs.html#175-178">insert</a>(
-                <a href="#381">root_idx</a>,
-                <a href="#205-218">Node</a> {
-                    tag: <a href="#378">root_tag</a>,
+            </span><a href="#413">debug_info</a>.<a href="diagnostics.rs.html#164-171">add_name</a>(<span class="string">&quot;root of the allocation&quot;</span>);
+            <a href="#412">nodes</a>.<a href="unimap.rs.html#175-178">insert</a>(
+                <a href="#410">root_idx</a>,
+                <a href="#234-247">Node</a> {
+                    tag: <a href="#407">root_tag</a>,
                     parent: <span class="prelude-val">None</span>,
                     children: SmallVec::default(),
-                    default_initial_perm: <a href="#379">root_perm</a>,
-                    <a href="#384">debug_info</a>,
+                    default_initial_perm: <a href="#408">root_perm</a>,
+                    <a href="#413">debug_info</a>,
                 },
             );
-            <a href="#383">nodes</a>
+            <a href="#412">nodes</a>
         };
         <span class="kw">let </span>rperms = {
             <span class="kw">let </span><span class="kw-2">mut </span>perms = UniValMap::default();
-            <a href="#400">perms</a>.<a href="unimap.rs.html#175-178">insert</a>(<a href="#381">root_idx</a>, LocationState::new(<a href="#379">root_perm</a>).<a href="#63-66">with_access</a>());
-            RangeMap::new(<a href="#378">size</a>, <a href="#400">perms</a>)
+            <a href="#429">perms</a>.<a href="unimap.rs.html#175-178">insert</a>(<a href="#410">root_idx</a>, LocationState::new(<a href="#408">root_perm</a>).<a href="#67-70">with_access</a>());
+            RangeMap::new(<a href="#407">size</a>, <a href="#429">perms</a>)
         };
-        <span class="self">Self </span>{ root: <a href="#381">root_idx</a>, <a href="#382">nodes</a>, <a href="#399">rperms</a>, <a href="#380">tag_mapping</a> }
+        <span class="self">Self </span>{ root: <a href="#410">root_idx</a>, <a href="#411">nodes</a>, <a href="#428">rperms</a>, <a href="#409">tag_mapping</a> }
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="#178-200">Tree</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="#207-229">Tree</a> {
     <span class="doccomment">/// Insert a new tag in the tree
     </span><span class="kw">pub fn </span>new_child(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         parent_tag: <a href="../mod.rs.html#20">BorTag</a>,
         new_tag: <a href="../mod.rs.html#20">BorTag</a>,
-        default_initial_perm: <a href="perms.rs.html#138-140">Permission</a>,
+        default_initial_perm: <a href="perms.rs.html#144-146">Permission</a>,
         reborrow_range: <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>,
         span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!<span class="self">self</span>.tag_mapping.contains_key(<span class="kw-2">&amp;</span>new_tag));
-        <span class="kw">let </span>idx = <a class="self" href="#411">self</a>.tag_mapping.<a href="unimap.rs.html#99-113">insert</a>(<a href="#413">new_tag</a>);
-        <span class="kw">let </span>parent_idx = <a class="self" href="#411">self</a>.tag_mapping.<a href="unimap.rs.html#116-118">get</a>(<span class="kw-2">&amp;</span><a href="#412">parent_tag</a>).unwrap();
+        <span class="kw">let </span>idx = <a class="self" href="#440">self</a>.tag_mapping.<a href="unimap.rs.html#99-113">insert</a>(<a href="#442">new_tag</a>);
+        <span class="kw">let </span>parent_idx = <a class="self" href="#440">self</a>.tag_mapping.<a href="unimap.rs.html#116-118">get</a>(<span class="kw-2">&amp;</span><a href="#441">parent_tag</a>).unwrap();
         <span class="comment">// Create the node
-        </span><a class="self" href="#411">self</a>.nodes.<a href="unimap.rs.html#175-178">insert</a>(
-            <a href="#419">idx</a>,
-            <a href="#205-218">Node</a> {
-                tag: <a href="#413">new_tag</a>,
-                parent: <span class="prelude-val">Some</span>(<a href="#420">parent_idx</a>),
+        </span><a class="self" href="#440">self</a>.nodes.<a href="unimap.rs.html#175-178">insert</a>(
+            <a href="#448">idx</a>,
+            <a href="#234-247">Node</a> {
+                tag: <a href="#442">new_tag</a>,
+                parent: <span class="prelude-val">Some</span>(<a href="#449">parent_idx</a>),
                 children: SmallVec::default(),
-                <a href="#414">default_initial_perm</a>,
-                debug_info: NodeDebugInfo::new(<a href="#413">new_tag</a>, <a href="#414">default_initial_perm</a>, <a href="#416">span</a>),
+                <a href="#443">default_initial_perm</a>,
+                debug_info: NodeDebugInfo::new(<a href="#442">new_tag</a>, <a href="#443">default_initial_perm</a>, <a href="#445">span</a>),
             },
         );
         <span class="comment">// Register new_tag as a child of parent_tag
-        </span><a class="self" href="#411">self</a>.nodes.<a href="unimap.rs.html#186-188">get_mut</a>(<a href="#420">parent_idx</a>).unwrap().children.push(<a href="#419">idx</a>);
+        </span><a class="self" href="#440">self</a>.nodes.<a href="unimap.rs.html#186-188">get_mut</a>(<a href="#449">parent_idx</a>).unwrap().children.push(<a href="#448">idx</a>);
         <span class="comment">// Initialize perms
-        </span><span class="kw">let </span>perm = LocationState::new(<a href="#414">default_initial_perm</a>).<a href="#63-66">with_access</a>();
+        </span><span class="kw">let </span>perm = LocationState::new(<a href="#443">default_initial_perm</a>).<a href="#67-70">with_access</a>();
         <span class="kw">for </span>(_perms_range, perms) <span class="kw">in </span><span class="self">self</span>.rperms.iter_mut(reborrow_range.start, reborrow_range.size)
         {
             perms.insert(idx, perm);
@@ -1308,15 +1282,15 @@
 }
 
 <span class="doccomment">/// Integration with the BorTag garbage collector
-</span><span class="kw">impl </span><a href="#178-200">Tree</a> {
+</span><span class="kw">impl </span><a href="#207-229">Tree</a> {
     <span class="kw">pub fn </span>remove_unreachable_tags(<span class="kw-2">&amp;mut </span><span class="self">self</span>, live_tags: <span class="kw-2">&amp;</span>FxHashSet&lt;<a href="../mod.rs.html#20">BorTag</a>&gt;) {
-        <span class="kw">let </span>root_is_needed = <a class="self" href="#561">self</a>.<a href="#584-621">keep_only_needed</a>(<a class="self" href="#561">self</a>.root, <a href="#561">live_tags</a>); <span class="comment">// root can&#39;t be removed
+        <span class="kw">let </span>root_is_needed = <a class="self" href="#590">self</a>.<a href="#613-650">keep_only_needed</a>(<a class="self" href="#590">self</a>.root, <a href="#590">live_tags</a>); <span class="comment">// root can&#39;t be removed
         </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(root_is_needed);
         <span class="comment">// Right after the GC runs is a good moment to check if we can
         // merge some adjacent ranges that were made equal by the removal of some
         // tags (this does not necessarily mean that they have identical internal representations,
         // see the `PartialEq` impl for `UniValMap`)
-        </span><a class="self" href="#561">self</a>.rperms.<a href="../../range_map.rs.html#224-239">merge_adjacent_thorough</a>();
+        </span><a class="self" href="#590">self</a>.rperms.<a href="../../range_map.rs.html#224-239">merge_adjacent_thorough</a>();
     }
 
     <span class="doccomment">/// Traverses the entire tree looking for useless tags.
@@ -1333,21 +1307,21 @@
     /// `child` to be a direct child of `root` then Writes to `child` are now permitted
     /// whereas they were not when `parent` was still there.
     </span><span class="kw">fn </span>keep_only_needed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <a href="unimap.rs.html#21-23">UniIndex</a>, live: <span class="kw-2">&amp;</span>FxHashSet&lt;<a href="../mod.rs.html#20">BorTag</a>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>node = <a class="self" href="#584">self</a>.nodes.<a href="unimap.rs.html#181-183">get</a>(<a href="#584">idx</a>).unwrap();
+        <span class="kw">let </span>node = <a class="self" href="#613">self</a>.nodes.<a href="unimap.rs.html#181-183">get</a>(<a href="#613">idx</a>).unwrap();
         <span class="comment">// FIXME: this function does a lot of cloning, a 2-pass approach is possibly
         // more efficient. It could consist of
         // 1. traverse the Tree, collect all useless tags in a Vec
         // 2. traverse the Vec, remove all tags previously selected
         // Bench it.
-        </span><span class="kw">let </span>children: SmallVec&lt;<span class="kw">_</span>&gt; = <a href="#585">node</a>
+        </span><span class="kw">let </span>children: SmallVec&lt;<span class="kw">_</span>&gt; = <a href="#614">node</a>
             .children
             .<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|child| <a class="self" href="#584">self</a>.<a href="#584-621">keep_only_needed</a>(<span class="kw-2">*</span><a href="#595">child</a>, <a href="#584">live</a>))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|child| <a class="self" href="#613">self</a>.<a href="#613-650">keep_only_needed</a>(<span class="kw-2">*</span><a href="#624">child</a>, <a href="#613">live</a>))
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <span class="kw">let </span>no_children = <a href="#591">children</a>.is_empty();
-        <span class="kw">let </span>node = <a class="self" href="#584">self</a>.nodes.<a href="unimap.rs.html#186-188">get_mut</a>(<a href="#584">idx</a>).unwrap();
-        <a href="#598">node</a>.children = <a href="#591">children</a>;
+        <span class="kw">let </span>no_children = <a href="#620">children</a>.is_empty();
+        <span class="kw">let </span>node = <a class="self" href="#613">self</a>.nodes.<a href="unimap.rs.html#186-188">get_mut</a>(<a href="#613">idx</a>).unwrap();
+        <a href="#627">node</a>.children = <a href="#620">children</a>;
         <span class="kw">if </span>!live.contains(<span class="kw-2">&amp;</span>node.tag) &amp;&amp; no_children {
             <span class="comment">// All of the children and this node are unreachable, delete this tag
             // from the tree (the children have already been deleted by recursive
@@ -1357,12 +1331,12 @@
             // (which are `self.nodes` and every range of `self.rperms`)
             // before we can safely apply `UniValMap::forget` to truly remove
             // the tag from the mapping.
-            </span><span class="kw">let </span>tag = <a href="#598">node</a>.tag;
-            <a class="self" href="#584">self</a>.nodes.<a href="unimap.rs.html#192-197">remove</a>(<a href="#584">idx</a>);
+            </span><span class="kw">let </span>tag = <a href="#627">node</a>.tag;
+            <a class="self" href="#613">self</a>.nodes.<a href="unimap.rs.html#192-197">remove</a>(<a href="#613">idx</a>);
             <span class="kw">for </span>(_perms_range, perms) <span class="kw">in </span><span class="self">self</span>.rperms.iter_mut_all() {
                 perms.remove(idx);
             }
-            <a class="self" href="#584">self</a>.tag_mapping.<a href="unimap.rs.html#150-154">remove</a>(<span class="kw-2">&amp;</span><a href="#609">tag</a>);
+            <a class="self" href="#613">self</a>.tag_mapping.<a href="unimap.rs.html#150-154">remove</a>(<span class="kw-2">&amp;</span><a href="#638">tag</a>);
             <span class="comment">// The tag has been deleted, inform the caller
             </span><span class="bool-val">false
         </span>} <span class="kw">else </span>{
@@ -1372,11 +1346,11 @@
     }
 }
 
-<span class="kw">impl </span><a href="../../tag_gc.rs.html#7-9">VisitTags</a> <span class="kw">for </span><a href="#178-200">Tree</a> {
+<span class="kw">impl </span><a href="../../tag_gc.rs.html#7-9">VisitTags</a> <span class="kw">for </span><a href="#207-229">Tree</a> {
     <span class="kw">fn </span>visit_tags(<span class="kw-2">&amp;</span><span class="self">self</span>, visit: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>FnMut(<a href="../mod.rs.html#20">BorTag</a>)) {
         <span class="comment">// To ensure that the root never gets removed, we visit it
         // (the `root` node of `Tree` is not an `Option&lt;_&gt;`)
-        </span><a href="#625">visit</a>(<a class="self" href="#625">self</a>.nodes.<a href="unimap.rs.html#181-183">get</a>(<a class="self" href="#625">self</a>.root).unwrap().tag)
+        </span><a href="#654">visit</a>(<a class="self" href="#654">self</a>.nodes.<a href="unimap.rs.html#181-183">get</a>(<a class="self" href="#654">self</a>.root).unwrap().tag)
     }
 }
 
@@ -1398,7 +1372,7 @@
     </span>DistantAccess,
 }
 
-<span class="kw">impl </span><a href="#634-648">AccessRelatedness</a> {
+<span class="kw">impl </span><a href="#663-677">AccessRelatedness</a> {
     <span class="doccomment">/// Check that access is either Ancestor or Distant, i.e. not
     /// a transitive child (initial pointer included).
     </span><span class="kw">pub fn </span>is_foreign(<span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
@@ -1409,94 +1383,10 @@
     /// for the child node. This function assumes that we propagate away from the initial
     /// access.
     </span><span class="kw">pub fn </span>for_child(<span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="kw">use </span><a href="#634-648">AccessRelatedness</a>::<span class="kw-2">*</span>;
-        <span class="kw">match </span><span class="self"><a href="#660">self</a> </span>{
-            <a href="#643">AncestorAccess</a> | <a href="#636">This</a> =&gt; <a href="#643">AncestorAccess</a>,
-            <a href="#640">StrictChildAccess</a> | <a href="#647">DistantAccess</a> =&gt; <a href="#647">DistantAccess</a>,
-        }
-    }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>commutation_tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">impl </span>LocationState {
-        <span class="kw">pub fn </span>all() -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="self">Self</span>&gt; {
-            <span class="comment">// We keep `latest_foreign_access` at `None` as that&#39;s just a cache.
-            </span>Permission::all().flat_map(|permission| {
-                [<span class="bool-val">false</span>, <span class="bool-val">true</span>].into_iter().map(<span class="kw">move </span>|initialized| {
-                    <span class="self">Self </span>{ permission, initialized, latest_foreign_access: <span class="prelude-val">None </span>}
-                })
-            })
-        }
-    }
-
-    <span class="attr">#[test]
-    #[rustfmt::skip]
-    </span><span class="comment">// Exhaustive check that for any starting configuration loc,
-    // for any two read accesses r1 and r2, if `loc + r1 + r2` is not UB
-    // and results in `loc&#39;`, then `loc + r2 + r1` is also not UB and results
-    // in the same final state `loc&#39;`.
-    // This lets us justify arbitrary read-read reorderings.
-    </span><span class="kw">fn </span>all_read_accesses_commute() {
-        <span class="kw">let </span>kind = AccessKind::Read;
-        <span class="comment">// Two of the four combinations of `AccessRelatedness` are trivial,
-        // but we might as well check them all.
-        </span><span class="kw">for </span>rel1 <span class="kw">in </span>AccessRelatedness::all() {
-            <span class="kw">for </span>rel2 <span class="kw">in </span>AccessRelatedness::all() {
-                <span class="comment">// Any protector state works, but we can&#39;t move reads across function boundaries
-                // so the two read accesses occur under the same protector.
-                </span><span class="kw">for </span><span class="kw-2">&amp;</span>protected <span class="kw">in </span><span class="kw-2">&amp;</span>[<span class="bool-val">true</span>, <span class="bool-val">false</span>] {
-                    <span class="kw">for </span>loc <span class="kw">in </span>LocationState::all() {
-                        <span class="comment">// Apply 1 then 2. Failure here means that there is UB in the source
-                        // and we skip the check in the target.
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>loc12 = loc;
-                        <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = loc12.perform_access(kind, rel1, protected) <span class="kw">else </span>{ <span class="kw">continue </span>};
-                        <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = loc12.perform_access(kind, rel2, protected) <span class="kw">else </span>{ <span class="kw">continue </span>};
-
-                        <span class="comment">// If 1 followed by 2 succeeded, then 2 followed by 1 must also succeed...
-                        </span><span class="kw">let </span><span class="kw-2">mut </span>loc21 = loc;
-                        loc21.perform_access(kind, rel2, protected).unwrap();
-                        loc21.perform_access(kind, rel1, protected).unwrap();
-
-                        <span class="comment">// ... and produce the same final result.
-                        </span><span class="macro">assert_eq!</span>(
-                            loc12, loc21,
-                            <span class="string">&quot;Read accesses {:?} followed by {:?} do not commute !&quot;</span>,
-                            rel1, rel2
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    <span class="attr">#[test]
-    #[rustfmt::skip]
-    </span><span class="comment">// Ensure that of 2 accesses happen, one foreign and one a child, and we are protected, that we
-    // get UB unless they are both reads.
-    </span><span class="kw">fn </span>protected_enforces_noalias() {
-        <span class="kw">for </span>rel1 <span class="kw">in </span>AccessRelatedness::all() {
-            <span class="kw">for </span>rel2 <span class="kw">in </span>AccessRelatedness::all() {
-                <span class="kw">if </span>rel1.is_foreign() == rel2.is_foreign() {
-                    <span class="comment">// We want to check pairs of accesses where one is foreign and one is not.
-                    </span><span class="kw">continue</span>;
-                }
-                <span class="kw">for </span>kind1 <span class="kw">in </span>AccessKind::all() {
-                    <span class="kw">for </span>kind2 <span class="kw">in </span>AccessKind::all() {
-                        <span class="kw">for </span><span class="kw-2">mut </span>state <span class="kw">in </span>LocationState::all() {
-                            <span class="kw">let </span>protected = <span class="bool-val">true</span>;
-                            <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = state.perform_access(kind1, rel1, protected) <span class="kw">else </span>{ <span class="kw">continue </span>};
-                            <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) = state.perform_access(kind2, rel2, protected) <span class="kw">else </span>{ <span class="kw">continue </span>};
-                            <span class="comment">// If these were both allowed, it must have been two reads.
-                            </span><span class="macro">assert!</span>(
-                                kind1 == AccessKind::Read &amp;&amp; kind2 == AccessKind::Read,
-                                <span class="string">&quot;failed to enforce noalias between two accesses that are not both reads&quot;
-                            </span>);
-                        }
-                    }
-                }
-            }
+        <span class="kw">use </span><a href="#663-677">AccessRelatedness</a>::<span class="kw-2">*</span>;
+        <span class="kw">match </span><span class="self"><a href="#689">self</a> </span>{
+            <a href="#672">AncestorAccess</a> | <a href="#665">This</a> =&gt; <a href="#672">AncestorAccess</a>,
+            <a href="#669">StrictChildAccess</a> | <a href="#676">DistantAccess</a> =&gt; <a href="#676">DistantAccess</a>,
         }
     }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/solve/project_goals.rs`."><title>project_goals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/solve/project_goals.rs`."><title>project_goals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -634,7 +634,6 @@
 <a href="#634" id="634">634</a>
 <a href="#635" id="635">635</a>
 <a href="#636" id="636">636</a>
-<a href="#637" id="637">637</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::traits::{<a href="../traits/util.rs.html#311-349">check_args_compatible</a>, <a href="../traits/specialize/mod.rs.html#12">specialization_graph</a>};
 
 <span class="kw">use </span><span class="kw">super</span>::assembly::{<a class="self" href="mod.rs.html#31">self</a>, <a href="assembly/mod.rs.html#20">structural_traits</a>};
@@ -696,7 +695,7 @@
             }
             DefKind::AnonConst =&gt; <span class="self">self</span>.normalize_anon_const(goal),
             DefKind::OpaqueTy =&gt; <span class="self">self</span>.normalize_opaque_type(goal),
-            DefKind::TyAlias { .. } =&gt; <span class="self">self</span>.normalize_weak_type(goal),
+            DefKind::TyAlias =&gt; <span class="self">self</span>.normalize_weak_type(goal),
             kind =&gt; <span class="macro">bug!</span>(<span class="string">&quot;unknown DefKind {} in projection goal: {goal:#?}&quot;</span>, kind.descr(def_id)),
         }
     }
@@ -750,16 +749,16 @@
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(projection_pred) = <a href="#111">assumption</a>.as_projection_clause() {
             <span class="kw">if </span>projection_pred.projection_def_id() == goal.predicate.def_id() {
-                <span class="kw">let </span>tcx = <a href="#109">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+                <span class="kw">let </span>tcx = <a href="#109">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
                 <a href="#109">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;assumption&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
                     <span class="kw">let </span>assumption_projection_pred =
-                        <a href="#117">ecx</a>.<a href="eval_ctxt.rs.html#790-799">instantiate_binder_with_infer</a>(<a href="#114">projection_pred</a>);
+                        <a href="#117">ecx</a>.<a href="eval_ctxt.rs.html#791-800">instantiate_binder_with_infer</a>(<a href="#114">projection_pred</a>);
                     ecx.eq(
                         goal.param_env,
                         goal.predicate.projection_ty,
                         assumption_projection_pred.projection_ty,
                     )<span class="question-mark">?</span>;
-                    <a href="#117">ecx</a>.<a href="eval_ctxt.rs.html#728">eq</a>(<a href="#110">goal</a>.param_env, <a href="#110">goal</a>.predicate.term, <a href="#118">assumption_projection_pred</a>.term)
+                    <a href="#117">ecx</a>.<a href="eval_ctxt.rs.html#729">eq</a>(<a href="#110">goal</a>.param_env, <a href="#110">goal</a>.predicate.term, <a href="#118">assumption_projection_pred</a>.term)
                         .expect(<span class="string">&quot;expected goal term to be fully unconstrained&quot;</span>);
 
                     <span class="comment">// Add GAT where clauses from the trait&#39;s definition
@@ -784,7 +783,7 @@
         goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, ProjectionPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         impl_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a href="#146">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a href="#146">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
 
         <span class="kw">let </span>goal_trait_ref = <a href="#147">goal</a>.predicate.projection_ty.trait_ref(<a href="#150">tcx</a>);
         <span class="kw">let </span>impl_trait_ref = <a href="#150">tcx</a>.impl_trait_ref(<a href="#148">impl_def_id</a>).unwrap();
@@ -794,7 +793,7 @@
         }
 
         <a href="#146">ecx</a>.<a href="eval_ctxt/probe.rs.html#69-87">probe_trait_candidate</a>(CandidateSource::Impl(<a href="#148">impl_def_id</a>)).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
-            <span class="kw">let </span>impl_args = <a href="#159">ecx</a>.<a href="eval_ctxt.rs.html#815-817">fresh_args_for_item</a>(<a href="#148">impl_def_id</a>);
+            <span class="kw">let </span>impl_args = <a href="#159">ecx</a>.<a href="eval_ctxt.rs.html#816-818">fresh_args_for_item</a>(<a href="#148">impl_def_id</a>);
             <span class="kw">let </span>impl_trait_ref = <a href="#153">impl_trait_ref</a>.instantiate(<a href="#150">tcx</a>, <a href="#160">impl_args</a>);
 
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)<span class="question-mark">?</span>;
@@ -825,7 +824,7 @@
                 impl_def_id,
             )<span class="question-mark">?
             </span><span class="kw">else </span>{
-                <span class="kw">return </span><a href="#159">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
+                <span class="kw">return </span><a href="#159">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
             };
 
             <span class="kw">let </span>error_response = |ecx: <span class="kw-2">&amp;mut </span>EvalCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;, reason| {
@@ -841,9 +840,9 @@
                     ty::AssocKind::Type =&gt; Ty::new_error(<a href="#150">tcx</a>, <a href="#195">guar</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
                     ty::AssocKind::Fn =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                 };
-                <a href="#194">ecx</a>.<a href="eval_ctxt.rs.html#728">eq</a>(<a href="#147">goal</a>.param_env, <a href="#147">goal</a>.predicate.term, <a href="#196">error_term</a>)
+                <a href="#194">ecx</a>.<a href="eval_ctxt.rs.html#729">eq</a>(<a href="#147">goal</a>.param_env, <a href="#147">goal</a>.predicate.term, <a href="#196">error_term</a>)
                     .expect(<span class="string">&quot;expected goal term to be fully unconstrained&quot;</span>);
-                <a href="#194">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+                <a href="#194">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
             };
 
             <span class="kw">if </span>!assoc_def.item.defaultness(tcx).has_value() {
@@ -865,7 +864,7 @@
                 <a href="#152">goal_trait_ref</a>.def_id,
                 <a href="#160">impl_args</a>,
             );
-            <span class="kw">let </span>args = <a href="#159">ecx</a>.<a href="eval_ctxt.rs.html#819-827">translate_args</a>(
+            <span class="kw">let </span>args = <a href="#159">ecx</a>.<a href="eval_ctxt.rs.html#820-828">translate_args</a>(
                 <a href="#147">goal</a>.param_env,
                 <a href="#148">impl_def_id</a>,
                 <a href="#226">impl_args_with_gat</a>,
@@ -900,9 +899,9 @@
                 ty::AssocKind::Fn =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;we should never project to a fn&quot;</span>),
             };
 
-            <a href="#159">ecx</a>.<a href="eval_ctxt.rs.html#728">eq</a>(<a href="#147">goal</a>.param_env, <a href="#147">goal</a>.predicate.term, <a href="#246">term</a>.instantiate(<a href="#150">tcx</a>, <a href="#231">args</a>))
+            <a href="#159">ecx</a>.<a href="eval_ctxt.rs.html#729">eq</a>(<a href="#147">goal</a>.param_env, <a href="#147">goal</a>.predicate.term, <a href="#246">term</a>.instantiate(<a href="#150">tcx</a>, <a href="#231">args</a>))
                 .expect(<span class="string">&quot;expected goal term to be fully unconstrained&quot;</span>);
-            <a href="#159">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#159">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         })
     }
 
@@ -919,8 +918,8 @@
         ecx: <span class="kw-2">&amp;mut </span>EvalCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt;,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#282">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>().sess.delay_span_bug(
-            <a href="#282">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>().def_span(<a href="#283">goal</a>.predicate.def_id()),
+        <a href="#282">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>().sess.delay_span_bug(
+            <a href="#282">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>().def_span(<a href="#283">goal</a>.predicate.def_id()),
             <span class="string">&quot;associated types not allowed on auto traits&quot;</span>,
         );
         <span class="prelude-val">Err</span>(NoSolution)
@@ -966,7 +965,7 @@
         goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt;,
         goal_kind: <a href="../../../rustc_middle/ty/closure/enum.ClosureKind.html">ty::ClosureKind</a>,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a href="#328">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a href="#328">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">let </span>tupled_inputs_and_output =
             <span class="kw">match </span>structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
@@ -976,7 +975,7 @@
                 <span class="prelude-val">Some</span>(tupled_inputs_and_output) =&gt; <a href="#339">tupled_inputs_and_output</a>,
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="kw">return </span><a href="#328">ecx</a>
-                        .<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
+                        .<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
                 }
             };
         <span class="kw">let </span>output_is_sized_pred = <a href="#333">tupled_inputs_and_output</a>.map_bound(|(<span class="kw">_</span>, output)| {
@@ -990,6 +989,7 @@
                 term: <a href="#350">output</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
             })
             .<a href="../../../rustc_middle/ty/trait.ToPredicate.html">to_predicate</a>(<a href="#332">tcx</a>);
+
         <span class="comment">// A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         </span><span class="self">Self</span>::consider_implied_clause(<a href="#328">ecx</a>, <a href="#329">goal</a>, <a href="#349">pred</a>, [<a href="#329">goal</a>.with(<a href="#332">tcx</a>, <a href="#345">output_is_sized_pred</a>)])
@@ -1006,9 +1006,9 @@
         ecx: <span class="kw-2">&amp;mut </span>EvalCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt;,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a href="#369">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
-        <a href="#369">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;builtin pointee&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
-            <span class="kw">let </span>metadata_ty = <span class="kw">match </span><a href="#370">goal</a>.predicate.self_ty().kind() {
+        <span class="kw">let </span>tcx = <a href="#370">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
+        <a href="#370">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;builtin pointee&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
+            <span class="kw">let </span>metadata_ty = <span class="kw">match </span><a href="#371">goal</a>.predicate.self_ty().kind() {
                 ty::Bool
                 | ty::Char
                 | ty::Int(..)
@@ -1023,49 +1023,48 @@
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
                 | ty::Generator(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
-                | ty::Foreign(..) =&gt; <a href="#372">tcx</a>.types.unit,
+                | ty::Foreign(..) =&gt; <a href="#373">tcx</a>.types.unit,
 
-                ty::Error(e) =&gt; Ty::new_error(<a href="#372">tcx</a>, <span class="kw-2">*</span><a href="#393">e</a>),
+                ty::Error(e) =&gt; Ty::new_error(<a href="#373">tcx</a>, <span class="kw-2">*</span><a href="#393">e</a>),
 
-                ty::Str | ty::Slice(<span class="kw">_</span>) =&gt; <a href="#372">tcx</a>.types.usize,
+                ty::Str | ty::Slice(<span class="kw">_</span>) =&gt; <a href="#373">tcx</a>.types.usize,
 
                 ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                    <span class="kw">let </span>dyn_metadata = <a href="#372">tcx</a>.require_lang_item(LangItem::DynMetadata, <span class="prelude-val">None</span>);
-                    <a href="#372">tcx</a>.type_of(<a href="#398">dyn_metadata</a>)
-                        .instantiate(<a href="#372">tcx</a>, <span class="kw-2">&amp;</span>[ty::GenericArg::from(<a href="#370">goal</a>.predicate.self_ty())])
+                    <span class="kw">let </span>dyn_metadata = <a href="#373">tcx</a>.require_lang_item(LangItem::DynMetadata, <span class="prelude-val">None</span>);
+                    <a href="#373">tcx</a>.type_of(<a href="#398">dyn_metadata</a>)
+                        .instantiate(<a href="#373">tcx</a>, <span class="kw-2">&amp;</span>[ty::GenericArg::from(<a href="#371">goal</a>.predicate.self_ty())])
                 }
 
                 ty::Alias(<span class="kw">_</span>, <span class="kw">_</span>) | ty::Param(<span class="kw">_</span>) | ty::Placeholder(..) =&gt; {
                     <span class="comment">// FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
                     </span><span class="kw">let </span>sized_predicate = ty::TraitRef::from_lang_item(
-                        <a href="#372">tcx</a>,
+                        <a href="#373">tcx</a>,
                         LangItem::Sized,
                         <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>,
-                        [ty::GenericArg::from(<a href="#370">goal</a>.predicate.self_ty())],
+                        [ty::GenericArg::from(<a href="#371">goal</a>.predicate.self_ty())],
                     );
-                    <a href="#373">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#370">goal</a>.with(<a href="#372">tcx</a>, <a href="#405">sized_predicate</a>));
-                    <a href="#372">tcx</a>.types.unit
+                    <a href="#374">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#371">goal</a>.with(<a href="#373">tcx</a>, <a href="#405">sized_predicate</a>));
+                    <a href="#373">tcx</a>.types.unit
                 }
 
                 ty::Adt(def, args) <span class="kw">if </span><a href="#415">def</a>.is_struct() =&gt; <span class="kw">match </span><a href="#415">def</a>.non_enum_variant().tail_opt() {
-                    <span class="prelude-val">None </span>=&gt; <a href="#372">tcx</a>.types.unit,
+                    <span class="prelude-val">None </span>=&gt; <a href="#373">tcx</a>.types.unit,
                     <span class="prelude-val">Some</span>(field_def) =&gt; {
-                        <span class="kw">let </span>self_ty = <a href="#417">field_def</a>.ty(<a href="#372">tcx</a>, <a href="#415">args</a>);
-                        <a href="#373">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#370">goal</a>.with(<a href="#372">tcx</a>, <a href="#370">goal</a>.predicate.with_self_ty(<a href="#372">tcx</a>, <a href="#418">self_ty</a>)));
-                        <span class="kw">return </span><a href="#373">ecx</a>
-                            .<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes);
+                        <span class="kw">let </span>self_ty = <a href="#417">field_def</a>.ty(<a href="#373">tcx</a>, <a href="#415">args</a>);
+                        <a href="#374">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#371">goal</a>.with(<a href="#373">tcx</a>, <a href="#371">goal</a>.predicate.with_self_ty(<a href="#373">tcx</a>, <a href="#418">self_ty</a>)));
+                        <span class="kw">return </span><a href="#374">ecx</a>
+                            .<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes);
                     }
                 },
-                ty::Adt(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <a href="#372">tcx</a>.types.unit,
+                ty::Adt(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <a href="#373">tcx</a>.types.unit,
 
                 ty::Tuple(elements) =&gt; <span class="kw">match </span><a href="#426">elements</a>.last() {
-                    <span class="prelude-val">None </span>=&gt; <a href="#372">tcx</a>.types.unit,
+                    <span class="prelude-val">None </span>=&gt; <a href="#373">tcx</a>.types.unit,
                     <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>self_ty) =&gt; {
-                        <a href="#373">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#370">goal</a>.with(<a href="#372">tcx</a>, <a href="#370">goal</a>.predicate.with_self_ty(<a href="#372">tcx</a>, <a href="#428">self_ty</a>)));
-                        <span class="kw">return </span><a href="#373">ecx</a>
-                            .<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes);
+                        <a href="#374">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#371">goal</a>.with(<a href="#373">tcx</a>, <a href="#371">goal</a>.predicate.with_self_ty(<a href="#373">tcx</a>, <a href="#428">self_ty</a>)));
+                        <span class="kw">return </span><a href="#374">ecx</a>
+                            .<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes);
                     }
                 },
 
@@ -1078,9 +1077,9 @@
                 ),
             };
 
-            <a href="#373">ecx</a>.<a href="eval_ctxt.rs.html#728">eq</a>(<a href="#370">goal</a>.param_env, <a href="#370">goal</a>.predicate.term, <a href="#374">metadata_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+            <a href="#374">ecx</a>.<a href="eval_ctxt.rs.html#729">eq</a>(<a href="#371">goal</a>.param_env, <a href="#371">goal</a>.predicate.term, <a href="#375">metadata_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
                 .expect(<span class="string">&quot;expected goal term to be fully unconstrained&quot;</span>);
-            <a href="#373">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#374">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         })
     }
 
@@ -1094,7 +1093,7 @@
         };
 
         <span class="comment">// Generators are not futures unless they come from `async` desugaring
-        </span><span class="kw">let </span>tcx = <a href="#451">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        </span><span class="kw">let </span>tcx = <a href="#451">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">if </span>!tcx.generator_is_async(def_id) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
@@ -1105,7 +1104,7 @@
             <a href="#451">ecx</a>,
             <a href="#452">goal</a>,
             <a href="../../../rustc_middle/ty/struct.ProjectionPredicate.html">ty::ProjectionPredicate</a> {
-                projection_ty: <a href="#451">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>().mk_alias_ty(<a href="#452">goal</a>.predicate.def_id(), [<a href="#454">self_ty</a>]),
+                projection_ty: <a href="#451">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>().mk_alias_ty(<a href="#452">goal</a>.predicate.def_id(), [<a href="#454">self_ty</a>]),
                 <a href="#465">term</a>,
             }
             .<a href="../../../rustc_middle/ty/trait.ToPredicate.html">to_predicate</a>(<a href="#460">tcx</a>),
@@ -1125,7 +1124,7 @@
         };
 
         <span class="comment">// `async`-desugared generators do not implement the generator trait
-        </span><span class="kw">let </span>tcx = <a href="#482">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        </span><span class="kw">let </span>tcx = <a href="#482">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">if </span>tcx.generator_is_async(def_id) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
@@ -1146,7 +1145,7 @@
             <a href="#483">goal</a>,
             <a href="../../../rustc_middle/ty/struct.ProjectionPredicate.html">ty::ProjectionPredicate</a> {
                 projection_ty: <a href="#482">ecx</a>
-                    .<a href="eval_ctxt.rs.html#627-629">tcx</a>()
+                    .<a href="eval_ctxt.rs.html#628-630">tcx</a>()
                     .mk_alias_ty(<a href="#483">goal</a>.predicate.def_id(), [<a href="#485">self_ty</a>, <a href="#496">generator</a>.resume_ty()]),
                 <a href="#499">term</a>,
             }
@@ -1191,7 +1190,6 @@
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1199,7 +1197,7 @@
             | ty::Slice(<span class="kw">_</span>)
             | ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
             | ty::Tuple(<span class="kw">_</span>)
-            | ty::Error(<span class="kw">_</span>) =&gt; <a href="#541">self_ty</a>.discriminant_ty(<a href="#538">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>()),
+            | ty::Error(<span class="kw">_</span>) =&gt; <a href="#541">self_ty</a>.discriminant_ty(<a href="#538">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>()),
 
             <span class="comment">// We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `&lt;self_ty as DiscriminantKind&gt;::Discriminant`
@@ -1217,9 +1215,9 @@
         };
 
         <a href="#538">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;builtin discriminant kind&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
-            <a href="#582">ecx</a>.<a href="eval_ctxt.rs.html#728">eq</a>(<a href="#539">goal</a>.param_env, <a href="#539">goal</a>.predicate.term, <a href="#542">discriminant_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+            <a href="#581">ecx</a>.<a href="eval_ctxt.rs.html#729">eq</a>(<a href="#539">goal</a>.param_env, <a href="#539">goal</a>.predicate.term, <a href="#542">discriminant_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
                 .expect(<span class="string">&quot;expected goal term to be fully unconstrained&quot;</span>);
-            <a href="#582">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#581">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         })
     }
 

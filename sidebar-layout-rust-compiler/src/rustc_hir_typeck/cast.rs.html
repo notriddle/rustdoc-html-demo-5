@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/cast.rs`."><title>cast.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/cast.rs`."><title>cast.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1060,8 +1060,8 @@
 
 </span><span class="kw">use </span><a href="fn_ctxt/mod.rs.html#40-114"><span class="kw">super</span>::FnCtxt</a>;
 
-<span class="kw">use </span><a href="lib.rs.html#27"><span class="kw">crate</span>::errors</a>;
-<span class="kw">use </span><a href="lib.rs.html#79-89"><span class="kw">crate</span>::type_error_struct</a>;
+<span class="kw">use </span><a href="lib.rs.html#26"><span class="kw">crate</span>::errors</a>;
+<span class="kw">use </span><a href="lib.rs.html#77-87"><span class="kw">crate</span>::type_error_struct</a>;
 <span class="kw">use </span><a href="../../rustc_hir/hir/enum.ExprKind.html">hir::ExprKind</a>;
 <span class="kw">use </span>rustc_errors::{<a href="../../rustc_lint_defs/enum.Applicability.html">Applicability</a>, <a href="../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>, <a href="../../rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html">DiagnosticBuilder</a>, <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>};
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
@@ -1159,7 +1159,6 @@
             | ty::Float(<span class="kw">_</span>)
             | ty::Array(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::RawPtr(<span class="kw">_</span>)
             | ty::Ref(..)
             | ty::FnDef(..)
@@ -1174,7 +1173,7 @@
                     </span>.tcx
                     .sess
                     .delay_span_bug(<a href="#91">span</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{t:?}` should be sized but is not?&quot;</span>));
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#143">reported</a>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#142">reported</a>);
             }
         })
     }
@@ -1206,9 +1205,9 @@
     ForeignNonExhaustiveAdt,
 }
 
-<span class="kw">impl </span>From&lt;<a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; <span class="kw">for </span><a href="#154-177">CastError</a> {
+<span class="kw">impl </span>From&lt;<a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; <span class="kw">for </span><a href="#153-176">CastError</a> {
     <span class="kw">fn </span>from(err: <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>) -&gt; <span class="self">Self </span>{
-        <a href="#155">CastError::ErrorGuaranteed</a>(<a href="#180">err</a>)
+        <a href="#154">CastError::ErrorGuaranteed</a>(<a href="#179">err</a>)
     }
 }
 
@@ -1219,7 +1218,7 @@
     cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; DiagnosticBuilder&lt;<span class="lifetime">&#39;a</span>, <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
-    <a class="macro" href="lib.rs.html#79-89">type_error_struct!</a>(
+    <a class="macro" href="lib.rs.html#77-87">type_error_struct!</a>(
         sess,
         span,
         expr_ty,
@@ -1240,64 +1239,64 @@
         span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         constness: <a href="../../rustc_hir/hir/enum.Constness.html">hir::Constness</a>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CastCheck&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
-        <span class="kw">let </span>expr_span = <a href="#206">expr</a>.span.find_ancestor_inside(<a href="#210">span</a>).unwrap_or(<a href="#206">expr</a>.span);
-        <span class="kw">let </span>check = <a href="#54-66">CastCheck</a> { <a href="#206">expr</a>, <a href="#207">expr_ty</a>, <a href="#213">expr_span</a>, <a href="#208">cast_ty</a>, <a href="#209">cast_span</a>, <a href="#210">span</a>, <a href="#211">constness</a> };
+        <span class="kw">let </span>expr_span = <a href="#205">expr</a>.span.find_ancestor_inside(<a href="#209">span</a>).unwrap_or(<a href="#205">expr</a>.span);
+        <span class="kw">let </span>check = <a href="#54-66">CastCheck</a> { <a href="#205">expr</a>, <a href="#206">expr_ty</a>, <a href="#212">expr_span</a>, <a href="#207">cast_ty</a>, <a href="#208">cast_span</a>, <a href="#209">span</a>, <a href="#210">constness</a> };
 
         <span class="comment">// For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
         // inference is more completely known.
-        </span><span class="kw">match </span><a href="#208">cast_ty</a>.kind() {
+        </span><span class="kw">match </span><a href="#207">cast_ty</a>.kind() {
             ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::Dyn) | ty::Slice(..) =&gt; {
-                <span class="prelude-val">Err</span>(<a href="#214">check</a>.<a href="#566-631">report_cast_to_unsized_type</a>(<a href="#205">fcx</a>))
+                <span class="prelude-val">Err</span>(<a href="#213">check</a>.<a href="#565-630">report_cast_to_unsized_type</a>(<a href="#204">fcx</a>))
             }
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<a href="#214">check</a>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(<a href="#213">check</a>),
         }
     }
 
-    <span class="kw">fn </span>report_cast_error(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;, e: <a href="#154-177">CastError</a>) {
-        <span class="kw">match </span><a href="#227">e</a> {
-            <a href="#155">CastError::ErrorGuaranteed</a>(<span class="kw">_</span>) =&gt; {
+    <span class="kw">fn </span>report_cast_error(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;, e: <a href="#153-176">CastError</a>) {
+        <span class="kw">match </span><a href="#226">e</a> {
+            <a href="#154">CastError::ErrorGuaranteed</a>(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// an error has already been reported
             </span>}
-            <a href="#163">CastError::NeedDeref</a> =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#185-201">make_invalid_casting_error</a>(
-                    <a href="#227">fcx</a>.tcx.sess,
-                    <a class="self" href="#227">self</a>.span,
-                    <a class="self" href="#227">self</a>.expr_ty,
-                    <a class="self" href="#227">self</a>.cast_ty,
-                    <a href="#227">fcx</a>,
+            <a href="#162">CastError::NeedDeref</a> =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#184-200">make_invalid_casting_error</a>(
+                    <a href="#226">fcx</a>.tcx.sess,
+                    <a class="self" href="#226">self</a>.span,
+                    <a class="self" href="#226">self</a>.expr_ty,
+                    <a class="self" href="#226">self</a>.cast_ty,
+                    <a href="#226">fcx</a>,
                 );
 
                 <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(<span class="self">self</span>.expr.kind, ExprKind::AddrOf(..)) {
                     <span class="comment">// get just the borrow part of the expression
-                    </span><span class="kw">let </span>span = <a class="self" href="#227">self</a>.expr_span.with_hi(<a class="self" href="#227">self</a>.expr.peel_borrows().span.lo());
-                    <a href="#233">err</a>.span_suggestion_verbose(
-                        <a href="#243">span</a>,
+                    </span><span class="kw">let </span>span = <a class="self" href="#226">self</a>.expr_span.with_hi(<a class="self" href="#226">self</a>.expr.peel_borrows().span.lo());
+                    <a href="#232">err</a>.span_suggestion_verbose(
+                        <a href="#242">span</a>,
                         <span class="string">&quot;remove the unneeded borrow&quot;</span>,
                         <span class="string">&quot;&quot;</span>,
                         Applicability::MachineApplicable,
                     );
                 } <span class="kw">else </span>{
-                    <a href="#233">err</a>.span_suggestion_verbose(
-                        <a class="self" href="#227">self</a>.expr_span.shrink_to_lo(),
+                    <a href="#232">err</a>.span_suggestion_verbose(
+                        <a class="self" href="#226">self</a>.expr_span.shrink_to_lo(),
                         <span class="string">&quot;dereference the expression&quot;</span>,
                         <span class="string">&quot;*&quot;</span>,
                         Applicability::MachineApplicable,
                     );
                 }
 
-                <a href="#233">err</a>.emit();
+                <a href="#232">err</a>.emit();
             }
-            <a href="#165">CastError::NeedViaThinPtr</a> | <a href="#164">CastError::NeedViaPtr</a> =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#185-201">make_invalid_casting_error</a>(
-                    <a href="#227">fcx</a>.tcx.sess,
-                    <a class="self" href="#227">self</a>.span,
-                    <a class="self" href="#227">self</a>.expr_ty,
-                    <a class="self" href="#227">self</a>.cast_ty,
-                    <a href="#227">fcx</a>,
+            <a href="#164">CastError::NeedViaThinPtr</a> | <a href="#163">CastError::NeedViaPtr</a> =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#184-200">make_invalid_casting_error</a>(
+                    <a href="#226">fcx</a>.tcx.sess,
+                    <a class="self" href="#226">self</a>.span,
+                    <a class="self" href="#226">self</a>.expr_ty,
+                    <a class="self" href="#226">self</a>.cast_ty,
+                    <a href="#226">fcx</a>,
                 );
                 <span class="kw">if </span><span class="self">self</span>.cast_ty.is_integral() {
-                    <a href="#262">err</a>.help(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
+                    <a href="#261">err</a>.help(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                         <span class="string">&quot;cast through {} first&quot;</span>,
                         <span class="kw">match </span>e {
                             CastError::NeedViaPtr =&gt; <span class="string">&quot;a raw pointer&quot;</span>,
@@ -1307,17 +1306,17 @@
                     ));
                 }
 
-                <a class="self" href="#227">self</a>.<a href="#1004-1029">try_suggest_collection_to_bool</a>(<a href="#227">fcx</a>, <span class="kw-2">&amp;mut </span><a href="#262">err</a>);
+                <a class="self" href="#226">self</a>.<a href="#1004-1029">try_suggest_collection_to_bool</a>(<a href="#226">fcx</a>, <span class="kw-2">&amp;mut </span><a href="#261">err</a>);
 
-                <a href="#262">err</a>.emit();
+                <a href="#261">err</a>.emit();
             }
-            <a href="#166">CastError::NeedViaInt</a> =&gt; {
-                <a href="#185-201">make_invalid_casting_error</a>(
-                    <a href="#227">fcx</a>.tcx.sess,
-                    <a class="self" href="#227">self</a>.span,
-                    <a class="self" href="#227">self</a>.expr_ty,
-                    <a class="self" href="#227">self</a>.cast_ty,
-                    <a href="#227">fcx</a>,
+            <a href="#165">CastError::NeedViaInt</a> =&gt; {
+                <a href="#184-200">make_invalid_casting_error</a>(
+                    <a href="#226">fcx</a>.tcx.sess,
+                    <a class="self" href="#226">self</a>.span,
+                    <a class="self" href="#226">self</a>.expr_ty,
+                    <a class="self" href="#226">self</a>.cast_ty,
+                    <a href="#226">fcx</a>,
                 )
                 .help(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                     <span class="string">&quot;cast through {} first&quot;</span>,
@@ -1328,40 +1327,40 @@
                 ))
                 .emit();
             }
-            <a href="#162">CastError::IllegalCast</a> =&gt; {
-                <a href="#185-201">make_invalid_casting_error</a>(
-                    <a href="#227">fcx</a>.tcx.sess,
-                    <a class="self" href="#227">self</a>.span,
-                    <a class="self" href="#227">self</a>.expr_ty,
-                    <a class="self" href="#227">self</a>.cast_ty,
-                    <a href="#227">fcx</a>,
+            <a href="#161">CastError::IllegalCast</a> =&gt; {
+                <a href="#184-200">make_invalid_casting_error</a>(
+                    <a href="#226">fcx</a>.tcx.sess,
+                    <a class="self" href="#226">self</a>.span,
+                    <a class="self" href="#226">self</a>.expr_ty,
+                    <a class="self" href="#226">self</a>.cast_ty,
+                    <a href="#226">fcx</a>,
                 )
                 .emit();
             }
-            <a href="#159">CastError::DifferingKinds</a> =&gt; {
-                <a href="#185-201">make_invalid_casting_error</a>(
-                    <a href="#227">fcx</a>.tcx.sess,
-                    <a class="self" href="#227">self</a>.span,
-                    <a class="self" href="#227">self</a>.expr_ty,
-                    <a class="self" href="#227">self</a>.cast_ty,
-                    <a href="#227">fcx</a>,
+            <a href="#158">CastError::DifferingKinds</a> =&gt; {
+                <a href="#184-200">make_invalid_casting_error</a>(
+                    <a href="#226">fcx</a>.tcx.sess,
+                    <a class="self" href="#226">self</a>.span,
+                    <a class="self" href="#226">self</a>.expr_ty,
+                    <a class="self" href="#226">self</a>.cast_ty,
+                    <a href="#226">fcx</a>,
                 )
                 .note(<span class="string">&quot;vtable kinds may not match&quot;</span>)
                 .emit();
             }
-            <a href="#157">CastError::CastToBool</a> =&gt; {
-                <span class="kw">let </span>expr_ty = <a href="#227">fcx</a>.resolve_vars_if_possible(<a class="self" href="#227">self</a>.expr_ty);
+            <a href="#156">CastError::CastToBool</a> =&gt; {
+                <span class="kw">let </span>expr_ty = <a href="#226">fcx</a>.resolve_vars_if_possible(<a class="self" href="#226">self</a>.expr_ty);
                 <span class="kw">let </span>help = <span class="kw">if </span><span class="self">self</span>.expr_ty.is_numeric() {
-                    <a href="errors.rs.html#630">errors::CannotCastToBoolHelp::Numeric</a>(
-                        <a class="self" href="#227">self</a>.expr_span.shrink_to_hi().with_hi(<a class="self" href="#227">self</a>.span.hi()),
+                    <a href="errors.rs.html#597">errors::CannotCastToBoolHelp::Numeric</a>(
+                        <a class="self" href="#226">self</a>.expr_span.shrink_to_hi().with_hi(<a class="self" href="#226">self</a>.span.hi()),
                     )
                 } <span class="kw">else </span>{
-                    <a href="errors.rs.html#632">errors::CannotCastToBoolHelp::Unsupported</a>(<a class="self" href="#227">self</a>.span)
+                    <a href="errors.rs.html#599">errors::CannotCastToBoolHelp::Unsupported</a>(<a class="self" href="#226">self</a>.span)
                 };
-                <a href="#227">fcx</a>.tcx.sess.emit_err(<a href="errors.rs.html#569-575">errors::CannotCastToBool</a> { span: <a class="self" href="#227">self</a>.span, <a href="#323">expr_ty</a>, <a href="#324">help</a> });
+                <a href="#226">fcx</a>.tcx.sess.emit_err(<a href="errors.rs.html#536-542">errors::CannotCastToBool</a> { span: <a class="self" href="#226">self</a>.span, <a href="#322">expr_ty</a>, <a href="#323">help</a> });
             }
-            <a href="#158">CastError::CastToChar</a> =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="lib.rs.html#79-89">type_error_struct!</a>(
+            <a href="#157">CastError::CastToChar</a> =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="lib.rs.html#77-87">type_error_struct!</a>(
                     fcx.tcx.sess,
                     <span class="self">self</span>.span,
                     <span class="self">self</span>.expr_ty,
@@ -1369,29 +1368,29 @@
                     <span class="string">&quot;only `u8` can be cast as `char`, not `{}`&quot;</span>,
                     <span class="self">self</span>.expr_ty
                 );
-                <a href="#334">err</a>.span_label(<a class="self" href="#227">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
+                <a href="#333">err</a>.span_label(<a class="self" href="#226">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
                 <span class="kw">if </span><span class="self">self</span>.expr_ty.is_numeric() {
                     <span class="kw">if </span><span class="self">self</span>.expr_ty == fcx.tcx.types.u32 {
-                        <span class="kw">match </span><a href="#227">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#227">self</a>.expr.span) {
-                            <span class="prelude-val">Ok</span>(snippet) =&gt; <a href="#334">err</a>.span_suggestion(
-                                <a class="self" href="#227">self</a>.span,
+                        <span class="kw">match </span><a href="#226">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#226">self</a>.expr.span) {
+                            <span class="prelude-val">Ok</span>(snippet) =&gt; <a href="#333">err</a>.span_suggestion(
+                                <a class="self" href="#226">self</a>.span,
                                 <span class="string">&quot;try `char::from_u32` instead&quot;</span>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;char::from_u32({snippet})&quot;</span>),
                                 Applicability::MachineApplicable,
                             ),
 
-                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <a href="#334">err</a>.span_help(<a class="self" href="#227">self</a>.span, <span class="string">&quot;try `char::from_u32` instead&quot;</span>),
+                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <a href="#333">err</a>.span_help(<a class="self" href="#226">self</a>.span, <span class="string">&quot;try `char::from_u32` instead&quot;</span>),
                         };
                     } <span class="kw">else if </span><span class="self">self</span>.expr_ty == fcx.tcx.types.i8 {
-                        <a href="#334">err</a>.span_help(<a class="self" href="#227">self</a>.span, <span class="string">&quot;try casting from `u8` instead&quot;</span>);
+                        <a href="#333">err</a>.span_help(<a class="self" href="#226">self</a>.span, <span class="string">&quot;try casting from `u8` instead&quot;</span>);
                     } <span class="kw">else </span>{
-                        <a href="#334">err</a>.span_help(<a class="self" href="#227">self</a>.span, <span class="string">&quot;try `char::from_u32` instead (via a `u32`)&quot;</span>);
+                        <a href="#333">err</a>.span_help(<a class="self" href="#226">self</a>.span, <span class="string">&quot;try `char::from_u32` instead (via a `u32`)&quot;</span>);
                     };
                 }
-                <a href="#334">err</a>.emit();
+                <a href="#333">err</a>.emit();
             }
-            <a href="#167">CastError::NonScalar</a> =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="lib.rs.html#79-89">type_error_struct!</a>(
+            <a href="#166">CastError::NonScalar</a> =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="lib.rs.html#77-87">type_error_struct!</a>(
                     fcx.tcx.sess,
                     <span class="self">self</span>.span,
                     <span class="self">self</span>.expr_ty,
@@ -1402,8 +1401,8 @@
                 );
                 <span class="kw">let </span><span class="kw-2">mut </span>sugg = <span class="prelude-val">None</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>sugg_mutref = <span class="bool-val">false</span>;
-                <span class="kw">if let </span>ty::Ref(reg, cast_ty, mutbl) = <span class="kw-2">*</span><a class="self" href="#227">self</a>.cast_ty.kind() {
-                    <span class="kw">if let </span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { ty: expr_ty, .. }) = <span class="kw-2">*</span><a class="self" href="#227">self</a>.expr_ty.kind()
+                <span class="kw">if let </span>ty::Ref(reg, cast_ty, mutbl) = <span class="kw-2">*</span><a class="self" href="#226">self</a>.cast_ty.kind() {
+                    <span class="kw">if let </span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { ty: expr_ty, .. }) = <span class="kw-2">*</span><a class="self" href="#226">self</a>.expr_ty.kind()
                         &amp;&amp; fcx
                             .can_coerce(
                                 Ty::new_ref(fcx.tcx,
@@ -1413,8 +1412,8 @@
                                 <span class="self">self</span>.cast_ty,
                             )
                     {
-                        <a href="#373">sugg</a> = <span class="prelude-val">Some</span>((<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{}*&quot;</span>, mutbl.prefix_str()), <a href="#375">cast_ty</a> == <a href="#376">expr_ty</a>));
-                    } <span class="kw">else if let </span>ty::Ref(expr_reg, expr_ty, expr_mutbl) = <span class="kw-2">*</span><a class="self" href="#227">self</a>.expr_ty.kind()
+                        <a href="#372">sugg</a> = <span class="prelude-val">Some</span>((<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{}*&quot;</span>, mutbl.prefix_str()), <a href="#374">cast_ty</a> == <a href="#375">expr_ty</a>));
+                    } <span class="kw">else if let </span>ty::Ref(expr_reg, expr_ty, expr_mutbl) = <span class="kw-2">*</span><a class="self" href="#226">self</a>.expr_ty.kind()
                         &amp;&amp; expr_mutbl == Mutability::Not
                         &amp;&amp; mutbl == Mutability::Mut
                         &amp;&amp; fcx
@@ -1426,7 +1425,7 @@
                                 <span class="self">self</span>.cast_ty,
                             )
                     {
-                        <a href="#374">sugg_mutref</a> = <span class="bool-val">true</span>;
+                        <a href="#373">sugg_mutref</a> = <span class="bool-val">true</span>;
                     }
 
                     <span class="kw">if </span>!sugg_mutref
@@ -1437,9 +1436,9 @@
                                 <span class="self">self</span>.cast_ty,
                             )
                     {
-                        <a href="#373">sugg</a> = <span class="prelude-val">Some</span>((<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{}&quot;</span>, mutbl.prefix_str()), <span class="bool-val">false</span>));
+                        <a href="#372">sugg</a> = <span class="prelude-val">Some</span>((<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{}&quot;</span>, mutbl.prefix_str()), <span class="bool-val">false</span>));
                     }
-                } <span class="kw">else if let </span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { mutbl, .. }) = <span class="kw-2">*</span><a class="self" href="#227">self</a>.cast_ty.kind()
+                } <span class="kw">else if let </span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { mutbl, .. }) = <span class="kw-2">*</span><a class="self" href="#226">self</a>.cast_ty.kind()
                     &amp;&amp; fcx
                         .can_coerce(
                             Ty::new_ref(fcx.tcx,
@@ -1449,43 +1448,43 @@
                             <span class="self">self</span>.cast_ty,
                         )
                 {
-                    <a href="#373">sugg</a> = <span class="prelude-val">Some</span>((<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{}&quot;</span>, mutbl.prefix_str()), <span class="bool-val">false</span>));
+                    <a href="#372">sugg</a> = <span class="prelude-val">Some</span>((<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{}&quot;</span>, mutbl.prefix_str()), <span class="bool-val">false</span>));
                 }
                 <span class="kw">if </span>sugg_mutref {
-                    <a href="#364">err</a>.span_label(<a class="self" href="#227">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
-                    <a href="#364">err</a>.span_note(<a class="self" href="#227">self</a>.expr_span, <span class="string">&quot;this reference is immutable&quot;</span>);
-                    <a href="#364">err</a>.span_note(<a class="self" href="#227">self</a>.cast_span, <span class="string">&quot;trying to cast to a mutable reference type&quot;</span>);
-                } <span class="kw">else if let </span><span class="prelude-val">Some</span>((sugg, remove_cast)) = <a href="#373">sugg</a> {
-                    <a href="#364">err</a>.span_label(<a class="self" href="#227">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
+                    <a href="#363">err</a>.span_label(<a class="self" href="#226">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
+                    <a href="#363">err</a>.span_note(<a class="self" href="#226">self</a>.expr_span, <span class="string">&quot;this reference is immutable&quot;</span>);
+                    <a href="#363">err</a>.span_note(<a class="self" href="#226">self</a>.cast_span, <span class="string">&quot;trying to cast to a mutable reference type&quot;</span>);
+                } <span class="kw">else if let </span><span class="prelude-val">Some</span>((sugg, remove_cast)) = <a href="#372">sugg</a> {
+                    <a href="#363">err</a>.span_label(<a class="self" href="#226">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
 
-                    <span class="kw">let </span>has_parens = <a href="#227">fcx</a>
+                    <span class="kw">let </span>has_parens = <a href="#226">fcx</a>
                         .tcx
                         .sess
                         .source_map()
-                        .span_to_snippet(<a class="self" href="#227">self</a>.expr_span)
-                        .is_ok_and(|snip| <a href="#436">snip</a>.starts_with(<span class="string">&#39;(&#39;</span>));
+                        .span_to_snippet(<a class="self" href="#226">self</a>.expr_span)
+                        .is_ok_and(|snip| <a href="#435">snip</a>.starts_with(<span class="string">&#39;(&#39;</span>));
 
                     <span class="comment">// Very crude check to see whether the expression must be wrapped
                     // in parentheses for the suggestion to work (issue #89497).
                     // Can/should be extended in the future.
                     </span><span class="kw">let </span>needs_parens =
-                        !<a href="#431">has_parens</a> &amp;&amp; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(<span class="self">self</span>.expr.kind, hir::ExprKind::Cast(..));
+                        !<a href="#430">has_parens</a> &amp;&amp; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(<span class="self">self</span>.expr.kind, hir::ExprKind::Cast(..));
 
                     <span class="kw">let </span><span class="kw-2">mut </span>suggestion = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[(<span class="self">self</span>.expr_span.shrink_to_lo(), sugg)];
                     <span class="kw">if </span>needs_parens {
-                        <a href="#444">suggestion</a>[<span class="number">0</span>].<span class="number">1 </span>+= <span class="string">&quot;(&quot;</span>;
-                        <a href="#444">suggestion</a>.push((<a class="self" href="#227">self</a>.expr_span.shrink_to_hi(), <span class="string">&quot;)&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>()));
+                        <a href="#443">suggestion</a>[<span class="number">0</span>].<span class="number">1 </span>+= <span class="string">&quot;(&quot;</span>;
+                        <a href="#443">suggestion</a>.push((<a class="self" href="#226">self</a>.expr_span.shrink_to_hi(), <span class="string">&quot;)&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>()));
                     }
                     <span class="kw">if </span>remove_cast {
-                        <a href="#444">suggestion</a>.push((
-                            <a class="self" href="#227">self</a>.expr_span.shrink_to_hi().to(<a class="self" href="#227">self</a>.cast_span),
+                        <a href="#443">suggestion</a>.push((
+                            <a class="self" href="#226">self</a>.expr_span.shrink_to_hi().to(<a class="self" href="#226">self</a>.cast_span),
                             String::new(),
                         ));
                     }
 
-                    <a href="#364">err</a>.multipart_suggestion_verbose(
+                    <a href="#363">err</a>.multipart_suggestion_verbose(
                         <span class="string">&quot;consider borrowing the value&quot;</span>,
-                        <a href="#444">suggestion</a>,
+                        <a href="#443">suggestion</a>,
                         Applicability::MachineApplicable,
                     );
                 } <span class="kw">else if </span>!<span class="macro">matches!</span>(
@@ -1494,23 +1493,23 @@
                 ) {
                     <span class="kw">let </span><span class="kw-2">mut </span>label = <span class="bool-val">true</span>;
                     <span class="comment">// Check `impl From&lt;self.expr_ty&gt; for self.cast_ty {}` for accurate suggestion:
-                    </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a href="#227">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#227">self</a>.expr_span)
-                        &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(from_trait) = <a href="#227">fcx</a>.tcx.get_diagnostic_item(sym::From)
+                    </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a href="#226">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#226">self</a>.expr_span)
+                        &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(from_trait) = <a href="#226">fcx</a>.tcx.get_diagnostic_item(sym::From)
                     {
-                        <span class="kw">let </span>ty = <a href="#227">fcx</a>.resolve_vars_if_possible(<a class="self" href="#227">self</a>.cast_ty);
+                        <span class="kw">let </span>ty = <a href="#226">fcx</a>.resolve_vars_if_possible(<a class="self" href="#226">self</a>.cast_ty);
                         <span class="comment">// Erase regions to avoid panic in `prove_value` when calling
                         // `type_implements_trait`.
-                        </span><span class="kw">let </span>ty = <a href="#227">fcx</a>.tcx.erase_regions(<a href="#470">ty</a>);
-                        <span class="kw">let </span>expr_ty = <a href="#227">fcx</a>.resolve_vars_if_possible(<a class="self" href="#227">self</a>.expr_ty);
-                        <span class="kw">let </span>expr_ty = <a href="#227">fcx</a>.tcx.erase_regions(<a href="#474">expr_ty</a>);
+                        </span><span class="kw">let </span>ty = <a href="#226">fcx</a>.tcx.erase_regions(<a href="#469">ty</a>);
+                        <span class="kw">let </span>expr_ty = <a href="#226">fcx</a>.resolve_vars_if_possible(<a class="self" href="#226">self</a>.expr_ty);
+                        <span class="kw">let </span>expr_ty = <a href="#226">fcx</a>.tcx.erase_regions(<a href="#473">expr_ty</a>);
                         <span class="kw">if </span>fcx
                             .infcx
                             .type_implements_trait(from_trait, [ty, expr_ty], fcx.param_env)
                             .must_apply_modulo_regions()
                         {
-                            <a href="#465">label</a> = <span class="bool-val">false</span>;
-                            <a href="#364">err</a>.span_suggestion(
-                                <a class="self" href="#227">self</a>.span,
+                            <a href="#464">label</a> = <span class="bool-val">false</span>;
+                            <a href="#363">err</a>.span_suggestion(
+                                <a class="self" href="#226">self</a>.span,
                                 <span class="string">&quot;consider using the `From` trait instead&quot;</span>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{}::from({})&quot;</span>, <span class="self">self</span>.cast_ty, snippet),
                                 Applicability::MaybeIncorrect,
@@ -1520,72 +1519,72 @@
                     <span class="kw">let </span>msg = <span class="string">&quot;an `as` expression can only be used to convert between primitive \
                                types or to coerce to a specific trait object&quot;</span>;
                     <span class="kw">if </span>label {
-                        <a href="#364">err</a>.span_label(<a class="self" href="#227">self</a>.span, <a href="#490">msg</a>);
+                        <a href="#363">err</a>.span_label(<a class="self" href="#226">self</a>.span, <a href="#489">msg</a>);
                     } <span class="kw">else </span>{
-                        <a href="#364">err</a>.note(<a href="#490">msg</a>);
+                        <a href="#363">err</a>.note(<a href="#489">msg</a>);
                     }
                 } <span class="kw">else </span>{
-                    <a href="#364">err</a>.span_label(<a class="self" href="#227">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
+                    <a href="#363">err</a>.span_label(<a class="self" href="#226">self</a>.span, <span class="string">&quot;invalid cast&quot;</span>);
                 }
 
-                <a class="self" href="#227">self</a>.<a href="#1004-1029">try_suggest_collection_to_bool</a>(<a href="#227">fcx</a>, <span class="kw-2">&amp;mut </span><a href="#364">err</a>);
+                <a class="self" href="#226">self</a>.<a href="#1004-1029">try_suggest_collection_to_bool</a>(<a href="#226">fcx</a>, <span class="kw-2">&amp;mut </span><a href="#363">err</a>);
 
-                <a href="#364">err</a>.emit();
+                <a href="#363">err</a>.emit();
             }
-            <a href="#161">CastError::SizedUnsizedCast</a> =&gt; {
+            <a href="#160">CastError::SizedUnsizedCast</a> =&gt; {
                 <span class="kw">use </span>rustc_hir_analysis::structured_errors::{
                     SizedUnsizedCast, <a href="../../rustc_hir_analysis/structured_errors/trait.StructuredDiagnostic.html">StructuredDiagnostic</a>,
                 };
 
                 SizedUnsizedCast {
-                    sess: <span class="kw-2">&amp;</span><a href="#227">fcx</a>.tcx.sess,
-                    span: <a class="self" href="#227">self</a>.span,
-                    expr_ty: <a class="self" href="#227">self</a>.expr_ty,
-                    cast_ty: <a href="#227">fcx</a>.ty_to_string(<a class="self" href="#227">self</a>.cast_ty),
+                    sess: <span class="kw-2">&amp;</span><a href="#226">fcx</a>.tcx.sess,
+                    span: <a class="self" href="#226">self</a>.span,
+                    expr_ty: <a class="self" href="#226">self</a>.expr_ty,
+                    cast_ty: <a href="#226">fcx</a>.ty_to_string(<a class="self" href="#226">self</a>.cast_ty),
                 }
                 .<a href="../../rustc_hir_analysis/structured_errors/trait.StructuredDiagnostic.html">diagnostic</a>()
                 .emit();
             }
-            <a href="#175">CastError::IntToFatCast</a>(known_metadata) =&gt; {
-                <span class="kw">let </span>expr_if_nightly = <a href="#227">fcx</a>.tcx.sess.is_nightly_build().then_some(<a class="self" href="#227">self</a>.expr_span);
-                <span class="kw">let </span>cast_ty = <a href="#227">fcx</a>.resolve_vars_if_possible(<a class="self" href="#227">self</a>.cast_ty);
-                <span class="kw">let </span>expr_ty = <a href="#227">fcx</a>.ty_to_string(<a class="self" href="#227">self</a>.expr_ty);
-                <span class="kw">let </span>metadata = <a href="#519">known_metadata</a>.unwrap_or(<span class="string">&quot;type-specific metadata&quot;</span>);
-                <span class="kw">let </span>known_wide = <a href="#519">known_metadata</a>.is_some();
-                <span class="kw">let </span>span = <a class="self" href="#227">self</a>.cast_span;
-                <a href="#227">fcx</a>.tcx.sess.emit_err(<a href="errors.rs.html#366-376">errors::IntToWide</a> {
-                    <a href="#525">span</a>,
-                    <a href="#523">metadata</a>,
-                    <a href="#522">expr_ty</a>,
-                    <a href="#521">cast_ty</a>,
-                    <a href="#520">expr_if_nightly</a>,
-                    <a href="#524">known_wide</a>,
+            <a href="#174">CastError::IntToFatCast</a>(known_metadata) =&gt; {
+                <span class="kw">let </span>expr_if_nightly = <a href="#226">fcx</a>.tcx.sess.is_nightly_build().then_some(<a class="self" href="#226">self</a>.expr_span);
+                <span class="kw">let </span>cast_ty = <a href="#226">fcx</a>.resolve_vars_if_possible(<a class="self" href="#226">self</a>.cast_ty);
+                <span class="kw">let </span>expr_ty = <a href="#226">fcx</a>.ty_to_string(<a class="self" href="#226">self</a>.expr_ty);
+                <span class="kw">let </span>metadata = <a href="#518">known_metadata</a>.unwrap_or(<span class="string">&quot;type-specific metadata&quot;</span>);
+                <span class="kw">let </span>known_wide = <a href="#518">known_metadata</a>.is_some();
+                <span class="kw">let </span>span = <a class="self" href="#226">self</a>.cast_span;
+                <a href="#226">fcx</a>.tcx.sess.emit_err(<a href="errors.rs.html#333-343">errors::IntToWide</a> {
+                    <a href="#524">span</a>,
+                    <a href="#522">metadata</a>,
+                    <a href="#521">expr_ty</a>,
+                    <a href="#520">cast_ty</a>,
+                    <a href="#519">expr_if_nightly</a>,
+                    <a href="#523">known_wide</a>,
                 });
             }
-            <a href="#169">CastError::UnknownCastPtrKind</a> | <a href="#168">CastError::UnknownExprPtrKind</a> =&gt; {
-                <span class="kw">let </span>unknown_cast_to = <span class="kw">match </span><a href="#227">e</a> {
-                    <a href="#169">CastError::UnknownCastPtrKind</a> =&gt; <span class="bool-val">true</span>,
-                    <a href="#168">CastError::UnknownExprPtrKind</a> =&gt; <span class="bool-val">false</span>,
+            <a href="#168">CastError::UnknownCastPtrKind</a> | <a href="#167">CastError::UnknownExprPtrKind</a> =&gt; {
+                <span class="kw">let </span>unknown_cast_to = <span class="kw">match </span><a href="#226">e</a> {
+                    <a href="#168">CastError::UnknownCastPtrKind</a> =&gt; <span class="bool-val">true</span>,
+                    <a href="#167">CastError::UnknownExprPtrKind</a> =&gt; <span class="bool-val">false</span>,
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
                 };
                 <span class="kw">let </span>(span, sub) = <span class="kw">if </span>unknown_cast_to {
-                    (<a class="self" href="#227">self</a>.cast_span, <a href="errors.rs.html#595">errors::CastUnknownPointerSub::To</a>(<a class="self" href="#227">self</a>.cast_span))
+                    (<a class="self" href="#226">self</a>.cast_span, <a href="errors.rs.html#562">errors::CastUnknownPointerSub::To</a>(<a class="self" href="#226">self</a>.cast_span))
                 } <span class="kw">else </span>{
-                    (<a class="self" href="#227">self</a>.cast_span, <a href="errors.rs.html#596">errors::CastUnknownPointerSub::From</a>(<a class="self" href="#227">self</a>.span))
+                    (<a class="self" href="#226">self</a>.cast_span, <a href="errors.rs.html#563">errors::CastUnknownPointerSub::From</a>(<a class="self" href="#226">self</a>.span))
                 };
-                <a href="#227">fcx</a>.tcx.sess.emit_err(<a href="errors.rs.html#586-592">errors::CastUnknownPointer</a> {
-                    <a href="#541">span</a>,
-                    to: <a href="#536">unknown_cast_to</a>,
-                    <a href="#541">sub</a>,
+                <a href="#226">fcx</a>.tcx.sess.emit_err(<a href="errors.rs.html#553-559">errors::CastUnknownPointer</a> {
+                    <a href="#540">span</a>,
+                    to: <a href="#535">unknown_cast_to</a>,
+                    <a href="#540">sub</a>,
                 });
             }
-            <a href="#176">CastError::ForeignNonExhaustiveAdt</a> =&gt; {
-                <a href="#185-201">make_invalid_casting_error</a>(
-                    <a href="#227">fcx</a>.tcx.sess,
-                    <a class="self" href="#227">self</a>.span,
-                    <a class="self" href="#227">self</a>.expr_ty,
-                    <a class="self" href="#227">self</a>.cast_ty,
-                    <a href="#227">fcx</a>,
+            <a href="#175">CastError::ForeignNonExhaustiveAdt</a> =&gt; {
+                <a href="#184-200">make_invalid_casting_error</a>(
+                    <a href="#226">fcx</a>.tcx.sess,
+                    <a class="self" href="#226">self</a>.span,
+                    <a class="self" href="#226">self</a>.expr_ty,
+                    <a class="self" href="#226">self</a>.cast_ty,
+                    <a href="#226">fcx</a>,
                 )
                 .note(<span class="string">&quot;cannot cast an enum with a non-exhaustive variant when it&#39;s defined in another crate&quot;</span>)
                 .emit();
@@ -1594,15 +1593,15 @@
     }
 
     <span class="kw">fn </span>report_cast_to_unsized_type(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a> {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#566">self</a>.cast_ty.<a href="../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">error_reported</a>() {
-            <span class="kw">return </span><a href="#567">err</a>;
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#565">self</a>.cast_ty.<a href="../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">error_reported</a>() {
+            <span class="kw">return </span><a href="#566">err</a>;
         }
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#566">self</a>.expr_ty.<a href="../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">error_reported</a>() {
-            <span class="kw">return </span><a href="#570">err</a>;
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#565">self</a>.expr_ty.<a href="../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">error_reported</a>() {
+            <span class="kw">return </span><a href="#569">err</a>;
         }
 
-        <span class="kw">let </span>tstr = <a href="#566">fcx</a>.ty_to_string(<a class="self" href="#566">self</a>.cast_ty);
-        <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="lib.rs.html#79-89">type_error_struct!</a>(
+        <span class="kw">let </span>tstr = <a href="#565">fcx</a>.ty_to_string(<a class="self" href="#565">self</a>.cast_ty);
+        <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="lib.rs.html#77-87">type_error_struct!</a>(
             fcx.tcx.sess,
             <span class="self">self</span>.span,
             <span class="self">self</span>.expr_ty,
@@ -1611,14 +1610,14 @@
             fcx.resolve_vars_if_possible(<span class="self">self</span>.expr_ty),
             tstr
         );
-        <span class="kw">match </span><a class="self" href="#566">self</a>.expr_ty.kind() {
+        <span class="kw">match </span><a class="self" href="#565">self</a>.expr_ty.kind() {
             ty::Ref(<span class="kw">_</span>, <span class="kw">_</span>, mt) =&gt; {
-                <span class="kw">let </span>mtstr = <a href="#585">mt</a>.prefix_str();
+                <span class="kw">let </span>mtstr = <a href="#584">mt</a>.prefix_str();
                 <span class="kw">if </span><span class="self">self</span>.cast_ty.is_trait() {
-                    <span class="kw">match </span><a href="#566">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#566">self</a>.cast_span) {
+                    <span class="kw">match </span><a href="#565">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#565">self</a>.cast_span) {
                         <span class="prelude-val">Ok</span>(s) =&gt; {
-                            <a href="#575">err</a>.span_suggestion(
-                                <a class="self" href="#566">self</a>.cast_span,
+                            <a href="#574">err</a>.span_suggestion(
+                                <a class="self" href="#565">self</a>.cast_span,
                                 <span class="string">&quot;try casting to a reference instead&quot;</span>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{mtstr}{s}&quot;</span>),
                                 Applicability::MachineApplicable,
@@ -1626,38 +1625,38 @@
                         }
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                             <span class="kw">let </span>msg = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;did you mean `&amp;{mtstr}{tstr}`?&quot;</span>);
-                            <a href="#575">err</a>.span_help(<a class="self" href="#566">self</a>.cast_span, <a href="#598">msg</a>);
+                            <a href="#574">err</a>.span_help(<a class="self" href="#565">self</a>.cast_span, <a href="#597">msg</a>);
                         }
                     }
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>msg =
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;consider using an implicit coercion to `&amp;{mtstr}{tstr}` instead&quot;</span>);
-                    <a href="#575">err</a>.span_help(<a class="self" href="#566">self</a>.span, <a href="#603">msg</a>);
+                    <a href="#574">err</a>.span_help(<a class="self" href="#565">self</a>.span, <a href="#602">msg</a>);
                 }
             }
-            ty::Adt(def, ..) <span class="kw">if </span><a href="#608">def</a>.is_box() =&gt; {
-                <span class="kw">match </span><a href="#566">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#566">self</a>.cast_span) {
+            ty::Adt(def, ..) <span class="kw">if </span><a href="#607">def</a>.is_box() =&gt; {
+                <span class="kw">match </span><a href="#565">fcx</a>.tcx.sess.source_map().span_to_snippet(<a class="self" href="#565">self</a>.cast_span) {
                     <span class="prelude-val">Ok</span>(s) =&gt; {
-                        <a href="#575">err</a>.span_suggestion(
-                            <a class="self" href="#566">self</a>.cast_span,
+                        <a href="#574">err</a>.span_suggestion(
+                            <a class="self" href="#565">self</a>.cast_span,
                             <span class="string">&quot;you can cast to a `Box` instead&quot;</span>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Box&lt;{s}&gt;&quot;</span>),
                             Applicability::MachineApplicable,
                         );
                     }
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                        <a href="#575">err</a>.span_help(
-                            <a class="self" href="#566">self</a>.cast_span,
+                        <a href="#574">err</a>.span_help(
+                            <a class="self" href="#565">self</a>.cast_span,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;you might have meant `Box&lt;{tstr}&gt;`&quot;</span>),
                         );
                     }
                 }
             }
             <span class="kw">_ </span>=&gt; {
-                <a href="#575">err</a>.span_help(<a class="self" href="#566">self</a>.expr_span, <span class="string">&quot;consider using a box or reference as appropriate&quot;</span>);
+                <a href="#574">err</a>.span_help(<a class="self" href="#565">self</a>.expr_span, <span class="string">&quot;consider using a box or reference as appropriate&quot;</span>);
             }
         }
-        <a href="#575">err</a>.emit()
+        <a href="#574">err</a>.emit()
     }
 
     <span class="kw">fn </span>trivial_cast_lint(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) {
@@ -1666,13 +1665,13 @@
         } <span class="kw">else </span>{
             (<span class="bool-val">false</span>, lint::builtin::TRIVIAL_CASTS)
         };
-        <span class="kw">let </span>expr_ty = <a href="#633">fcx</a>.resolve_vars_if_possible(<a class="self" href="#633">self</a>.expr_ty);
-        <span class="kw">let </span>cast_ty = <a href="#633">fcx</a>.resolve_vars_if_possible(<a class="self" href="#633">self</a>.cast_ty);
-        <a href="#633">fcx</a>.tcx.emit_spanned_lint(
-            <a href="#634">lint</a>,
-            <a class="self" href="#633">self</a>.expr.hir_id,
-            <a class="self" href="#633">self</a>.span,
-            <a href="errors.rs.html#539-543">errors::TrivialCast</a> { <a href="#634">numeric</a>, <a href="#639">expr_ty</a>, <a href="#640">cast_ty</a> },
+        <span class="kw">let </span>expr_ty = <a href="#632">fcx</a>.resolve_vars_if_possible(<a class="self" href="#632">self</a>.expr_ty);
+        <span class="kw">let </span>cast_ty = <a href="#632">fcx</a>.resolve_vars_if_possible(<a class="self" href="#632">self</a>.cast_ty);
+        <a href="#632">fcx</a>.tcx.emit_spanned_lint(
+            <a href="#633">lint</a>,
+            <a class="self" href="#632">self</a>.expr.hir_id,
+            <a class="self" href="#632">self</a>.span,
+            <a href="errors.rs.html#506-510">errors::TrivialCast</a> { <a href="#633">numeric</a>, <a href="#638">expr_ty</a>, <a href="#639">cast_ty</a> },
         );
     }
 
@@ -1710,95 +1709,96 @@
     <span class="doccomment">/// Checks a cast, and report an error if one exists. In some cases, this
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
-    </span><span class="kw">pub fn </span>do_check(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#154-177">CastError</a>&gt; {
+    </span><span class="kw">pub fn </span>do_check(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#153-176">CastError</a>&gt; {
         <span class="kw">use </span><a href="../../rustc_middle/ty/cast/enum.CastTy.html">rustc_middle::ty::cast::CastTy</a>::<span class="kw-2">*</span>;
         <span class="kw">use </span><a href="../../rustc_middle/ty/cast/enum.IntTy.html">rustc_middle::ty::cast::IntTy</a>::<span class="kw-2">*</span>;
 
-        <span class="kw">let </span>(t_from, t_cast) = <span class="kw">match </span>(CastTy::from_ty(<a class="self" href="#683">self</a>.expr_ty), CastTy::from_ty(<a class="self" href="#683">self</a>.cast_ty))
+        <span class="kw">let </span>(t_from, t_cast) = <span class="kw">match </span>(CastTy::from_ty(<a class="self" href="#682">self</a>.expr_ty), CastTy::from_ty(<a class="self" href="#682">self</a>.cast_ty))
         {
-            (<span class="prelude-val">Some</span>(t_from), <span class="prelude-val">Some</span>(t_cast)) =&gt; (<a href="#689">t_from</a>, <a href="#689">t_cast</a>),
+            (<span class="prelude-val">Some</span>(t_from), <span class="prelude-val">Some</span>(t_cast)) =&gt; (<a href="#688">t_from</a>, <a href="#688">t_cast</a>),
             <span class="comment">// Function item types may need to be reified before casts.
             </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(t_cast)) =&gt; {
-                <span class="kw">match </span><span class="kw-2">*</span><a class="self" href="#683">self</a>.expr_ty.kind() {
+                <span class="kw">match </span><span class="kw-2">*</span><a class="self" href="#682">self</a>.expr_ty.kind() {
                     ty::FnDef(..) =&gt; {
                         <span class="comment">// Attempt a coercion to a fn pointer type.
-                        </span><span class="kw">let </span>f = <a href="#683">fcx</a>.<a href="fn_ctxt/_impl.rs.html#310-317">normalize</a>(<a class="self" href="#683">self</a>.expr_span, <a class="self" href="#683">self</a>.expr_ty.fn_sig(<a href="#683">fcx</a>.tcx));
-                        <span class="kw">let </span>res = <a href="#683">fcx</a>.<a href="coercion.rs.html#1008-1037">coerce</a>(
-                            <a class="self" href="#683">self</a>.expr,
-                            <a class="self" href="#683">self</a>.expr_ty,
-                            Ty::new_fn_ptr(<a href="#683">fcx</a>.tcx, <a href="#695">f</a>),
+                        </span><span class="kw">let </span>f = <a href="#682">fcx</a>.<a href="fn_ctxt/_impl.rs.html#310-317">normalize</a>(<a class="self" href="#682">self</a>.expr_span, <a class="self" href="#682">self</a>.expr_ty.fn_sig(<a href="#682">fcx</a>.tcx));
+                        <span class="kw">let </span>res = <a href="#682">fcx</a>.<a href="coercion.rs.html#1008-1037">coerce</a>(
+                            <a class="self" href="#682">self</a>.expr,
+                            <a class="self" href="#682">self</a>.expr_ty,
+                            Ty::new_fn_ptr(<a href="#682">fcx</a>.tcx, <a href="#694">f</a>),
                             AllowTwoPhase::No,
                             <span class="prelude-val">None</span>,
                         );
-                        <span class="kw">if let </span><span class="prelude-val">Err</span>(TypeError::IntrinsicCast) = <a href="#696">res</a> {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#162">CastError::IllegalCast</a>);
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(TypeError::IntrinsicCast) = <a href="#695">res</a> {
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>);
                         }
                         <span class="kw">if </span>res.is_err() {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#167">CastError::NonScalar</a>);
+                            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#166">CastError::NonScalar</a>);
                         }
-                        (FnPtr, <a href="#691">t_cast</a>)
+                        (FnPtr, <a href="#690">t_cast</a>)
                     }
                     <span class="comment">// Special case some errors for references, and check for
                     // array-ptr-casts. `Ref` is not a CastTy because the cast
                     // is split into a coercion to a pointer type, followed by
                     // a cast.
                     </span>ty::Ref(<span class="kw">_</span>, inner_ty, mutbl) =&gt; {
-                        <span class="kw">return match </span><a href="#691">t_cast</a> {
-                            Int(<span class="kw">_</span>) | Float =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#715">inner_ty</a>.kind() {
+                        <span class="kw">return match </span><a href="#690">t_cast</a> {
+                            Int(<span class="kw">_</span>) | Float =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#714">inner_ty</a>.kind() {
                                 ty::Int(<span class="kw">_</span>)
                                 | ty::Uint(<span class="kw">_</span>)
                                 | ty::Float(<span class="kw">_</span>)
                                 | ty::Infer(ty::InferTy::IntVar(<span class="kw">_</span>) | ty::InferTy::FloatVar(<span class="kw">_</span>)) =&gt; {
-                                    <span class="prelude-val">Err</span>(<a href="#163">CastError::NeedDeref</a>)
+                                    <span class="prelude-val">Err</span>(<a href="#162">CastError::NeedDeref</a>)
                                 }
-                                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#164">CastError::NeedViaPtr</a>),
+                                <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#163">CastError::NeedViaPtr</a>),
                             },
                             <span class="comment">// array-ptr-cast
                             </span>Ptr(mt) =&gt; {
-                                <a class="self" href="#683">self</a>.<a href="#874-908">check_ref_cast</a>(<a href="#683">fcx</a>, <a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { <a href="#715">mutbl</a>, ty: <a href="#715">inner_ty</a> }, <a href="#727">mt</a>)
+                                <span class="kw">if </span>!fcx.type_is_sized_modulo_regions(fcx.param_env, mt.ty) {
+                                    <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>);
+                                }
+                                <a class="self" href="#682">self</a>.<a href="#874-908">check_ref_cast</a>(<a href="#682">fcx</a>, <a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { <a href="#714">mutbl</a>, ty: <a href="#714">inner_ty</a> }, <a href="#726">mt</a>)
                             }
-                            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#167">CastError::NonScalar</a>),
+                            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#166">CastError::NonScalar</a>),
                         };
                     }
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#167">CastError::NonScalar</a>),
+                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#166">CastError::NonScalar</a>),
                 }
             }
-            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#167">CastError::NonScalar</a>),
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#166">CastError::NonScalar</a>),
         };
-
-        <span class="kw">if let </span>ty::Adt(adt_def, <span class="kw">_</span>) = <span class="kw-2">*</span><a class="self" href="#683">self</a>.expr_ty.kind() {
+        <span class="kw">if let </span>ty::Adt(adt_def, <span class="kw">_</span>) = <span class="kw-2">*</span><a class="self" href="#682">self</a>.expr_ty.kind() {
             <span class="kw">if </span>adt_def.did().krate != LOCAL_CRATE {
                 <span class="kw">if </span>adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive) {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#176">CastError::ForeignNonExhaustiveAdt</a>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#175">CastError::ForeignNonExhaustiveAdt</a>);
                 }
             }
         }
-
-        <span class="kw">match </span>(<a href="#687">t_from</a>, <a href="#687">t_cast</a>) {
+        <span class="kw">match </span>(<a href="#686">t_from</a>, <a href="#686">t_cast</a>) {
             <span class="comment">// These types have invariants! can&#39;t cast into them.
-            </span>(<span class="kw">_</span>, Int(CEnum) | FnPtr) =&gt; <span class="prelude-val">Err</span>(<a href="#167">CastError::NonScalar</a>),
+            </span>(<span class="kw">_</span>, Int(CEnum) | FnPtr) =&gt; <span class="prelude-val">Err</span>(<a href="#166">CastError::NonScalar</a>),
 
             <span class="comment">// * -&gt; Bool
-            </span>(<span class="kw">_</span>, Int(Bool)) =&gt; <span class="prelude-val">Err</span>(<a href="#157">CastError::CastToBool</a>),
+            </span>(<span class="kw">_</span>, Int(Bool)) =&gt; <span class="prelude-val">Err</span>(<a href="#156">CastError::CastToBool</a>),
 
             <span class="comment">// * -&gt; Char
             </span>(Int(U(ty::UintTy::U8)), Int(Char)) =&gt; <span class="prelude-val">Ok</span>(CastKind::U8CharCast), <span class="comment">// u8-char-cast
-            </span>(<span class="kw">_</span>, Int(Char)) =&gt; <span class="prelude-val">Err</span>(<a href="#158">CastError::CastToChar</a>),
+            </span>(<span class="kw">_</span>, Int(Char)) =&gt; <span class="prelude-val">Err</span>(<a href="#157">CastError::CastToChar</a>),
 
             <span class="comment">// prim -&gt; float,ptr
-            </span>(Int(Bool) | Int(CEnum) | Int(Char), Float) =&gt; <span class="prelude-val">Err</span>(<a href="#166">CastError::NeedViaInt</a>),
+            </span>(Int(Bool) | Int(CEnum) | Int(Char), Float) =&gt; <span class="prelude-val">Err</span>(<a href="#165">CastError::NeedViaInt</a>),
 
             (Int(Bool) | Int(CEnum) | Int(Char) | Float, Ptr(<span class="kw">_</span>)) | (Ptr(<span class="kw">_</span>) | FnPtr, Float) =&gt; {
-                <span class="prelude-val">Err</span>(<a href="#162">CastError::IllegalCast</a>)
+                <span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>)
             }
 
             <span class="comment">// ptr -&gt; *
-            </span>(Ptr(m_e), Ptr(m_c)) =&gt; <a class="self" href="#683">self</a>.<a href="#806-844">check_ptr_ptr_cast</a>(<a href="#683">fcx</a>, <a href="#766">m_e</a>, <a href="#766">m_c</a>), <span class="comment">// ptr-ptr-cast
+            </span>(Ptr(m_e), Ptr(m_c)) =&gt; <a class="self" href="#682">self</a>.<a href="#806-844">check_ptr_ptr_cast</a>(<a href="#682">fcx</a>, <a href="#766">m_e</a>, <a href="#766">m_c</a>), <span class="comment">// ptr-ptr-cast
 
             // ptr-addr-cast
             </span>(Ptr(m_expr), Int(t_c)) =&gt; {
-                <a class="self" href="#683">self</a>.<a href="#953-984">lossy_provenance_ptr2int_lint</a>(<a href="#683">fcx</a>, <a href="#769">t_c</a>);
-                <a class="self" href="#683">self</a>.<a href="#860-872">check_ptr_addr_cast</a>(<a href="#683">fcx</a>, <a href="#769">m_expr</a>)
+                <a class="self" href="#682">self</a>.<a href="#953-984">lossy_provenance_ptr2int_lint</a>(<a href="#682">fcx</a>, <a href="#769">t_c</a>);
+                <a class="self" href="#682">self</a>.<a href="#860-872">check_ptr_addr_cast</a>(<a href="#682">fcx</a>, <a href="#769">m_expr</a>)
             }
             (FnPtr, Int(<span class="kw">_</span>)) =&gt; {
                 <span class="comment">// FIXME(#95489): there should eventually be a lint for these casts
@@ -1806,15 +1806,15 @@
             }
             <span class="comment">// addr-ptr-cast
             </span>(Int(<span class="kw">_</span>), Ptr(mt)) =&gt; {
-                <a class="self" href="#683">self</a>.<a href="#986-1000">fuzzy_provenance_int2ptr_lint</a>(<a href="#683">fcx</a>);
-                <a class="self" href="#683">self</a>.<a href="#910-925">check_addr_ptr_cast</a>(<a href="#683">fcx</a>, <a href="#778">mt</a>)
+                <a class="self" href="#682">self</a>.<a href="#986-1000">fuzzy_provenance_int2ptr_lint</a>(<a href="#682">fcx</a>);
+                <a class="self" href="#682">self</a>.<a href="#910-925">check_addr_ptr_cast</a>(<a href="#682">fcx</a>, <a href="#778">mt</a>)
             }
             <span class="comment">// fn-ptr-cast
-            </span>(FnPtr, Ptr(mt)) =&gt; <a class="self" href="#683">self</a>.<a href="#846-858">check_fptr_ptr_cast</a>(<a href="#683">fcx</a>, <a href="#783">mt</a>),
+            </span>(FnPtr, Ptr(mt)) =&gt; <a class="self" href="#682">self</a>.<a href="#846-858">check_fptr_ptr_cast</a>(<a href="#682">fcx</a>, <a href="#783">mt</a>),
 
             <span class="comment">// prim -&gt; prim
             </span>(Int(CEnum), Int(<span class="kw">_</span>)) =&gt; {
-                <a class="self" href="#683">self</a>.<a href="#934-951">cenum_impl_drop_lint</a>(<a href="#683">fcx</a>);
+                <a class="self" href="#682">self</a>.<a href="#934-951">cenum_impl_drop_lint</a>(<a href="#682">fcx</a>);
                 <span class="prelude-val">Ok</span>(CastKind::EnumCast)
             }
             (Int(Char) | Int(Bool), Int(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(CastKind::PrimIntCast),
@@ -1825,11 +1825,11 @@
                 <span class="kw">if </span>fcx.tcx.features().dyn_star {
                     <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;should be handled by `coerce`&quot;</span>)
                 } <span class="kw">else </span>{
-                    <span class="prelude-val">Err</span>(<a href="#162">CastError::IllegalCast</a>)
+                    <span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>)
                 }
             }
 
-            (DynStar, <span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<a href="#162">CastError::IllegalCast</a>),
+            (DynStar, <span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>),
         }
     }
 
@@ -1838,7 +1838,7 @@
         fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         m_expr: ty::TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         m_cast: ty::TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#154-177">CastError</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#153-176">CastError</a>&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;check_ptr_ptr_cast m_expr={:?} m_cast={:?}&quot;</span>, m_expr, m_cast);
         <span class="comment">// ptr-ptr cast. vtables must match.
 
@@ -1847,7 +1847,7 @@
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(cast_kind) = <a href="#816">cast_kind</a> <span class="kw">else </span>{
             <span class="comment">// We can&#39;t cast if target pointer kind is unknown
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#169">CastError::UnknownCastPtrKind</a>);
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#168">CastError::UnknownCastPtrKind</a>);
         };
 
         <span class="comment">// Cast to thin pointer is OK
@@ -1857,19 +1857,19 @@
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(expr_kind) = <a href="#815">expr_kind</a> <span class="kw">else </span>{
             <span class="comment">// We can&#39;t cast to fat pointer if source pointer kind is unknown
-            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#168">CastError::UnknownExprPtrKind</a>);
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#167">CastError::UnknownExprPtrKind</a>);
         };
 
         <span class="comment">// thin -&gt; fat? report invalid cast (don&#39;t complain about vtable kinds)
         </span><span class="kw">if </span>expr_kind == PointerKind::Thin {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#161">CastError::SizedUnsizedCast</a>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#160">CastError::SizedUnsizedCast</a>);
         }
 
         <span class="comment">// vtable kinds must match
         </span><span class="kw">if </span>fcx.tcx.erase_regions(cast_kind) == fcx.tcx.erase_regions(expr_kind) {
             <span class="prelude-val">Ok</span>(CastKind::PtrPtrCast)
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(<a href="#159">CastError::DifferingKinds</a>)
+            <span class="prelude-val">Err</span>(<a href="#158">CastError::DifferingKinds</a>)
         }
     }
 
@@ -1877,13 +1877,13 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         m_cast: ty::TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#154-177">CastError</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#153-176">CastError</a>&gt; {
         <span class="comment">// fptr-ptr cast. must be to thin ptr
 
         </span><span class="kw">match </span>fcx.pointer_kind(m_cast.ty, <span class="self">self</span>.span)<span class="question-mark">? </span>{
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<a href="#169">CastError::UnknownCastPtrKind</a>),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<a href="#168">CastError::UnknownCastPtrKind</a>),
             <span class="prelude-val">Some</span>(<a href="#74">PointerKind::Thin</a>) =&gt; <span class="prelude-val">Ok</span>(CastKind::FnPtrPtrCast),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#162">CastError::IllegalCast</a>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>),
         }
     }
 
@@ -1891,13 +1891,13 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         m_expr: ty::TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#154-177">CastError</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#153-176">CastError</a>&gt; {
         <span class="comment">// ptr-addr cast. must be from thin ptr
 
         </span><span class="kw">match </span>fcx.pointer_kind(m_expr.ty, <span class="self">self</span>.span)<span class="question-mark">? </span>{
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<a href="#168">CastError::UnknownExprPtrKind</a>),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<a href="#167">CastError::UnknownExprPtrKind</a>),
             <span class="prelude-val">Some</span>(<a href="#74">PointerKind::Thin</a>) =&gt; <span class="prelude-val">Ok</span>(CastKind::PtrAddrCast),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#165">CastError::NeedViaThinPtr</a>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<a href="#164">CastError::NeedViaThinPtr</a>),
         }
     }
 
@@ -1906,7 +1906,7 @@
         fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         m_expr: ty::TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         m_cast: ty::TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#154-177">CastError</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#153-176">CastError</a>&gt; {
         <span class="comment">// array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
         </span><span class="kw">if </span>m_expr.mutbl &gt;= m_cast.mutbl {
             <span class="kw">if let </span>ty::Array(ety, <span class="kw">_</span>) = <a href="#877">m_expr</a>.ty.kind() {
@@ -1929,27 +1929,27 @@
                     });
 
                 <span class="comment">// this will report a type mismatch if needed
-                </span><a href="#876">fcx</a>.<a href="demand.rs.html#196-200">demand_eqtype</a>(<a class="self" href="#875">self</a>.span, <span class="kw-2">*</span><a href="#882">ety</a>, <a href="#878">m_cast</a>.ty);
+                </span><a href="#876">fcx</a>.<a href="demand.rs.html#197-201">demand_eqtype</a>(<a class="self" href="#875">self</a>.span, <span class="kw-2">*</span><a href="#882">ety</a>, <a href="#878">m_cast</a>.ty);
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(CastKind::ArrayPtrCast);
             }
         }
 
-        <span class="prelude-val">Err</span>(<a href="#162">CastError::IllegalCast</a>)
+        <span class="prelude-val">Err</span>(<a href="#161">CastError::IllegalCast</a>)
     }
 
     <span class="kw">fn </span>check_addr_ptr_cast(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         m_cast: TypeAndMut&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#154-177">CastError</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_middle/ty/cast/enum.CastKind.html">CastKind</a>, <a href="#153-176">CastError</a>&gt; {
         <span class="comment">// ptr-addr cast. pointer must be thin.
         </span><span class="kw">match </span>fcx.pointer_kind(m_cast.ty, <span class="self">self</span>.span)<span class="question-mark">? </span>{
-            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<a href="#169">CastError::UnknownCastPtrKind</a>),
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(<a href="#168">CastError::UnknownCastPtrKind</a>),
             <span class="prelude-val">Some</span>(<a href="#74">PointerKind::Thin</a>) =&gt; <span class="prelude-val">Ok</span>(CastKind::AddrPtrCast),
-            <span class="prelude-val">Some</span>(<a href="#76">PointerKind::VTable</a>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(<a href="#175">CastError::IntToFatCast</a>(<span class="prelude-val">Some</span>(<span class="string">&quot;a vtable&quot;</span>))),
-            <span class="prelude-val">Some</span>(<a href="#78">PointerKind::Length</a>) =&gt; <span class="prelude-val">Err</span>(<a href="#175">CastError::IntToFatCast</a>(<span class="prelude-val">Some</span>(<span class="string">&quot;a length&quot;</span>))),
+            <span class="prelude-val">Some</span>(<a href="#76">PointerKind::VTable</a>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(<a href="#174">CastError::IntToFatCast</a>(<span class="prelude-val">Some</span>(<span class="string">&quot;a vtable&quot;</span>))),
+            <span class="prelude-val">Some</span>(<a href="#78">PointerKind::Length</a>) =&gt; <span class="prelude-val">Err</span>(<a href="#174">CastError::IntToFatCast</a>(<span class="prelude-val">Some</span>(<span class="string">&quot;a length&quot;</span>))),
             <span class="prelude-val">Some</span>(<a href="#80">PointerKind::OfAlias</a>(<span class="kw">_</span>) | <a href="#82">PointerKind::OfParam</a>(<span class="kw">_</span>)) =&gt; {
-                <span class="prelude-val">Err</span>(<a href="#175">CastError::IntToFatCast</a>(<span class="prelude-val">None</span>))
+                <span class="prelude-val">Err</span>(<a href="#174">CastError::IntToFatCast</a>(<span class="prelude-val">None</span>))
             }
         }
     }
@@ -1972,7 +1972,7 @@
                 lint::builtin::CENUM_IMPL_DROP_CAST,
                 <a class="self" href="#934">self</a>.expr.hir_id,
                 <a class="self" href="#934">self</a>.span,
-                <a href="errors.rs.html#579-582">errors::CastEnumDrop</a> {
+                <a href="errors.rs.html#546-549">errors::CastEnumDrop</a> {
                     <a href="#938">expr_ty</a>,
                     <a href="#939">cast_ty</a>,
                 }
@@ -1990,21 +1990,21 @@
         <span class="kw">let </span>cast_ty = <a href="#953">fcx</a>.resolve_vars_if_possible(<a class="self" href="#953">self</a>.cast_ty);
         <span class="kw">let </span>expr_span = <a class="self" href="#953">self</a>.expr_span.shrink_to_lo();
         <span class="kw">let </span>sugg = <span class="kw">match </span>(<a href="#955">needs_parens</a>, <a href="#957">needs_cast</a>) {
-            (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; <a href="errors.rs.html#304-310">errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast</a> {
+            (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; <a href="errors.rs.html#271-277">errors::LossyProvenancePtr2IntSuggestion::NeedsParensCast</a> {
                 <a href="#961">expr_span</a>,
                 <a href="#958">cast_span</a>,
                 <a href="#960">cast_ty</a>,
             },
             (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; {
-                <a href="errors.rs.html#312-317">errors::LossyProvenancePtr2IntSuggestion::NeedsParens</a> { <a href="#961">expr_span</a>, <a href="#958">cast_span</a> }
+                <a href="errors.rs.html#279-284">errors::LossyProvenancePtr2IntSuggestion::NeedsParens</a> { <a href="#961">expr_span</a>, <a href="#958">cast_span</a> }
             }
             (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; {
-                <a href="errors.rs.html#323-327">errors::LossyProvenancePtr2IntSuggestion::NeedsCast</a> { <a href="#958">cast_span</a>, <a href="#960">cast_ty</a> }
+                <a href="errors.rs.html#290-294">errors::LossyProvenancePtr2IntSuggestion::NeedsCast</a> { <a href="#958">cast_span</a>, <a href="#960">cast_ty</a> }
             }
-            (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; <a href="errors.rs.html#329-332">errors::LossyProvenancePtr2IntSuggestion::Other</a> { <a href="#958">cast_span</a> },
+            (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; <a href="errors.rs.html#296-299">errors::LossyProvenancePtr2IntSuggestion::Other</a> { <a href="#958">cast_span</a> },
         };
 
-        <span class="kw">let </span>lint = <a href="errors.rs.html#294-299">errors::LossyProvenancePtr2Int</a> { <a href="#959">expr_ty</a>, <a href="#960">cast_ty</a>, <a href="#962">sugg</a> };
+        <span class="kw">let </span>lint = <a href="errors.rs.html#261-266">errors::LossyProvenancePtr2Int</a> { <a href="#959">expr_ty</a>, <a href="#960">cast_ty</a>, <a href="#962">sugg</a> };
         <a href="#953">fcx</a>.tcx.emit_spanned_lint(
             lint::builtin::LOSSY_PROVENANCE_CASTS,
             <a class="self" href="#953">self</a>.expr.hir_id,
@@ -2014,13 +2014,13 @@
     }
 
     <span class="kw">fn </span>fuzzy_provenance_int2ptr_lint(<span class="kw-2">&amp;</span><span class="self">self</span>, fcx: <span class="kw-2">&amp;</span>FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">let </span>sugg = <a href="errors.rs.html#284-289">errors::LossyProvenanceInt2PtrSuggestion</a> {
+        <span class="kw">let </span>sugg = <a href="errors.rs.html#251-256">errors::LossyProvenanceInt2PtrSuggestion</a> {
             lo: <a class="self" href="#986">self</a>.expr_span.shrink_to_lo(),
             hi: <a class="self" href="#986">self</a>.expr_span.shrink_to_hi().to(<a class="self" href="#986">self</a>.cast_span),
         };
         <span class="kw">let </span>expr_ty = <a href="#986">fcx</a>.resolve_vars_if_possible(<a class="self" href="#986">self</a>.expr_ty);
         <span class="kw">let </span>cast_ty = <a href="#986">fcx</a>.resolve_vars_if_possible(<a class="self" href="#986">self</a>.cast_ty);
-        <span class="kw">let </span>lint = <a href="errors.rs.html#275-280">errors::LossyProvenanceInt2Ptr</a> { <a href="#991">expr_ty</a>, <a href="#992">cast_ty</a>, <a href="#987">sugg</a> };
+        <span class="kw">let </span>lint = <a href="errors.rs.html#242-247">errors::LossyProvenanceInt2Ptr</a> { <a href="#991">expr_ty</a>, <a href="#992">cast_ty</a>, <a href="#987">sugg</a> };
         <a href="#986">fcx</a>.tcx.emit_spanned_lint(
             lint::builtin::FUZZY_PROVENANCE_CASTS,
             <a class="self" href="#986">self</a>.expr.hir_id,
@@ -2041,7 +2041,7 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>((deref_ty, <span class="kw">_</span>)) = <a href="#1006">derefed</a> {
                 <span class="comment">// Give a note about what the expr derefs to.
                 </span><span class="kw">if </span>deref_ty != <span class="self">self</span>.expr_ty.peel_refs() {
-                    <a href="#1004">err</a>.subdiagnostic(<a href="errors.rs.html#645-649">errors::DerefImplsIsEmpty</a> {
+                    <a href="#1004">err</a>.subdiagnostic(<a href="errors.rs.html#612-616">errors::DerefImplsIsEmpty</a> {
                         span: <a class="self" href="#1004">self</a>.expr_span,
                         deref_ty: <a href="#1004">fcx</a>.ty_to_string(<a href="#1011">deref_ty</a>),
                     });
@@ -2049,7 +2049,7 @@
 
                 <span class="comment">// Create a multipart suggestion: add `!` and `.is_empty()` in
                 // place of the cast.
-                </span><a href="#1004">err</a>.subdiagnostic(<a href="errors.rs.html#482-488">errors::UseIsEmpty</a> {
+                </span><a href="#1004">err</a>.subdiagnostic(<a href="errors.rs.html#449-455">errors::UseIsEmpty</a> {
                     lo: <a class="self" href="#1004">self</a>.expr_span.shrink_to_lo(),
                     hi: <a class="self" href="#1004">self</a>.span.with_lo(<a class="self" href="#1004">self</a>.expr_span.hi()),
                     expr_ty: <a href="#1004">fcx</a>.ty_to_string(<a class="self" href="#1004">self</a>.expr_ty),

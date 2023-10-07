@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_ast_passes/src/ast_validation.rs`."><title>ast_validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_ast_passes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_ast_passes/src/ast_validation.rs`."><title>ast_validation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_ast_passes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1521,6 +1521,18 @@
 <a href="#1521" id="1521">1521</a>
 <a href="#1522" id="1522">1522</a>
 <a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
 </pre></div><pre class="rust"><code><span class="comment">// Validate AST before lowering it to HIR.
 //
 // This pass is supposed to catch things that fit into AST data structures,
@@ -1575,7 +1587,8 @@
     <span class="doccomment">/// Are we inside a trait impl?
     </span>in_trait_impl: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 
-    in_const_trait_impl: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    <span class="doccomment">/// Are we inside a const trait defn or impl?
+    </span>in_const_trait_or_impl: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 
     has_proc_macro_decls: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 
@@ -1600,18 +1613,26 @@
         constness: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_ast/ast/enum.Const.html">Const</a>&gt;,
         f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>),
     ) {
-        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#75">self</a>.in_trait_impl, <a href="#76">is_in</a>);
-        <span class="kw">let </span>old_const =
-            mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#75">self</a>.in_const_trait_impl, <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(constness, <span class="prelude-val">Some</span>(Const::Yes(<span class="kw">_</span>))));
-        <a href="#78">f</a>(<a class="self" href="#75">self</a>);
-        <a class="self" href="#75">self</a>.in_trait_impl = <a href="#80">old</a>;
-        <a class="self" href="#75">self</a>.in_const_trait_impl = <a href="#81">old_const</a>;
+        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#76">self</a>.in_trait_impl, <a href="#77">is_in</a>);
+        <span class="kw">let </span>old_const = mem::replace(
+            <span class="kw-2">&amp;mut </span><a class="self" href="#76">self</a>.in_const_trait_or_impl,
+            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(constness, <span class="prelude-val">Some</span>(Const::Yes(<span class="kw">_</span>))),
+        );
+        <a href="#79">f</a>(<a class="self" href="#76">self</a>);
+        <a class="self" href="#76">self</a>.in_trait_impl = <a href="#81">old</a>;
+        <a class="self" href="#76">self</a>.in_const_trait_or_impl = <a href="#82">old_const</a>;
+    }
+
+    <span class="kw">fn </span>with_in_trait(<span class="kw-2">&amp;mut </span><span class="self">self</span>, is_const: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>)) {
+        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#91">self</a>.in_const_trait_or_impl, <a href="#91">is_const</a>);
+        <a href="#91">f</a>(<a class="self" href="#91">self</a>);
+        <a class="self" href="#91">self</a>.in_const_trait_or_impl = <a href="#92">old</a>;
     }
 
     <span class="kw">fn </span>with_banned_impl_trait(<span class="kw-2">&amp;mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>)) {
-        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#88">self</a>.is_impl_trait_banned, <span class="bool-val">true</span>);
-        <a href="#88">f</a>(<a class="self" href="#88">self</a>);
-        <a class="self" href="#88">self</a>.is_impl_trait_banned = <a href="#89">old</a>;
+        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#97">self</a>.is_impl_trait_banned, <span class="bool-val">true</span>);
+        <a href="#97">f</a>(<a class="self" href="#97">self</a>);
+        <a class="self" href="#97">self</a>.is_impl_trait_banned = <a href="#98">old</a>;
     }
 
     <span class="kw">fn </span>with_tilde_const(
@@ -1619,13 +1640,13 @@
         disallowed: <span class="prelude-ty">Option</span>&lt;DisallowTildeConstContext&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
         f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>),
     ) {
-        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#95">self</a>.disallow_tilde_const, <a href="#96">disallowed</a>);
-        <a href="#97">f</a>(<a class="self" href="#95">self</a>);
-        <a class="self" href="#95">self</a>.disallow_tilde_const = <a href="#99">old</a>;
+        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#104">self</a>.disallow_tilde_const, <a href="#105">disallowed</a>);
+        <a href="#106">f</a>(<a class="self" href="#104">self</a>);
+        <a class="self" href="#104">self</a>.disallow_tilde_const = <a href="#108">old</a>;
     }
 
     <span class="kw">fn </span>with_tilde_const_allowed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>)) {
-        <a class="self" href="#104">self</a>.<a href="#94-102">with_tilde_const</a>(<span class="prelude-val">None</span>, <a href="#104">f</a>)
+        <a class="self" href="#113">self</a>.<a href="#103-111">with_tilde_const</a>(<span class="prelude-val">None</span>, <a href="#113">f</a>)
     }
 
     <span class="kw">fn </span>with_banned_tilde_const(
@@ -1633,7 +1654,7 @@
         ctx: DisallowTildeConstContext&lt;<span class="lifetime">&#39;a</span>&gt;,
         f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>),
     ) {
-        <a class="self" href="#109">self</a>.<a href="#94-102">with_tilde_const</a>(<span class="prelude-val">Some</span>(<a href="#110">ctx</a>), <a href="#111">f</a>)
+        <a class="self" href="#118">self</a>.<a href="#103-111">with_tilde_const</a>(<span class="prelude-val">Some</span>(<a href="#119">ctx</a>), <a href="#120">f</a>)
     }
 
     <span class="kw">fn </span>check_type_alias_where_clause_location(
@@ -1641,7 +1662,7 @@
         ty_alias: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.TyAlias.html">TyAlias</a>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="errors.rs.html#492-497">errors::WhereClauseBeforeTypeAlias</a>&gt; {
         <span class="kw">let </span>before_predicates =
-            <a href="#118">ty_alias</a>.generics.where_clause.predicates.split_at(<a href="#118">ty_alias</a>.where_predicates_split).<span class="number">0</span>;
+            <a href="#127">ty_alias</a>.generics.where_clause.predicates.split_at(<a href="#127">ty_alias</a>.where_predicates_split).<span class="number">0</span>;
 
         <span class="kw">if </span>ty_alias.ty.is_none() || before_predicates.is_empty() {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
@@ -1649,10 +1670,10 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>state = State::new();
         <span class="kw">if </span>!ty_alias.where_clauses.<span class="number">1.0 </span>{
-            <a href="#127">state</a>.space();
-            <a href="#127">state</a>.word_space(<span class="string">&quot;where&quot;</span>);
+            <a href="#136">state</a>.space();
+            <a href="#136">state</a>.word_space(<span class="string">&quot;where&quot;</span>);
         } <span class="kw">else </span>{
-            <a href="#127">state</a>.word_space(<span class="string">&quot;,&quot;</span>);
+            <a href="#136">state</a>.word_space(<span class="string">&quot;,&quot;</span>);
         }
         <span class="kw">let </span><span class="kw-2">mut </span>first = <span class="bool-val">true</span>;
         <span class="kw">for </span>p <span class="kw">in </span>before_predicates {
@@ -1663,32 +1684,32 @@
             state.print_where_predicate(p);
         }
 
-        <span class="kw">let </span>span = <a href="#118">ty_alias</a>.where_clauses.<span class="number">0.1</span>;
+        <span class="kw">let </span>span = <a href="#127">ty_alias</a>.where_clauses.<span class="number">0.1</span>;
         <span class="prelude-val">Err</span>(<a href="errors.rs.html#492-497">errors::WhereClauseBeforeTypeAlias</a> {
-            <a href="#143">span</a>,
+            <a href="#152">span</a>,
             sugg: <a href="errors.rs.html#505-511">errors::WhereClauseBeforeTypeAliasSugg</a> {
-                left: <a href="#143">span</a>,
-                snippet: <a href="#127">state</a>.s.eof(),
-                right: <a href="#118">ty_alias</a>.where_clauses.<span class="number">1.1</span>.shrink_to_hi(),
+                left: <a href="#152">span</a>,
+                snippet: <a href="#136">state</a>.s.eof(),
+                right: <a href="#127">ty_alias</a>.where_clauses.<span class="number">1.1</span>.shrink_to_hi(),
             },
         })
     }
 
     <span class="kw">fn </span>with_impl_trait(<span class="kw-2">&amp;mut </span><span class="self">self</span>, outer: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span><span class="self">Self</span>)) {
-        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#154">self</a>.outer_impl_trait, <a href="#154">outer</a>);
-        <a href="#154">f</a>(<a class="self" href="#154">self</a>);
-        <a class="self" href="#154">self</a>.outer_impl_trait = <a href="#155">old</a>;
+        <span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#163">self</a>.outer_impl_trait, <a href="#163">outer</a>);
+        <a href="#163">f</a>(<a class="self" href="#163">self</a>);
+        <a class="self" href="#163">self</a>.outer_impl_trait = <a href="#164">old</a>;
     }
 
     <span class="comment">// Mirrors `visit::walk_ty`, but tracks relevant state.
     </span><span class="kw">fn </span>walk_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.Ty.html">Ty</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#161">t</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#170">t</a>.kind {
             TyKind::ImplTrait(..) =&gt; {
-                <a class="self" href="#161">self</a>.<a href="#154-158">with_impl_trait</a>(<span class="prelude-val">Some</span>(<a href="#161">t</a>.span), |this| visit::walk_ty(<a href="#164">this</a>, <a href="#161">t</a>))
+                <a class="self" href="#170">self</a>.<a href="#163-167">with_impl_trait</a>(<span class="prelude-val">Some</span>(<a href="#170">t</a>.span), |this| visit::walk_ty(<a href="#173">this</a>, <a href="#170">t</a>))
             }
-            TyKind::TraitObject(..) =&gt; <span class="self"><a href="#161">self</a>
-                </span>.<a href="#108-114">with_banned_tilde_const</a>(<a href="#41">DisallowTildeConstContext::TraitObject</a>, |this| {
-                    visit::walk_ty(<a href="#167">this</a>, <a href="#161">t</a>)
+            TyKind::TraitObject(..) =&gt; <span class="self"><a href="#170">self</a>
+                </span>.<a href="#117-123">with_banned_tilde_const</a>(<a href="#41">DisallowTildeConstContext::TraitObject</a>, |this| {
+                    visit::walk_ty(<a href="#176">this</a>, <a href="#170">t</a>)
                 }),
             TyKind::Path(qself, path) =&gt; {
                 <span class="comment">// We allow these:
@@ -1704,9 +1725,9 @@
                 // (for cases like `&lt;impl Trait&gt;::Foo&gt;`)
                 // but we allow `impl Trait` in `GenericArgs`
                 // iff there are no more PathSegments.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(qself) = <a href="#170">qself</a> {
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(qself) = <a href="#179">qself</a> {
                     <span class="comment">// `impl Trait` in `qself` is always illegal
-                    </span><a class="self" href="#161">self</a>.<a href="#88-92">with_banned_impl_trait</a>(|this| <a href="#186">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ty</a>(<span class="kw-2">&amp;</span><a href="#184">qself</a>.ty));
+                    </span><a class="self" href="#170">self</a>.<a href="#97-101">with_banned_impl_trait</a>(|this| <a href="#195">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ty</a>(<span class="kw-2">&amp;</span><a href="#193">qself</a>.ty));
                 }
 
                 <span class="comment">// Note that there should be a call to visit_path here,
@@ -1724,47 +1745,47 @@
             TyKind::AnonStruct(<span class="kw-2">ref </span>fields, ..) | TyKind::AnonUnion(<span class="kw-2">ref </span>fields, ..) =&gt; {
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_field_def, fields)
             }
-            <span class="kw">_ </span>=&gt; visit::walk_ty(<a class="self" href="#161">self</a>, <a href="#161">t</a>),
+            <span class="kw">_ </span>=&gt; visit::walk_ty(<a class="self" href="#170">self</a>, <a href="#170">t</a>),
         }
     }
 
     <span class="kw">fn </span>visit_struct_field_def(<span class="kw-2">&amp;mut </span><span class="self">self</span>, field: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.FieldDef.html">FieldDef</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#208">field</a>.ident &amp;&amp;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#217">field</a>.ident &amp;&amp;
             ident.name == kw::Underscore {
-                <a class="self" href="#208">self</a>.<a href="#259-272">check_unnamed_field_ty</a>(<span class="kw-2">&amp;</span><a href="#208">field</a>.ty, <a href="#209">ident</a>.span);
-                <a class="self" href="#208">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#208">field</a>.vis);
-                <a class="self" href="#208">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#209">ident</a>);
-                <a class="self" href="#208">self</a>.<a href="#609-653">visit_ty_common</a>(<span class="kw-2">&amp;</span><a href="#208">field</a>.ty);
-                <a class="self" href="#208">self</a>.<a href="#161-206">walk_ty</a>(<span class="kw-2">&amp;</span><a href="#208">field</a>.ty);
+                <a class="self" href="#217">self</a>.<a href="#268-281">check_unnamed_field_ty</a>(<span class="kw-2">&amp;</span><a href="#217">field</a>.ty, <a href="#218">ident</a>.span);
+                <a class="self" href="#217">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#217">field</a>.vis);
+                <a class="self" href="#217">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#218">ident</a>);
+                <a class="self" href="#217">self</a>.<a href="#618-662">visit_ty_common</a>(<span class="kw-2">&amp;</span><a href="#217">field</a>.ty);
+                <a class="self" href="#217">self</a>.<a href="#170-215">walk_ty</a>(<span class="kw-2">&amp;</span><a href="#217">field</a>.ty);
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_attribute, <span class="kw-2">&amp;</span>field.attrs);
         } <span class="kw">else </span>{
-            <a class="self" href="#208">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_field_def</a>(<a href="#208">field</a>);
+            <a class="self" href="#217">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_field_def</a>(<a href="#217">field</a>);
         }
     }
 
     <span class="kw">fn </span>err_handler(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><a href="../../rustc_errors/struct.Handler.html">rustc_errors::Handler</a> {
-        <span class="kw-2">&amp;</span><a class="self" href="#222">self</a>.session.diagnostic()
+        <span class="kw-2">&amp;</span><a class="self" href="#231">self</a>.session.diagnostic()
     }
 
     <span class="kw">fn </span>check_lifetime(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">let </span>valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
         <span class="kw">if </span>!valid_names.contains(<span class="kw-2">&amp;</span>ident.name) &amp;&amp; ident.without_first_quote().is_reserved() {
-            <a class="self" href="#226">self</a>.session.emit_err(<a href="errors.rs.html#12-15">errors::KeywordLifetime</a> { span: <a href="#226">ident</a>.span });
+            <a class="self" href="#235">self</a>.session.emit_err(<a href="errors.rs.html#12-15">errors::KeywordLifetime</a> { span: <a href="#235">ident</a>.span });
         }
     }
 
     <span class="kw">fn </span>check_label(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">if </span>ident.without_first_quote().is_reserved() {
-            <a class="self" href="#233">self</a>.session.emit_err(<a href="errors.rs.html#19-23">errors::InvalidLabel</a> { span: <a href="#233">ident</a>.span, name: <a href="#233">ident</a>.name });
+            <a class="self" href="#242">self</a>.session.emit_err(<a href="errors.rs.html#19-23">errors::InvalidLabel</a> { span: <a href="#242">ident</a>.span, name: <a href="#242">ident</a>.name });
         }
     }
 
     <span class="kw">fn </span>visibility_not_permitted(<span class="kw-2">&amp;</span><span class="self">self</span>, vis: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Visibility.html">Visibility</a>, note: <a href="errors.rs.html#35-44">errors::VisibilityNotPermittedNote</a>) {
-        <span class="kw">if let </span>VisibilityKind::Inherited = <a href="#239">vis</a>.kind {
+        <span class="kw">if let </span>VisibilityKind::Inherited = <a href="#248">vis</a>.kind {
             <span class="kw">return</span>;
         }
 
-        <a class="self" href="#239">self</a>.session.emit_err(<a href="errors.rs.html#27-32">errors::VisibilityNotPermitted</a> { span: <a href="#239">vis</a>.span, <a href="#239">note</a> });
+        <a class="self" href="#248">self</a>.session.emit_err(<a href="errors.rs.html#27-32">errors::VisibilityNotPermitted</a> { span: <a href="#248">vis</a>.span, <a href="#248">note</a> });
     }
 
     <span class="kw">fn </span>check_decl_no_pat(decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>, <span class="kw-2">mut </span>report_err: <span class="kw">impl </span>FnMut(<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>)) {
@@ -1791,41 +1812,41 @@
         ) {
             <span class="kw">return</span>;
         }
-        <a class="self" href="#259">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#714-719">errors::InvalidUnnamedFieldTy</a> { <a href="#259">span</a>, ty_span: <a href="#259">ty</a>.span });
+        <a class="self" href="#268">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#714-719">errors::InvalidUnnamedFieldTy</a> { <a href="#268">span</a>, ty_span: <a href="#268">ty</a>.span });
     }
 
     <span class="kw">fn </span>deny_anon_struct_or_union(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Ty.html">Ty</a>) {
-        <span class="kw">let </span>struct_or_union = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#274">ty</a>.kind {
+        <span class="kw">let </span>struct_or_union = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#283">ty</a>.kind {
             TyKind::AnonStruct(..) =&gt; <span class="string">&quot;struct&quot;</span>,
             TyKind::AnonUnion(..) =&gt; <span class="string">&quot;union&quot;</span>,
             <span class="kw">_ </span>=&gt; <span class="kw">return</span>,
         };
-        <a class="self" href="#274">self</a>.<a href="#222-224">err_handler</a>()
-            .emit_err(<a href="errors.rs.html#732-737">errors::AnonStructOrUnionNotAllowed</a> { <a href="#275">struct_or_union</a>, span: <a href="#274">ty</a>.span });
+        <a class="self" href="#283">self</a>.<a href="#231-233">err_handler</a>()
+            .emit_err(<a href="errors.rs.html#732-737">errors::AnonStructOrUnionNotAllowed</a> { <a href="#284">struct_or_union</a>, span: <a href="#283">ty</a>.span });
     }
 
     <span class="kw">fn </span>deny_unnamed_field(<span class="kw-2">&amp;</span><span class="self">self</span>, field: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FieldDef.html">FieldDef</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#284">field</a>.ident &amp;&amp;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#293">field</a>.ident &amp;&amp;
             ident.name == kw::Underscore {
-                <a class="self" href="#284">self</a>.<a href="#222-224">err_handler</a>()
+                <a class="self" href="#293">self</a>.<a href="#231-233">err_handler</a>()
                     .emit_err(<a href="errors.rs.html#723-728">errors::InvalidUnnamedField</a> {
-                        span: <a href="#284">field</a>.span,
-                        ident_span: <a href="#285">ident</a>.span
+                        span: <a href="#293">field</a>.span,
+                        ident_span: <a href="#294">ident</a>.span
                     });
         }
     }
 
     <span class="kw">fn </span>check_trait_fn_not_const(<span class="kw-2">&amp;</span><span class="self">self</span>, constness: <a href="../../rustc_ast/ast/enum.Const.html">Const</a>) {
-        <span class="kw">if let </span>Const::Yes(span) = <a href="#295">constness</a> {
-            <a class="self" href="#295">self</a>.session.emit_err(<a href="errors.rs.html#48-52">errors::TraitFnConst</a> { <a href="#296">span</a> });
+        <span class="kw">if let </span>Const::Yes(span) = <a href="#304">constness</a> {
+            <a class="self" href="#304">self</a>.session.emit_err(<a href="errors.rs.html#48-52">errors::TraitFnConst</a> { <a href="#305">span</a> });
         }
     }
 
     <span class="kw">fn </span>check_fn_decl(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>, self_semantic: <a href="#34-37">SelfSemantic</a>) {
-        <a class="self" href="#301">self</a>.<a href="#310-316">check_decl_num_args</a>(<a href="#301">fn_decl</a>);
-        <a class="self" href="#301">self</a>.<a href="#318-334">check_decl_cvaradic_pos</a>(<a href="#301">fn_decl</a>);
-        <a class="self" href="#301">self</a>.<a href="#336-360">check_decl_attrs</a>(<a href="#301">fn_decl</a>);
-        <a class="self" href="#301">self</a>.<a href="#362-368">check_decl_self_param</a>(<a href="#301">fn_decl</a>, <a href="#301">self_semantic</a>);
+        <a class="self" href="#310">self</a>.<a href="#319-325">check_decl_num_args</a>(<a href="#310">fn_decl</a>);
+        <a class="self" href="#310">self</a>.<a href="#327-343">check_decl_cvaradic_pos</a>(<a href="#310">fn_decl</a>);
+        <a class="self" href="#310">self</a>.<a href="#345-369">check_decl_attrs</a>(<a href="#310">fn_decl</a>);
+        <a class="self" href="#310">self</a>.<a href="#371-377">check_decl_self_param</a>(<a href="#310">fn_decl</a>, <a href="#310">self_semantic</a>);
     }
 
     <span class="doccomment">/// Emits fatal error if function declaration has more than `u16::MAX` arguments
@@ -1833,16 +1854,16 @@
     </span><span class="kw">fn </span>check_decl_num_args(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>) {
         <span class="kw">let </span>max_num_args: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> = u16::MAX.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
         <span class="kw">if </span>fn_decl.inputs.len() &gt; max_num_args {
-            <span class="kw">let </span><a href="../../rustc_ast/ast/struct.Param.html">Param</a> { span, .. } = <a href="#310">fn_decl</a>.inputs[<span class="number">0</span>];
-            <a class="self" href="#310">self</a>.session.emit_fatal(<a href="errors.rs.html#63-67">errors::FnParamTooMany</a> { <a href="#313">span</a>, <a href="#311">max_num_args</a> });
+            <span class="kw">let </span><a href="../../rustc_ast/ast/struct.Param.html">Param</a> { span, .. } = <a href="#319">fn_decl</a>.inputs[<span class="number">0</span>];
+            <a class="self" href="#319">self</a>.session.emit_fatal(<a href="errors.rs.html#63-67">errors::FnParamTooMany</a> { <a href="#322">span</a>, <a href="#320">max_num_args</a> });
         }
     }
 
     <span class="kw">fn </span>check_decl_cvaradic_pos(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;*</span><a href="#318">fn_decl</a>.inputs {
+        <span class="kw">match </span><span class="kw-2">&amp;*</span><a href="#327">fn_decl</a>.inputs {
             [<a href="../../rustc_ast/ast/struct.Param.html">Param</a> { ty, span, .. }] =&gt; {
-                <span class="kw">if let </span>TyKind::CVarArgs = <a href="#320">ty</a>.kind {
-                    <a class="self" href="#318">self</a>.session.emit_err(<a href="errors.rs.html#71-74">errors::FnParamCVarArgsOnly</a> { span: <span class="kw-2">*</span><a href="#320">span</a> });
+                <span class="kw">if let </span>TyKind::CVarArgs = <a href="#329">ty</a>.kind {
+                    <a class="self" href="#327">self</a>.session.emit_err(<a href="errors.rs.html#71-74">errors::FnParamCVarArgsOnly</a> { span: <span class="kw-2">*</span><a href="#329">span</a> });
                 }
             }
             [ps @ .., <span class="kw">_</span>] =&gt; {
@@ -1857,10 +1878,10 @@
     }
 
     <span class="kw">fn </span>check_decl_attrs(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>) {
-        <a href="#336">fn_decl</a>
+        <a href="#345">fn_decl</a>
             .inputs
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|i| <a href="#340">i</a>.attrs.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html">as_ref</a>())
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|i| <a href="#349">i</a>.attrs.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.AsRef.html">as_ref</a>())
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|attr| {
                 <span class="kw">let </span>arr = [
                     sym::allow,
@@ -1871,52 +1892,52 @@
                     sym::forbid,
                     sym::warn,
                 ];
-                !<a href="#342">arr</a>.contains(<span class="kw-2">&amp;</span><a href="#341">attr</a>.name_or_empty()) &amp;&amp; rustc_attr::is_builtin_attr(<a href="#341">attr</a>)
+                !<a href="#351">arr</a>.contains(<span class="kw-2">&amp;</span><a href="#350">attr</a>.name_or_empty()) &amp;&amp; rustc_attr::is_builtin_attr(<a href="#350">attr</a>)
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">for_each</a>(|attr| {
                 <span class="kw">if </span>attr.is_doc_comment() {
-                    <a class="self" href="#336">self</a>.session.emit_err(<a href="errors.rs.html#85-89">errors::FnParamDocComment</a> { span: <a href="#353">attr</a>.span });
+                    <a class="self" href="#345">self</a>.session.emit_err(<a href="errors.rs.html#85-89">errors::FnParamDocComment</a> { span: <a href="#362">attr</a>.span });
                 } <span class="kw">else </span>{
-                    <a class="self" href="#336">self</a>.session.emit_err(<a href="errors.rs.html#93-96">errors::FnParamForbiddenAttr</a> { span: <a href="#353">attr</a>.span });
+                    <a class="self" href="#345">self</a>.session.emit_err(<a href="errors.rs.html#93-96">errors::FnParamForbiddenAttr</a> { span: <a href="#362">attr</a>.span });
                 }
             });
     }
 
     <span class="kw">fn </span>check_decl_self_param(<span class="kw-2">&amp;</span><span class="self">self</span>, fn_decl: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnDecl.html">FnDecl</a>, self_semantic: <a href="#34-37">SelfSemantic</a>) {
-        <span class="kw">if let </span>(<a href="#36">SelfSemantic::No</a>, [param, ..]) = (<a href="#362">self_semantic</a>, <span class="kw-2">&amp;*</span><a href="#362">fn_decl</a>.inputs) {
+        <span class="kw">if let </span>(<a href="#36">SelfSemantic::No</a>, [param, ..]) = (<a href="#371">self_semantic</a>, <span class="kw-2">&amp;*</span><a href="#371">fn_decl</a>.inputs) {
             <span class="kw">if </span>param.is_self() {
-                <a class="self" href="#362">self</a>.session.emit_err(<a href="errors.rs.html#101-105">errors::FnParamForbiddenSelf</a> { span: <a href="#363">param</a>.span });
+                <a class="self" href="#371">self</a>.session.emit_err(<a href="errors.rs.html#101-105">errors::FnParamForbiddenSelf</a> { span: <a href="#372">param</a>.span });
             }
         }
     }
 
     <span class="kw">fn </span>check_defaultness(<span class="kw-2">&amp;</span><span class="self">self</span>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, defaultness: <a href="../../rustc_ast/ast/enum.Defaultness.html">Defaultness</a>) {
-        <span class="kw">if let </span>Defaultness::Default(def_span) = <a href="#370">defaultness</a> {
-            <span class="kw">let </span>span = <a class="self" href="#370">self</a>.session.source_map().guess_head_span(<a href="#370">span</a>);
-            <a class="self" href="#370">self</a>.session.emit_err(<a href="errors.rs.html#109-114">errors::ForbiddenDefault</a> { <a href="#372">span</a>, <a href="#371">def_span</a> });
+        <span class="kw">if let </span>Defaultness::Default(def_span) = <a href="#379">defaultness</a> {
+            <span class="kw">let </span>span = <a class="self" href="#379">self</a>.session.source_map().guess_head_span(<a href="#379">span</a>);
+            <a class="self" href="#379">self</a>.session.emit_err(<a href="errors.rs.html#109-114">errors::ForbiddenDefault</a> { <a href="#381">span</a>, <a href="#380">def_span</a> });
         }
     }
 
     <span class="doccomment">/// If `sp` ends with a semicolon, returns it as a `Span`
     /// Otherwise, returns `sp.shrink_to_hi()`
     </span><span class="kw">fn </span>ending_semi_or_hi(<span class="kw-2">&amp;</span><span class="self">self</span>, sp: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-        <span class="kw">let </span>source_map = <a class="self" href="#379">self</a>.session.source_map();
-        <span class="kw">let </span>end = <a href="#380">source_map</a>.end_point(<a href="#379">sp</a>);
+        <span class="kw">let </span>source_map = <a class="self" href="#388">self</a>.session.source_map();
+        <span class="kw">let </span>end = <a href="#389">source_map</a>.end_point(<a href="#388">sp</a>);
 
         <span class="kw">if </span>source_map.span_to_snippet(end).is_ok_and(|s| s == <span class="string">&quot;;&quot;</span>) {
-            <a href="#381">end</a>
+            <a href="#390">end</a>
         } <span class="kw">else </span>{
-            <a href="#379">sp</a>.shrink_to_hi()
+            <a href="#388">sp</a>.shrink_to_hi()
         }
     }
 
     <span class="kw">fn </span>check_type_no_bounds(<span class="kw-2">&amp;</span><span class="self">self</span>, bounds: <span class="kw-2">&amp;</span>[<a href="../../rustc_ast/ast/enum.GenericBound.html">GenericBound</a>], ctx: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) {
-        <span class="kw">let </span>span = <span class="kw">match </span><a href="#390">bounds</a> {
+        <span class="kw">let </span>span = <span class="kw">match </span><a href="#399">bounds</a> {
             [] =&gt; <span class="kw">return</span>,
-            [b0] =&gt; <a href="#393">b0</a>.span(),
-            [b0, .., bl] =&gt; <a href="#394">b0</a>.span().to(<a href="#394">bl</a>.span()),
+            [b0] =&gt; <a href="#402">b0</a>.span(),
+            [b0, .., bl] =&gt; <a href="#403">b0</a>.span().to(<a href="#403">bl</a>.span()),
         };
-        <a class="self" href="#390">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#202-206">errors::BoundInContext</a> { <a href="#391">span</a>, <a href="#390">ctx</a> });
+        <a class="self" href="#399">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#202-206">errors::BoundInContext</a> { <a href="#400">span</a>, <a href="#399">ctx</a> });
     }
 
     <span class="kw">fn </span>check_foreign_ty_genericless(
@@ -1926,63 +1947,63 @@
         after_where_clause: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.TyAliasWhereClause.html">TyAliasWhereClause</a>,
     ) {
         <span class="kw">let </span>cannot_have = |span, descr, remove_descr| {
-            <a class="self" href="#400">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#211-219">errors::ExternTypesCannotHave</a> {
-                <a href="#405">span</a>,
-                <a href="#405">descr</a>,
-                <a href="#405">remove_descr</a>,
-                block_span: <a class="self" href="#400">self</a>.<a href="#452-454">current_extern_span</a>(),
+            <a class="self" href="#409">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#211-219">errors::ExternTypesCannotHave</a> {
+                <a href="#414">span</a>,
+                <a href="#414">descr</a>,
+                <a href="#414">remove_descr</a>,
+                block_span: <a class="self" href="#409">self</a>.<a href="#461-463">current_extern_span</a>(),
             });
         };
 
         <span class="kw">if </span>!generics.params.is_empty() {
-            <a href="#405">cannot_have</a>(<a href="#401">generics</a>.span, <span class="string">&quot;generic parameters&quot;</span>, <span class="string">&quot;generic parameters&quot;</span>);
+            <a href="#414">cannot_have</a>(<a href="#410">generics</a>.span, <span class="string">&quot;generic parameters&quot;</span>, <span class="string">&quot;generic parameters&quot;</span>);
         }
 
         <span class="kw">let </span>check_where_clause = |where_clause: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.TyAliasWhereClause.html">TyAliasWhereClause</a>| {
-            <span class="kw">if let </span>TyAliasWhereClause(<span class="bool-val">true</span>, where_clause_span) = <a href="#418">where_clause</a> {
-                <a href="#405">cannot_have</a>(<span class="kw-2">*</span><a href="#419">where_clause_span</a>, <span class="string">&quot;`where` clauses&quot;</span>, <span class="string">&quot;`where` clause&quot;</span>);
+            <span class="kw">if let </span>TyAliasWhereClause(<span class="bool-val">true</span>, where_clause_span) = <a href="#427">where_clause</a> {
+                <a href="#414">cannot_have</a>(<span class="kw-2">*</span><a href="#428">where_clause_span</a>, <span class="string">&quot;`where` clauses&quot;</span>, <span class="string">&quot;`where` clause&quot;</span>);
             }
         };
 
-        <a href="#418">check_where_clause</a>(<a href="#402">before_where_clause</a>);
-        <a href="#418">check_where_clause</a>(<a href="#403">after_where_clause</a>);
+        <a href="#427">check_where_clause</a>(<a href="#411">before_where_clause</a>);
+        <a href="#427">check_where_clause</a>(<a href="#412">after_where_clause</a>);
     }
 
     <span class="kw">fn </span>check_foreign_kind_bodyless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, kind: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>, body: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(body) = <a href="#428">body</a> <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(body) = <a href="#437">body</a> <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
-        <a class="self" href="#428">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#224-233">errors::BodyInExtern</a> {
-            span: <a href="#428">ident</a>.span,
-            <a href="#429">body</a>,
-            block: <a class="self" href="#428">self</a>.<a href="#452-454">current_extern_span</a>(),
-            <a href="#428">kind</a>,
+        <a class="self" href="#437">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#224-233">errors::BodyInExtern</a> {
+            span: <a href="#437">ident</a>.span,
+            <a href="#438">body</a>,
+            block: <a class="self" href="#437">self</a>.<a href="#461-463">current_extern_span</a>(),
+            <a href="#437">kind</a>,
         });
     }
 
     <span class="doccomment">/// An `fn` in `extern { ... }` cannot have a body `{ ... }`.
     </span><span class="kw">fn </span>check_foreign_fn_bodyless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, body: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Block.html">Block</a>&gt;) {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(body) = <a href="#441">body</a> <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(body) = <a href="#450">body</a> <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
-        <a class="self" href="#441">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#239-247">errors::FnBodyInExtern</a> {
-            span: <a href="#441">ident</a>.span,
-            body: <a href="#442">body</a>.span,
-            block: <a class="self" href="#441">self</a>.<a href="#452-454">current_extern_span</a>(),
+        <a class="self" href="#450">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#239-247">errors::FnBodyInExtern</a> {
+            span: <a href="#450">ident</a>.span,
+            body: <a href="#451">body</a>.span,
+            block: <a class="self" href="#450">self</a>.<a href="#461-463">current_extern_span</a>(),
         });
     }
 
     <span class="kw">fn </span>current_extern_span(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-        <a class="self" href="#452">self</a>.session.source_map().guess_head_span(<a class="self" href="#452">self</a>.extern_mod.unwrap().span)
+        <a class="self" href="#461">self</a>.session.source_map().guess_head_span(<a class="self" href="#461">self</a>.extern_mod.unwrap().span)
     }
 
     <span class="doccomment">/// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
     </span><span class="kw">fn </span>check_foreign_fn_headerless(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, header: <a href="../../rustc_ast/ast/struct.FnHeader.html">FnHeader</a>) {
         <span class="kw">if </span>header.has_qualifiers() {
-            <a class="self" href="#457">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#251-258">errors::FnQualifierInExtern</a> {
-                span: <a href="#457">ident</a>.span,
-                block: <a class="self" href="#457">self</a>.<a href="#452-454">current_extern_span</a>(),
-                sugg_span: <a href="#457">span</a>.until(<a href="#457">ident</a>.span.shrink_to_lo()),
+            <a class="self" href="#466">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#251-258">errors::FnQualifierInExtern</a> {
+                span: <a href="#466">ident</a>.span,
+                block: <a class="self" href="#466">self</a>.<a href="#461-463">current_extern_span</a>(),
+                sugg_span: <a href="#466">span</a>.until(<a href="#466">ident</a>.span.shrink_to_lo()),
             });
         }
     }
@@ -1990,9 +2011,9 @@
     <span class="doccomment">/// An item in `extern { ... }` cannot use non-ascii identifier.
     </span><span class="kw">fn </span>check_foreign_item_ascii_only(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">if </span>!ident.as_str().is_ascii() {
-            <a class="self" href="#468">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#263-268">errors::ExternItemAscii</a> {
-                span: <a href="#468">ident</a>.span,
-                block: <a class="self" href="#468">self</a>.<a href="#452-454">current_extern_span</a>(),
+            <a class="self" href="#477">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#263-268">errors::ExternItemAscii</a> {
+                span: <a href="#477">ident</a>.span,
+                block: <a class="self" href="#477">self</a>.<a href="#461-463">current_extern_span</a>(),
             });
         }
     }
@@ -2000,9 +2021,9 @@
     <span class="doccomment">/// Reject C-variadic type unless the function is foreign,
     /// or free and `unsafe extern &quot;C&quot;` semantically.
     </span><span class="kw">fn </span>check_c_variadic_type(<span class="kw-2">&amp;</span><span class="self">self</span>, fk: FnKind&lt;<span class="lifetime">&#39;a</span>&gt;) {
-        <span class="kw">match </span>(<a href="#479">fk</a>.ctxt(), <a href="#479">fk</a>.header()) {
+        <span class="kw">match </span>(<a href="#488">fk</a>.ctxt(), <a href="#488">fk</a>.header()) {
             (<span class="prelude-val">Some</span>(FnCtxt::Foreign), <span class="kw">_</span>) =&gt; <span class="kw">return</span>,
-            (<span class="prelude-val">Some</span>(FnCtxt::Free), <span class="prelude-val">Some</span>(header)) =&gt; <span class="kw">match </span><a href="#482">header</a>.ext {
+            (<span class="prelude-val">Some</span>(FnCtxt::Free), <span class="prelude-val">Some</span>(header)) =&gt; <span class="kw">match </span><a href="#491">header</a>.ext {
                 Extern::Explicit(<a href="../../rustc_ast/ast/struct.StrLit.html">StrLit</a> { symbol_unescaped: sym::C, .. }, <span class="kw">_</span>)
                 | Extern::Implicit(<span class="kw">_</span>)
                     <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(header.unsafety, Unsafe::Yes(<span class="kw">_</span>)) =&gt;
@@ -2025,74 +2046,74 @@
         <span class="kw">if </span>ident.name != kw::Underscore {
             <span class="kw">return</span>;
         }
-        <a class="self" href="#501">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#279-284">errors::ItemUnderscore</a> { span: <a href="#501">ident</a>.span, <a href="#501">kind</a> });
+        <a class="self" href="#510">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#279-284">errors::ItemUnderscore</a> { span: <a href="#510">ident</a>.span, <a href="#510">kind</a> });
     }
 
     <span class="kw">fn </span>check_nomangle_item_asciionly(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, item_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>ident.name.as_str().is_ascii() {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>span = <a class="self" href="#508">self</a>.session.source_map().guess_head_span(<a href="#508">item_span</a>);
-        <a class="self" href="#508">self</a>.session.emit_err(<a href="errors.rs.html#288-291">errors::NoMangleAscii</a> { <a href="#512">span</a> });
+        <span class="kw">let </span>span = <a class="self" href="#517">self</a>.session.source_map().guess_head_span(<a href="#517">item_span</a>);
+        <a class="self" href="#517">self</a>.session.emit_err(<a href="errors.rs.html#288-291">errors::NoMangleAscii</a> { <a href="#521">span</a> });
     }
 
     <span class="kw">fn </span>check_mod_file_item_asciionly(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>) {
         <span class="kw">if </span>ident.name.as_str().is_ascii() {
             <span class="kw">return</span>;
         }
-        <a class="self" href="#516">self</a>.session.emit_err(<a href="errors.rs.html#296-300">errors::ModuleNonAscii</a> { span: <a href="#516">ident</a>.span, name: <a href="#516">ident</a>.name });
+        <a class="self" href="#525">self</a>.session.emit_err(<a href="errors.rs.html#296-300">errors::ModuleNonAscii</a> { span: <a href="#525">ident</a>.span, name: <a href="#525">ident</a>.name });
     }
 
     <span class="kw">fn </span>deny_generic_params(<span class="kw-2">&amp;</span><span class="self">self</span>, generics: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Generics.html">Generics</a>, ident: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>!generics.params.is_empty() {
-            <a class="self" href="#523">self</a>.session.emit_err(<a href="errors.rs.html#304-310">errors::AutoTraitGeneric</a> { span: <a href="#523">generics</a>.span, <a href="#523">ident</a> });
+            <a class="self" href="#532">self</a>.session.emit_err(<a href="errors.rs.html#304-310">errors::AutoTraitGeneric</a> { span: <a href="#532">generics</a>.span, <a href="#532">ident</a> });
         }
     }
 
     <span class="kw">fn </span>emit_e0568(<span class="kw-2">&amp;</span><span class="self">self</span>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, ident: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
-        <a class="self" href="#529">self</a>.session.emit_err(<a href="errors.rs.html#314-320">errors::AutoTraitBounds</a> { <a href="#529">span</a>, <a href="#529">ident</a> });
+        <a class="self" href="#538">self</a>.session.emit_err(<a href="errors.rs.html#314-320">errors::AutoTraitBounds</a> { <a href="#538">span</a>, <a href="#538">ident</a> });
     }
 
     <span class="kw">fn </span>deny_super_traits(<span class="kw-2">&amp;</span><span class="self">self</span>, bounds: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/type.GenericBounds.html">GenericBounds</a>, ident_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
-        <span class="kw">if let </span>[.., last] = <span class="kw-2">&amp;</span><a href="#533">bounds</a>[..] {
-            <span class="kw">let </span>span = <a href="#533">ident_span</a>.shrink_to_hi().to(<a href="#534">last</a>.span());
-            <a class="self" href="#533">self</a>.<a href="#529-531">emit_e0568</a>(<a href="#535">span</a>, <a href="#533">ident_span</a>);
+        <span class="kw">if let </span>[.., last] = <span class="kw-2">&amp;</span><a href="#542">bounds</a>[..] {
+            <span class="kw">let </span>span = <a href="#542">ident_span</a>.shrink_to_hi().to(<a href="#543">last</a>.span());
+            <a class="self" href="#542">self</a>.<a href="#538-540">emit_e0568</a>(<a href="#544">span</a>, <a href="#542">ident_span</a>);
         }
     }
 
     <span class="kw">fn </span>deny_where_clause(<span class="kw-2">&amp;</span><span class="self">self</span>, where_clause: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.WhereClause.html">WhereClause</a>, ident_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>!where_clause.predicates.is_empty() {
-            <a class="self" href="#540">self</a>.<a href="#529-531">emit_e0568</a>(<a href="#540">where_clause</a>.span, <a href="#540">ident_span</a>);
+            <a class="self" href="#549">self</a>.<a href="#538-540">emit_e0568</a>(<a href="#549">where_clause</a>.span, <a href="#549">ident_span</a>);
         }
     }
 
     <span class="kw">fn </span>deny_items(<span class="kw-2">&amp;</span><span class="self">self</span>, trait_items: <span class="kw-2">&amp;</span>[P&lt;<a href="../../rustc_ast/ast/type.AssocItem.html">AssocItem</a>&gt;], ident: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span>!trait_items.is_empty() {
-            <span class="kw">let </span>spans: Vec&lt;<span class="kw">_</span>&gt; = <a href="#546">trait_items</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|i| <a href="#548">i</a>.ident.span).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-            <span class="kw">let </span>total = <a href="#546">trait_items</a>.first().unwrap().span.to(<a href="#546">trait_items</a>.last().unwrap().span);
-            <a class="self" href="#546">self</a>.session.emit_err(<a href="errors.rs.html#324-331">errors::AutoTraitItems</a> { <a href="#548">spans</a>, <a href="#549">total</a>, <a href="#546">ident</a> });
+            <span class="kw">let </span>spans: Vec&lt;<span class="kw">_</span>&gt; = <a href="#555">trait_items</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|i| <a href="#557">i</a>.ident.span).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+            <span class="kw">let </span>total = <a href="#555">trait_items</a>.first().unwrap().span.to(<a href="#555">trait_items</a>.last().unwrap().span);
+            <a class="self" href="#555">self</a>.session.emit_err(<a href="errors.rs.html#324-331">errors::AutoTraitItems</a> { <a href="#557">spans</a>, <a href="#558">total</a>, <a href="#555">ident</a> });
         }
     }
 
     <span class="kw">fn </span>correct_generic_order_suggestion(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.AngleBracketedArgs.html">AngleBracketedArgs</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
         <span class="comment">// Lifetimes always come first.
-        </span><span class="kw">let </span>lt_sugg = <a href="#554">data</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|arg| <span class="kw">match </span><a href="#556">arg</a> {
+        </span><span class="kw">let </span>lt_sugg = <a href="#563">data</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|arg| <span class="kw">match </span><a href="#565">arg</a> {
             AngleBracketedArg::Arg(lt @ GenericArg::Lifetime(<span class="kw">_</span>)) =&gt; {
-                <span class="prelude-val">Some</span>(pprust::to_string(|s| <a href="#558">s</a>.print_generic_arg(<a href="#557">lt</a>)))
+                <span class="prelude-val">Some</span>(pprust::to_string(|s| <a href="#567">s</a>.print_generic_arg(<a href="#566">lt</a>)))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         });
-        <span class="kw">let </span>args_sugg = <a href="#554">data</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|a| <span class="kw">match </span><a href="#562">a</a> {
+        <span class="kw">let </span>args_sugg = <a href="#563">data</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|a| <span class="kw">match </span><a href="#571">a</a> {
             AngleBracketedArg::Arg(GenericArg::Lifetime(<span class="kw">_</span>)) | AngleBracketedArg::Constraint(<span class="kw">_</span>) =&gt; {
                 <span class="prelude-val">None
             </span>}
-            AngleBracketedArg::Arg(arg) =&gt; <span class="prelude-val">Some</span>(pprust::to_string(|s| <a href="#566">s</a>.print_generic_arg(<a href="#566">arg</a>))),
+            AngleBracketedArg::Arg(arg) =&gt; <span class="prelude-val">Some</span>(pprust::to_string(|s| <a href="#575">s</a>.print_generic_arg(<a href="#575">arg</a>))),
         });
         <span class="comment">// Constraints always come last.
-        </span><span class="kw">let </span>constraint_sugg = <a href="#554">data</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|a| <span class="kw">match </span><a href="#569">a</a> {
+        </span><span class="kw">let </span>constraint_sugg = <a href="#563">data</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|a| <span class="kw">match </span><a href="#578">a</a> {
             AngleBracketedArg::Arg(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
             AngleBracketedArg::Constraint(c) =&gt; {
-                <span class="prelude-val">Some</span>(pprust::to_string(|s| <a href="#572">s</a>.print_assoc_constraint(<a href="#571">c</a>)))
+                <span class="prelude-val">Some</span>(pprust::to_string(|s| <a href="#581">s</a>.print_assoc_constraint(<a href="#580">c</a>)))
             }
         });
         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
@@ -2109,36 +2130,36 @@
         }
         <span class="comment">// Find all generic argument coming after the first constraint...
         </span><span class="kw">let </span>(constraint_spans, arg_spans): (Vec&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;, Vec&lt;<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) =
-            <a href="#582">data</a>.args.iter().<a href="https://docs.rs/itertools/0.8/itertools/trait.Itertools.html">partition_map</a>(|arg| <span class="kw">match </span><a href="#589">arg</a> {
-                AngleBracketedArg::Constraint(c) =&gt; Either::Left(<a href="#590">c</a>.span),
-                AngleBracketedArg::Arg(a) =&gt; Either::Right(<a href="#591">a</a>.span()),
+            <a href="#591">data</a>.args.iter().<a href="https://docs.rs/itertools/0.8/itertools/trait.Itertools.html">partition_map</a>(|arg| <span class="kw">match </span><a href="#598">arg</a> {
+                AngleBracketedArg::Constraint(c) =&gt; Either::Left(<a href="#599">c</a>.span),
+                AngleBracketedArg::Arg(a) =&gt; Either::Right(<a href="#600">a</a>.span()),
             });
-        <span class="kw">let </span>args_len = <a href="#588">arg_spans</a>.len();
-        <span class="kw">let </span>constraint_len = <a href="#588">constraint_spans</a>.len();
+        <span class="kw">let </span>args_len = <a href="#597">arg_spans</a>.len();
+        <span class="kw">let </span>constraint_len = <a href="#597">constraint_spans</a>.len();
         <span class="comment">// ...and then error:
-        </span><a class="self" href="#582">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#335-351">errors::ArgsBeforeConstraint</a> {
-            arg_spans: <a href="#588">arg_spans</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
-            constraints: <a href="#588">constraint_spans</a>[<span class="number">0</span>],
-            args: <span class="kw-2">*</span><a href="#588">arg_spans</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">last</a>().unwrap(),
-            data: <a href="#582">data</a>.span,
-            constraint_spans: <a href="errors.rs.html#353">errors::EmptyLabelManySpans</a>(<a href="#588">constraint_spans</a>),
-            arg_spans2: <a href="errors.rs.html#353">errors::EmptyLabelManySpans</a>(<a href="#588">arg_spans</a>),
-            suggestion: <a class="self" href="#582">self</a>.<a href="#554-579">correct_generic_order_suggestion</a>(<span class="kw-2">&amp;</span><a href="#582">data</a>),
-            <a href="#594">constraint_len</a>,
-            <a href="#593">args_len</a>,
+        </span><a class="self" href="#591">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#335-351">errors::ArgsBeforeConstraint</a> {
+            arg_spans: <a href="#597">arg_spans</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
+            constraints: <a href="#597">constraint_spans</a>[<span class="number">0</span>],
+            args: <span class="kw-2">*</span><a href="#597">arg_spans</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">last</a>().unwrap(),
+            data: <a href="#591">data</a>.span,
+            constraint_spans: <a href="errors.rs.html#353">errors::EmptyLabelManySpans</a>(<a href="#597">constraint_spans</a>),
+            arg_spans2: <a href="errors.rs.html#353">errors::EmptyLabelManySpans</a>(<a href="#597">arg_spans</a>),
+            suggestion: <a class="self" href="#591">self</a>.<a href="#563-588">correct_generic_order_suggestion</a>(<span class="kw-2">&amp;</span><a href="#591">data</a>),
+            <a href="#603">constraint_len</a>,
+            <a href="#602">args_len</a>,
         });
     }
 
     <span class="kw">fn </span>visit_ty_common(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.Ty.html">Ty</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#609">ty</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#618">ty</a>.kind {
             TyKind::BareFn(bfty) =&gt; {
-                <a class="self" href="#609">self</a>.<a href="#301-306">check_fn_decl</a>(<span class="kw-2">&amp;</span><a href="#611">bfty</a>.decl, <a href="#36">SelfSemantic::No</a>);
-                <span class="self">Self</span>::check_decl_no_pat(<span class="kw-2">&amp;</span><a href="#611">bfty</a>.decl, |span, <span class="kw">_</span>, <span class="kw">_</span>| {
-                    <a class="self" href="#609">self</a>.session.emit_err(<a href="errors.rs.html#370-373">errors::PatternFnPointer</a> { <a href="#613">span</a> });
+                <a class="self" href="#618">self</a>.<a href="#310-315">check_fn_decl</a>(<span class="kw-2">&amp;</span><a href="#620">bfty</a>.decl, <a href="#36">SelfSemantic::No</a>);
+                <span class="self">Self</span>::check_decl_no_pat(<span class="kw-2">&amp;</span><a href="#620">bfty</a>.decl, |span, <span class="kw">_</span>, <span class="kw">_</span>| {
+                    <a class="self" href="#618">self</a>.session.emit_err(<a href="errors.rs.html#370-373">errors::PatternFnPointer</a> { <a href="#622">span</a> });
                 });
-                <span class="kw">if let </span>Extern::Implicit(<span class="kw">_</span>) = <a href="#611">bfty</a>.ext {
-                    <span class="kw">let </span>sig_span = <a class="self" href="#609">self</a>.session.source_map().next_point(<a href="#609">ty</a>.span.shrink_to_lo());
-                    <a class="self" href="#609">self</a>.<a href="#655-672">maybe_lint_missing_abi</a>(<a href="#617">sig_span</a>, <a href="#609">ty</a>.id);
+                <span class="kw">if let </span>Extern::Implicit(<span class="kw">_</span>) = <a href="#620">bfty</a>.ext {
+                    <span class="kw">let </span>sig_span = <a class="self" href="#618">self</a>.session.source_map().next_point(<a href="#618">ty</a>.span.shrink_to_lo());
+                    <a class="self" href="#618">self</a>.<a href="#664-681">maybe_lint_missing_abi</a>(<a href="#626">sig_span</a>, <a href="#618">ty</a>.id);
                 }
             }
             TyKind::TraitObject(bounds, ..) =&gt; {
@@ -2156,19 +2177,19 @@
             }
             TyKind::ImplTrait(<span class="kw">_</span>, bounds) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.is_impl_trait_banned {
-                    <a class="self" href="#609">self</a>.session.emit_err(<a href="errors.rs.html#384-387">errors::ImplTraitPath</a> { span: <a href="#609">ty</a>.span });
+                    <a class="self" href="#618">self</a>.session.emit_err(<a href="errors.rs.html#384-387">errors::ImplTraitPath</a> { span: <a href="#618">ty</a>.span });
                 }
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(outer_impl_trait_sp) = <a class="self" href="#609">self</a>.outer_impl_trait {
-                    <a class="self" href="#609">self</a>.session.emit_err(<a href="errors.rs.html#391-398">errors::NestedImplTrait</a> {
-                        span: <a href="#609">ty</a>.span,
-                        outer: <a href="#639">outer_impl_trait_sp</a>,
-                        inner: <a href="#609">ty</a>.span,
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(outer_impl_trait_sp) = <a class="self" href="#618">self</a>.outer_impl_trait {
+                    <a class="self" href="#618">self</a>.session.emit_err(<a href="errors.rs.html#391-398">errors::NestedImplTrait</a> {
+                        span: <a href="#618">ty</a>.span,
+                        outer: <a href="#648">outer_impl_trait_sp</a>,
+                        inner: <a href="#618">ty</a>.span,
                     });
                 }
 
                 <span class="kw">if </span>!bounds.iter().any(|b| <span class="macro">matches!</span>(b, GenericBound::Trait(..))) {
-                    <a class="self" href="#609">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#402-405">errors::AtLeastOneTrait</a> { span: <a href="#609">ty</a>.span });
+                    <a class="self" href="#618">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#402-405">errors::AtLeastOneTrait</a> { span: <a href="#618">ty</a>.span });
                 }
             }
             <span class="kw">_ </span>=&gt; {}
@@ -2184,12 +2205,12 @@
             .span_to_snippet(span)
             .is_ok_and(|snippet| !snippet.starts_with(<span class="string">&quot;#[&quot;</span>))
         {
-            <a class="self" href="#655">self</a>.lint_buffer.buffer_lint_with_diagnostic(
+            <a class="self" href="#664">self</a>.lint_buffer.buffer_lint_with_diagnostic(
                 <a href="../../rustc_lint_defs/builtin/static.MISSING_ABI.html">MISSING_ABI</a>,
-                <a href="#655">id</a>,
-                <a href="#655">span</a>,
+                <a href="#664">id</a>,
+                <a href="#664">span</a>,
                 <a href="lib.rs.html#24">fluent::ast_passes_extern_without_abi</a>,
-                BuiltinLintDiagnostics::MissingAbi(<a href="#655">span</a>, abi::Abi::FALLBACK),
+                BuiltinLintDiagnostics::MissingAbi(<a href="#664">span</a>, abi::Abi::FALLBACK),
             )
         }
     }
@@ -2204,7 +2225,7 @@
 ) {
     <span class="kw">let </span><span class="kw-2">mut </span>max_param: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_ast/ast/enum.ParamKindOrd.html">ParamKindOrd</a>&gt; = <span class="prelude-val">None</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>out_of_order = FxIndexMap::default();
-    <span class="kw">let </span><span class="kw-2">mut </span>param_idents = Vec::with_capacity(<a href="#679">generics</a>.len());
+    <span class="kw">let </span><span class="kw-2">mut </span>param_idents = Vec::with_capacity(<a href="#688">generics</a>.len());
 
     <span class="kw">for </span>(idx, param) <span class="kw">in </span>generics.iter().enumerate() {
         <span class="kw">let </span>ident = param.ident;
@@ -2229,7 +2250,7 @@
 
     <span class="kw">if </span>!out_of_order.is_empty() {
         <span class="kw">let </span><span class="kw-2">mut </span>ordered_params = <span class="string">&quot;&lt;&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
-        <a href="#684">param_idents</a>.sort_by_key(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, po, <span class="kw">_</span>, i, <span class="kw">_</span>)| (<a href="#709">po</a>, <a href="#709">i</a>));
+        <a href="#693">param_idents</a>.sort_by_key(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, po, <span class="kw">_</span>, i, <span class="kw">_</span>)| (<a href="#718">po</a>, <a href="#718">i</a>));
         <span class="kw">let </span><span class="kw-2">mut </span>first = <span class="bool-val">true</span>;
         <span class="kw">for </span>(kind, <span class="kw">_</span>, bounds, <span class="kw">_</span>, ident) <span class="kw">in </span>param_idents {
             <span class="kw">if </span>!first {
@@ -2258,7 +2279,7 @@
             first = <span class="bool-val">false</span>;
         }
 
-        <a href="#708">ordered_params</a> += <span class="string">&quot;&gt;&quot;</span>;
+        <a href="#717">ordered_params</a> += <span class="string">&quot;&gt;&quot;</span>;
 
         <span class="kw">for </span>(param_ord, (max_param, spans)) <span class="kw">in </span><span class="kw-2">&amp;</span>out_of_order {
             handler.emit_err(errors::OutOfOrderParams {
@@ -2274,40 +2295,40 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Visitor&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>AstValidator&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">fn </span>visit_attribute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Attribute.html">Attribute</a>) {
-        validate_attr::check_attr(<span class="kw-2">&amp;</span><a class="self" href="#753">self</a>.session.parse_sess, <a href="#753">attr</a>);
+        validate_attr::check_attr(<span class="kw-2">&amp;</span><a class="self" href="#762">self</a>.session.parse_sess, <a href="#762">attr</a>);
     }
 
     <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.Ty.html">Ty</a>) {
-        <a class="self" href="#757">self</a>.<a href="#609-653">visit_ty_common</a>(<a href="#757">ty</a>);
-        <a class="self" href="#757">self</a>.<a href="#274-282">deny_anon_struct_or_union</a>(<a href="#757">ty</a>);
-        <a class="self" href="#757">self</a>.<a href="#161-206">walk_ty</a>(<a href="#757">ty</a>)
+        <a class="self" href="#766">self</a>.<a href="#618-662">visit_ty_common</a>(<a href="#766">ty</a>);
+        <a class="self" href="#766">self</a>.<a href="#283-291">deny_anon_struct_or_union</a>(<a href="#766">ty</a>);
+        <a class="self" href="#766">self</a>.<a href="#170-215">walk_ty</a>(<a href="#766">ty</a>)
     }
 
     <span class="kw">fn </span>visit_label(<span class="kw-2">&amp;mut </span><span class="self">self</span>, label: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.Label.html">Label</a>) {
-        <a class="self" href="#763">self</a>.<a href="#233-237">check_label</a>(<a href="#763">label</a>.ident);
-        visit::walk_label(<a class="self" href="#763">self</a>, <a href="#763">label</a>);
+        <a class="self" href="#772">self</a>.<a href="#242-246">check_label</a>(<a href="#772">label</a>.ident);
+        visit::walk_label(<a class="self" href="#772">self</a>, <a href="#772">label</a>);
     }
 
     <span class="kw">fn </span>visit_lifetime(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lifetime: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.Lifetime.html">Lifetime</a>, <span class="kw">_</span>: <a href="../../rustc_ast/visit/enum.LifetimeCtxt.html">visit::LifetimeCtxt</a>) {
-        <a class="self" href="#768">self</a>.<a href="#226-231">check_lifetime</a>(<a href="#768">lifetime</a>.ident);
-        visit::walk_lifetime(<a class="self" href="#768">self</a>, <a href="#768">lifetime</a>);
+        <a class="self" href="#777">self</a>.<a href="#235-240">check_lifetime</a>(<a href="#777">lifetime</a>.ident);
+        visit::walk_lifetime(<a class="self" href="#777">self</a>, <a href="#777">lifetime</a>);
     }
 
     <span class="kw">fn </span>visit_field_def(<span class="kw-2">&amp;mut </span><span class="self">self</span>, field: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.FieldDef.html">FieldDef</a>) {
-        <a class="self" href="#773">self</a>.<a href="#284-293">deny_unnamed_field</a>(<a href="#773">field</a>);
-        visit::walk_field_def(<a class="self" href="#773">self</a>, <a href="#773">field</a>)
+        <a class="self" href="#782">self</a>.<a href="#293-302">deny_unnamed_field</a>(<a href="#782">field</a>);
+        visit::walk_field_def(<a class="self" href="#782">self</a>, <a href="#782">field</a>)
     }
 
     <span class="kw">fn </span>visit_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.Item.html">Item</a>) {
         <span class="kw">if </span>item.attrs.iter().any(|attr| attr.is_proc_macro_attr()) {
-            <a class="self" href="#778">self</a>.has_proc_macro_decls = <span class="bool-val">true</span>;
+            <a class="self" href="#787">self</a>.has_proc_macro_decls = <span class="bool-val">true</span>;
         }
 
         <span class="kw">if </span>attr::contains_name(<span class="kw-2">&amp;</span>item.attrs, sym::no_mangle) {
-            <a class="self" href="#778">self</a>.<a href="#508-514">check_nomangle_item_asciionly</a>(<a href="#778">item</a>.ident, <a href="#778">item</a>.span);
+            <a class="self" href="#787">self</a>.<a href="#517-523">check_nomangle_item_asciionly</a>(<a href="#787">item</a>.ident, <a href="#787">item</a>.span);
         }
 
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#778">item</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#787">item</a>.kind {
             ItemKind::Impl(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Impl.html">Impl</a> {
                 unsafety,
                 polarity,
@@ -2318,32 +2339,32 @@
                 self_ty,
                 items,
             }) =&gt; {
-                <a class="self" href="#778">self</a>.<a href="#74-86">with_in_trait_impl</a>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span><a href="#792">constness</a>), |this| {
-                    <a href="#798">this</a>.<a href="#239-245">visibility_not_permitted</a>(
-                        <span class="kw-2">&amp;</span><a href="#778">item</a>.vis,
+                <a class="self" href="#787">self</a>.<a href="#75-89">with_in_trait_impl</a>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span><a href="#801">constness</a>), |this| {
+                    <a href="#807">this</a>.<a href="#248-254">visibility_not_permitted</a>(
+                        <span class="kw-2">&amp;</span><a href="#787">item</a>.vis,
                         <a href="errors.rs.html#39">errors::VisibilityNotPermittedNote::TraitImpl</a>,
                     );
-                    <span class="kw">if let </span>TyKind::Err = <a href="#795">self_ty</a>.kind {
-                        <a href="#798">this</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#422-425">errors::ObsoleteAuto</a> { span: <a href="#778">item</a>.span });
+                    <span class="kw">if let </span>TyKind::Err = <a href="#804">self_ty</a>.kind {
+                        <a href="#807">this</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#422-425">errors::ObsoleteAuto</a> { span: <a href="#787">item</a>.span });
                     }
-                    <span class="kw">if let </span>(<span class="kw-2">&amp;</span>Unsafe::Yes(span), <span class="kw-2">&amp;</span>ImplPolarity::Negative(sp)) = (<a href="#789">unsafety</a>, <a href="#790">polarity</a>)
+                    <span class="kw">if let </span>(<span class="kw-2">&amp;</span>Unsafe::Yes(span), <span class="kw-2">&amp;</span>ImplPolarity::Negative(sp)) = (<a href="#798">unsafety</a>, <a href="#799">polarity</a>)
                     {
-                        <a href="#798">this</a>.session.emit_err(<a href="errors.rs.html#429-436">errors::UnsafeNegativeImpl</a> {
-                            span: <a href="#806">sp</a>.to(<a href="#794">t</a>.path.span),
-                            negative: <a href="#806">sp</a>,
-                            r#unsafe: <a href="#806">span</a>,
+                        <a href="#807">this</a>.session.emit_err(<a href="errors.rs.html#429-436">errors::UnsafeNegativeImpl</a> {
+                            span: <a href="#815">sp</a>.to(<a href="#803">t</a>.path.span),
+                            negative: <a href="#815">sp</a>,
+                            r#unsafe: <a href="#815">span</a>,
                         });
                     }
 
-                    <a href="#798">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#778">item</a>.vis);
-                    <a href="#798">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#778">item</a>.ident);
-                    <span class="kw">if let </span>Const::Yes(<span class="kw">_</span>) = <a href="#792">constness</a> {
-                        <a href="#798">this</a>.<a href="#104-106">with_tilde_const_allowed</a>(|this| <a href="#818">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#793">generics</a>));
+                    <a href="#807">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#787">item</a>.vis);
+                    <a href="#807">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#787">item</a>.ident);
+                    <span class="kw">if let </span>Const::Yes(<span class="kw">_</span>) = <a href="#801">constness</a> {
+                        <a href="#807">this</a>.<a href="#113-115">with_tilde_const_allowed</a>(|this| <a href="#827">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#802">generics</a>));
                     } <span class="kw">else </span>{
-                        <a href="#798">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#793">generics</a>);
+                        <a href="#807">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#802">generics</a>);
                     }
-                    <a href="#798">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_trait_ref</a>(<a href="#794">t</a>);
-                    <a href="#798">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ty</a>(<a href="#795">self_ty</a>);
+                    <a href="#807">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_trait_ref</a>(<a href="#803">t</a>);
+                    <a href="#807">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ty</a>(<a href="#804">self_ty</a>);
 
                     <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_assoc_item, items, AssocCtxt::Impl);
                 });
@@ -2362,83 +2383,83 @@
             }) =&gt; {
                 <span class="kw">let </span>error =
                     |annotation_span, annotation, only_trait: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>| <a href="errors.rs.html#440-450">errors::InherentImplCannot</a> {
-                        span: <a href="#837">self_ty</a>.span,
-                        <a href="#841">annotation_span</a>,
-                        <a href="#841">annotation</a>,
-                        self_ty: <a href="#837">self_ty</a>.span,
-                        only_trait: <a href="#841">only_trait</a>.then_some(()),
+                        span: <a href="#846">self_ty</a>.span,
+                        <a href="#850">annotation_span</a>,
+                        <a href="#850">annotation</a>,
+                        self_ty: <a href="#846">self_ty</a>.span,
+                        only_trait: <a href="#850">only_trait</a>.then_some(()),
                     };
 
-                <a class="self" href="#778">self</a>.<a href="#239-245">visibility_not_permitted</a>(
-                    <span class="kw-2">&amp;</span><a href="#778">item</a>.vis,
+                <a class="self" href="#787">self</a>.<a href="#248-254">visibility_not_permitted</a>(
+                    <span class="kw-2">&amp;</span><a href="#787">item</a>.vis,
                     <a href="errors.rs.html#41">errors::VisibilityNotPermittedNote::IndividualImplItems</a>,
                 );
-                <span class="kw">if let </span><span class="kw-2">&amp;</span>Unsafe::Yes(span) = <a href="#831">unsafety</a> {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#454-462">errors::InherentImplCannotUnsafe</a> {
-                        span: <a href="#837">self_ty</a>.span,
-                        annotation_span: <a href="#853">span</a>,
+                <span class="kw">if let </span><span class="kw-2">&amp;</span>Unsafe::Yes(span) = <a href="#840">unsafety</a> {
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#454-462">errors::InherentImplCannotUnsafe</a> {
+                        span: <a href="#846">self_ty</a>.span,
+                        annotation_span: <a href="#862">span</a>,
                         annotation: <span class="string">&quot;unsafe&quot;</span>,
-                        self_ty: <a href="#837">self_ty</a>.span,
+                        self_ty: <a href="#846">self_ty</a>.span,
                     });
                 }
-                <span class="kw">if let </span><span class="kw-2">&amp;</span>ImplPolarity::Negative(span) = <a href="#832">polarity</a> {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="#840">error</a>(<a href="#861">span</a>, <span class="string">&quot;negative&quot;</span>, <span class="bool-val">false</span>));
+                <span class="kw">if let </span><span class="kw-2">&amp;</span>ImplPolarity::Negative(span) = <a href="#841">polarity</a> {
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="#849">error</a>(<a href="#870">span</a>, <span class="string">&quot;negative&quot;</span>, <span class="bool-val">false</span>));
                 }
-                <span class="kw">if let </span><span class="kw-2">&amp;</span>Defaultness::Default(def_span) = <a href="#833">defaultness</a> {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="#840">error</a>(<a href="#864">def_span</a>, <span class="string">&quot;`default`&quot;</span>, <span class="bool-val">true</span>));
+                <span class="kw">if let </span><span class="kw-2">&amp;</span>Defaultness::Default(def_span) = <a href="#842">defaultness</a> {
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="#849">error</a>(<a href="#873">def_span</a>, <span class="string">&quot;`default`&quot;</span>, <span class="bool-val">true</span>));
                 }
-                <span class="kw">if let </span><span class="kw-2">&amp;</span>Const::Yes(span) = <a href="#834">constness</a> {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="#840">error</a>(<a href="#867">span</a>, <span class="string">&quot;`const`&quot;</span>, <span class="bool-val">true</span>));
+                <span class="kw">if let </span><span class="kw-2">&amp;</span>Const::Yes(span) = <a href="#843">constness</a> {
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="#849">error</a>(<a href="#876">span</a>, <span class="string">&quot;`const`&quot;</span>, <span class="bool-val">true</span>));
                 }
             }
             ItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { defaultness, sig, generics, body }) =&gt; {
-                <a class="self" href="#778">self</a>.<a href="#370-375">check_defaultness</a>(<a href="#778">item</a>.span, <span class="kw-2">*</span><a href="#871">defaultness</a>);
+                <a class="self" href="#787">self</a>.<a href="#379-384">check_defaultness</a>(<a href="#787">item</a>.span, <span class="kw-2">*</span><a href="#880">defaultness</a>);
 
                 <span class="kw">if </span>body.is_none() {
-                    <a class="self" href="#778">self</a>.session.emit_err(<a href="errors.rs.html#172-179">errors::FnWithoutBody</a> {
-                        span: <a href="#778">item</a>.span,
-                        replace_span: <a class="self" href="#778">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#778">item</a>.span),
-                        extern_block_suggestion: <span class="kw">match </span><a href="#871">sig</a>.header.ext {
+                    <a class="self" href="#787">self</a>.session.emit_err(<a href="errors.rs.html#172-179">errors::FnWithoutBody</a> {
+                        span: <a href="#787">item</a>.span,
+                        replace_span: <a class="self" href="#787">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#787">item</a>.span),
+                        extern_block_suggestion: <span class="kw">match </span><a href="#880">sig</a>.header.ext {
                             Extern::None =&gt; <span class="prelude-val">None</span>,
                             Extern::Implicit(start_span) =&gt; {
                                 <span class="prelude-val">Some</span>(<a href="errors.rs.html#184-189">errors::ExternBlockSuggestion::Implicit</a> {
-                                    <a href="#880">start_span</a>,
-                                    end_span: <a href="#778">item</a>.span.shrink_to_hi(),
+                                    <a href="#889">start_span</a>,
+                                    end_span: <a href="#787">item</a>.span.shrink_to_hi(),
                                 })
                             }
                             Extern::Explicit(abi, start_span) =&gt; {
                                 <span class="prelude-val">Some</span>(<a href="errors.rs.html#191-197">errors::ExternBlockSuggestion::Explicit</a> {
-                                    <a href="#886">start_span</a>,
-                                    end_span: <a href="#778">item</a>.span.shrink_to_hi(),
-                                    abi: <a href="#886">abi</a>.symbol_unescaped,
+                                    <a href="#895">start_span</a>,
+                                    end_span: <a href="#787">item</a>.span.shrink_to_hi(),
+                                    abi: <a href="#895">abi</a>.symbol_unescaped,
                                 })
                             }
                         },
                     });
                 }
 
-                <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#778">item</a>.vis);
-                <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#778">item</a>.ident);
+                <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#787">item</a>.vis);
+                <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#787">item</a>.ident);
                 <span class="kw">let </span>kind =
-                    FnKind::Fn(FnCtxt::Free, <a href="#778">item</a>.ident, <a href="#871">sig</a>, <span class="kw-2">&amp;</span><a href="#778">item</a>.vis, <a href="#871">generics</a>, <a href="#871">body</a>.as_deref());
-                <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_fn</a>(<a href="#899">kind</a>, <a href="#778">item</a>.span, <a href="#778">item</a>.id);
+                    FnKind::Fn(FnCtxt::Free, <a href="#787">item</a>.ident, <a href="#880">sig</a>, <span class="kw-2">&amp;</span><a href="#787">item</a>.vis, <a href="#880">generics</a>, <a href="#880">body</a>.as_deref());
+                <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_fn</a>(<a href="#908">kind</a>, <a href="#787">item</a>.span, <a href="#787">item</a>.id);
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_attribute, <span class="kw-2">&amp;</span>item.attrs);
                 <span class="kw">return</span>; <span class="comment">// Avoid visiting again.
             </span>}
             ItemKind::ForeignMod(<a href="../../rustc_ast/ast/struct.ForeignMod.html">ForeignMod</a> { abi, unsafety, .. }) =&gt; {
-                <span class="kw">let </span>old_item = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#778">self</a>.extern_mod, <span class="prelude-val">Some</span>(<a href="#778">item</a>));
-                <a class="self" href="#778">self</a>.<a href="#239-245">visibility_not_permitted</a>(
-                    <span class="kw-2">&amp;</span><a href="#778">item</a>.vis,
+                <span class="kw">let </span>old_item = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#787">self</a>.extern_mod, <span class="prelude-val">Some</span>(<a href="#787">item</a>));
+                <a class="self" href="#787">self</a>.<a href="#248-254">visibility_not_permitted</a>(
+                    <span class="kw-2">&amp;</span><a href="#787">item</a>.vis,
                     <a href="errors.rs.html#43">errors::VisibilityNotPermittedNote::IndividualForeignItems</a>,
                 );
-                <span class="kw">if let </span><span class="kw-2">&amp;</span>Unsafe::Yes(span) = <a href="#905">unsafety</a> {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#466-470">errors::UnsafeItem</a> { <a href="#911">span</a>, kind: <span class="string">&quot;extern block&quot; </span>});
+                <span class="kw">if let </span><span class="kw-2">&amp;</span>Unsafe::Yes(span) = <a href="#914">unsafety</a> {
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#466-470">errors::UnsafeItem</a> { <a href="#920">span</a>, kind: <span class="string">&quot;extern block&quot; </span>});
                 }
                 <span class="kw">if </span>abi.is_none() {
-                    <a class="self" href="#778">self</a>.<a href="#655-672">maybe_lint_missing_abi</a>(<a href="#778">item</a>.span, <a href="#778">item</a>.id);
+                    <a class="self" href="#787">self</a>.<a href="#664-681">maybe_lint_missing_abi</a>(<a href="#787">item</a>.span, <a href="#787">item</a>.id);
                 }
-                visit::walk_item(<a class="self" href="#778">self</a>, <a href="#778">item</a>);
-                <a class="self" href="#778">self</a>.extern_mod = <a href="#906">old_item</a>;
+                visit::walk_item(<a class="self" href="#787">self</a>, <a href="#787">item</a>);
+                <a class="self" href="#787">self</a>.extern_mod = <a href="#915">old_item</a>;
                 <span class="kw">return</span>; <span class="comment">// Avoid visiting again.
             </span>}
             ItemKind::Enum(def, <span class="kw">_</span>) =&gt; {
@@ -2456,38 +2477,41 @@
                 }
             }
             ItemKind::Trait(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Trait.html">Trait</a> { is_auto, generics, bounds, items, .. }) =&gt; {
-                <span class="kw">if </span><span class="kw-2">*</span>is_auto == IsAuto::Yes {
-                    <span class="comment">// Auto traits cannot have generics, super traits nor contain items.
-                    </span><a class="self" href="#778">self</a>.<a href="#523-527">deny_generic_params</a>(<a href="#935">generics</a>, <a href="#778">item</a>.ident.span);
-                    <a class="self" href="#778">self</a>.<a href="#533-538">deny_super_traits</a>(<a href="#935">bounds</a>, <a href="#778">item</a>.ident.span);
-                    <a class="self" href="#778">self</a>.<a href="#540-544">deny_where_clause</a>(<span class="kw-2">&amp;</span><a href="#935">generics</a>.where_clause, <a href="#778">item</a>.ident.span);
-                    <a class="self" href="#778">self</a>.<a href="#546-552">deny_items</a>(<a href="#935">items</a>, <a href="#778">item</a>.ident.span);
-                }
+                <span class="kw">let </span>is_const_trait = attr::contains_name(<span class="kw-2">&amp;</span><a href="#787">item</a>.attrs, sym::const_trait);
+                <a class="self" href="#787">self</a>.<a href="#91-95">with_in_trait</a>(<a href="#945">is_const_trait</a>, |this| {
+                    <span class="kw">if </span><span class="kw-2">*</span>is_auto == IsAuto::Yes {
+                        <span class="comment">// Auto traits cannot have generics, super traits nor contain items.
+                        </span><a href="#946">this</a>.<a href="#532-536">deny_generic_params</a>(<a href="#944">generics</a>, <a href="#787">item</a>.ident.span);
+                        <a href="#946">this</a>.<a href="#542-547">deny_super_traits</a>(<a href="#944">bounds</a>, <a href="#787">item</a>.ident.span);
+                        <a href="#946">this</a>.<a href="#549-553">deny_where_clause</a>(<span class="kw-2">&amp;</span><a href="#944">generics</a>.where_clause, <a href="#787">item</a>.ident.span);
+                        <a href="#946">this</a>.<a href="#555-561">deny_items</a>(<a href="#944">items</a>, <a href="#787">item</a>.ident.span);
+                    }
 
-                <span class="comment">// Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
-                // context for the supertraits.
-                </span><a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#778">item</a>.vis);
-                <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#778">item</a>.ident);
-                <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#935">generics</a>);
-                <a class="self" href="#778">self</a>.<a href="#104-106">with_tilde_const_allowed</a>(|this| {
-                    <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                    <span class="comment">// Equivalent of `visit::walk_item` for `ItemKind::Trait` that inserts a bound
+                    // context for the supertraits.
+                    </span><a href="#946">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#787">item</a>.vis);
+                    <a href="#946">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#787">item</a>.ident);
+                    <a href="#946">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#944">generics</a>);
+                    <a href="#946">this</a>.<a href="#113-115">with_tilde_const_allowed</a>(|this| {
+                        <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_param_bound, bounds, BoundKind::SuperTraits)
+                    });
+                    <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
-                <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_assoc_item, items, AssocCtxt::Trait);
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_attribute, <span class="kw-2">&amp;</span>item.attrs);
                 <span class="kw">return</span>; <span class="comment">// Avoid visiting again
             </span>}
             ItemKind::Mod(unsafety, mod_kind) =&gt; {
-                <span class="kw">if let </span><span class="kw-2">&amp;</span>Unsafe::Yes(span) = <a href="#956">unsafety</a> {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#466-470">errors::UnsafeItem</a> { <a href="#957">span</a>, kind: <span class="string">&quot;module&quot; </span>});
+                <span class="kw">if let </span><span class="kw-2">&amp;</span>Unsafe::Yes(span) = <a href="#968">unsafety</a> {
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#466-470">errors::UnsafeItem</a> { <a href="#969">span</a>, kind: <span class="string">&quot;module&quot; </span>});
                 }
                 <span class="comment">// Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
                 </span><span class="kw">if </span>!<span class="macro">matches!</span>(mod_kind, ModKind::Loaded(<span class="kw">_</span>, Inline::Yes, <span class="kw">_</span>))
                     &amp;&amp; !attr::contains_name(<span class="kw-2">&amp;</span>item.attrs, sym::path)
                 {
-                    <a class="self" href="#778">self</a>.<a href="#516-521">check_mod_file_item_asciionly</a>(<a href="#778">item</a>.ident);
+                    <a class="self" href="#787">self</a>.<a href="#525-530">check_mod_file_item_asciionly</a>(<a href="#787">item</a>.ident);
                 }
             }
-            ItemKind::Struct(vdata, generics) =&gt; <span class="kw">match </span><a href="#967">vdata</a> {
+            ItemKind::Struct(vdata, generics) =&gt; <span class="kw">match </span><a href="#979">vdata</a> {
                 <span class="comment">// Duplicating the `Visitor` logic allows catching all cases
                 // of `Anonymous(Struct, Union)` outside of a field struct or union.
                 //
@@ -2495,9 +2519,9 @@
                 // encounters, and only on `ItemKind::Struct` and `ItemKind::Union`
                 // it uses `visit_ty_common`, which doesn&#39;t contain that specific check.
                 </span>VariantData::Struct(fields, ..) =&gt; {
-                    <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#778">item</a>.vis);
-                    <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#778">item</a>.ident);
-                    <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#967">generics</a>);
+                    <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#787">item</a>.vis);
+                    <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#787">item</a>.ident);
+                    <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#979">generics</a>);
                     <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_struct_field_def, fields);
                     <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_attribute, <span class="kw-2">&amp;</span>item.attrs);
                     <span class="kw">return</span>;
@@ -2506,13 +2530,13 @@
             },
             ItemKind::Union(vdata, generics) =&gt; {
                 <span class="kw">if </span>vdata.fields().is_empty() {
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#474-477">errors::FieldlessUnion</a> { span: <a href="#778">item</a>.span });
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#474-477">errors::FieldlessUnion</a> { span: <a href="#787">item</a>.span });
                 }
-                <span class="kw">match </span><a href="#984">vdata</a> {
+                <span class="kw">match </span><a href="#996">vdata</a> {
                     VariantData::Struct(fields, ..) =&gt; {
-                        <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#778">item</a>.vis);
-                        <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#778">item</a>.ident);
-                        <a class="self" href="#778">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#984">generics</a>);
+                        <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#787">item</a>.vis);
+                        <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#787">item</a>.ident);
+                        <a class="self" href="#787">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#996">generics</a>);
                         <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_struct_field_def, fields);
                         <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_attribute, <span class="kw-2">&amp;</span>item.attrs);
                         <span class="kw">return</span>;
@@ -2521,54 +2545,54 @@
                 }
             }
             ItemKind::Const(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.ConstItem.html">ConstItem</a> { defaultness, expr: <span class="prelude-val">None</span>, .. }) =&gt; {
-                <a class="self" href="#778">self</a>.<a href="#370-375">check_defaultness</a>(<a href="#778">item</a>.span, <span class="kw-2">*</span><a href="#1000">defaultness</a>);
-                <a class="self" href="#778">self</a>.session.emit_err(<a href="errors.rs.html#145-150">errors::ConstWithoutBody</a> {
-                    span: <a href="#778">item</a>.span,
-                    replace_span: <a class="self" href="#778">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#778">item</a>.span),
+                <a class="self" href="#787">self</a>.<a href="#379-384">check_defaultness</a>(<a href="#787">item</a>.span, <span class="kw-2">*</span><a href="#1012">defaultness</a>);
+                <a class="self" href="#787">self</a>.session.emit_err(<a href="errors.rs.html#145-150">errors::ConstWithoutBody</a> {
+                    span: <a href="#787">item</a>.span,
+                    replace_span: <a class="self" href="#787">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#787">item</a>.span),
                 });
             }
             ItemKind::Static(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.StaticItem.html">StaticItem</a> { expr: <span class="prelude-val">None</span>, .. }) =&gt; {
-                <a class="self" href="#778">self</a>.session.emit_err(<a href="errors.rs.html#154-159">errors::StaticWithoutBody</a> {
-                    span: <a href="#778">item</a>.span,
-                    replace_span: <a class="self" href="#778">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#778">item</a>.span),
+                <a class="self" href="#787">self</a>.session.emit_err(<a href="errors.rs.html#154-159">errors::StaticWithoutBody</a> {
+                    span: <a href="#787">item</a>.span,
+                    replace_span: <a class="self" href="#787">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#787">item</a>.span),
                 });
             }
             ItemKind::TyAlias(
                 ty_alias @ <span class="kw">box </span><a href="../../rustc_ast/ast/struct.TyAlias.html">TyAlias</a> { defaultness, bounds, where_clauses, ty, .. },
             ) =&gt; {
-                <a class="self" href="#778">self</a>.<a href="#370-375">check_defaultness</a>(<a href="#778">item</a>.span, <span class="kw-2">*</span><a href="#1014">defaultness</a>);
+                <a class="self" href="#787">self</a>.<a href="#379-384">check_defaultness</a>(<a href="#787">item</a>.span, <span class="kw-2">*</span><a href="#1026">defaultness</a>);
                 <span class="kw">if </span>ty.is_none() {
-                    <a class="self" href="#778">self</a>.session.emit_err(<a href="errors.rs.html#163-168">errors::TyAliasWithoutBody</a> {
-                        span: <a href="#778">item</a>.span,
-                        replace_span: <a class="self" href="#778">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#778">item</a>.span),
+                    <a class="self" href="#787">self</a>.session.emit_err(<a href="errors.rs.html#163-168">errors::TyAliasWithoutBody</a> {
+                        span: <a href="#787">item</a>.span,
+                        replace_span: <a class="self" href="#787">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#787">item</a>.span),
                     });
                 }
-                <a class="self" href="#778">self</a>.<a href="#390-397">check_type_no_bounds</a>(<a href="#1014">bounds</a>, <span class="string">&quot;this context&quot;</span>);
+                <a class="self" href="#787">self</a>.<a href="#399-406">check_type_no_bounds</a>(<a href="#1026">bounds</a>, <span class="string">&quot;this context&quot;</span>);
 
                 <span class="kw">if </span><span class="self">self</span>.features.lazy_type_alias {
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#778">self</a>.<a href="#116-152">check_type_alias_where_clause_location</a>(<a href="#1014">ty_alias</a>) {
-                        <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="#1026">err</a>);
+                    <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#787">self</a>.<a href="#125-161">check_type_alias_where_clause_location</a>(<a href="#1026">ty_alias</a>) {
+                        <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="#1038">err</a>);
                     }
                 } <span class="kw">else if </span>where_clauses.<span class="number">1.0 </span>{
-                    <a class="self" href="#778">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#482-487">errors::WhereClauseAfterTypeAlias</a> {
-                        span: <a href="#1014">where_clauses</a>.<span class="number">1.1</span>,
-                        help: <a class="self" href="#778">self</a>.session.is_nightly_build().then_some(()),
+                    <a class="self" href="#787">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#482-487">errors::WhereClauseAfterTypeAlias</a> {
+                        span: <a href="#1026">where_clauses</a>.<span class="number">1.1</span>,
+                        help: <a class="self" href="#787">self</a>.session.is_nightly_build().then_some(()),
                     });
                 }
             }
             <span class="kw">_ </span>=&gt; {}
         }
 
-        visit::walk_item(<a class="self" href="#778">self</a>, <a href="#778">item</a>);
+        visit::walk_item(<a class="self" href="#787">self</a>, <a href="#787">item</a>);
     }
 
     <span class="kw">fn </span>visit_foreign_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fi: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/type.ForeignItem.html">ForeignItem</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1042">fi</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1054">fi</a>.kind {
             ForeignItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { defaultness, sig, body, .. }) =&gt; {
-                <a class="self" href="#1042">self</a>.<a href="#370-375">check_defaultness</a>(<a href="#1042">fi</a>.span, <span class="kw-2">*</span><a href="#1044">defaultness</a>);
-                <a class="self" href="#1042">self</a>.<a href="#441-450">check_foreign_fn_bodyless</a>(<a href="#1042">fi</a>.ident, <a href="#1044">body</a>.as_deref());
-                <a class="self" href="#1042">self</a>.<a href="#457-465">check_foreign_fn_headerless</a>(<a href="#1042">fi</a>.ident, <a href="#1042">fi</a>.span, <a href="#1044">sig</a>.header);
-                <a class="self" href="#1042">self</a>.<a href="#468-475">check_foreign_item_ascii_only</a>(<a href="#1042">fi</a>.ident);
+                <a class="self" href="#1054">self</a>.<a href="#379-384">check_defaultness</a>(<a href="#1054">fi</a>.span, <span class="kw-2">*</span><a href="#1056">defaultness</a>);
+                <a class="self" href="#1054">self</a>.<a href="#450-459">check_foreign_fn_bodyless</a>(<a href="#1054">fi</a>.ident, <a href="#1056">body</a>.as_deref());
+                <a class="self" href="#1054">self</a>.<a href="#466-474">check_foreign_fn_headerless</a>(<a href="#1054">fi</a>.ident, <a href="#1054">fi</a>.span, <a href="#1056">sig</a>.header);
+                <a class="self" href="#1054">self</a>.<a href="#477-484">check_foreign_item_ascii_only</a>(<a href="#1054">fi</a>.ident);
             }
             ForeignItemKind::TyAlias(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.TyAlias.html">TyAlias</a> {
                 defaultness,
@@ -2578,27 +2602,27 @@
                 ty,
                 ..
             }) =&gt; {
-                <a class="self" href="#1042">self</a>.<a href="#370-375">check_defaultness</a>(<a href="#1042">fi</a>.span, <span class="kw-2">*</span><a href="#1051">defaultness</a>);
-                <a class="self" href="#1042">self</a>.<a href="#428-438">check_foreign_kind_bodyless</a>(<a href="#1042">fi</a>.ident, <span class="string">&quot;type&quot;</span>, <a href="#1055">ty</a>.as_ref().map(|b| <a href="#1059">b</a>.span));
-                <a class="self" href="#1042">self</a>.<a href="#390-397">check_type_no_bounds</a>(<a href="#1054">bounds</a>, <span class="string">&quot;`extern` blocks&quot;</span>);
-                <a class="self" href="#1042">self</a>.<a href="#399-426">check_foreign_ty_genericless</a>(<a href="#1052">generics</a>, <span class="kw-2">&amp;</span><a href="#1053">where_clauses</a>.<span class="number">0</span>, <span class="kw-2">&amp;</span><a href="#1053">where_clauses</a>.<span class="number">1</span>);
-                <a class="self" href="#1042">self</a>.<a href="#468-475">check_foreign_item_ascii_only</a>(<a href="#1042">fi</a>.ident);
+                <a class="self" href="#1054">self</a>.<a href="#379-384">check_defaultness</a>(<a href="#1054">fi</a>.span, <span class="kw-2">*</span><a href="#1063">defaultness</a>);
+                <a class="self" href="#1054">self</a>.<a href="#437-447">check_foreign_kind_bodyless</a>(<a href="#1054">fi</a>.ident, <span class="string">&quot;type&quot;</span>, <a href="#1067">ty</a>.as_ref().map(|b| <a href="#1071">b</a>.span));
+                <a class="self" href="#1054">self</a>.<a href="#399-406">check_type_no_bounds</a>(<a href="#1066">bounds</a>, <span class="string">&quot;`extern` blocks&quot;</span>);
+                <a class="self" href="#1054">self</a>.<a href="#408-435">check_foreign_ty_genericless</a>(<a href="#1064">generics</a>, <span class="kw-2">&amp;</span><a href="#1065">where_clauses</a>.<span class="number">0</span>, <span class="kw-2">&amp;</span><a href="#1065">where_clauses</a>.<span class="number">1</span>);
+                <a class="self" href="#1054">self</a>.<a href="#477-484">check_foreign_item_ascii_only</a>(<a href="#1054">fi</a>.ident);
             }
             ForeignItemKind::Static(<span class="kw">_</span>, <span class="kw">_</span>, body) =&gt; {
-                <a class="self" href="#1042">self</a>.<a href="#428-438">check_foreign_kind_bodyless</a>(<a href="#1042">fi</a>.ident, <span class="string">&quot;static&quot;</span>, <a href="#1064">body</a>.as_ref().map(|b| <a href="#1065">b</a>.span));
-                <a class="self" href="#1042">self</a>.<a href="#468-475">check_foreign_item_ascii_only</a>(<a href="#1042">fi</a>.ident);
+                <a class="self" href="#1054">self</a>.<a href="#437-447">check_foreign_kind_bodyless</a>(<a href="#1054">fi</a>.ident, <span class="string">&quot;static&quot;</span>, <a href="#1076">body</a>.as_ref().map(|b| <a href="#1077">b</a>.span));
+                <a class="self" href="#1054">self</a>.<a href="#477-484">check_foreign_item_ascii_only</a>(<a href="#1054">fi</a>.ident);
             }
             ForeignItemKind::MacCall(..) =&gt; {}
         }
 
-        visit::walk_foreign_item(<a class="self" href="#1042">self</a>, <a href="#1042">fi</a>)
+        visit::walk_foreign_item(<a class="self" href="#1054">self</a>, <a href="#1054">fi</a>)
     }
 
     <span class="comment">// Mirrors `visit::walk_generic_args`, but tracks relevant state.
     </span><span class="kw">fn </span>visit_generic_args(<span class="kw-2">&amp;mut </span><span class="self">self</span>, generic_args: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/enum.GenericArgs.html">GenericArgs</a>) {
-        <span class="kw">match </span><a href="#1075">generic_args</a> {
+        <span class="kw">match </span><a href="#1087">generic_args</a> {
             GenericArgs::AngleBracketed(data) =&gt; {
-                <a class="self" href="#1075">self</a>.<a href="#582-607">check_generic_args_before_constraints</a>(<a href="#1077">data</a>);
+                <a class="self" href="#1087">self</a>.<a href="#591-616">check_generic_args_before_constraints</a>(<a href="#1089">data</a>);
 
                 <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>data.args {
                     <span class="kw">match </span>arg {
@@ -2615,10 +2639,10 @@
             }
             GenericArgs::Parenthesized(data) =&gt; {
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_ty, <span class="kw-2">&amp;</span>data.inputs);
-                <span class="kw">if let </span>FnRetTy::Ty(ty) = <span class="kw-2">&amp;</span><a href="#1093">data</a>.output {
+                <span class="kw">if let </span>FnRetTy::Ty(ty) = <span class="kw-2">&amp;</span><a href="#1105">data</a>.output {
                     <span class="comment">// `-&gt; Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
-                    </span><a class="self" href="#1075">self</a>.<a href="#154-158">with_impl_trait</a>(<span class="prelude-val">None</span>, |this| <a href="#1098">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ty</a>(<a href="#1095">ty</a>));
+                    </span><a class="self" href="#1087">self</a>.<a href="#163-167">with_impl_trait</a>(<span class="prelude-val">None</span>, |this| <a href="#1110">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ty</a>(<a href="#1107">ty</a>));
                 }
             }
         }
@@ -2642,7 +2666,7 @@
             }
         }
 
-        <a href="#677-750">validate_generic_param_order</a>(<a class="self" href="#1104">self</a>.<a href="#222-224">err_handler</a>(), <span class="kw-2">&amp;</span><a href="#1104">generics</a>.params, <a href="#1104">generics</a>.span);
+        <a href="#686-759">validate_generic_param_order</a>(<a class="self" href="#1116">self</a>.<a href="#231-233">err_handler</a>(), <span class="kw-2">&amp;</span><a href="#1116">generics</a>.params, <a href="#1116">generics</a>.span);
 
         <span class="kw">for </span>predicate <span class="kw">in </span><span class="kw-2">&amp;</span>generics.where_clause.predicates {
             <span class="kw">if let </span>WherePredicate::EqPredicate(predicate) = predicate {
@@ -2679,49 +2703,49 @@
     }
 
     <span class="kw">fn </span>visit_generic_param(<span class="kw-2">&amp;mut </span><span class="self">self</span>, param: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/struct.GenericParam.html">GenericParam</a>) {
-        <span class="kw">if let </span><a href="../../rustc_ast/ast/enum.GenericParamKind.html">GenericParamKind::Lifetime</a> { .. } = <a href="#1158">param</a>.kind {
-            <a class="self" href="#1158">self</a>.<a href="#226-231">check_lifetime</a>(<a href="#1158">param</a>.ident);
+        <span class="kw">if let </span><a href="../../rustc_ast/ast/enum.GenericParamKind.html">GenericParamKind::Lifetime</a> { .. } = <a href="#1170">param</a>.kind {
+            <a class="self" href="#1170">self</a>.<a href="#235-240">check_lifetime</a>(<a href="#1170">param</a>.ident);
         }
-        visit::walk_generic_param(<a class="self" href="#1158">self</a>, <a href="#1158">param</a>);
+        visit::walk_generic_param(<a class="self" href="#1170">self</a>, <a href="#1170">param</a>);
     }
 
     <span class="kw">fn </span>visit_param_bound(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bound: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/enum.GenericBound.html">GenericBound</a>, ctxt: <a href="../../rustc_ast/visit/enum.BoundKind.html">BoundKind</a>) {
-        <span class="kw">if let </span>GenericBound::Trait(poly, modify) = <a href="#1165">bound</a> {
-            <span class="kw">match </span>(<a href="#1165">ctxt</a>, <a href="#1166">modify</a>) {
+        <span class="kw">if let </span>GenericBound::Trait(poly, modify) = <a href="#1177">bound</a> {
+            <span class="kw">match </span>(<a href="#1177">ctxt</a>, <a href="#1178">modify</a>) {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) =&gt; {
-                    <a class="self" href="#1165">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#530-534">errors::OptionalTraitSupertrait</a> {
-                        span: <a href="#1166">poly</a>.span,
-                        path_str: pprust::path_to_string(<span class="kw-2">&amp;</span><a href="#1166">poly</a>.trait_ref.path)
+                    <a class="self" href="#1177">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#530-534">errors::OptionalTraitSupertrait</a> {
+                        span: <a href="#1178">poly</a>.span,
+                        path_str: pprust::path_to_string(<span class="kw-2">&amp;</span><a href="#1178">poly</a>.trait_ref.path)
                     });
                 }
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) =&gt; {
-                    <a class="self" href="#1165">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#538-541">errors::OptionalTraitObject</a> {span: <a href="#1166">poly</a>.span});
+                    <a class="self" href="#1177">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#538-541">errors::OptionalTraitObject</a> {span: <a href="#1178">poly</a>.span});
                 }
-                (<span class="kw">_</span>, TraitBoundModifier::MaybeConst) <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = <span class="kw-2">&amp;</span><a class="self" href="#1165">self</a>.disallow_tilde_const =&gt; {
-                    <span class="kw">let </span>reason = <span class="kw">match </span><a href="#1177">reason</a> {
+                (<span class="kw">_</span>, TraitBoundModifier::MaybeConst) <span class="kw">if let </span><span class="prelude-val">Some</span>(reason) = <span class="kw-2">&amp;</span><a class="self" href="#1177">self</a>.disallow_tilde_const =&gt; {
+                    <span class="kw">let </span>reason = <span class="kw">match </span><a href="#1189">reason</a> {
                         <a href="#41">DisallowTildeConstContext::TraitObject</a> =&gt; <a href="errors.rs.html#555">errors::TildeConstReason::TraitObject</a>,
                         <a href="#42">DisallowTildeConstContext::Fn</a>(FnKind::Closure(..)) =&gt; <a href="errors.rs.html#557">errors::TildeConstReason::Closure</a>,
-                        <a href="#42">DisallowTildeConstContext::Fn</a>(FnKind::Fn(<span class="kw">_</span>, ident, ..)) =&gt; <a href="errors.rs.html#559-562">errors::TildeConstReason::Function</a> { ident: <a href="#1181">ident</a>.span },
+                        <a href="#42">DisallowTildeConstContext::Fn</a>(FnKind::Fn(<span class="kw">_</span>, ident, ..)) =&gt; <a href="errors.rs.html#559-562">errors::TildeConstReason::Function</a> { ident: <a href="#1193">ident</a>.span },
                     };
-                    <a class="self" href="#1165">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#545-550">errors::TildeConstDisallowed</a> {
-                        span: <a href="#1165">bound</a>.span(),
-                        <a href="#1178">reason</a>
+                    <a class="self" href="#1177">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#545-550">errors::TildeConstDisallowed</a> {
+                        span: <a href="#1177">bound</a>.span(),
+                        <a href="#1190">reason</a>
                     });
                 }
                 (<span class="kw">_</span>, TraitBoundModifier::MaybeConstMaybe) =&gt; {
-                    <a class="self" href="#1165">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#567-571">errors::OptionalConstExclusive</a> {span: <a href="#1165">bound</a>.span(), modifier: <span class="string">&quot;?&quot; </span>});
+                    <a class="self" href="#1177">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#567-571">errors::OptionalConstExclusive</a> {span: <a href="#1177">bound</a>.span(), modifier: <span class="string">&quot;?&quot; </span>});
                 }
                 (<span class="kw">_</span>, TraitBoundModifier::MaybeConstNegative) =&gt; {
-                    <a class="self" href="#1165">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#567-571">errors::OptionalConstExclusive</a> {span: <a href="#1165">bound</a>.span(), modifier: <span class="string">&quot;!&quot; </span>});
+                    <a class="self" href="#1177">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#567-571">errors::OptionalConstExclusive</a> {span: <a href="#1177">bound</a>.span(), modifier: <span class="string">&quot;!&quot; </span>});
                 }
                 <span class="kw">_ </span>=&gt; {}
             }
         }
 
         <span class="comment">// Negative trait bounds are not allowed to have associated constraints
-        </span><span class="kw">if let </span>GenericBound::Trait(trait_ref, TraitBoundModifier::Negative) = <a href="#1165">bound</a>
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(segment) = <a href="#1199">trait_ref</a>.trait_ref.path.segments.last()
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(ast::GenericArgs::AngleBracketed(args)) = <a href="#1200">segment</a>.args.as_deref()
+        </span><span class="kw">if let </span>GenericBound::Trait(trait_ref, TraitBoundModifier::Negative) = <a href="#1177">bound</a>
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(segment) = <a href="#1211">trait_ref</a>.trait_ref.path.segments.last()
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(ast::GenericArgs::AngleBracketed(args)) = <a href="#1212">segment</a>.args.as_deref()
         {
             <span class="kw">for </span>arg <span class="kw">in </span><span class="kw-2">&amp;</span>args.args {
                 <span class="kw">if let </span>ast::AngleBracketedArg::Constraint(constraint) = arg {
@@ -2730,31 +2754,31 @@
             }
         }
 
-        visit::walk_param_bound(<a class="self" href="#1165">self</a>, <a href="#1165">bound</a>)
+        visit::walk_param_bound(<a class="self" href="#1177">self</a>, <a href="#1177">bound</a>)
     }
 
     <span class="kw">fn </span>visit_fn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fk: FnKind&lt;<span class="lifetime">&#39;a</span>&gt;, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) {
         <span class="comment">// Only associated `fn`s can have `self` parameters.
-        </span><span class="kw">let </span>self_semantic = <span class="kw">match </span><a href="#1213">fk</a>.ctxt() {
+        </span><span class="kw">let </span>self_semantic = <span class="kw">match </span><a href="#1225">fk</a>.ctxt() {
             <span class="prelude-val">Some</span>(FnCtxt::Assoc(<span class="kw">_</span>)) =&gt; <a href="#35">SelfSemantic::Yes</a>,
             <span class="kw">_ </span>=&gt; <a href="#36">SelfSemantic::No</a>,
         };
-        <a class="self" href="#1213">self</a>.<a href="#301-306">check_fn_decl</a>(<a href="#1213">fk</a>.decl(), <a href="#1215">self_semantic</a>);
+        <a class="self" href="#1225">self</a>.<a href="#310-315">check_fn_decl</a>(<a href="#1225">fk</a>.decl(), <a href="#1227">self_semantic</a>);
 
-        <a class="self" href="#1213">self</a>.<a href="#479-499">check_c_variadic_type</a>(<a href="#1213">fk</a>);
+        <a class="self" href="#1225">self</a>.<a href="#488-508">check_c_variadic_type</a>(<a href="#1225">fk</a>);
 
         <span class="comment">// Functions cannot both be `const async`
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.FnHeader.html">FnHeader</a> {
             constness: Const::Yes(cspan),
             asyncness: <a href="../../rustc_ast/ast/enum.Async.html">Async::Yes</a> { span: aspan, .. },
             ..
-        }) = <a href="#1213">fk</a>.header()
+        }) = <a href="#1225">fk</a>.header()
         {
-            <a class="self" href="#1213">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#575-584">errors::ConstAndAsync</a> {
+            <a class="self" href="#1225">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#575-584">errors::ConstAndAsync</a> {
                 spans: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[cspan, aspan],
-                <a href="#1225">cspan</a>,
-                <a href="#1226">aspan</a>,
-                <a href="#1213">span</a>,
+                <a href="#1237">cspan</a>,
+                <a href="#1238">aspan</a>,
+                <a href="#1225">span</a>,
             });
         }
 
@@ -2765,35 +2789,35 @@
             <span class="kw">_</span>,
             <span class="kw">_</span>,
             <span class="kw">_</span>,
-        ) = <a href="#1213">fk</a>
+        ) = <a href="#1225">fk</a>
         {
-            <a class="self" href="#1213">self</a>.<a href="#655-672">maybe_lint_missing_abi</a>(<span class="kw-2">*</span><a href="#1241">sig_span</a>, <a href="#1213">id</a>);
+            <a class="self" href="#1225">self</a>.<a href="#664-681">maybe_lint_missing_abi</a>(<span class="kw-2">*</span><a href="#1253">sig_span</a>, <a href="#1225">id</a>);
         }
 
         <span class="comment">// Functions without bodies cannot have patterns.
-        </span><span class="kw">if let </span>FnKind::Fn(ctxt, <span class="kw">_</span>, sig, <span class="kw">_</span>, <span class="kw">_</span>, <span class="prelude-val">None</span>) = <a href="#1213">fk</a> {
-            <span class="self">Self</span>::check_decl_no_pat(<span class="kw-2">&amp;</span><a href="#1251">sig</a>.decl, |span, ident, mut_ident| {
+        </span><span class="kw">if let </span>FnKind::Fn(ctxt, <span class="kw">_</span>, sig, <span class="kw">_</span>, <span class="kw">_</span>, <span class="prelude-val">None</span>) = <a href="#1225">fk</a> {
+            <span class="self">Self</span>::check_decl_no_pat(<span class="kw-2">&amp;</span><a href="#1263">sig</a>.decl, |span, ident, mut_ident| {
                 <span class="kw">if </span>mut_ident &amp;&amp; <span class="macro">matches!</span>(ctxt, FnCtxt::Assoc(<span class="kw">_</span>)) {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#1252">ident</a> {
-                        <span class="kw">let </span>msg = <span class="kw">match </span><a href="#1251">ctxt</a> {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#1264">ident</a> {
+                        <span class="kw">let </span>msg = <span class="kw">match </span><a href="#1263">ctxt</a> {
                             FnCtxt::Foreign =&gt; <a href="lib.rs.html#24">fluent::ast_passes_pattern_in_foreign</a>,
                             <span class="kw">_ </span>=&gt; <a href="lib.rs.html#24">fluent::ast_passes_pattern_in_bodiless</a>,
                         };
-                        <span class="kw">let </span>diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(<a href="#1252">span</a>, <a href="#1254">ident</a>);
-                        <a class="self" href="#1213">self</a>.lint_buffer.buffer_lint_with_diagnostic(
+                        <span class="kw">let </span>diag = BuiltinLintDiagnostics::PatternsInFnsWithoutBody(<a href="#1264">span</a>, <a href="#1266">ident</a>);
+                        <a class="self" href="#1225">self</a>.lint_buffer.buffer_lint_with_diagnostic(
                             <a href="../../rustc_lint_defs/builtin/static.PATTERNS_IN_FNS_WITHOUT_BODY.html">PATTERNS_IN_FNS_WITHOUT_BODY</a>,
-                            <a href="#1213">id</a>,
-                            <a href="#1252">span</a>,
-                            <a href="#1255">msg</a>,
-                            <a href="#1259">diag</a>,
+                            <a href="#1225">id</a>,
+                            <a href="#1264">span</a>,
+                            <a href="#1267">msg</a>,
+                            <a href="#1271">diag</a>,
                         )
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">match </span><a href="#1251">ctxt</a> {
+                    <span class="kw">match </span><a href="#1263">ctxt</a> {
                         FnCtxt::Foreign =&gt; {
-                            <a class="self" href="#1213">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#588-592">errors::PatternInForeign</a> { <a href="#1252">span</a> })
+                            <a class="self" href="#1225">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#588-592">errors::PatternInForeign</a> { <a href="#1264">span</a> })
                         }
-                        <span class="kw">_ </span>=&gt; <a class="self" href="#1213">self</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="errors.rs.html#596-600">errors::PatternInBodiless</a> { <a href="#1252">span</a> }),
+                        <span class="kw">_ </span>=&gt; <a class="self" href="#1225">self</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="errors.rs.html#596-600">errors::PatternInBodiless</a> { <a href="#1264">span</a> }),
                     };
                 }
             });
@@ -2801,109 +2825,109 @@
 
         <span class="kw">let </span>tilde_const_allowed =
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(fk.header(), <span class="prelude-val">Some</span>(FnHeader { constness: ast::Const::Yes(<span class="kw">_</span>), .. }))
-                || <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(fk.ctxt(), <span class="prelude-val">Some</span>(FnCtxt::Assoc(<span class="kw">_</span>)));
+                || <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(fk.ctxt(), <span class="prelude-val">Some</span>(FnCtxt::Assoc(<span class="kw">_</span>)) <span class="kw">if </span><span class="self">self</span>.in_const_trait_or_impl);
 
-        <span class="kw">let </span>disallowed = (!<a href="#1279">tilde_const_allowed</a>).then(|| <a href="#42">DisallowTildeConstContext::Fn</a>(<a href="#1213">fk</a>));
+        <span class="kw">let </span>disallowed = (!<a href="#1291">tilde_const_allowed</a>).then(|| <a href="#42">DisallowTildeConstContext::Fn</a>(<a href="#1225">fk</a>));
 
-        <a class="self" href="#1213">self</a>.<a href="#94-102">with_tilde_const</a>(<a href="#1283">disallowed</a>, |this| visit::walk_fn(<a href="#1285">this</a>, <a href="#1213">fk</a>));
+        <a class="self" href="#1225">self</a>.<a href="#103-111">with_tilde_const</a>(<a href="#1295">disallowed</a>, |this| visit::walk_fn(<a href="#1297">this</a>, <a href="#1225">fk</a>));
     }
 
     <span class="kw">fn </span>visit_assoc_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../rustc_ast/ast/type.AssocItem.html">AssocItem</a>, ctxt: <a href="../../rustc_ast/visit/enum.AssocCtxt.html">AssocCtxt</a>) {
         <span class="kw">if </span>attr::contains_name(<span class="kw-2">&amp;</span>item.attrs, sym::no_mangle) {
-            <a class="self" href="#1288">self</a>.<a href="#508-514">check_nomangle_item_asciionly</a>(<a href="#1288">item</a>.ident, <a href="#1288">item</a>.span);
+            <a class="self" href="#1300">self</a>.<a href="#517-523">check_nomangle_item_asciionly</a>(<a href="#1300">item</a>.ident, <a href="#1300">item</a>.span);
         }
 
         <span class="kw">if </span>ctxt == AssocCtxt::Trait || !<span class="self">self</span>.in_trait_impl {
-            <a class="self" href="#1288">self</a>.<a href="#370-375">check_defaultness</a>(<a href="#1288">item</a>.span, <a href="#1288">item</a>.kind.defaultness());
+            <a class="self" href="#1300">self</a>.<a href="#379-384">check_defaultness</a>(<a href="#1300">item</a>.span, <a href="#1300">item</a>.kind.defaultness());
         }
 
         <span class="kw">if </span>ctxt == AssocCtxt::Impl {
-            <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1288">item</a>.kind {
+            <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1300">item</a>.kind {
                 AssocItemKind::Const(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.ConstItem.html">ConstItem</a> { expr: <span class="prelude-val">None</span>, .. }) =&gt; {
-                    <a class="self" href="#1288">self</a>.session.emit_err(<a href="errors.rs.html#118-123">errors::AssocConstWithoutBody</a> {
-                        span: <a href="#1288">item</a>.span,
-                        replace_span: <a class="self" href="#1288">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#1288">item</a>.span),
+                    <a class="self" href="#1300">self</a>.session.emit_err(<a href="errors.rs.html#118-123">errors::AssocConstWithoutBody</a> {
+                        span: <a href="#1300">item</a>.span,
+                        replace_span: <a class="self" href="#1300">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#1300">item</a>.span),
                     });
                 }
                 AssocItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { body, .. }) =&gt; {
                     <span class="kw">if </span>body.is_none() {
-                        <a class="self" href="#1288">self</a>.session.emit_err(<a href="errors.rs.html#127-132">errors::AssocFnWithoutBody</a> {
-                            span: <a href="#1288">item</a>.span,
-                            replace_span: <a class="self" href="#1288">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#1288">item</a>.span),
+                        <a class="self" href="#1300">self</a>.session.emit_err(<a href="errors.rs.html#127-132">errors::AssocFnWithoutBody</a> {
+                            span: <a href="#1300">item</a>.span,
+                            replace_span: <a class="self" href="#1300">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#1300">item</a>.span),
                         });
                     }
                 }
                 AssocItemKind::Type(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.TyAlias.html">TyAlias</a> { bounds, ty, .. }) =&gt; {
                     <span class="kw">if </span>ty.is_none() {
-                        <a class="self" href="#1288">self</a>.session.emit_err(<a href="errors.rs.html#136-141">errors::AssocTypeWithoutBody</a> {
-                            span: <a href="#1288">item</a>.span,
-                            replace_span: <a class="self" href="#1288">self</a>.<a href="#379-388">ending_semi_or_hi</a>(<a href="#1288">item</a>.span),
+                        <a class="self" href="#1300">self</a>.session.emit_err(<a href="errors.rs.html#136-141">errors::AssocTypeWithoutBody</a> {
+                            span: <a href="#1300">item</a>.span,
+                            replace_span: <a class="self" href="#1300">self</a>.<a href="#388-397">ending_semi_or_hi</a>(<a href="#1300">item</a>.span),
                         });
                     }
-                    <a class="self" href="#1288">self</a>.<a href="#390-397">check_type_no_bounds</a>(<a href="#1313">bounds</a>, <span class="string">&quot;`impl`s&quot;</span>);
+                    <a class="self" href="#1300">self</a>.<a href="#399-406">check_type_no_bounds</a>(<a href="#1325">bounds</a>, <span class="string">&quot;`impl`s&quot;</span>);
                 }
                 <span class="kw">_ </span>=&gt; {}
             }
         }
 
-        <span class="kw">if let </span>AssocItemKind::Type(ty_alias) = <span class="kw-2">&amp;</span><a href="#1288">item</a>.kind
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#1288">self</a>.<a href="#116-152">check_type_alias_where_clause_location</a>(<a href="#1326">ty_alias</a>)
+        <span class="kw">if let </span>AssocItemKind::Type(ty_alias) = <span class="kw-2">&amp;</span><a href="#1300">item</a>.kind
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Err</span>(err) = <a class="self" href="#1300">self</a>.<a href="#125-161">check_type_alias_where_clause_location</a>(<a href="#1338">ty_alias</a>)
         {
-            <a class="self" href="#1288">self</a>.lint_buffer.buffer_lint_with_diagnostic(
+            <a class="self" href="#1300">self</a>.lint_buffer.buffer_lint_with_diagnostic(
                 <a href="../../rustc_lint_defs/builtin/static.DEPRECATED_WHERE_CLAUSE_LOCATION.html">DEPRECATED_WHERE_CLAUSE_LOCATION</a>,
-                <a href="#1288">item</a>.id,
-                <a href="#1327">err</a>.span,
+                <a href="#1300">item</a>.id,
+                <a href="#1339">err</a>.span,
                 <a href="lib.rs.html#24">fluent::ast_passes_deprecated_where_clause_location</a>,
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
-                    <a href="#1327">err</a>.sugg.right,
-                    <a href="#1327">err</a>.sugg.snippet,
+                    <a href="#1339">err</a>.sugg.right,
+                    <a href="#1339">err</a>.sugg.snippet,
                 ),
             );
         }
 
         <span class="kw">if </span>ctxt == AssocCtxt::Trait || <span class="self">self</span>.in_trait_impl {
-            <a class="self" href="#1288">self</a>.<a href="#239-245">visibility_not_permitted</a>(<span class="kw-2">&amp;</span><a href="#1288">item</a>.vis, <a href="errors.rs.html#39">errors::VisibilityNotPermittedNote::TraitImpl</a>);
-            <span class="kw">if let </span>AssocItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { sig, .. }) = <span class="kw-2">&amp;</span><a href="#1288">item</a>.kind {
-                <a class="self" href="#1288">self</a>.<a href="#295-299">check_trait_fn_not_const</a>(<a href="#1343">sig</a>.header.constness);
+            <a class="self" href="#1300">self</a>.<a href="#248-254">visibility_not_permitted</a>(<span class="kw-2">&amp;</span><a href="#1300">item</a>.vis, <a href="errors.rs.html#39">errors::VisibilityNotPermittedNote::TraitImpl</a>);
+            <span class="kw">if let </span>AssocItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { sig, .. }) = <span class="kw-2">&amp;</span><a href="#1300">item</a>.kind {
+                <a class="self" href="#1300">self</a>.<a href="#304-308">check_trait_fn_not_const</a>(<a href="#1355">sig</a>.header.constness);
             }
         }
 
-        <span class="kw">if let </span>AssocItemKind::Const(..) = <a href="#1288">item</a>.kind {
-            <a class="self" href="#1288">self</a>.<a href="#501-506">check_item_named</a>(<a href="#1288">item</a>.ident, <span class="string">&quot;const&quot;</span>);
+        <span class="kw">if let </span>AssocItemKind::Const(..) = <a href="#1300">item</a>.kind {
+            <a class="self" href="#1300">self</a>.<a href="#510-515">check_item_named</a>(<a href="#1300">item</a>.ident, <span class="string">&quot;const&quot;</span>);
         }
 
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1288">item</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1300">item</a>.kind {
             AssocItemKind::Type(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.TyAlias.html">TyAlias</a> { generics, bounds, ty, .. })
-                <span class="kw">if </span><a href="#1288">ctxt</a> == AssocCtxt::Trait =&gt;
+                <span class="kw">if </span><a href="#1300">ctxt</a> == AssocCtxt::Trait =&gt;
             {
-                <a class="self" href="#1288">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#1288">item</a>.vis);
-                <a class="self" href="#1288">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#1288">item</a>.ident);
+                <a class="self" href="#1300">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#1300">item</a>.vis);
+                <a class="self" href="#1300">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#1300">item</a>.ident);
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_attribute, <span class="kw-2">&amp;</span>item.attrs);
-                <a class="self" href="#1288">self</a>.<a href="#104-106">with_tilde_const_allowed</a>(|this| {
-                    <a href="#1359">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#1353">generics</a>);
+                <a class="self" href="#1300">self</a>.<a href="#113-115">with_tilde_const_allowed</a>(|this| {
+                    <a href="#1371">this</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_generics</a>(<a href="#1365">generics</a>);
                     <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_param_bound, bounds, BoundKind::Bound);
                 });
                 <a class="macro" href="../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_ty, ty);
             }
             AssocItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { sig, generics, body, .. })
-                <span class="kw">if </span><a class="self" href="#1288">self</a>.in_const_trait_impl
-                    || <a href="#1288">ctxt</a> == AssocCtxt::Trait
+                <span class="kw">if </span><a class="self" href="#1300">self</a>.in_const_trait_or_impl
+                    || <a href="#1300">ctxt</a> == AssocCtxt::Trait
                     || <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(sig.header.constness, Const::Yes(<span class="kw">_</span>)) =&gt;
             {
-                <a class="self" href="#1288">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#1288">item</a>.vis);
-                <a class="self" href="#1288">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#1288">item</a>.ident);
+                <a class="self" href="#1300">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_vis</a>(<span class="kw-2">&amp;</span><a href="#1300">item</a>.vis);
+                <a class="self" href="#1300">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_ident</a>(<a href="#1300">item</a>.ident);
                 <span class="kw">let </span>kind = FnKind::Fn(
-                    FnCtxt::Assoc(<a href="#1288">ctxt</a>),
-                    <a href="#1288">item</a>.ident,
-                    <a href="#1365">sig</a>,
-                    <span class="kw-2">&amp;</span><a href="#1288">item</a>.vis,
-                    <a href="#1365">generics</a>,
-                    <a href="#1365">body</a>.as_deref(),
+                    FnCtxt::Assoc(<a href="#1300">ctxt</a>),
+                    <a href="#1300">item</a>.ident,
+                    <a href="#1377">sig</a>,
+                    <span class="kw-2">&amp;</span><a href="#1300">item</a>.vis,
+                    <a href="#1377">generics</a>,
+                    <a href="#1377">body</a>.as_deref(),
                 );
-                <a class="self" href="#1288">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_fn</a>(<a href="#1372">kind</a>, <a href="#1288">item</a>.span, <a href="#1288">item</a>.id);
+                <a class="self" href="#1300">self</a>.<a href="../../rustc_ast/visit/trait.Visitor.html">visit_fn</a>(<a href="#1384">kind</a>, <a href="#1300">item</a>.span, <a href="#1300">item</a>.id);
             }
-            <span class="kw">_ </span>=&gt; <span class="self"><a href="#1288">self</a>
-                </span>.<a href="#74-86">with_in_trait_impl</a>(<span class="bool-val">false</span>, <span class="prelude-val">None</span>, |this| visit::walk_assoc_item(<a href="#1383">this</a>, <a href="#1288">item</a>, <a href="#1288">ctxt</a>)),
+            <span class="kw">_ </span>=&gt; <span class="self"><a href="#1300">self</a>
+                </span>.<a href="#75-89">with_in_trait_impl</a>(<span class="bool-val">false</span>, <span class="prelude-val">None</span>, |this| visit::walk_assoc_item(<a href="#1395">this</a>, <a href="#1300">item</a>, <a href="#1300">ctxt</a>)),
         }
     }
 }
@@ -2915,12 +2939,12 @@
     predicate: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.WhereEqPredicate.html">WhereEqPredicate</a>,
     generics: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Generics.html">Generics</a>,
 ) {
-    <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="errors.rs.html#605-613">errors::EqualityInWhere</a> { span: <a href="#1392">predicate</a>.span, assoc: <span class="prelude-val">None</span>, assoc2: <span class="prelude-val">None </span>};
+    <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="errors.rs.html#605-613">errors::EqualityInWhere</a> { span: <a href="#1404">predicate</a>.span, assoc: <span class="prelude-val">None</span>, assoc2: <span class="prelude-val">None </span>};
 
     <span class="comment">// Given `&lt;A as Foo&gt;::Bar = RhsTy`, suggest `A: Foo&lt;Bar = RhsTy&gt;`.
-    </span><span class="kw">if let </span>TyKind::Path(<span class="prelude-val">Some</span>(qself), full_path) = <span class="kw-2">&amp;</span><a href="#1392">predicate</a>.lhs_ty.kind {
-        <span class="kw">if let </span>TyKind::Path(<span class="prelude-val">None</span>, path) = <span class="kw-2">&amp;</span><a href="#1398">qself</a>.ty.kind {
-            <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1399">path</a>.segments[..] {
+    </span><span class="kw">if let </span>TyKind::Path(<span class="prelude-val">Some</span>(qself), full_path) = <span class="kw-2">&amp;</span><a href="#1404">predicate</a>.lhs_ty.kind {
+        <span class="kw">if let </span>TyKind::Path(<span class="prelude-val">None</span>, path) = <span class="kw-2">&amp;</span><a href="#1410">qself</a>.ty.kind {
+            <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1411">path</a>.segments[..] {
                 [<a href="../../rustc_ast/ast/struct.PathSegment.html">PathSegment</a> { ident, args: <span class="prelude-val">None</span>, .. }] =&gt; {
                     <span class="kw">for </span>param <span class="kw">in </span><span class="kw-2">&amp;</span>generics.params {
                         <span class="kw">if </span>param.ident == <span class="kw-2">*</span>ident {
@@ -2978,8 +3002,8 @@
         }
     }
     <span class="comment">// Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo&lt;Bar = RhsTy&gt;`.
-    </span><span class="kw">if let </span>TyKind::Path(<span class="prelude-val">None</span>, full_path) = <span class="kw-2">&amp;</span><a href="#1392">predicate</a>.lhs_ty.kind {
-        <span class="kw">if let </span>[potential_param, potential_assoc] = <span class="kw-2">&amp;</span><a href="#1458">full_path</a>.segments[..] {
+    </span><span class="kw">if let </span>TyKind::Path(<span class="prelude-val">None</span>, full_path) = <span class="kw-2">&amp;</span><a href="#1404">predicate</a>.lhs_ty.kind {
+        <span class="kw">if let </span>[potential_param, potential_assoc] = <span class="kw-2">&amp;</span><a href="#1470">full_path</a>.segments[..] {
             <span class="kw">for </span>param <span class="kw">in </span><span class="kw-2">&amp;</span>generics.params {
                 <span class="kw">if </span>param.ident == potential_param.ident {
                     <span class="kw">for </span>bound <span class="kw">in </span><span class="kw-2">&amp;</span>param.bounds {
@@ -3019,7 +3043,7 @@
             }
         }
     }
-    <a href="#1391">this</a>.<a href="#222-224">err_handler</a>().emit_err(<a href="#1395">err</a>);
+    <a href="#1403">this</a>.<a href="#231-233">err_handler</a>().emit_err(<a href="#1407">err</a>);
 }
 
 <span class="kw">pub fn </span><a href="../../rustc_ast_passes/ast_validation/fn.check_crate.html">check_crate</a>(
@@ -3028,20 +3052,20 @@
     krate: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Crate.html">Crate</a>,
     lints: <span class="kw-2">&amp;mut </span><a href="../../rustc_lint_defs/struct.LintBuffer.html">LintBuffer</a>,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">let </span><span class="kw-2">mut </span>validator = <a href="#45-71">AstValidator</a> {
-        <a href="#1503">session</a>,
-        <a href="#1504">features</a>,
+    <span class="kw">let </span><span class="kw-2">mut </span>validator = <a href="#45-72">AstValidator</a> {
+        <a href="#1515">session</a>,
+        <a href="#1516">features</a>,
         extern_mod: <span class="prelude-val">None</span>,
         in_trait_impl: <span class="bool-val">false</span>,
-        in_const_trait_impl: <span class="bool-val">false</span>,
+        in_const_trait_or_impl: <span class="bool-val">false</span>,
         has_proc_macro_decls: <span class="bool-val">false</span>,
         outer_impl_trait: <span class="prelude-val">None</span>,
         disallow_tilde_const: <span class="prelude-val">None</span>,
         is_impl_trait_banned: <span class="bool-val">false</span>,
-        lint_buffer: <a href="#1506">lints</a>,
+        lint_buffer: <a href="#1518">lints</a>,
     };
-    visit::walk_crate(<span class="kw-2">&amp;mut </span><a href="#1508">validator</a>, <a href="#1505">krate</a>);
+    visit::walk_crate(<span class="kw-2">&amp;mut </span><a href="#1520">validator</a>, <a href="#1517">krate</a>);
 
-    <a href="#1508">validator</a>.has_proc_macro_decls
+    <a href="#1520">validator</a>.has_proc_macro_decls
 }
 </code></pre></div></section></main></body></html>

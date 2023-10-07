@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/check/wfcheck.rs`."><title>wfcheck.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/check/wfcheck.rs`."><title>wfcheck.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1875,6 +1875,37 @@
 <a href="#1875" id="1875">1875</a>
 <a href="#1876" id="1876">1876</a>
 <a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
+<a href="#1907" id="1907">1907</a>
+<a href="#1908" id="1908">1908</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../autoderef.rs.html#27-40"><span class="kw">crate</span>::autoderef::Autoderef</a>;
 <span class="kw">use </span><span class="kw">crate</span>::constrained_generic_params::{<a href="../constrained_generic_params.rs.html#98-106">identify_constrained_generic_params</a>, <a href="../constrained_generic_params.rs.html#8">Parameter</a>};
 
@@ -1900,7 +1931,10 @@
 <span class="kw">use </span>rustc_span::symbol::{<a href="../../../rustc_span/symbol/sym/index.html">sym</a>, <a href="../../../rustc_span/symbol/struct.Ident.html">Ident</a>, <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>};
 <span class="kw">use </span>rustc_span::{<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>};
 <span class="kw">use </span><a href="../../../rustc_target/spec/abi/enum.Abi.html">rustc_target::spec::abi::Abi</a>;
-<span class="kw">use </span><a href="../../../rustc_trait_selection/traits/error_reporting/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a>;
+<span class="kw">use </span><a href="../../../rustc_trait_selection/traits/error_reporting/type_err_ctxt_ext/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a>;
+<span class="kw">use </span>rustc_trait_selection::traits::misc::{
+    <a href="../../../rustc_trait_selection/traits/misc/fn.type_allowed_to_implement_const_param_ty.html">type_allowed_to_implement_const_param_ty</a>, <a href="../../../rustc_trait_selection/traits/misc/enum.ConstParamTyImplementationError.html">ConstParamTyImplementationError</a>,
+};
 <span class="kw">use </span><a href="../../../rustc_trait_selection/traits/outlives_bounds/trait.InferCtxtExt.html">rustc_trait_selection::traits::outlives_bounds::InferCtxtExt</a> <span class="kw">as _</span>;
 <span class="kw">use </span><a href="../../../rustc_trait_selection/traits/query/evaluate_obligation/trait.InferCtxtExt.html">rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt</a> <span class="kw">as _</span>;
 <span class="kw">use </span>rustc_trait_selection::traits::{
@@ -1919,13 +1953,13 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html">Deref</a> <span class="kw">for </span>WfCheckingCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">type </span>Target = ObligationCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;;
     <span class="kw">fn </span>deref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Target {
-        <span class="kw-2">&amp;</span><a class="self" href="#44">self</a>.ocx
+        <span class="kw-2">&amp;</span><a class="self" href="#47">self</a>.ocx
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; WfCheckingCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>tcx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#50">self</a>.ocx.infcx.tcx
+        <a class="self" href="#53">self</a>.ocx.infcx.tcx
     }
 
     <span class="comment">// Convenience function to normalize during wfcheck. This performs
@@ -1934,10 +1968,10 @@
     <span class="kw">where
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     {
-        <a class="self" href="#56">self</a>.ocx.normalize(
-            <span class="kw-2">&amp;</span>ObligationCause::new(<a href="#56">span</a>, <a class="self" href="#56">self</a>.body_def_id, ObligationCauseCode::WellFormed(<a href="#56">loc</a>)),
-            <a class="self" href="#56">self</a>.param_env,
-            <a href="#56">value</a>,
+        <a class="self" href="#59">self</a>.ocx.normalize(
+            <span class="kw-2">&amp;</span>ObligationCause::new(<a href="#59">span</a>, <a class="self" href="#59">self</a>.body_def_id, ObligationCauseCode::WellFormed(<a href="#59">loc</a>)),
+            <a class="self" href="#59">self</a>.param_env,
+            <a href="#59">value</a>,
         )
     }
 
@@ -1948,15 +1982,15 @@
         arg: ty::GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) {
         <span class="kw">let </span>cause = traits::ObligationCause::new(
-            <a href="#69">span</a>,
-            <a class="self" href="#68">self</a>.body_def_id,
-            ObligationCauseCode::WellFormed(<a href="#70">loc</a>),
+            <a href="#72">span</a>,
+            <a class="self" href="#71">self</a>.body_def_id,
+            ObligationCauseCode::WellFormed(<a href="#73">loc</a>),
         );
-        <a class="self" href="#68">self</a>.ocx.register_obligation(traits::Obligation::new(
-            <a class="self" href="#68">self</a>.<a href="#50-52">tcx</a>(),
-            <a href="#73">cause</a>,
-            <a class="self" href="#68">self</a>.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(<a href="#71">arg</a>))),
+        <a class="self" href="#71">self</a>.ocx.register_obligation(traits::Obligation::new(
+            <a class="self" href="#71">self</a>.<a href="#53-55">tcx</a>(),
+            <a href="#76">cause</a>,
+            <a class="self" href="#71">self</a>.param_env,
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(<a href="#74">arg</a>))),
         ));
     }
 }
@@ -1969,47 +2003,47 @@
 ) <span class="kw">where
     </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;a</span>&gt; FnOnce(<span class="kw-2">&amp;</span>WfCheckingCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;),
 {
-    <span class="kw">let </span>param_env = <a href="#88">tcx</a>.param_env(<a href="#90">body_def_id</a>);
-    <span class="kw">let </span>infcx = <span class="kw-2">&amp;</span><a href="#88">tcx</a>.<a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().build();
-    <span class="kw">let </span>ocx = ObligationCtxt::new(<a href="#96">infcx</a>);
+    <span class="kw">let </span>param_env = <a href="#91">tcx</a>.param_env(<a href="#93">body_def_id</a>);
+    <span class="kw">let </span>infcx = <span class="kw-2">&amp;</span><a href="#91">tcx</a>.<a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().build();
+    <span class="kw">let </span>ocx = ObligationCtxt::new(<a href="#99">infcx</a>);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>wfcx = <a href="#36-41">WfCheckingCtxt</a> { <a href="#97">ocx</a>, <a href="#89">span</a>, <a href="#90">body_def_id</a>, <a href="#95">param_env</a> };
+    <span class="kw">let </span><span class="kw-2">mut </span>wfcx = <a href="#39-44">WfCheckingCtxt</a> { <a href="#100">ocx</a>, <a href="#92">span</a>, <a href="#93">body_def_id</a>, <a href="#98">param_env</a> };
 
     <span class="kw">if </span>!tcx.features().trivial_bounds {
-        <a href="#99">wfcx</a>.<a href="#1810">check_false_global_bounds</a>()
+        <a href="#102">wfcx</a>.<a href="#1841">check_false_global_bounds</a>()
     }
-    <a href="#91">f</a>(<span class="kw-2">&amp;mut </span><a href="#99">wfcx</a>);
+    <a href="#94">f</a>(<span class="kw-2">&amp;mut </span><a href="#102">wfcx</a>);
 
-    <span class="kw">let </span>assumed_wf_types = <span class="kw">match </span><a href="#99">wfcx</a>.ocx.assumed_wf_types_and_report_errors(<a href="#95">param_env</a>, <a href="#90">body_def_id</a>)
+    <span class="kw">let </span>assumed_wf_types = <span class="kw">match </span><a href="#102">wfcx</a>.ocx.assumed_wf_types_and_report_errors(<a href="#98">param_env</a>, <a href="#93">body_def_id</a>)
     {
-        <span class="prelude-val">Ok</span>(wf_types) =&gt; <a href="#108">wf_types</a>,
+        <span class="prelude-val">Ok</span>(wf_types) =&gt; <a href="#111">wf_types</a>,
         <span class="prelude-val">Err</span>(_guar) =&gt; <span class="kw">return</span>,
     };
 
-    <span class="kw">let </span>implied_bounds = <a href="#96">infcx</a>.<a href="../../../rustc_trait_selection/traits/outlives_bounds/trait.InferCtxtExt.html">implied_bounds_tys</a>(<a href="#95">param_env</a>, <a href="#90">body_def_id</a>, <a href="#106">assumed_wf_types</a>);
+    <span class="kw">let </span>implied_bounds = <a href="#99">infcx</a>.<a href="../../../rustc_trait_selection/traits/outlives_bounds/trait.InferCtxtExt.html">implied_bounds_tys</a>(<a href="#98">param_env</a>, <a href="#93">body_def_id</a>, <a href="#109">assumed_wf_types</a>);
 
-    <span class="kw">let </span>errors = <a href="#99">wfcx</a>.select_all_or_error();
+    <span class="kw">let </span>errors = <a href="#102">wfcx</a>.select_all_or_error();
     <span class="kw">if </span>!errors.is_empty() {
-        <a href="#96">infcx</a>.err_ctxt().<a href="../../../rustc_trait_selection/traits/error_reporting/trait.TypeErrCtxtExt.html">report_fulfillment_errors</a>(<span class="kw-2">&amp;</span><a href="#114">errors</a>);
+        <a href="#99">infcx</a>.err_ctxt().<a href="../../../rustc_trait_selection/traits/error_reporting/type_err_ctxt_ext/trait.TypeErrCtxtExt.html">report_fulfillment_errors</a>(<a href="#117">errors</a>);
         <span class="kw">return</span>;
     }
 
-    <span class="kw">let </span>outlives_env = OutlivesEnvironment::with_bounds(<a href="#95">param_env</a>, <a href="#112">implied_bounds</a>);
+    <span class="kw">let </span>outlives_env = OutlivesEnvironment::with_bounds(<a href="#98">param_env</a>, <a href="#115">implied_bounds</a>);
 
-    <span class="kw">let _ </span>= <a href="#99">wfcx</a>.ocx.resolve_regions_and_report_errors(<a href="#90">body_def_id</a>, <span class="kw-2">&amp;</span><a href="#120">outlives_env</a>);
+    <span class="kw">let _ </span>= <a href="#102">wfcx</a>.ocx.resolve_regions_and_report_errors(<a href="#93">body_def_id</a>, <span class="kw-2">&amp;</span><a href="#123">outlives_env</a>);
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_well_formed.html">check_well_formed</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, def_id: <a href="../../../rustc_hir/hir_id/struct.OwnerId.html">hir::OwnerId</a>) {
-    <span class="kw">let </span>node = <a href="#125">tcx</a>.hir().owner(<a href="#125">def_id</a>);
-    <span class="kw">match </span><a href="#126">node</a> {
+    <span class="kw">let </span>node = <a href="#128">tcx</a>.hir().owner(<a href="#128">def_id</a>);
+    <span class="kw">match </span><a href="#129">node</a> {
         hir::OwnerNode::Crate(<span class="kw">_</span>) =&gt; {}
-        hir::OwnerNode::Item(item) =&gt; <a href="#155">check_item</a>(<a href="#125">tcx</a>, <a href="#129">item</a>),
-        hir::OwnerNode::TraitItem(item) =&gt; <a href="#281-302">check_trait_item</a>(<a href="#125">tcx</a>, <a href="#130">item</a>),
-        hir::OwnerNode::ImplItem(item) =&gt; <a href="#834-843">check_impl_item</a>(<a href="#125">tcx</a>, <a href="#131">item</a>),
-        hir::OwnerNode::ForeignItem(item) =&gt; <a href="#262-279">check_foreign_item</a>(<a href="#125">tcx</a>, <a href="#132">item</a>),
+        hir::OwnerNode::Item(item) =&gt; <a href="#158">check_item</a>(<a href="#128">tcx</a>, <a href="#132">item</a>),
+        hir::OwnerNode::TraitItem(item) =&gt; <a href="#282-303">check_trait_item</a>(<a href="#128">tcx</a>, <a href="#133">item</a>),
+        hir::OwnerNode::ImplItem(item) =&gt; <a href="#835-844">check_impl_item</a>(<a href="#128">tcx</a>, <a href="#134">item</a>),
+        hir::OwnerNode::ForeignItem(item) =&gt; <a href="#263-280">check_foreign_item</a>(<a href="#128">tcx</a>, <a href="#135">item</a>),
     }
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(generics) = <a href="#126">node</a>.generics() {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(generics) = <a href="#129">node</a>.generics() {
         <span class="kw">for </span>param <span class="kw">in </span>generics.params {
             check_param_wf(tcx, param)
         }
@@ -2123,9 +2157,7 @@
         <span class="comment">// `ForeignItem`s are handled separately.
         </span>hir::ItemKind::ForeignMod { .. } =&gt; {}
         hir::ItemKind::TyAlias(hir_ty, ast_generics) =&gt; {
-            <span class="kw">if </span>tcx.features().lazy_type_alias
-                || tcx.type_of(item.owner_id).skip_binder().has_opaque_types()
-            {
+            <span class="kw">if </span>tcx.type_alias_is_lazy(item.owner_id) {
                 <span class="comment">// Bounds of lazy type aliases and of eager ones that contain opaque types are respected.
                 // E.g: `type X = impl Trait;`, `type X = (impl Trait, Y);`.
                 </span>check_item_type(tcx, def_id, hir_ty.span, UnsizedHandling::Allow);
@@ -2137,34 +2169,34 @@
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_foreign_item.html">check_foreign_item</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, item: <span class="kw-2">&amp;</span>hir::ForeignItem&lt;<span class="lifetime">&#39;_</span>&gt;) {
-    <span class="kw">let </span>def_id = <a href="#262">item</a>.owner_id.def_id;
+    <span class="kw">let </span>def_id = <a href="#263">item</a>.owner_id.def_id;
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
         <span class="question-mark">?</span>item.owner_id,
         item.name = <span class="question-mark">? </span>tcx.def_path_str(def_id)
     );
 
-    <span class="kw">match </span><a href="#262">item</a>.kind {
+    <span class="kw">match </span><a href="#263">item</a>.kind {
         hir::ForeignItemKind::Fn(decl, ..) =&gt; {
-            <a href="#1122-1133">check_item_fn</a>(<a href="#262">tcx</a>, <a href="#263">def_id</a>, <a href="#262">item</a>.ident, <a href="#262">item</a>.span, <a href="#271">decl</a>)
+            <a href="#1145-1156">check_item_fn</a>(<a href="#263">tcx</a>, <a href="#264">def_id</a>, <a href="#263">item</a>.ident, <a href="#263">item</a>.span, <a href="#272">decl</a>)
         }
         hir::ForeignItemKind::Static(ty, ..) =&gt; {
-            <a href="#1141-1187">check_item_type</a>(<a href="#262">tcx</a>, <a href="#263">def_id</a>, <a href="#274">ty</a>.span, <a href="#1138">UnsizedHandling::AllowIfForeignTail</a>)
+            <a href="#1164-1210">check_item_type</a>(<a href="#263">tcx</a>, <a href="#264">def_id</a>, <a href="#275">ty</a>.span, <a href="#1161">UnsizedHandling::AllowIfForeignTail</a>)
         }
         hir::ForeignItemKind::Type =&gt; (),
     }
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_trait_item.html">check_trait_item</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, trait_item: <span class="kw-2">&amp;</span>hir::TraitItem&lt;<span class="lifetime">&#39;_</span>&gt;) {
-    <span class="kw">let </span>def_id = <a href="#281">trait_item</a>.owner_id.def_id;
+    <span class="kw">let </span>def_id = <a href="#282">trait_item</a>.owner_id.def_id;
 
-    <span class="kw">let </span>(method_sig, span) = <span class="kw">match </span><a href="#281">trait_item</a>.kind {
-        hir::TraitItemKind::Fn(<span class="kw-2">ref </span>sig, <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<a href="#285">sig</a>), <a href="#281">trait_item</a>.span),
-        hir::TraitItemKind::Type(_bounds, <span class="prelude-val">Some</span>(ty)) =&gt; (<span class="prelude-val">None</span>, <a href="#286">ty</a>.span),
-        <span class="kw">_ </span>=&gt; (<span class="prelude-val">None</span>, <a href="#281">trait_item</a>.span),
+    <span class="kw">let </span>(method_sig, span) = <span class="kw">match </span><a href="#282">trait_item</a>.kind {
+        hir::TraitItemKind::Fn(<span class="kw-2">ref </span>sig, <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<a href="#286">sig</a>), <a href="#282">trait_item</a>.span),
+        hir::TraitItemKind::Type(_bounds, <span class="prelude-val">Some</span>(ty)) =&gt; (<span class="prelude-val">None</span>, <a href="#287">ty</a>.span),
+        <span class="kw">_ </span>=&gt; (<span class="prelude-val">None</span>, <a href="#282">trait_item</a>.span),
     };
-    <a href="#783-832">check_object_unsafe_self_trait_by_name</a>(<a href="#281">tcx</a>, <a href="#281">trait_item</a>);
-    <a href="#913">check_associated_item</a>(<a href="#281">tcx</a>, <a href="#282">def_id</a>, <a href="#284">span</a>, <a href="#284">method_sig</a>);
+    <a href="#784-833">check_object_unsafe_self_trait_by_name</a>(<a href="#282">tcx</a>, <a href="#282">trait_item</a>);
+    <a href="#936">check_associated_item</a>(<a href="#282">tcx</a>, <a href="#283">def_id</a>, <a href="#285">span</a>, <a href="#285">method_sig</a>);
 
     <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(trait_item.kind, hir::TraitItemKind::Fn(..)) {
         <span class="kw">for </span><span class="kw-2">&amp;</span>assoc_ty_def_id <span class="kw">in </span>tcx.associated_types_for_impl_traits_in_associated_fn(def_id) {
@@ -2381,20 +2413,20 @@
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     new_predicates: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>FxHashSet&lt;ty::Clause&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;,
 ) -&gt; ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(new_predicates) = <a href="#505">new_predicates</a> <span class="kw">else </span>{
-        <span class="kw">return </span><a href="#504">param_env</a>;
+    <span class="kw">let </span><span class="prelude-val">Some</span>(new_predicates) = <a href="#506">new_predicates</a> <span class="kw">else </span>{
+        <span class="kw">return </span><a href="#505">param_env</a>;
     };
 
     <span class="kw">if </span>new_predicates.is_empty() {
-        <span class="kw">return </span><a href="#504">param_env</a>;
+        <span class="kw">return </span><a href="#505">param_env</a>;
     }
 
-    <span class="kw">let </span>bounds = <a href="#503">tcx</a>.mk_clauses_from_iter(
-        <a href="#504">param_env</a>.caller_bounds().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#507">new_predicates</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>()),
+    <span class="kw">let </span>bounds = <a href="#504">tcx</a>.mk_clauses_from_iter(
+        <a href="#505">param_env</a>.caller_bounds().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#508">new_predicates</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>()),
     );
     <span class="comment">// FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
     // i.e. traits::normalize_param_env_or_error
-    </span>ty::ParamEnv::new(<a href="#515">bounds</a>, <a href="#504">param_env</a>.reveal())
+    </span>ty::ParamEnv::new(<a href="#516">bounds</a>, <a href="#505">param_env</a>.reveal())
 }
 
 <span class="doccomment">/// We use the following trait as an example throughout this function.
@@ -2419,7 +2451,7 @@
     <span class="comment">// The bounds we that we would require from `to_check`
     </span><span class="kw">let </span><span class="kw-2">mut </span>bounds = FxHashSet::default();
 
-    <span class="kw">let </span>(regions, types) = GATSubstCollector::visit(<a href="#539">gat_def_id</a>.to_def_id(), <a href="#537">to_check</a>);
+    <span class="kw">let </span>(regions, types) = GATSubstCollector::visit(<a href="#540">gat_def_id</a>.to_def_id(), <a href="#538">to_check</a>);
 
     <span class="comment">// If both regions and types are empty, then this GAT isn&#39;t in the
     // set of types we are checking, and we shouldn&#39;t try to do clause analysis
@@ -2524,7 +2556,7 @@
         }
     }
 
-    <span class="prelude-val">Some</span>(<a href="#543">bounds</a>)
+    <span class="prelude-val">Some</span>(<a href="#544">bounds</a>)
 }
 
 <span class="doccomment">/// Given a known `param_env` and a set of well formed types, can we prove that
@@ -2537,10 +2569,10 @@
     ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     region: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <a href="#696-721">resolve_regions_with_wf_tys</a>(<a href="#656">tcx</a>, <a href="#657">id</a>, <a href="#658">param_env</a>, <span class="kw-2">&amp;</span><a href="#659">wf_tys</a>, |infcx, region_bound_pairs| {
-        <span class="kw">let </span>origin = infer::RelateParamBound(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#660">ty</a>, <span class="prelude-val">None</span>);
-        <span class="kw">let </span>outlives = <span class="kw-2">&amp;mut </span>TypeOutlives::new(<a href="#663">infcx</a>, <a href="#656">tcx</a>, <a href="#663">region_bound_pairs</a>, <span class="prelude-val">None</span>, <a href="#658">param_env</a>);
-        <a href="#665">outlives</a>.type_must_outlive(<a href="#664">origin</a>, <a href="#660">ty</a>, <a href="#661">region</a>, ConstraintCategory::BoringNoLocation);
+    <a href="#697-722">resolve_regions_with_wf_tys</a>(<a href="#657">tcx</a>, <a href="#658">id</a>, <a href="#659">param_env</a>, <span class="kw-2">&amp;</span><a href="#660">wf_tys</a>, |infcx, region_bound_pairs| {
+        <span class="kw">let </span>origin = infer::RelateParamBound(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#661">ty</a>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>outlives = <span class="kw-2">&amp;mut </span>TypeOutlives::new(<a href="#664">infcx</a>, <a href="#657">tcx</a>, <a href="#664">region_bound_pairs</a>, <span class="prelude-val">None</span>, <a href="#659">param_env</a>);
+        <a href="#666">outlives</a>.type_must_outlive(<a href="#665">origin</a>, <a href="#661">ty</a>, <a href="#662">region</a>, ConstraintCategory::BoringNoLocation);
     })
 }
 
@@ -2554,14 +2586,14 @@
     region_a: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     region_b: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <a href="#696-721">resolve_regions_with_wf_tys</a>(<a href="#673">tcx</a>, <a href="#674">id</a>, <a href="#675">param_env</a>, <span class="kw-2">&amp;</span><a href="#676">wf_tys</a>, |<span class="kw-2">mut </span>infcx, <span class="kw">_</span>| {
+    <a href="#697-722">resolve_regions_with_wf_tys</a>(<a href="#674">tcx</a>, <a href="#675">id</a>, <a href="#676">param_env</a>, <span class="kw-2">&amp;</span><a href="#677">wf_tys</a>, |<span class="kw-2">mut </span>infcx, <span class="kw">_</span>| {
         <span class="kw">use </span>rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
         <span class="kw">let </span>origin = infer::RelateRegionParamBound(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>);
         <span class="comment">// `region_a: region_b` -&gt; `region_b &lt;= region_a`
-        </span><a href="#680">infcx</a>.push_sub_region_constraint(
-            <a href="#682">origin</a>,
-            <a href="#678">region_b</a>,
-            <a href="#677">region_a</a>,
+        </span><a href="#681">infcx</a>.push_sub_region_constraint(
+            <a href="#683">origin</a>,
+            <a href="#679">region_b</a>,
+            <a href="#678">region_a</a>,
             ConstraintCategory::BoringNoLocation,
         );
     })
@@ -2580,21 +2612,21 @@
     <span class="comment">// Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each
     // call individually.
-    </span><span class="kw">let </span>infcx = <a href="#697">tcx</a>.<a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().build();
+    </span><span class="kw">let </span>infcx = <a href="#698">tcx</a>.<a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().build();
     <span class="kw">let </span>outlives_environment = OutlivesEnvironment::with_bounds(
-        <a href="#699">param_env</a>,
-        <a href="#706">infcx</a>.<a href="../../../rustc_trait_selection/traits/outlives_bounds/trait.InferCtxtExt.html">implied_bounds_tys</a>(<a href="#699">param_env</a>, <a href="#698">id</a>, <a href="#700">wf_tys</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
+        <a href="#700">param_env</a>,
+        <a href="#707">infcx</a>.<a href="../../../rustc_trait_selection/traits/outlives_bounds/trait.InferCtxtExt.html">implied_bounds_tys</a>(<a href="#700">param_env</a>, <a href="#699">id</a>, <a href="#701">wf_tys</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
     );
-    <span class="kw">let </span>region_bound_pairs = <a href="#707">outlives_environment</a>.region_bound_pairs();
+    <span class="kw">let </span>region_bound_pairs = <a href="#708">outlives_environment</a>.region_bound_pairs();
 
-    <a href="#701">add_constraints</a>(<span class="kw-2">&amp;</span><a href="#706">infcx</a>, <a href="#711">region_bound_pairs</a>);
+    <a href="#702">add_constraints</a>(<span class="kw-2">&amp;</span><a href="#707">infcx</a>, <a href="#712">region_bound_pairs</a>);
 
-    <span class="kw">let </span>errors = <a href="#706">infcx</a>.resolve_regions(<span class="kw-2">&amp;</span><a href="#707">outlives_environment</a>);
+    <span class="kw">let </span>errors = <a href="#707">infcx</a>.resolve_regions(<span class="kw-2">&amp;</span><a href="#708">outlives_environment</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>errors, <span class="string">&quot;errors&quot;</span>);
 
     <span class="comment">// If we were able to prove that the type outlives the region without
     // an error, it must be because of the implied or explicit bounds...
-    </span><a href="#715">errors</a>.is_empty()
+    </span><a href="#716">errors</a>.is_empty()
 }
 
 <span class="doccomment">/// TypeVisitor that looks for uses of GATs like
@@ -2615,9 +2647,9 @@
         t: T,
     ) -&gt; (FxHashSet&lt;(ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt;, FxHashSet&lt;(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>visitor =
-            <a href="#727-733">GATSubstCollector</a> { <a href="#737">gat</a>, regions: FxHashSet::default(), types: FxHashSet::default() };
-        <a href="#738">t</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<span class="kw-2">&amp;mut </span><a href="#740">visitor</a>);
-        (<a href="#740">visitor</a>.regions, <a href="#740">visitor</a>.types)
+            <a href="#728-734">GATSubstCollector</a> { <a href="#738">gat</a>, regions: FxHashSet::default(), types: FxHashSet::default() };
+        <a href="#739">t</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<span class="kw-2">&amp;mut </span><a href="#741">visitor</a>);
+        (<a href="#741">visitor</a>.regions, <a href="#741">visitor</a>.types)
     }
 }
 
@@ -2625,8 +2657,8 @@
     <span class="kw">type </span>BreakTy = !;
 
     <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;<span class="self">Self</span>::BreakTy&gt; {
-        <span class="kw">match </span><a href="#750">t</a>.kind() {
-            ty::Alias(ty::Projection, p) <span class="kw">if </span><a href="#752">p</a>.def_id == <a class="self" href="#750">self</a>.gat =&gt; {
+        <span class="kw">match </span><a href="#751">t</a>.kind() {
+            ty::Alias(ty::Projection, p) <span class="kw">if </span><a href="#753">p</a>.def_id == <a class="self" href="#751">self</a>.gat =&gt; {
                 <span class="kw">for </span>(idx, subst) <span class="kw">in </span>p.args.iter().enumerate() {
                     <span class="kw">match </span>subst.unpack() {
                         GenericArgKind::Lifetime(lt) <span class="kw">if </span>!lt.is_late_bound() =&gt; {
@@ -2641,14 +2673,14 @@
             }
             <span class="kw">_ </span>=&gt; {}
         }
-        <a href="#750">t</a>.<a href="../../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">super_visit_with</a>(<a class="self" href="#750">self</a>)
+        <a href="#751">t</a>.<a href="../../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">super_visit_with</a>(<a class="self" href="#751">self</a>)
     }
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.could_be_self.html">could_be_self</a>(trait_def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, ty: <span class="kw-2">&amp;</span>hir::Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">match </span><a href="#771">ty</a>.kind {
-        hir::TyKind::TraitObject([trait_ref], ..) =&gt; <span class="kw">match </span><a href="#773">trait_ref</a>.trait_ref.path.segments {
-            [s] =&gt; <a href="#774">s</a>.res.opt_def_id() == <span class="prelude-val">Some</span>(<a href="#771">trait_def_id</a>.to_def_id()),
+    <span class="kw">match </span><a href="#772">ty</a>.kind {
+        hir::TyKind::TraitObject([trait_ref], ..) =&gt; <span class="kw">match </span><a href="#774">trait_ref</a>.trait_ref.path.segments {
+            [s] =&gt; <a href="#775">s</a>.res.opt_def_id() == <span class="prelude-val">Some</span>(<a href="#772">trait_def_id</a>.to_def_id()),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         },
         <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
@@ -2659,19 +2691,19 @@
 /// When this is done, suggest using `Self` instead.
 </span><span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_object_unsafe_self_trait_by_name.html">check_object_unsafe_self_trait_by_name</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, item: <span class="kw-2">&amp;</span>hir::TraitItem&lt;<span class="lifetime">&#39;_</span>&gt;) {
     <span class="kw">let </span>(trait_name, trait_def_id) =
-        <span class="kw">match </span><a href="#783">tcx</a>.hir().get_by_def_id(<a href="#783">tcx</a>.hir().get_parent_item(<a href="#783">item</a>.hir_id()).def_id) {
-            hir::Node::Item(item) =&gt; <span class="kw">match </span><a href="#786">item</a>.kind {
-                hir::ItemKind::Trait(..) =&gt; (<a href="#786">item</a>.ident, <a href="#786">item</a>.owner_id),
+        <span class="kw">match </span><a href="#784">tcx</a>.hir().get_by_def_id(<a href="#784">tcx</a>.hir().get_parent_item(<a href="#784">item</a>.hir_id()).def_id) {
+            hir::Node::Item(item) =&gt; <span class="kw">match </span><a href="#787">item</a>.kind {
+                hir::ItemKind::Trait(..) =&gt; (<a href="#787">item</a>.ident, <a href="#787">item</a>.owner_id),
                 <span class="kw">_ </span>=&gt; <span class="kw">return</span>,
             },
             <span class="kw">_ </span>=&gt; <span class="kw">return</span>,
         };
     <span class="kw">let </span><span class="kw-2">mut </span>trait_should_be_self = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
-    <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#783">item</a>.kind {
+    <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#784">item</a>.kind {
         hir::TraitItemKind::Const(ty, <span class="kw">_</span>) | hir::TraitItemKind::Type(<span class="kw">_</span>, <span class="prelude-val">Some</span>(ty))
-            <span class="kw">if </span><a href="#771-779">could_be_self</a>(<a href="#784">trait_def_id</a>.def_id, <a href="#794">ty</a>) =&gt;
+            <span class="kw">if </span><a href="#772-780">could_be_self</a>(<a href="#785">trait_def_id</a>.def_id, <a href="#795">ty</a>) =&gt;
         {
-            <a href="#792">trait_should_be_self</a>.push(<a href="#794">ty</a>.span)
+            <a href="#793">trait_should_be_self</a>.push(<a href="#795">ty</a>.span)
         }
         hir::TraitItemKind::Fn(sig, <span class="kw">_</span>) =&gt; {
             <span class="kw">for </span>ty <span class="kw">in </span>sig.decl.inputs {
@@ -2679,9 +2711,9 @@
                     trait_should_be_self.push(ty.span);
                 }
             }
-            <span class="kw">match </span><a href="#799">sig</a>.decl.output {
-                hir::FnRetTy::Return(ty) <span class="kw">if </span><a href="#771-779">could_be_self</a>(<a href="#784">trait_def_id</a>.def_id, <a href="#806">ty</a>) =&gt; {
-                    <a href="#792">trait_should_be_self</a>.push(<a href="#806">ty</a>.span);
+            <span class="kw">match </span><a href="#800">sig</a>.decl.output {
+                hir::FnRetTy::Return(ty) <span class="kw">if </span><a href="#772-780">could_be_self</a>(<a href="#785">trait_def_id</a>.def_id, <a href="#807">ty</a>) =&gt; {
+                    <a href="#793">trait_should_be_self</a>.push(<a href="#807">ty</a>.span);
                 }
                 <span class="kw">_ </span>=&gt; {}
             }
@@ -2692,16 +2724,16 @@
         <span class="kw">if </span>tcx.check_is_object_safe(trait_def_id) {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>sugg = <a href="#792">trait_should_be_self</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|span| (<span class="kw-2">*</span><a href="#818">span</a>, <span class="string">&quot;Self&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>())).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <a href="#783">tcx</a>.sess
+        <span class="kw">let </span>sugg = <a href="#793">trait_should_be_self</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|span| (<span class="kw-2">*</span><a href="#819">span</a>, <span class="string">&quot;Self&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>())).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        <a href="#784">tcx</a>.sess
             .struct_span_err(
-                <a href="#792">trait_should_be_self</a>,
+                <a href="#793">trait_should_be_self</a>,
                 <span class="string">&quot;associated item referring to unboxed trait object for its own trait&quot;</span>,
             )
-            .span_label(<a href="#784">trait_name</a>.span, <span class="string">&quot;in this trait&quot;</span>)
+            .span_label(<a href="#785">trait_name</a>.span, <span class="string">&quot;in this trait&quot;</span>)
             .multipart_suggestion(
                 <span class="string">&quot;you might have meant to use `Self` to refer to the implementing type&quot;</span>,
-                <a href="#818">sugg</a>,
+                <a href="#819">sugg</a>,
                 Applicability::MachineApplicable,
             )
             .emit();
@@ -2709,78 +2741,100 @@
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_impl_item.html">check_impl_item</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, impl_item: <span class="kw-2">&amp;</span>hir::ImplItem&lt;<span class="lifetime">&#39;_</span>&gt;) {
-    <span class="kw">let </span>(method_sig, span) = <span class="kw">match </span><a href="#834">impl_item</a>.kind {
-        hir::ImplItemKind::Fn(<span class="kw-2">ref </span>sig, <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<a href="#836">sig</a>), <a href="#834">impl_item</a>.span),
+    <span class="kw">let </span>(method_sig, span) = <span class="kw">match </span><a href="#835">impl_item</a>.kind {
+        hir::ImplItemKind::Fn(<span class="kw-2">ref </span>sig, <span class="kw">_</span>) =&gt; (<span class="prelude-val">Some</span>(<a href="#837">sig</a>), <a href="#835">impl_item</a>.span),
         <span class="comment">// Constrain binding and overflow error spans to `&lt;Ty&gt;` in `type foo = &lt;Ty&gt;`.
-        </span>hir::ImplItemKind::Type(ty) <span class="kw">if </span><a href="#838">ty</a>.span != <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a> =&gt; (<span class="prelude-val">None</span>, <a href="#838">ty</a>.span),
-        <span class="kw">_ </span>=&gt; (<span class="prelude-val">None</span>, <a href="#834">impl_item</a>.span),
+        </span>hir::ImplItemKind::Type(ty) <span class="kw">if </span><a href="#839">ty</a>.span != <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a> =&gt; (<span class="prelude-val">None</span>, <a href="#839">ty</a>.span),
+        <span class="kw">_ </span>=&gt; (<span class="prelude-val">None</span>, <a href="#835">impl_item</a>.span),
     };
 
-    <a href="#913">check_associated_item</a>(<a href="#834">tcx</a>, <a href="#834">impl_item</a>.owner_id.def_id, <a href="#835">span</a>, <a href="#835">method_sig</a>);
+    <a href="#936">check_associated_item</a>(<a href="#835">tcx</a>, <a href="#835">impl_item</a>.owner_id.def_id, <a href="#836">span</a>, <a href="#836">method_sig</a>);
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_param_wf.html">check_param_wf</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, param: <span class="kw-2">&amp;</span>hir::GenericParam&lt;<span class="lifetime">&#39;_</span>&gt;) {
-    <span class="kw">match </span><a href="#845">param</a>.kind {
+    <span class="kw">match </span><a href="#846">param</a>.kind {
         <span class="comment">// We currently only check wf of const params here.
         </span><a href="../../../rustc_hir/hir/enum.GenericParamKind.html">hir::GenericParamKind::Lifetime</a> { .. } | <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">hir::GenericParamKind::Type</a> { .. } =&gt; (),
 
         <span class="comment">// Const parameters are well formed if their type is structural match.
         </span><a href="../../../rustc_hir/hir/enum.GenericParamKind.html">hir::GenericParamKind::Const</a> { ty: hir_ty, default: <span class="kw">_ </span>} =&gt; {
-            <span class="kw">let </span>ty = <a href="#845">tcx</a>.type_of(<a href="#845">param</a>.def_id).instantiate_identity();
+            <span class="kw">let </span>ty = <a href="#846">tcx</a>.type_of(<a href="#846">param</a>.def_id).instantiate_identity();
 
             <span class="kw">if </span>tcx.features().adt_const_params {
-                <a href="#87-123">enter_wf_checking_ctxt</a>(<a href="#845">tcx</a>, <a href="#851">hir_ty</a>.span, <a href="#845">param</a>.def_id, |wfcx| {
+                <a href="#90-126">enter_wf_checking_ctxt</a>(<a href="#846">tcx</a>, <a href="#852">hir_ty</a>.span, <a href="#846">param</a>.def_id, |wfcx| {
                     <span class="kw">let </span>trait_def_id =
-                        <a href="#845">tcx</a>.require_lang_item(LangItem::ConstParamTy, <span class="prelude-val">Some</span>(<a href="#851">hir_ty</a>.span));
-                    <a href="#855">wfcx</a>.register_bound(
+                        <a href="#846">tcx</a>.require_lang_item(LangItem::ConstParamTy, <span class="prelude-val">Some</span>(<a href="#852">hir_ty</a>.span));
+                    <a href="#856">wfcx</a>.register_bound(
                         ObligationCause::new(
-                            <a href="#851">hir_ty</a>.span,
-                            <a href="#845">param</a>.def_id,
-                            ObligationCauseCode::ConstParam(<a href="#852">ty</a>),
+                            <a href="#852">hir_ty</a>.span,
+                            <a href="#846">param</a>.def_id,
+                            ObligationCauseCode::ConstParam(<a href="#853">ty</a>),
                         ),
-                        <a href="#855">wfcx</a>.param_env,
-                        <a href="#852">ty</a>,
-                        <a href="#856">trait_def_id</a>,
+                        <a href="#856">wfcx</a>.param_env,
+                        <a href="#853">ty</a>,
+                        <a href="#857">trait_def_id</a>,
                     );
                 });
             } <span class="kw">else </span>{
-                <span class="kw">let </span>err_ty_str;
-                <span class="kw">let </span><span class="kw-2">mut </span>is_ptr = <span class="bool-val">true</span>;
-
-                <span class="kw">let </span>err = <span class="kw">match </span><a href="#852">ty</a>.kind() {
+                <span class="kw">let </span>diag = <span class="kw">match </span><a href="#853">ty</a>.kind() {
                     ty::Bool | ty::Char | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) | ty::Error(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-                    ty::FnPtr(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;function pointers&quot;</span>),
-                    ty::RawPtr(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="string">&quot;raw pointers&quot;</span>),
-                    <span class="kw">_ </span>=&gt; {
-                        <a href="#871">is_ptr</a> = <span class="bool-val">false</span>;
-                        <a href="#870">err_ty_str</a> = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{ty}`&quot;</span>);
-                        <span class="prelude-val">Some</span>(<a href="#870">err_ty_str</a>.as_str())
-                    }
+                    ty::FnPtr(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#846">tcx</a>.sess.struct_span_err(
+                        <a href="#852">hir_ty</a>.span,
+                        <span class="string">&quot;using function pointers as const generic parameters is forbidden&quot;</span>,
+                    )),
+                    ty::RawPtr(<span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#846">tcx</a>.sess.struct_span_err(
+                        <a href="#852">hir_ty</a>.span,
+                        <span class="string">&quot;using raw pointers as const generic parameters is forbidden&quot;</span>,
+                    )),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(<a href="#846">tcx</a>.sess.struct_span_err(
+                        <a href="#852">hir_ty</a>.span,
+                        <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{}` is forbidden as the type of a const generic parameter&quot;</span>, ty),
+                    )),
                 };
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(unsupported_type) = <a href="#873">err</a> {
-                    <span class="kw">if </span>is_ptr {
-                        <a href="#845">tcx</a>.sess.span_err(
-                            <a href="#851">hir_ty</a>.span,
-                            <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
-                                <span class="string">&quot;using {unsupported_type} as const generic parameters is forbidden&quot;</span>,
-                            ),
-                        );
-                    } <span class="kw">else </span>{
-                        <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#845">tcx</a>.sess.struct_span_err(
-                            <a href="#851">hir_ty</a>.span,
-                            <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
-                                <span class="string">&quot;{unsupported_type} is forbidden as the type of a const generic parameter&quot;</span>,
-                            ),
-                        );
-                        <a href="#893">err</a>.note(<span class="string">&quot;the only supported types are integers, `bool` and `char`&quot;</span>);
-                        <span class="kw">if </span>tcx.sess.is_nightly_build() {
-                            <a href="#893">err</a>.help(
-                            <span class="string">&quot;more complex types are supported with `#![feature(adt_const_params)]`&quot;</span>,
-                        );
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>diag) = <a href="#871">diag</a> {
+                    <a href="#887">diag</a>.note(<span class="string">&quot;the only supported types are integers, `bool` and `char`&quot;</span>);
+
+                    <span class="kw">let </span>cause = ObligationCause::misc(<a href="#852">hir_ty</a>.span, <a href="#846">param</a>.def_id);
+                    <span class="kw">let </span>may_suggest_feature = <span class="kw">match </span><a href="../../../rustc_trait_selection/traits/misc/fn.type_allowed_to_implement_const_param_ty.html">type_allowed_to_implement_const_param_ty</a>(
+                        <a href="#846">tcx</a>,
+                        <a href="#846">tcx</a>.param_env(<a href="#846">param</a>.def_id),
+                        <a href="#853">ty</a>,
+                        <a href="#890">cause</a>,
+                    ) {
+                        <span class="comment">// Can never implement `ConstParamTy`, don&#39;t suggest anything.
+                        </span><span class="prelude-val">Err</span>(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) =&gt; <span class="bool-val">false</span>,
+                        <span class="comment">// May be able to implement `ConstParamTy`. Only emit the feature help
+                        // if the type is local, since the user may be able to fix the local type.
+                        </span><span class="prelude-val">Err</span>(ConstParamTyImplementationError::InfrigingFields(..)) =&gt; {
+                            <span class="kw">fn </span>ty_is_local(ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+                                <span class="kw">match </span><a href="#902">ty</a>.kind() {
+                                    ty::Adt(adt_def, ..) =&gt; <a href="#904">adt_def</a>.did().is_local(),
+                                    <span class="comment">// Arrays and slices use the inner type&#39;s `ConstParamTy`.
+                                    </span>ty::Array(ty, ..) =&gt; <a href="#902-916">ty_is_local</a>(<span class="kw-2">*</span><a href="#906">ty</a>),
+                                    ty::Slice(ty) =&gt; <a href="#902-916">ty_is_local</a>(<span class="kw-2">*</span><a href="#907">ty</a>),
+                                    <span class="comment">// `&amp;` references use the inner type&#39;s `ConstParamTy`.
+                                    // `&amp;mut` are not supported.
+                                    </span>ty::Ref(<span class="kw">_</span>, ty, ast::Mutability::Not) =&gt; <a href="#902-916">ty_is_local</a>(<span class="kw-2">*</span><a href="#910">ty</a>),
+                                    <span class="comment">// Say that a tuple is local if any of its components are local.
+                                    // This is not strictly correct, but it&#39;s likely that the user can fix the local component.
+                                    </span>ty::Tuple(tys) =&gt; <a href="#913">tys</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|ty| <a href="#902-916">ty_is_local</a>(<a href="#913">ty</a>)),
+                                    <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+                                }
+                            }
+
+                            <a href="#902-916">ty_is_local</a>(<a href="#853">ty</a>)
                         }
-                        <a href="#893">err</a>.emit();
+                        <span class="comment">// Implments `ConstParamTy`, suggest adding the feature to enable.
+                        </span><span class="prelude-val">Ok</span>(..) =&gt; <span class="bool-val">true</span>,
+                    };
+                    <span class="kw">if </span>may_suggest_feature &amp;&amp; tcx.sess.is_nightly_build() {
+                        <a href="#887">diag</a>.help(
+                            <span class="string">&quot;add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types&quot;</span>,
+                        );
                     }
+
+                    <a href="#887">diag</a>.emit();
                 }
             }
         }
@@ -2836,7 +2890,7 @@
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.item_adt_kind.html">item_adt_kind</a>(kind: <span class="kw-2">&amp;</span>ItemKind&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_middle/ty/adt/enum.AdtKind.html">AdtKind</a>&gt; {
-    <span class="kw">match </span><a href="#961">kind</a> {
+    <span class="kw">match </span><a href="#984">kind</a> {
         ItemKind::Struct(..) =&gt; <span class="prelude-val">Some</span>(AdtKind::Struct),
         ItemKind::Union(..) =&gt; <span class="prelude-val">Some</span>(AdtKind::Union),
         ItemKind::Enum(..) =&gt; <span class="prelude-val">Some</span>(AdtKind::Enum),
@@ -2846,12 +2900,12 @@
 
 <span class="doccomment">/// In a type definition, we check that to ensure that the types of the fields are well-formed.
 </span><span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_type_defn.html">check_type_defn</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, item: <span class="kw-2">&amp;</span>hir::Item&lt;<span class="lifetime">&#39;tcx</span>&gt;, all_sized: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>) {
-    <span class="kw">let _ </span>= <a href="#971">tcx</a>.representability(<a href="#971">item</a>.owner_id.def_id);
-    <span class="kw">let </span>adt_def = <a href="#971">tcx</a>.adt_def(<a href="#971">item</a>.owner_id);
+    <span class="kw">let _ </span>= <a href="#994">tcx</a>.representability(<a href="#994">item</a>.owner_id.def_id);
+    <span class="kw">let </span>adt_def = <a href="#994">tcx</a>.adt_def(<a href="#994">item</a>.owner_id);
 
-    <a href="#87-123">enter_wf_checking_ctxt</a>(<a href="#971">tcx</a>, <a href="#971">item</a>.span, <a href="#971">item</a>.owner_id.def_id, |wfcx| {
-        <span class="kw">let </span>variants = <a href="#973">adt_def</a>.variants();
-        <span class="kw">let </span>packed = <a href="#973">adt_def</a>.repr().packed();
+    <a href="#90-126">enter_wf_checking_ctxt</a>(<a href="#994">tcx</a>, <a href="#994">item</a>.span, <a href="#994">item</a>.owner_id.def_id, |wfcx| {
+        <span class="kw">let </span>variants = <a href="#996">adt_def</a>.variants();
+        <span class="kw">let </span>packed = <a href="#996">adt_def</a>.repr().packed();
 
         <span class="kw">for </span>variant <span class="kw">in </span>variants.iter() {
             <span class="comment">// All field types must be well-formed.
@@ -2939,7 +2993,7 @@
             }
         }
 
-        <a href="#1248">check_where_clauses</a>(<a href="#975">wfcx</a>, <a href="#971">item</a>.span, <a href="#971">item</a>.owner_id.def_id);
+        <a href="#1271">check_where_clauses</a>(<a href="#998">wfcx</a>, <a href="#994">item</a>.span, <a href="#994">item</a>.owner_id.def_id);
     });
 }
 
@@ -2978,22 +3032,22 @@
 /// Assuming the defaults are used, check that all predicates (bounds on the
 /// assoc type and where clauses on the trait) hold.
 </span><span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_associated_type_bounds.html">check_associated_type_bounds</a>(wfcx: <span class="kw-2">&amp;</span>WfCheckingCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;, item: <a href="../../../rustc_middle/ty/assoc/struct.AssocItem.html">ty::AssocItem</a>, span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
-    <span class="kw">let </span>bounds = <a href="#1103">wfcx</a>.<a href="#50-52">tcx</a>().explicit_item_bounds(<a href="#1103">item</a>.def_id);
+    <span class="kw">let </span>bounds = <a href="#1126">wfcx</a>.<a href="#53-55">tcx</a>().explicit_item_bounds(<a href="#1126">item</a>.def_id);
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;check_associated_type_bounds: bounds={:?}&quot;</span>, bounds);
     <span class="kw">let </span>wf_obligations =
-        <a href="#1104">bounds</a>.instantiate_identity_iter_copied().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|(bound, bound_span)| {
-            <span class="kw">let </span>normalized_bound = <a href="#1103">wfcx</a>.<a href="#56-65">normalize</a>(<a href="#1103">span</a>, <span class="prelude-val">None</span>, <a href="#1108">bound</a>);
-            traits::wf::predicate_obligations(
-                <a href="#1103">wfcx</a>.infcx,
-                <a href="#1103">wfcx</a>.param_env,
-                <a href="#1103">wfcx</a>.body_def_id,
-                <a href="#1109">normalized_bound</a>.as_predicate(),
-                <a href="#1108">bound_span</a>,
+        <a href="#1127">bounds</a>.instantiate_identity_iter_copied().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|(bound, bound_span)| {
+            <span class="kw">let </span>normalized_bound = <a href="#1126">wfcx</a>.<a href="#59-68">normalize</a>(<a href="#1126">span</a>, <span class="prelude-val">None</span>, <a href="#1131">bound</a>);
+            traits::wf::clause_obligations(
+                <a href="#1126">wfcx</a>.infcx,
+                <a href="#1126">wfcx</a>.param_env,
+                <a href="#1126">wfcx</a>.body_def_id,
+                <a href="#1132">normalized_bound</a>,
+                <a href="#1131">bound_span</a>,
             )
         });
 
-    <a href="#1103">wfcx</a>.register_obligations(<a href="#1107">wf_obligations</a>);
+    <a href="#1126">wfcx</a>.register_obligations(<a href="#1130">wf_obligations</a>);
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_item_fn.html">check_item_fn</a>(
@@ -3003,9 +3057,9 @@
     span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     decl: <span class="kw-2">&amp;</span>hir::FnDecl&lt;<span class="lifetime">&#39;_</span>&gt;,
 ) {
-    <a href="#87-123">enter_wf_checking_ctxt</a>(<a href="#1123">tcx</a>, <a href="#1126">span</a>, <a href="#1124">def_id</a>, |wfcx| {
-        <span class="kw">let </span>sig = <a href="#1123">tcx</a>.fn_sig(<a href="#1124">def_id</a>).instantiate_identity();
-        <a href="#1435">check_fn_or_method</a>(<a href="#1129">wfcx</a>, <a href="#1125">ident</a>.span, <a href="#1130">sig</a>, <a href="#1127">decl</a>, <a href="#1124">def_id</a>);
+    <a href="#90-126">enter_wf_checking_ctxt</a>(<a href="#1146">tcx</a>, <a href="#1149">span</a>, <a href="#1147">def_id</a>, |wfcx| {
+        <span class="kw">let </span>sig = <a href="#1146">tcx</a>.fn_sig(<a href="#1147">def_id</a>).instantiate_identity();
+        <a href="#1452">check_fn_or_method</a>(<a href="#1152">wfcx</a>, <a href="#1148">ident</a>.span, <a href="#1153">sig</a>, <a href="#1150">decl</a>, <a href="#1147">def_id</a>);
     })
 }
 
@@ -3019,45 +3073,45 @@
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
     item_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     ty_span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    unsized_handling: <a href="#1135-1139">UnsizedHandling</a>,
+    unsized_handling: <a href="#1158-1162">UnsizedHandling</a>,
 ) {
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;check_item_type: {:?}&quot;</span>, item_id);
 
-    <a href="#87-123">enter_wf_checking_ctxt</a>(<a href="#1142">tcx</a>, <a href="#1144">ty_span</a>, <a href="#1143">item_id</a>, |wfcx| {
-        <span class="kw">let </span>ty = <a href="#1142">tcx</a>.type_of(<a href="#1143">item_id</a>).instantiate_identity();
-        <span class="kw">let </span>item_ty = <a href="#1149">wfcx</a>.<a href="#56-65">normalize</a>(<a href="#1144">ty_span</a>, <span class="prelude-val">Some</span>(WellFormedLoc::Ty(<a href="#1143">item_id</a>)), <a href="#1150">ty</a>);
+    <a href="#90-126">enter_wf_checking_ctxt</a>(<a href="#1165">tcx</a>, <a href="#1167">ty_span</a>, <a href="#1166">item_id</a>, |wfcx| {
+        <span class="kw">let </span>ty = <a href="#1165">tcx</a>.type_of(<a href="#1166">item_id</a>).instantiate_identity();
+        <span class="kw">let </span>item_ty = <a href="#1172">wfcx</a>.<a href="#59-68">normalize</a>(<a href="#1167">ty_span</a>, <span class="prelude-val">Some</span>(WellFormedLoc::Ty(<a href="#1166">item_id</a>)), <a href="#1173">ty</a>);
 
-        <span class="kw">let </span>forbid_unsized = <span class="kw">match </span><a href="#1145">unsized_handling</a> {
-            <a href="#1136">UnsizedHandling::Forbid</a> =&gt; <span class="bool-val">true</span>,
-            <a href="#1137">UnsizedHandling::Allow</a> =&gt; <span class="bool-val">false</span>,
-            <a href="#1138">UnsizedHandling::AllowIfForeignTail</a> =&gt; {
-                <span class="kw">let </span>tail = <a href="#1142">tcx</a>.struct_tail_erasing_lifetimes(<a href="#1151">item_ty</a>, <a href="#1149">wfcx</a>.param_env);
+        <span class="kw">let </span>forbid_unsized = <span class="kw">match </span><a href="#1168">unsized_handling</a> {
+            <a href="#1159">UnsizedHandling::Forbid</a> =&gt; <span class="bool-val">true</span>,
+            <a href="#1160">UnsizedHandling::Allow</a> =&gt; <span class="bool-val">false</span>,
+            <a href="#1161">UnsizedHandling::AllowIfForeignTail</a> =&gt; {
+                <span class="kw">let </span>tail = <a href="#1165">tcx</a>.struct_tail_erasing_lifetimes(<a href="#1174">item_ty</a>, <a href="#1172">wfcx</a>.param_env);
                 !<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(tail.kind(), ty::Foreign(<span class="kw">_</span>))
             }
         };
 
-        <a href="#1149">wfcx</a>.<a href="#67-84">register_wf_obligation</a>(<a href="#1144">ty_span</a>, <span class="prelude-val">Some</span>(WellFormedLoc::Ty(<a href="#1143">item_id</a>)), <a href="#1151">item_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+        <a href="#1172">wfcx</a>.<a href="#70-87">register_wf_obligation</a>(<a href="#1167">ty_span</a>, <span class="prelude-val">Some</span>(WellFormedLoc::Ty(<a href="#1166">item_id</a>)), <a href="#1174">item_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
         <span class="kw">if </span>forbid_unsized {
-            <a href="#1149">wfcx</a>.register_bound(
-                traits::ObligationCause::new(<a href="#1144">ty_span</a>, <a href="#1149">wfcx</a>.body_def_id, traits::WellFormed(<span class="prelude-val">None</span>)),
-                <a href="#1149">wfcx</a>.param_env,
-                <a href="#1151">item_ty</a>,
-                <a href="#1142">tcx</a>.require_lang_item(LangItem::Sized, <span class="prelude-val">None</span>),
+            <a href="#1172">wfcx</a>.register_bound(
+                traits::ObligationCause::new(<a href="#1167">ty_span</a>, <a href="#1172">wfcx</a>.body_def_id, traits::WellFormed(<span class="prelude-val">None</span>)),
+                <a href="#1172">wfcx</a>.param_env,
+                <a href="#1174">item_ty</a>,
+                <a href="#1165">tcx</a>.require_lang_item(LangItem::Sized, <span class="prelude-val">None</span>),
             );
         }
 
         <span class="comment">// Ensure that the end result is `Sync` in a non-thread local `static`.
-        </span><span class="kw">let </span>should_check_for_sync = <a href="#1142">tcx</a>.static_mutability(<a href="#1143">item_id</a>.to_def_id())
+        </span><span class="kw">let </span>should_check_for_sync = <a href="#1165">tcx</a>.static_mutability(<a href="#1166">item_id</a>.to_def_id())
             == <span class="prelude-val">Some</span>(hir::Mutability::Not)
-            &amp;&amp; !<a href="#1142">tcx</a>.is_foreign_item(<a href="#1143">item_id</a>.to_def_id())
-            &amp;&amp; !<a href="#1142">tcx</a>.is_thread_local_static(<a href="#1143">item_id</a>.to_def_id());
+            &amp;&amp; !<a href="#1165">tcx</a>.is_foreign_item(<a href="#1166">item_id</a>.to_def_id())
+            &amp;&amp; !<a href="#1165">tcx</a>.is_thread_local_static(<a href="#1166">item_id</a>.to_def_id());
 
         <span class="kw">if </span>should_check_for_sync {
-            <a href="#1149">wfcx</a>.register_bound(
-                traits::ObligationCause::new(<a href="#1144">ty_span</a>, <a href="#1149">wfcx</a>.body_def_id, traits::SharedStatic),
-                <a href="#1149">wfcx</a>.param_env,
-                <a href="#1151">item_ty</a>,
-                <a href="#1142">tcx</a>.require_lang_item(LangItem::Sync, <span class="prelude-val">Some</span>(<a href="#1144">ty_span</a>)),
+            <a href="#1172">wfcx</a>.register_bound(
+                traits::ObligationCause::new(<a href="#1167">ty_span</a>, <a href="#1172">wfcx</a>.body_def_id, traits::SharedStatic),
+                <a href="#1172">wfcx</a>.param_env,
+                <a href="#1174">item_ty</a>,
+                <a href="#1165">tcx</a>.require_lang_item(LangItem::Sync, <span class="prelude-val">Some</span>(<a href="#1167">ty_span</a>)),
             );
         }
     });
@@ -3088,7 +3142,7 @@
                     wfcx.infcx,
                     wfcx.param_env,
                     wfcx.body_def_id,
-                    <span class="kw-2">&amp;</span>trait_pred,
+                    trait_pred,
                     ast_trait_ref.path.span,
                     item,
                 );
@@ -3297,13 +3351,7 @@
     <span class="macro">debug!</span>(<span class="question-mark">?</span>predicates.predicates);
     <span class="macro">assert_eq!</span>(predicates.predicates.len(), predicates.spans.len());
     <span class="kw">let </span>wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        traits::wf::predicate_obligations(
-            infcx,
-            wfcx.param_env,
-            wfcx.body_def_id,
-            p.as_predicate(),
-            sp,
-        )
+        traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
     });
     <span class="kw">let </span>obligations: Vec&lt;<span class="kw">_</span>&gt; = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);
@@ -3452,7 +3500,7 @@
         <span class="string">&quot;invalid `self` parameter type: {receiver_ty}&quot;
     </span>)
     .note(<span class="string">&quot;type of `self` must be `Self` or a type that dereferences to it&quot;</span>)
-    .help(<a href="#1512-1514">HELP_FOR_SELF_TYPE</a>)
+    .help(<a href="#1529-1531">HELP_FOR_SELF_TYPE</a>)
     .emit();
 }
 
@@ -3472,48 +3520,48 @@
     self_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     arbitrary_self_types_enabled: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">let </span>infcx = <a href="#1592">wfcx</a>.infcx;
-    <span class="kw">let </span>tcx = <a href="#1592">wfcx</a>.<a href="#50-52">tcx</a>();
+    <span class="kw">let </span>infcx = <a href="#1609">wfcx</a>.infcx;
+    <span class="kw">let </span>tcx = <a href="#1609">wfcx</a>.<a href="#53-55">tcx</a>();
     <span class="kw">let </span>cause =
-        ObligationCause::new(<a href="#1593">span</a>, <a href="#1592">wfcx</a>.body_def_id, traits::ObligationCauseCode::MethodReceiver);
+        ObligationCause::new(<a href="#1610">span</a>, <a href="#1609">wfcx</a>.body_def_id, traits::ObligationCauseCode::MethodReceiver);
 
-    <span class="kw">let </span>can_eq_self = |ty| <a href="#1598">infcx</a>.can_eq(<a href="#1592">wfcx</a>.param_env, <a href="#1595">self_ty</a>, <a href="#1603">ty</a>);
+    <span class="kw">let </span>can_eq_self = |ty| <a href="#1615">infcx</a>.can_eq(<a href="#1609">wfcx</a>.param_env, <a href="#1612">self_ty</a>, <a href="#1620">ty</a>);
 
     <span class="comment">// `self: Self` is always valid.
     </span><span class="kw">if </span>can_eq_self(receiver_ty) {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a href="#1592">wfcx</a>.eq(<span class="kw-2">&amp;</span><a href="#1600">cause</a>, <a href="#1592">wfcx</a>.param_env, <a href="#1595">self_ty</a>, <a href="#1594">receiver_ty</a>) {
-            <a href="#1598">infcx</a>.err_ctxt().report_mismatched_types(<span class="kw-2">&amp;</span><a href="#1600">cause</a>, <a href="#1595">self_ty</a>, <a href="#1594">receiver_ty</a>, <a href="#1607">err</a>).emit();
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a href="#1609">wfcx</a>.eq(<span class="kw-2">&amp;</span><a href="#1617">cause</a>, <a href="#1609">wfcx</a>.param_env, <a href="#1612">self_ty</a>, <a href="#1611">receiver_ty</a>) {
+            <a href="#1615">infcx</a>.err_ctxt().report_mismatched_types(<span class="kw-2">&amp;</span><a href="#1617">cause</a>, <a href="#1612">self_ty</a>, <a href="#1611">receiver_ty</a>, <a href="#1624">err</a>).emit();
         }
         <span class="kw">return </span><span class="bool-val">true</span>;
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>autoderef = Autoderef::new(<a href="#1598">infcx</a>, <a href="#1592">wfcx</a>.param_env, <a href="#1592">wfcx</a>.body_def_id, <a href="#1593">span</a>, <a href="#1594">receiver_ty</a>);
+    <span class="kw">let </span><span class="kw-2">mut </span>autoderef = Autoderef::new(<a href="#1615">infcx</a>, <a href="#1609">wfcx</a>.param_env, <a href="#1609">wfcx</a>.body_def_id, <a href="#1610">span</a>, <a href="#1611">receiver_ty</a>);
 
     <span class="comment">// The `arbitrary_self_types` feature allows raw pointer receivers like `self: *const Self`.
     </span><span class="kw">if </span>arbitrary_self_types_enabled {
-        <a href="#1613">autoderef</a> = <a href="#1613">autoderef</a>.<a href="../autoderef.rs.html#235-238">include_raw_pointers</a>();
+        <a href="#1630">autoderef</a> = <a href="#1630">autoderef</a>.<a href="../autoderef.rs.html#235-238">include_raw_pointers</a>();
     }
 
     <span class="comment">// The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
-    </span><a href="#1613">autoderef</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>();
+    </span><a href="#1630">autoderef</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>();
 
-    <span class="kw">let </span>receiver_trait_def_id = <a href="#1599">tcx</a>.require_lang_item(LangItem::Receiver, <span class="prelude-val">Some</span>(<a href="#1593">span</a>));
+    <span class="kw">let </span>receiver_trait_def_id = <a href="#1616">tcx</a>.require_lang_item(LangItem::Receiver, <span class="prelude-val">Some</span>(<a href="#1610">span</a>));
 
     <span class="comment">// Keep dereferencing `receiver_ty` until we get to `self_ty`.
     </span><span class="kw">loop </span>{
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((potential_self_ty, <span class="kw">_</span>)) = <a href="#1613">autoderef</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((potential_self_ty, <span class="kw">_</span>)) = <a href="#1630">autoderef</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>() {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
                 <span class="string">&quot;receiver_is_valid: potential self type `{:?}` to match `{:?}`&quot;</span>,
                 potential_self_ty, self_ty
             );
 
             <span class="kw">if </span>can_eq_self(potential_self_ty) {
-                <a href="#1592">wfcx</a>.register_obligations(<a href="#1613">autoderef</a>.<a href="../autoderef.rs.html#211-213">into_obligations</a>());
+                <a href="#1609">wfcx</a>.register_obligations(<a href="#1630">autoderef</a>.<a href="../autoderef.rs.html#211-213">into_obligations</a>());
 
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a href="#1592">wfcx</a>.eq(<span class="kw-2">&amp;</span><a href="#1600">cause</a>, <a href="#1592">wfcx</a>.param_env, <a href="#1595">self_ty</a>, <a href="#1627">potential_self_ty</a>) {
-                    <a href="#1598">infcx</a>
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a href="#1609">wfcx</a>.eq(<span class="kw-2">&amp;</span><a href="#1617">cause</a>, <a href="#1609">wfcx</a>.param_env, <a href="#1612">self_ty</a>, <a href="#1644">potential_self_ty</a>) {
+                    <a href="#1615">infcx</a>
                         .err_ctxt()
-                        .report_mismatched_types(<span class="kw-2">&amp;</span><a href="#1600">cause</a>, <a href="#1595">self_ty</a>, <a href="#1627">potential_self_ty</a>, <a href="#1636">err</a>)
+                        .report_mismatched_types(<span class="kw-2">&amp;</span><a href="#1617">cause</a>, <a href="#1612">self_ty</a>, <a href="#1644">potential_self_ty</a>, <a href="#1653">err</a>)
                         .emit();
                 }
 
@@ -3536,7 +3584,7 @@
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;receiver_is_valid: type `{:?}` does not deref to `{:?}`&quot;</span>, receiver_ty, self_ty);
             <span class="comment">// If the receiver already has errors reported due to it, consider it valid to avoid
             // unnecessary errors (#58712).
-            </span><span class="kw">return </span><a href="#1594">receiver_ty</a>.<a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">references_error</a>();
+            </span><span class="kw">return </span><a href="#1611">receiver_ty</a>.<a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">references_error</a>();
         }
     }
 
@@ -3556,10 +3604,10 @@
     cause: ObligationCause&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     receiver_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">let </span>tcx = <a href="#1677">wfcx</a>.<a href="#50-52">tcx</a>();
-    <span class="kw">let </span>trait_ref = ty::TraitRef::new(<a href="#1682">tcx</a>, <a href="#1678">receiver_trait_def_id</a>, [<a href="#1680">receiver_ty</a>]);
+    <span class="kw">let </span>tcx = <a href="#1694">wfcx</a>.<a href="#53-55">tcx</a>();
+    <span class="kw">let </span>trait_ref = ty::TraitRef::new(<a href="#1699">tcx</a>, <a href="#1695">receiver_trait_def_id</a>, [<a href="#1697">receiver_ty</a>]);
 
-    <span class="kw">let </span>obligation = traits::Obligation::new(<a href="#1682">tcx</a>, <a href="#1679">cause</a>, <a href="#1677">wfcx</a>.param_env, <a href="#1683">trait_ref</a>);
+    <span class="kw">let </span>obligation = traits::Obligation::new(<a href="#1699">tcx</a>, <a href="#1696">cause</a>, <a href="#1694">wfcx</a>.param_env, <a href="#1700">trait_ref</a>);
 
     <span class="kw">if </span>wfcx.infcx.predicate_must_hold_modulo_regions(<span class="kw-2">&amp;</span>obligation) {
         <span class="bool-val">true
@@ -3577,9 +3625,9 @@
     item: <span class="kw-2">&amp;</span>hir::Item&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     hir_generics: <span class="kw-2">&amp;</span>hir::Generics&lt;<span class="lifetime">&#39;_</span>&gt;,
 ) {
-    <span class="kw">let </span>identity_args = ty::GenericArgs::identity_for_item(<a href="#1699">tcx</a>, <a href="#1700">item</a>.owner_id);
+    <span class="kw">let </span>identity_args = ty::GenericArgs::identity_for_item(<a href="#1716">tcx</a>, <a href="#1717">item</a>.owner_id);
 
-    <span class="kw">match </span><a href="#1700">item</a>.kind {
+    <span class="kw">match </span><a href="#1717">item</a>.kind {
         ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) =&gt; {
             <span class="kw">for </span>field <span class="kw">in </span>tcx.adt_def(item.owner_id).all_fields() {
                 <span class="kw">if </span>field.ty(tcx, identity_args).references_error() {
@@ -3588,10 +3636,8 @@
             }
         }
         ItemKind::TyAlias(..) =&gt; {
-            <span class="kw">let </span>ty = <a href="#1699">tcx</a>.type_of(<a href="#1700">item</a>.owner_id).instantiate_identity();
-
-            <span class="kw">if </span>tcx.features().lazy_type_alias || ty.has_opaque_types() {
-                <span class="kw">if </span>ty.references_error() {
+            <span class="kw">if </span>tcx.type_alias_is_lazy(item.owner_id) {
+                <span class="kw">if </span>tcx.type_of(item.owner_id).skip_binder().references_error() {
                     <span class="kw">return</span>;
                 }
             } <span class="kw">else </span>{
@@ -3601,29 +3647,29 @@
         <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/macro.bug.html">bug!</a>(),
     }
 
-    <span class="kw">let </span>ty_predicates = <a href="#1699">tcx</a>.predicates_of(<a href="#1700">item</a>.owner_id);
+    <span class="kw">let </span>ty_predicates = <a href="#1716">tcx</a>.predicates_of(<a href="#1717">item</a>.owner_id);
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(ty_predicates.parent, <span class="prelude-val">None</span>);
-    <span class="kw">let </span>variances = <a href="#1699">tcx</a>.variances_of(<a href="#1700">item</a>.owner_id);
+    <span class="kw">let </span>variances = <a href="#1716">tcx</a>.variances_of(<a href="#1717">item</a>.owner_id);
 
-    <span class="kw">let </span><span class="kw-2">mut </span>constrained_parameters: FxHashSet&lt;<span class="kw">_</span>&gt; = <a href="#1729">variances</a>
+    <span class="kw">let </span><span class="kw-2">mut </span>constrained_parameters: FxHashSet&lt;<span class="kw">_</span>&gt; = <a href="#1744">variances</a>
         .iter()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span>variance)| <a href="#1734">variance</a> != ty::Bivariant)
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(index, <span class="kw">_</span>)| <a href="../constrained_generic_params.rs.html#8">Parameter</a>(<a href="#1735">index</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>))
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span>variance)| <a href="#1749">variance</a> != ty::Bivariant)
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(index, <span class="kw">_</span>)| <a href="../constrained_generic_params.rs.html#8">Parameter</a>(<a href="#1750">index</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>))
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-    <a href="../constrained_generic_params.rs.html#98-106">identify_constrained_generic_params</a>(<a href="#1699">tcx</a>, <a href="#1727">ty_predicates</a>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span><a href="#1731">constrained_parameters</a>);
+    <a href="../constrained_generic_params.rs.html#98-106">identify_constrained_generic_params</a>(<a href="#1716">tcx</a>, <a href="#1742">ty_predicates</a>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span><a href="#1746">constrained_parameters</a>);
 
     <span class="comment">// Lazily calculated because it is only needed in case of an error.
     </span><span class="kw">let </span>explicitly_bounded_params = LazyCell::new(|| {
-        <span class="kw">let </span>icx = <span class="kw">crate</span>::collect::ItemCtxt::new(<a href="#1699">tcx</a>, <a href="#1700">item</a>.owner_id.def_id);
-        <a href="#1701">hir_generics</a>
+        <span class="kw">let </span>icx = <span class="kw">crate</span>::collect::ItemCtxt::new(<a href="#1716">tcx</a>, <a href="#1717">item</a>.owner_id.def_id);
+        <a href="#1718">hir_generics</a>
             .predicates
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|predicate| <span class="kw">match </span><a href="#1746">predicate</a> {
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|predicate| <span class="kw">match </span><a href="#1761">predicate</a> {
                 hir::WherePredicate::BoundPredicate(predicate) =&gt; {
-                    <span class="kw">match </span><a href="#1742">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#1747">predicate</a>.bounded_ty).kind() {
-                        ty::Param(data) =&gt; <span class="prelude-val">Some</span>(<a href="../constrained_generic_params.rs.html#8">Parameter</a>(<a href="#1749">data</a>.index)),
+                    <span class="kw">match </span><a href="#1757">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#1762">predicate</a>.bounded_ty).kind() {
+                        ty::Param(data) =&gt; <span class="prelude-val">Some</span>(<a href="../constrained_generic_params.rs.html#8">Parameter</a>(<a href="#1764">data</a>.index)),
                         <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                     }
                 }
@@ -3632,6 +3678,8 @@
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;FxHashSet&lt;<span class="kw">_</span>&gt;&gt;()
     });
 
+    <span class="kw">let </span>ty_generics = <a href="#1716">tcx</a>.generics_of(<a href="#1717">item</a>.owner_id);
+
     <span class="kw">for </span>(index, <span class="kw">_</span>) <span class="kw">in </span>variances.iter().enumerate() {
         <span class="kw">let </span>parameter = Parameter(index <span class="kw">as </span>u32);
 
@@ -3639,13 +3687,27 @@
             <span class="kw">continue</span>;
         }
 
-        <span class="kw">let </span>param = <span class="kw-2">&amp;</span>hir_generics.params[index];
+        <span class="kw">let </span>ty_param = <span class="kw-2">&amp;</span>ty_generics.params[index];
+        <span class="kw">let </span>hir_param = <span class="kw-2">&amp;</span>hir_generics.params[index];
 
-        <span class="kw">match </span>param.name {
+        <span class="kw">if </span>ty_param.def_id != hir_param.def_id.into() {
+            <span class="comment">// valid programs always have lifetimes before types in the generic parameter list
+            // ty_generics are normalized to be in this required order, and variances are built
+            // from ty generics, not from hir generics. but we need hir generics to get
+            // a span out
+            //
+            // if they aren&#39;t in the same order, then the user has written invalid code, and already
+            // got an error about it (or I&#39;m wrong about this)
+            </span>tcx.sess
+                .delay_span_bug(hir_param.span, <span class="string">&quot;hir generics and ty generics in different order&quot;</span>);
+            <span class="kw">continue</span>;
+        }
+
+        <span class="kw">match </span>hir_param.name {
             hir::ParamName::Error =&gt; {}
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">let </span>has_explicit_bounds = explicitly_bounded_params.contains(<span class="kw-2">&amp;</span>parameter);
-                report_bivariance(tcx, param, has_explicit_bounds);
+                report_bivariance(tcx, hir_param, has_explicit_bounds);
             }
         }
     }
@@ -3656,13 +3718,13 @@
     param: <span class="kw-2">&amp;</span>rustc_hir::GenericParam&lt;<span class="lifetime">&#39;_</span>&gt;,
     has_explicit_bounds: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 ) -&gt; <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a> {
-    <span class="kw">let </span>span = <a href="#1779">param</a>.span;
-    <span class="kw">let </span>param_name = <a href="#1779">param</a>.name.ident().name;
-    <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#1865-1873">error_392</a>(<a href="#1778">tcx</a>, <a href="#1782">span</a>, <a href="#1783">param_name</a>);
+    <span class="kw">let </span>span = <a href="#1810">param</a>.span;
+    <span class="kw">let </span>param_name = <a href="#1810">param</a>.name.ident().name;
+    <span class="kw">let </span><span class="kw-2">mut </span>err = <a href="#1896-1904">error_392</a>(<a href="#1809">tcx</a>, <a href="#1813">span</a>, <a href="#1814">param_name</a>);
 
-    <span class="kw">let </span>suggested_marker_id = <a href="#1778">tcx</a>.lang_items().phantom_data();
+    <span class="kw">let </span>suggested_marker_id = <a href="#1809">tcx</a>.lang_items().phantom_data();
     <span class="comment">// Help is available only in presence of lang items.
-    </span><span class="kw">let </span>msg = <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#1786">suggested_marker_id</a> {
+    </span><span class="kw">let </span>msg = <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#1817">suggested_marker_id</a> {
         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
             <span class="string">&quot;consider removing `{}`, referring to it in a field, or using a marker such as `{}`&quot;</span>,
             param_name,
@@ -3671,14 +3733,14 @@
     } <span class="kw">else </span>{
         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;consider removing `{param_name}` or referring to it in a field&quot;</span>)
     };
-    <a href="#1784">err</a>.help(<a href="#1788">msg</a>);
+    <a href="#1815">err</a>.help(<a href="#1819">msg</a>);
 
     <span class="kw">if </span><span class="macro">matches!</span>(param.kind, hir::GenericParamKind::Type { .. }) &amp;&amp; !has_explicit_bounds {
-        <a href="#1784">err</a>.help(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
+        <a href="#1815">err</a>.help(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
             <span class="string">&quot;if you intended `{param_name}` to be a const parameter, use `const {param_name}: usize` instead&quot;
         </span>));
     }
-    <a href="#1784">err</a>.emit()
+    <a href="#1815">err</a>.emit()
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; WfCheckingCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -3732,11 +3794,11 @@
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.check_mod_type_wf.html">check_mod_type_wf</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, module: <a href="../../../rustc_span/def_id/struct.LocalModDefId.html">LocalModDefId</a>) {
-    <span class="kw">let </span>items = <a href="#1857">tcx</a>.hir_module_items(<a href="#1857">module</a>);
-    <a href="#1858">items</a>.par_items(|item| <a href="#1857">tcx</a>.ensure().check_well_formed(<a href="#1859">item</a>.owner_id));
-    <a href="#1858">items</a>.par_impl_items(|item| <a href="#1857">tcx</a>.ensure().check_well_formed(<a href="#1860">item</a>.owner_id));
-    <a href="#1858">items</a>.par_trait_items(|item| <a href="#1857">tcx</a>.ensure().check_well_formed(<a href="#1861">item</a>.owner_id));
-    <a href="#1858">items</a>.par_foreign_items(|item| <a href="#1857">tcx</a>.ensure().check_well_formed(<a href="#1862">item</a>.owner_id));
+    <span class="kw">let </span>items = <a href="#1888">tcx</a>.hir_module_items(<a href="#1888">module</a>);
+    <a href="#1889">items</a>.par_items(|item| <a href="#1888">tcx</a>.ensure().check_well_formed(<a href="#1890">item</a>.owner_id));
+    <a href="#1889">items</a>.par_impl_items(|item| <a href="#1888">tcx</a>.ensure().check_well_formed(<a href="#1891">item</a>.owner_id));
+    <a href="#1889">items</a>.par_trait_items(|item| <a href="#1888">tcx</a>.ensure().check_well_formed(<a href="#1892">item</a>.owner_id));
+    <a href="#1889">items</a>.par_foreign_items(|item| <a href="#1888">tcx</a>.ensure().check_well_formed(<a href="#1893">item</a>.owner_id));
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.error_392.html">error_392</a>(
@@ -3745,11 +3807,11 @@
     param_name: <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>,
 ) -&gt; DiagnosticBuilder&lt;<span class="lifetime">&#39;_</span>, <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(tcx.sess, span, E0392, <span class="string">&quot;parameter `{param_name}` is never used&quot;</span>);
-    <a href="#1870">err</a>.span_label(<a href="#1867">span</a>, <span class="string">&quot;unused parameter&quot;</span>);
-    <a href="#1870">err</a>
+    <a href="#1901">err</a>.span_label(<a href="#1898">span</a>, <span class="string">&quot;unused parameter&quot;</span>);
+    <a href="#1901">err</a>
 }
 
 <span class="kw">pub fn </span><a href="../../../rustc_hir_analysis/check/wfcheck/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../../rustc_middle/query/struct.Providers.html">Providers</a>) {
-    <span class="kw-2">*</span><a href="#1875">providers</a> = <a href="../../../rustc_middle/query/struct.Providers.html">Providers</a> { <a href="#1857-1863">check_mod_type_wf</a>, <a href="#125-140">check_well_formed</a>, ..<span class="kw-2">*</span><a href="#1875">providers</a> };
+    <span class="kw-2">*</span><a href="#1906">providers</a> = <a href="../../../rustc_middle/query/struct.Providers.html">Providers</a> { <a href="#1888-1894">check_mod_type_wf</a>, <a href="#128-143">check_well_formed</a>, ..<span class="kw-2">*</span><a href="#1906">providers</a> };
 }
 </code></pre></div></section></main></body></html>

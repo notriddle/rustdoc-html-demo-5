@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/validity.rs`."><title>validity.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/validity.rs`."><title>validity.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -951,7 +951,6 @@
 <a href="#951" id="951">951</a>
 <a href="#952" id="952">952</a>
 <a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Check the validity invariant of a given value, and tell the user
 //! where in the value it got violated.
 //! In const context, this goes even further and tries to approximate const safety.
@@ -974,14 +973,14 @@
 <span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/type.TyAndLayout.html">TyAndLayout</a>};
 <span class="kw">use </span>rustc_span::symbol::{<a href="../../../rustc_span/symbol/sym/index.html">sym</a>, <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>};
 <span class="kw">use </span>rustc_target::abi::{
-    <a href="../../../rustc_abi/enum.Abi.html">Abi</a>, <a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../rustc_abi/enum.Scalar.html">Scalar</a> <span class="kw">as </span>ScalarAbi, <a href="../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../rustc_abi/enum.Variants.html">Variants</a>, <a href="../../../rustc_abi/struct.WrappingRange.html">WrappingRange</a>,
+    <a href="../../../rustc_abi/enum.Abi.html">Abi</a>, <a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../rustc_abi/enum.Scalar.html">Scalar</a> <span class="kw">as </span>ScalarAbi, <a href="../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../rustc_abi/enum.Variants.html">Variants</a>, <a href="../../../rustc_abi/struct.WrappingRange.html">WrappingRange</a>,
 };
 
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/hash/macros/derive.Hash.html">std::hash::Hash</a>;
 
 <span class="kw">use super</span>::{
-    AllocId, <a href="../../../rustc_const_eval/interpret/enum.CheckInAllocMsg.html">CheckInAllocMsg</a>, <a href="../../../rustc_const_eval/interpret/enum.GlobalAlloc.html">GlobalAlloc</a>, <a href="operand.rs.html#91-94">ImmTy</a>, <a href="operand.rs.html#29-37">Immediate</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#108-116">MPlaceTy</a>,
-    <a href="machine.rs.html#87-493">Machine</a>, <a href="place.rs.html#26-31">MemPlaceMeta</a>, <a href="operand.rs.html#296-307">OpTy</a>, <a href="../../../rustc_const_eval/interpret/struct.Pointer.html">Pointer</a>, <a href="projection.rs.html#23-89">Projectable</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>, <a href="visitor.rs.html#15-203">ValueVisitor</a>,
+    AllocId, <a href="../../../rustc_const_eval/interpret/enum.CheckInAllocMsg.html">CheckInAllocMsg</a>, <a href="../../../rustc_const_eval/interpret/enum.GlobalAlloc.html">GlobalAlloc</a>, <a href="operand.rs.html#96-99">ImmTy</a>, <a href="operand.rs.html#28-36">Immediate</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#107-115">MPlaceTy</a>,
+    <a href="machine.rs.html#87-493">Machine</a>, <a href="place.rs.html#25-30">MemPlaceMeta</a>, <a href="operand.rs.html#315-326">OpTy</a>, <a href="../../../rustc_const_eval/interpret/struct.Pointer.html">Pointer</a>, <a href="projection.rs.html#23-89">Projectable</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>, <a href="visitor.rs.html#15-203">ValueVisitor</a>,
 };
 
 <span class="comment">// for the validation errors
@@ -1066,7 +1065,7 @@
 </span><span class="kw">pub enum </span><a href="../../../rustc_const_eval/interpret/validity/enum.PathElem.html">PathElem</a> {
     Field(<a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
     Variant(<a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
-    GeneratorState(<a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>),
+    GeneratorState(<a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>),
     CapturedVar(<a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
     ArrayElem(<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>),
     TupleElem(<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>),
@@ -1267,7 +1266,7 @@
         op: <span class="kw-2">&amp;</span>OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
         expected: <a href="../../../rustc_const_eval/interpret/enum.ExpectedKind.html">ExpectedKind</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Scalar&lt;M::Provenance&gt;&gt; {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.read_immediate(op, expected)<span class="question-mark">?</span>.<a href="operand.rs.html#69-75">to_scalar</a>())
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.read_immediate(op, expected)<span class="question-mark">?</span>.<a href="operand.rs.html#74-80">to_scalar</a>())
     }
 
     <span class="kw">fn </span>check_wide_ptr_meta(
@@ -1368,7 +1367,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ref_tracking) = <a class="self" href="#354">self</a>.ref_tracking.as_deref_mut() {
             <span class="comment">// Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
-            </span><span class="kw">if let </span><span class="prelude-val">Ok</span>((alloc_id, _offset, _prov)) = <a class="self" href="#354">self</a>.ecx.<a href="memory.rs.html#1252-1267">ptr_try_get_alloc_id</a>(<a href="#359">place</a>.<a href="place.rs.html#169-171">ptr</a>()) {
+            </span><span class="kw">if let </span><span class="prelude-val">Ok</span>((alloc_id, _offset, _prov)) = <a class="self" href="#354">self</a>.ecx.<a href="memory.rs.html#1252-1267">ptr_try_get_alloc_id</a>(<a href="#359">place</a>.<a href="place.rs.html#168-170">ptr</a>()) {
                 <span class="comment">// Let&#39;s see what kind of memory this points to.
                 </span><span class="kw">let </span>alloc_kind = <a class="self" href="#354">self</a>.ecx.tcx.try_get_global_alloc(<a href="#417">alloc_id</a>);
                 <span class="kw">match </span><a href="#419">alloc_kind</a> {
@@ -1537,7 +1536,6 @@
             | ty::Bound(..)
             | ty::Param(..)
             | ty::Alias(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::GeneratorWitness(..) =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Encountered invalid type {:?}&quot;</span>, ty),
         }
     }
@@ -1547,13 +1545,13 @@
         scalar: Scalar&lt;M::Provenance&gt;,
         scalar_layout: <a href="../../../rustc_abi/enum.Scalar.html">ScalarAbi</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>size = <a href="#594">scalar_layout</a>.size(<a class="self" href="#592">self</a>.ecx);
-        <span class="kw">let </span>valid_range = <a href="#594">scalar_layout</a>.valid_range(<a class="self" href="#592">self</a>.ecx);
-        <span class="kw">let </span><a href="../../../rustc_abi/struct.WrappingRange.html">WrappingRange</a> { start, end } = <a href="#597">valid_range</a>;
-        <span class="kw">let </span>max_value = <a href="#596">size</a>.unsigned_int_max();
+        <span class="kw">let </span>size = <a href="#593">scalar_layout</a>.size(<a class="self" href="#591">self</a>.ecx);
+        <span class="kw">let </span>valid_range = <a href="#593">scalar_layout</a>.valid_range(<a class="self" href="#591">self</a>.ecx);
+        <span class="kw">let </span><a href="../../../rustc_abi/struct.WrappingRange.html">WrappingRange</a> { start, end } = <a href="#596">valid_range</a>;
+        <span class="kw">let </span>max_value = <a href="#595">size</a>.unsigned_int_max();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(end &lt;= max_value);
-        <span class="kw">let </span>bits = <span class="kw">match </span><a href="#593">scalar</a>.try_to_int() {
-            <span class="prelude-val">Ok</span>(int) =&gt; <a href="#602">int</a>.assert_bits(<a href="#596">size</a>),
+        <span class="kw">let </span>bits = <span class="kw">match </span><a href="#592">scalar</a>.try_to_int() {
+            <span class="prelude-val">Ok</span>(int) =&gt; <a href="#601">int</a>.assert_bits(<a href="#595">size</a>),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// So this is a pointer then, and casting to an int failed.
                 // Can only happen during CTFE.
@@ -1600,14 +1598,14 @@
 
     <span class="attr">#[inline(always)]
     </span><span class="kw">fn </span>ecx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M&gt; {
-        <span class="kw-2">&amp;</span><a class="self" href="#648">self</a>.ecx
+        <span class="kw-2">&amp;</span><a class="self" href="#647">self</a>.ecx
     }
 
     <span class="kw">fn </span>read_discriminant(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         op: <span class="kw-2">&amp;</span>OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>&gt; {
-        <a class="self" href="#653">self</a>.<a href="#276-291">with_elem</a>(<a href="#120">PathElem::EnumTag</a>, <span class="kw">move </span>|this| {
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>&gt; {
+        <a class="self" href="#652">self</a>.<a href="#276-291">with_elem</a>(<a href="#120">PathElem::EnumTag</a>, <span class="kw">move </span>|this| {
             <span class="prelude-val">Ok</span>(<a class="macro" href="#84-105">try_validation!</a>(
                 this.ecx.read_discriminant(op),
                 this.path,
@@ -1628,24 +1626,24 @@
         field: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
         new_op: <span class="kw-2">&amp;</span>OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>elem = <a class="self" href="#672">self</a>.<a href="#202-274">aggregate_field_path_elem</a>(<a href="#673">old_op</a>.layout, <a href="#674">field</a>);
-        <a class="self" href="#672">self</a>.<a href="#276-291">with_elem</a>(<a href="#677">elem</a>, <span class="kw">move </span>|this| <a href="#678">this</a>.<a href="visitor.rs.html#41-43">visit_value</a>(<a href="#675">new_op</a>))
+        <span class="kw">let </span>elem = <a class="self" href="#671">self</a>.<a href="#202-274">aggregate_field_path_elem</a>(<a href="#672">old_op</a>.layout, <a href="#673">field</a>);
+        <a class="self" href="#671">self</a>.<a href="#276-291">with_elem</a>(<a href="#676">elem</a>, <span class="kw">move </span>|this| <a href="#677">this</a>.<a href="visitor.rs.html#41-43">visit_value</a>(<a href="#674">new_op</a>))
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>visit_variant(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         old_op: <span class="kw-2">&amp;</span>OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-        variant_id: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_id: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
         new_op: <span class="kw-2">&amp;</span>OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>name = <span class="kw">match </span><a href="#684">old_op</a>.layout.ty.kind() {
-            ty::Adt(adt, <span class="kw">_</span>) =&gt; <a href="#114">PathElem::Variant</a>(<a href="#689">adt</a>.variant(<a href="#685">variant_id</a>).name),
+        <span class="kw">let </span>name = <span class="kw">match </span><a href="#683">old_op</a>.layout.ty.kind() {
+            ty::Adt(adt, <span class="kw">_</span>) =&gt; <a href="#114">PathElem::Variant</a>(<a href="#688">adt</a>.variant(<a href="#684">variant_id</a>).name),
             <span class="comment">// Generators also have variants
-            </span>ty::Generator(..) =&gt; <a href="#115">PathElem::GeneratorState</a>(<a href="#685">variant_id</a>),
+            </span>ty::Generator(..) =&gt; <a href="#115">PathElem::GeneratorState</a>(<a href="#684">variant_id</a>),
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Unexpected type with variant: {:?}&quot;</span>, old_op.layout.ty),
         };
-        <a class="self" href="#683">self</a>.<a href="#276-291">with_elem</a>(<a href="#688">name</a>, <span class="kw">move </span>|this| <a href="#694">this</a>.<a href="visitor.rs.html#41-43">visit_value</a>(<a href="#686">new_op</a>))
+        <a class="self" href="#682">self</a>.<a href="#276-291">with_elem</a>(<a href="#687">name</a>, <span class="kw">move </span>|this| <a href="#693">this</a>.<a href="visitor.rs.html#41-43">visit_value</a>(<a href="#685">new_op</a>))
     }
 
     <span class="attr">#[inline(always)]
@@ -1679,7 +1677,7 @@
         }
 
         <span class="comment">// Special check preventing `UnsafeCell` in the inner part of constants
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(def) = <a href="#719">op</a>.layout.ty.ty_adt_def() {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(def) = <a href="#718">op</a>.layout.ty.ty_adt_def() {
             <span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>.ctfe_mode, <span class="prelude-val">Some</span>(CtfeValidationMode::Const { inner: <span class="bool-val">true</span>, .. }))
                 &amp;&amp; def.is_unsafe_cell()
             {
@@ -1688,9 +1686,9 @@
         }
 
         <span class="comment">// Recursively walk the value at its type. Apply optimizations for some large types.
-        </span><span class="kw">match </span><a href="#719">op</a>.layout.ty.kind() {
+        </span><span class="kw">match </span><a href="#718">op</a>.layout.ty.kind() {
             ty::Str =&gt; {
-                <span class="kw">let </span>mplace = <a href="#719">op</a>.<a href="place.rs.html#352-359">assert_mem_place</a>(); <span class="comment">// strings are unsized and hence never immediate
+                <span class="kw">let </span>mplace = <a href="#718">op</a>.<a href="place.rs.html#351-358">assert_mem_place</a>(); <span class="comment">// strings are unsized and hence never immediate
                 </span><span class="kw">let </span>len = mplace.len(<span class="self">self</span>.ecx)<span class="question-mark">?</span>;
                 <a class="macro" href="#84-105">try_validation!</a>(
                     <span class="self">self</span>.ecx.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len)),
@@ -1716,19 +1714,19 @@
                 <span class="comment">// This is the element type size.
                 </span><span class="kw">let </span>layout = <span class="self">self</span>.ecx.layout_of(<span class="kw-2">*</span>tys)<span class="question-mark">?</span>;
                 <span class="comment">// This is the size in bytes of the whole array. (This checks for overflow.)
-                </span><span class="kw">let </span>size = <a href="#763">layout</a>.size * <a href="#761">len</a>;
+                </span><span class="kw">let </span>size = <a href="#762">layout</a>.size * <a href="#760">len</a>;
                 <span class="comment">// If the size is 0, there is nothing to check.
                 // (`size` can only be 0 of `len` is 0, and empty arrays are always valid.)
                 </span><span class="kw">if </span>size == Size::ZERO {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
                 <span class="comment">// Now that we definitely have a non-ZST array, we know it lives in memory.
-                </span><span class="kw">let </span>mplace = <span class="kw">match </span><a href="#719">op</a>.<a href="place.rs.html#341-348">as_mplace_or_imm</a>() {
-                    Left(mplace) =&gt; <a href="#773">mplace</a>,
-                    Right(imm) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#774">imm</a> {
-                        <a href="operand.rs.html#36">Immediate::Uninit</a> =&gt;
+                </span><span class="kw">let </span>mplace = <span class="kw">match </span><a href="#718">op</a>.<a href="place.rs.html#340-347">as_mplace_or_imm</a>() {
+                    Left(mplace) =&gt; <a href="#772">mplace</a>,
+                    Right(imm) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#773">imm</a> {
+                        <a href="operand.rs.html#35">Immediate::Uninit</a> =&gt;
                             <a class="macro" href="#39-52">throw_validation_failure!</a>(<span class="self">self</span>.path, Uninit { expected }),
-                        <a href="operand.rs.html#31">Immediate::Scalar</a>(..) | <a href="operand.rs.html#34">Immediate::ScalarPair</a>(..) =&gt;
+                        <a href="operand.rs.html#30">Immediate::Scalar</a>(..) | <a href="operand.rs.html#33">Immediate::ScalarPair</a>(..) =&gt;
                             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;arrays/slices can never have Scalar/ScalarPair layout&quot;</span>),
                     }
                 };
@@ -1745,23 +1743,23 @@
                 // We also accept uninit, for consistency with the slow path.
                 </span><span class="kw">let </span>alloc = <span class="self">self</span>.ecx.get_ptr_alloc(mplace.ptr(), size, mplace.align)<span class="question-mark">?</span>.expect(<span class="string">&quot;we already excluded size 0&quot;</span>);
 
-                <span class="kw">match </span><a href="#792">alloc</a>.<a href="memory.rs.html#1016-1021">get_bytes_strip_provenance</a>() {
+                <span class="kw">match </span><a href="#791">alloc</a>.<a href="memory.rs.html#1016-1021">get_bytes_strip_provenance</a>() {
                     <span class="comment">// In the happy case, we needn&#39;t check anything else.
                     </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
                     <span class="comment">// Some error happened, try to provide a more detailed description.
                     </span><span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="comment">// For some errors we might be able to provide extra information.
                         // (This custom logic does not fit the `try_validation!` macro.)
-                        </span><span class="kw">match </span><a href="#798">err</a>.kind() {
+                        </span><span class="kw">match </span><a href="#797">err</a>.kind() {
                             Ub(InvalidUninitBytes(<span class="prelude-val">Some</span>((_alloc_id, access)))) | Unsup(ReadPointerAsInt(<span class="prelude-val">Some</span>((_alloc_id, access)))) =&gt; {
                                 <span class="comment">// Some byte was uninitialized, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
                                 </span><span class="kw">let </span>i = usize::try_from(
-                                    <a href="#802">access</a>.bad.start.bytes() / <a href="#763">layout</a>.size.bytes(),
+                                    <a href="#801">access</a>.bad.start.bytes() / <a href="#762">layout</a>.size.bytes(),
                                 )
                                 .unwrap();
-                                <a class="self" href="#719">self</a>.path.push(<a href="#117">PathElem::ArrayElem</a>(<a href="#806">i</a>));
+                                <a class="self" href="#718">self</a>.path.push(<a href="#117">PathElem::ArrayElem</a>(<a href="#805">i</a>));
 
                                 <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(err.kind(), Ub(InvalidUninitBytes(<span class="kw">_</span>))) {
                                     <a class="macro" href="#39-52">throw_validation_failure!</a>(<span class="self">self</span>.path, Uninit { expected })
@@ -1771,7 +1769,7 @@
                             }
 
                             <span class="comment">// Propagate upwards (that will also check for unexpected errors).
-                            </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#798">err</a>),
+                            </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#797">err</a>),
                         }
                     }
                 }
@@ -1800,9 +1798,9 @@
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every &quot;level&quot; (e.g., first we check
         // MyNewtype and then the scalar in there).
-        </span><span class="kw">match </span><a href="#719">op</a>.layout.abi {
+        </span><span class="kw">match </span><a href="#718">op</a>.layout.abi {
             Abi::Uninhabited =&gt; {
-                <span class="kw">let </span>ty = <a href="#719">op</a>.layout.ty;
+                <span class="kw">let </span>ty = <a href="#718">op</a>.layout.ty;
                 <a class="macro" href="#39-52">throw_validation_failure!</a>(<span class="self">self</span>.path, UninhabitedVal { ty });
             }
             Abi::Scalar(scalar_layout) =&gt; {
@@ -1818,7 +1816,7 @@
                 // the other must be init.
                 </span><span class="kw">if </span>!a_layout.is_uninit_valid() &amp;&amp; !b_layout.is_uninit_valid() {
                     <span class="kw">let </span>(a, b) =
-                        <span class="self">self</span>.read_immediate(op, ExpectedKind::InitScalar)<span class="question-mark">?</span>.<a href="operand.rs.html#79-85">to_scalar_pair</a>();
+                        <span class="self">self</span>.read_immediate(op, ExpectedKind::InitScalar)<span class="question-mark">?</span>.<a href="operand.rs.html#84-90">to_scalar_pair</a>();
                     <span class="self">self</span>.visit_scalar(a, a_layout)<span class="question-mark">?</span>;
                     <span class="self">self</span>.visit_scalar(b, b_layout)<span class="question-mark">?</span>;
                 }
@@ -1848,10 +1846,10 @@
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;validate_operand_internal: {:?}, {:?}&quot;</span>, <span class="kw-2">*</span>op, op.layout.ty);
 
         <span class="comment">// Construct a visitor
-        </span><span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#190-199">ValidityVisitor</a> { <a href="#890">path</a>, <a href="#891">ref_tracking</a>, <a href="#892">ctfe_mode</a>, ecx: <span class="self"><a href="#888">self</a> </span>};
+        </span><span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#190-199">ValidityVisitor</a> { <a href="#889">path</a>, <a href="#890">ref_tracking</a>, <a href="#891">ctfe_mode</a>, ecx: <span class="self"><a href="#887">self</a> </span>};
 
         <span class="comment">// Run it.
-        </span><span class="kw">match </span><a href="#897">visitor</a>.<a href="visitor.rs.html#41-43">visit_value</a>(<span class="kw-2">&amp;</span><a href="#889">op</a>) {
+        </span><span class="kw">match </span><a href="#896">visitor</a>.<a href="visitor.rs.html#41-43">visit_value</a>(<span class="kw-2">&amp;</span><a href="#888">op</a>) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="comment">// Pass through validation failures and &quot;invalid program&quot; issues.
             </span><span class="prelude-val">Err</span>(err)
@@ -1860,7 +1858,7 @@
                     <span class="macro">err_ub!</span>(ValidationError { .. }) | InterpError::InvalidProgram(<span class="kw">_</span>)
                 ) =&gt;
             {
-                <span class="prelude-val">Err</span>(<a href="#903">err</a>)
+                <span class="prelude-val">Err</span>(<a href="#902">err</a>)
             }
             <span class="comment">// Complain about any other kind of error -- those are bad because we&#39;d like to
             // report them in a way that shows *where* in the value the issue lies.
@@ -1891,7 +1889,7 @@
         ref_tracking: <span class="kw-2">&amp;mut </span>RefTracking&lt;MPlaceTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;, Vec&lt;<a href="#112-123">PathElem</a>&gt;&gt;,
         ctfe_mode: <a href="#126-135">CtfeValidationMode</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#934">self</a>.<a href="#887-920">validate_operand_internal</a>(<a href="#935">op</a>, <a href="#936">path</a>, <span class="prelude-val">Some</span>(<a href="#937">ref_tracking</a>), <span class="prelude-val">Some</span>(<a href="#938">ctfe_mode</a>))
+        <a class="self" href="#933">self</a>.<a href="#886-919">validate_operand_internal</a>(<a href="#934">op</a>, <a href="#935">path</a>, <span class="prelude-val">Some</span>(<a href="#936">ref_tracking</a>), <span class="prelude-val">Some</span>(<a href="#937">ctfe_mode</a>))
     }
 
     <span class="doccomment">/// This function checks the data at `op` to be runtime-valid.
@@ -1903,7 +1901,7 @@
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places. It also can make checking
         // recurse through references which, for now, we don&#39;t want here, either.
-        </span><a class="self" href="#947">self</a>.<a href="#887-920">validate_operand_internal</a>(<a href="#947">op</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+        </span><a class="self" href="#946">self</a>.<a href="#886-919">validate_operand_internal</a>(<a href="#946">op</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div></section></main></body></html>

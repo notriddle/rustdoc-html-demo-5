@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BoundRegionInfo","RegionCtxt"],"fn":["renumber_mir"],"struct":["RegionRenumberer"]};
+window.SIDEBAR_ITEMS = {"enum":["RegionCtxt"],"fn":["renumber_mir"],"struct":["RegionRenumberer"]};

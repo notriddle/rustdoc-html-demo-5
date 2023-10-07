@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/query/dropck_outlives.rs`."><title>dropck_outlives.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/query/dropck_outlives.rs`."><title>dropck_outlives.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -331,11 +331,9 @@
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="normalize.rs.html#25-36"><span class="kw">crate</span>::traits::query::normalize::QueryNormalizeExt</a>;
 <span class="kw">use </span><span class="kw">crate</span>::traits::query::NoSolution;
-<span class="kw">use </span><span class="kw">crate</span>::traits::{<a href="../../../../rustc_trait_selection/traits/struct.Normalized.html">Normalized</a>, <a href="../../../../rustc_trait_selection/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="../engine.rs.html#53-56">ObligationCtxt</a>};
+<span class="kw">use </span><span class="kw">crate</span>::traits::{<a href="../../../../rustc_trait_selection/traits/struct.Normalized.html">Normalized</a>, <a href="../../../../rustc_trait_selection/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="../engine.rs.html#54-57">ObligationCtxt</a>};
 
 <span class="kw">use </span>rustc_data_structures::fx::FxHashSet;
 <span class="kw">use </span>rustc_middle::traits::query::{<a href="../../../../rustc_trait_selection/traits/util/traits/query/struct.DropckConstraint.html">DropckConstraint</a>, <a href="../../../../rustc_trait_selection/traits/util/traits/query/struct.DropckOutlivesResult.html">DropckOutlivesResult</a>};
@@ -371,7 +369,6 @@
         | ty::FnPtr(<span class="kw">_</span>)
         | ty::Char
         | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::RawPtr(<span class="kw">_</span>)
         | ty::Ref(..)
         | ty::Str
@@ -379,13 +376,13 @@
         | ty::Error(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
         <span class="comment">// [T; N] and [T] have same properties as T.
-        </span>ty::Array(ty, <span class="kw">_</span>) | ty::Slice(ty) =&gt; <a href="#23-78">trivial_dropck_outlives</a>(<a href="#23">tcx</a>, <span class="kw-2">*</span><a href="#47">ty</a>),
+        </span>ty::Array(ty, <span class="kw">_</span>) | ty::Slice(ty) =&gt; <a href="#23-77">trivial_dropck_outlives</a>(<a href="#23">tcx</a>, <span class="kw-2">*</span><a href="#46">ty</a>),
 
         <span class="comment">// (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
-        </span>ty::Tuple(tys) =&gt; <a href="#51">tys</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|t| <a href="#23-78">trivial_dropck_outlives</a>(<a href="#23">tcx</a>, <a href="#51">t</a>)),
+        </span>ty::Tuple(tys) =&gt; <a href="#50">tys</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|t| <a href="#23-77">trivial_dropck_outlives</a>(<a href="#23">tcx</a>, <a href="#50">t</a>)),
         ty::Closure(<span class="kw">_</span>, <span class="kw-2">ref </span>args) =&gt; {
-            <a href="#23-78">trivial_dropck_outlives</a>(<a href="#23">tcx</a>, <a href="#52">args</a>.as_closure().tupled_upvars_ty())
+            <a href="#23-77">trivial_dropck_outlives</a>(<a href="#23">tcx</a>, <a href="#51">args</a>.as_closure().tupled_upvars_ty())
         }
 
         ty::Adt(def, <span class="kw">_</span>) =&gt; {
@@ -416,8 +413,8 @@
     ocx: <span class="kw-2">&amp;</span>ObligationCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     goal: ParamEnvAnd&lt;<span class="lifetime">&#39;tcx</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;DropckOutlivesResult&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../../../rustc_trait_selection/traits/util/traits/query/struct.NoSolution.html">NoSolution</a>&gt; {
-    <span class="kw">let </span>tcx = <a href="#81">ocx</a>.infcx.tcx;
-    <span class="kw">let </span><a href="../../../../rustc_middle/ty/struct.ParamEnvAnd.html">ParamEnvAnd</a> { param_env, value: for_ty } = <a href="#82">goal</a>;
+    <span class="kw">let </span>tcx = <a href="#80">ocx</a>.infcx.tcx;
+    <span class="kw">let </span><a href="../../../../rustc_middle/ty/struct.ParamEnvAnd.html">ParamEnvAnd</a> { param_env, value: for_ty } = <a href="#81">goal</a>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>result = <a href="../../../../rustc_trait_selection/traits/util/traits/query/struct.DropckOutlivesResult.html">DropckOutlivesResult</a> { kinds: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], overflows: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[] };
 
@@ -516,7 +513,7 @@
     }
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;dropck_outlives: result = {:#?}&quot;</span>, result);
-    <span class="prelude-val">Ok</span>(<a href="#87">result</a>)
+    <span class="prelude-val">Ok</span>(<a href="#86">result</a>)
 }
 
 <span class="doccomment">/// Returns a set of constraints that needs to be satisfied in
@@ -532,7 +529,7 @@
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;dtorck_constraint_for_ty_inner({:?}, {:?}, {:?}, {:?})&quot;</span>, span, for_ty, depth, ty);
 
     <span class="kw">if </span>!tcx.recursion_limit().value_within_limit(depth) {
-        <a href="#195">constraints</a>.overflows.push(<a href="#194">ty</a>);
+        <a href="#194">constraints</a>.overflows.push(<a href="#193">ty</a>);
         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
     }
 
@@ -540,7 +537,7 @@
         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
     }
 
-    <span class="kw">match </span><a href="#194">ty</a>.kind() {
+    <span class="kw">match </span><a href="#193">ty</a>.kind() {
         ty::Bool
         | ty::Char
         | ty::Int(<span class="kw">_</span>)
@@ -553,8 +550,7 @@
         | ty::Ref(..)
         | ty::FnDef(..)
         | ty::FnPtr(<span class="kw">_</span>)
-        | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..) =&gt; {
+        | ty::GeneratorWitness(..) =&gt; {
             <span class="comment">// these types never have a destructor
         </span>}
 
@@ -577,8 +573,8 @@
                 <span class="comment">// By the time this code runs, all type variables ought to
                 // be fully resolved.
 
-                </span><a href="#190">tcx</a>.sess.delay_span_bug(
-                    <a href="#191">span</a>,
+                </span><a href="#189">tcx</a>.sess.delay_span_bug(
+                    <a href="#190">span</a>,
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;upvar_tys for closure not found. Expected capture information for closure {ty}&quot;</span>,),
                 );
                 <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
@@ -619,17 +615,17 @@
             </span><span class="kw">if </span>!args.as_generator().is_valid() {
                 <span class="comment">// By the time this code runs, all type variables ought to
                 // be fully resolved.
-                </span><a href="#190">tcx</a>.sess.delay_span_bug(
-                    <a href="#191">span</a>,
+                </span><a href="#189">tcx</a>.sess.delay_span_bug(
+                    <a href="#190">span</a>,
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;upvar_tys for generator not found. Expected capture information for generator {ty}&quot;</span>,),
                 );
                 <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
             }
 
-            <a href="#195">constraints</a>
+            <a href="#194">constraints</a>
                 .outlives
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#260">args</a>.as_generator().upvar_tys().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(ty::GenericArg::from));
-            <a href="#195">constraints</a>.outlives.push(<a href="#260">args</a>.as_generator().resume_ty().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#258">args</a>.as_generator().upvar_tys().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(ty::GenericArg::from));
+            <a href="#194">constraints</a>.outlives.push(<a href="#258">args</a>.as_generator().resume_ty().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
         }
 
         ty::Adt(def, args) =&gt; {
@@ -637,26 +633,26 @@
                 tcx.at(span).adt_dtorck_constraint(def.did())<span class="question-mark">?</span>;
             <span class="comment">// FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            </span><a href="#195">constraints</a>
+            </span><a href="#194">constraints</a>
                 .dtorck_types
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#301">dtorck_types</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|t| EarlyBinder::bind(<span class="kw-2">*</span><a href="#307">t</a>).instantiate(<a href="#190">tcx</a>, <a href="#300">args</a>)));
-            <a href="#195">constraints</a>
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#299">dtorck_types</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|t| EarlyBinder::bind(<span class="kw-2">*</span><a href="#305">t</a>).instantiate(<a href="#189">tcx</a>, <a href="#298">args</a>)));
+            <a href="#194">constraints</a>
                 .outlives
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#301">outlives</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|t| EarlyBinder::bind(<span class="kw-2">*</span><a href="#310">t</a>).instantiate(<a href="#190">tcx</a>, <a href="#300">args</a>)));
-            <a href="#195">constraints</a>
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#299">outlives</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|t| EarlyBinder::bind(<span class="kw-2">*</span><a href="#308">t</a>).instantiate(<a href="#189">tcx</a>, <a href="#298">args</a>)));
+            <a href="#194">constraints</a>
                 .overflows
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#301">overflows</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|t| EarlyBinder::bind(<span class="kw-2">*</span><a href="#313">t</a>).instantiate(<a href="#190">tcx</a>, <a href="#300">args</a>)));
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#299">overflows</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|t| EarlyBinder::bind(<span class="kw-2">*</span><a href="#311">t</a>).instantiate(<a href="#189">tcx</a>, <a href="#298">args</a>)));
         }
 
         <span class="comment">// Objects must be alive in order for their destructor
         // to be called.
         </span>ty::Dynamic(..) =&gt; {
-            <a href="#195">constraints</a>.outlives.push(<a href="#194">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+            <a href="#194">constraints</a>.outlives.push(<a href="#193">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
         }
 
         <span class="comment">// Types that can&#39;t be resolved. Pass them forward.
         </span>ty::Alias(..) | ty::Param(..) =&gt; {
-            <a href="#195">constraints</a>.dtorck_types.push(<a href="#194">ty</a>);
+            <a href="#194">constraints</a>.dtorck_types.push(<a href="#193">ty</a>);
         }
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(<span class="kw">_</span>) =&gt; {

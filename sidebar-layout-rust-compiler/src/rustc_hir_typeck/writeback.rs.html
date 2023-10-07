@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/writeback.rs`."><title>writeback.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/writeback.rs`."><title>writeback.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -846,8 +846,6 @@
 <a href="#846" id="846">846</a>
 <a href="#847" id="847">847</a>
 <a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
 </pre></div><pre class="rust"><code><span class="comment">// Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces &quot;ty_var&quot; types with their
 // substitutions.
@@ -896,9 +894,9 @@
         }
         <span class="comment">// Type only exists for constants and statics, not functions.
         </span><span class="kw">match </span><a class="self" href="#34">self</a>.tcx.hir().body_owner_kind(<a href="#37">item_def_id</a>) {
-            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(<span class="kw">_</span>) =&gt; {
+            <a href="../../rustc_hir/hir/enum.BodyOwnerKind.html">hir::BodyOwnerKind::Const</a> { .. } | hir::BodyOwnerKind::Static(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>item_hir_id = <a class="self" href="#34">self</a>.tcx.hir().local_def_id_to_hir_id(<a href="#37">item_def_id</a>);
-                <a href="#43">wbcx</a>.<a href="#597">visit_node_id</a>(<a href="#35">body</a>.value.span, <a href="#50">item_hir_id</a>);
+                <a href="#43">wbcx</a>.<a href="#595">visit_node_id</a>(<a href="#35">body</a>.value.span, <a href="#50">item_hir_id</a>);
             }
             hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn =&gt; (),
         }
@@ -907,14 +905,14 @@
         <a href="#43">wbcx</a>.<a href="#374-389">eval_closure_size</a>();
         <a href="#43">wbcx</a>.<a href="#422-444">visit_fake_reads_map</a>();
         <a href="#43">wbcx</a>.<a href="#446-460">visit_closures</a>();
-        <a href="#43">wbcx</a>.<a href="#656-668">visit_liberated_fn_sigs</a>();
-        <a href="#43">wbcx</a>.<a href="#670-682">visit_fru_field_types</a>();
-        <a href="#43">wbcx</a>.<a href="#557">visit_opaque_types</a>();
+        <a href="#43">wbcx</a>.<a href="#654-666">visit_liberated_fn_sigs</a>();
+        <a href="#43">wbcx</a>.<a href="#668-680">visit_fru_field_types</a>();
+        <a href="#43">wbcx</a>.<a href="#555">visit_opaque_types</a>();
         <a href="#43">wbcx</a>.<a href="#462-471">visit_coercion_casts</a>();
         <a href="#43">wbcx</a>.<a href="#473-520">visit_user_provided_tys</a>();
         <a href="#43">wbcx</a>.<a href="#522-539">visit_user_provided_sigs</a>();
-        <a href="#43">wbcx</a>.<a href="#541-555">visit_generator_interior_types</a>();
-        <a href="#43">wbcx</a>.<a href="#684-696">visit_offset_of_container_types</a>();
+        <a href="#43">wbcx</a>.<a href="#541-553">visit_generator_interior</a>();
+        <a href="#43">wbcx</a>.<a href="#682-694">visit_offset_of_container_types</a>();
 
         <a href="#43">wbcx</a>.typeck_results.rvalue_scopes =
             mem::take(<span class="kw-2">&amp;mut </span><a class="self" href="#34">self</a>.typeck_results.borrow_mut().rvalue_scopes);
@@ -1135,10 +1133,10 @@
                 }
             }
             hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) =&gt; {
-                <a class="self" href="#272">self</a>.<a href="#590-595">visit_field_id</a>(<a href="#272">e</a>.hir_id);
+                <a class="self" href="#272">self</a>.<a href="#588-593">visit_field_id</a>(<a href="#272">e</a>.hir_id);
             }
             hir::ExprKind::ConstBlock(anon_const) =&gt; {
-                <a class="self" href="#272">self</a>.<a href="#597">visit_node_id</a>(<a href="#272">e</a>.span, <a href="#290">anon_const</a>.hir_id);
+                <a class="self" href="#272">self</a>.<a href="#595">visit_node_id</a>(<a href="#272">e</a>.span, <a href="#290">anon_const</a>.hir_id);
 
                 <span class="kw">let </span>body = <a class="self" href="#272">self</a>.<a href="#129-131">tcx</a>().hir().body(<a href="#290">anon_const</a>.body);
                 <a class="self" href="#272">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#293">body</a>);
@@ -1146,7 +1144,7 @@
             <span class="kw">_ </span>=&gt; {}
         }
 
-        <a class="self" href="#272">self</a>.<a href="#597">visit_node_id</a>(<a href="#272">e</a>.span, <a href="#272">e</a>.hir_id);
+        <a class="self" href="#272">self</a>.<a href="#595">visit_node_id</a>(<a href="#272">e</a>.span, <a href="#272">e</a>.hir_id);
         intravisit::walk_expr(<a class="self" href="#272">self</a>, <a href="#272">e</a>);
 
         <a class="self" href="#272">self</a>.<a href="#146-187">fix_scalar_builtin_expr</a>(<a href="#272">e</a>);
@@ -1165,7 +1163,7 @@
     }
 
     <span class="kw">fn </span>visit_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, b: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Block&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a class="self" href="#317">self</a>.<a href="#597">visit_node_id</a>(<a href="#317">b</a>.span, <a href="#317">b</a>.hir_id);
+        <a class="self" href="#317">self</a>.<a href="#595">visit_node_id</a>(<a href="#317">b</a>.span, <a href="#317">b</a>.hir_id);
         intravisit::walk_block(<a class="self" href="#317">self</a>, <a href="#317">b</a>);
     }
 
@@ -1187,16 +1185,16 @@
             <span class="kw">_ </span>=&gt; {}
         };
 
-        <a class="self" href="#322">self</a>.<a href="#640">visit_pat_adjustments</a>(<a href="#322">p</a>.span, <a href="#322">p</a>.hir_id);
+        <a class="self" href="#322">self</a>.<a href="#638">visit_pat_adjustments</a>(<a href="#322">p</a>.span, <a href="#322">p</a>.hir_id);
 
-        <a class="self" href="#322">self</a>.<a href="#597">visit_node_id</a>(<a href="#322">p</a>.span, <a href="#322">p</a>.hir_id);
+        <a class="self" href="#322">self</a>.<a href="#595">visit_node_id</a>(<a href="#322">p</a>.span, <a href="#322">p</a>.hir_id);
         intravisit::walk_pat(<a class="self" href="#322">self</a>, <a href="#322">p</a>);
     }
 
     <span class="kw">fn </span>visit_local(<span class="kw-2">&amp;mut </span><span class="self">self</span>, l: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Local&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         intravisit::walk_local(<a class="self" href="#346">self</a>, <a href="#346">l</a>);
         <span class="kw">let </span>var_ty = <a class="self" href="#346">self</a>.fcx.<a href="fn_ctxt/_impl.rs.html#132-136">local_ty</a>(<a href="#346">l</a>.span, <a href="#346">l</a>.hir_id);
-        <span class="kw">let </span>var_ty = <a class="self" href="#346">self</a>.<a href="#698-716">resolve</a>(<a href="#348">var_ty</a>, <span class="kw-2">&amp;</span><a href="#346">l</a>.span);
+        <span class="kw">let </span>var_ty = <a class="self" href="#346">self</a>.<a href="#696-714">resolve</a>(<a href="#348">var_ty</a>, <span class="kw-2">&amp;</span><a href="#346">l</a>.span);
         <a class="self" href="#346">self</a>.<a href="#133-140">write_ty_to_typeck_results</a>(<a href="#346">l</a>.hir_id, <a href="#349">var_ty</a>);
     }
 
@@ -1205,7 +1203,7 @@
         <span class="comment">// If there are type checking errors, Type privacy pass will stop,
         // so we may not get the type from hid_id, see #104513
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a class="self" href="#353">self</a>.fcx.<a href="fn_ctxt/_impl.rs.html#459-465">node_ty_opt</a>(<a href="#353">hir_ty</a>.hir_id) {
-            <span class="kw">let </span>ty = <a class="self" href="#353">self</a>.<a href="#698-716">resolve</a>(<a href="#357">ty</a>, <span class="kw-2">&amp;</span><a href="#353">hir_ty</a>.span);
+            <span class="kw">let </span>ty = <a class="self" href="#353">self</a>.<a href="#696-714">resolve</a>(<a href="#357">ty</a>, <span class="kw-2">&amp;</span><a href="#353">hir_ty</a>.span);
             <a class="self" href="#353">self</a>.<a href="#133-140">write_ty_to_typeck_results</a>(<a href="#353">hir_ty</a>.hir_id, <a href="#358">ty</a>);
         }
     }
@@ -1214,7 +1212,7 @@
         intravisit::walk_inf(<a class="self" href="#363">self</a>, <a href="#363">inf</a>);
         <span class="comment">// Ignore cases where the inference is a const.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a class="self" href="#363">self</a>.fcx.<a href="fn_ctxt/_impl.rs.html#459-465">node_ty_opt</a>(<a href="#363">inf</a>.hir_id) {
-            <span class="kw">let </span>ty = <a class="self" href="#363">self</a>.<a href="#698-716">resolve</a>(<a href="#366">ty</a>, <span class="kw-2">&amp;</span><a href="#363">inf</a>.span);
+            <span class="kw">let </span>ty = <a class="self" href="#363">self</a>.<a href="#696-714">resolve</a>(<a href="#366">ty</a>, <span class="kw-2">&amp;</span><a href="#363">inf</a>.span);
             <a class="self" href="#363">self</a>.<a href="#133-140">write_ty_to_typeck_results</a>(<a href="#363">inf</a>.hir_id, <a href="#367">ty</a>);
         }
     }
@@ -1231,7 +1229,7 @@
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(<span class="kw-2">&amp;</span>closure_def_id, data)| {
                     <span class="kw">let </span>closure_hir_id = <a class="self" href="#374">self</a>.<a href="#129-131">tcx</a>().hir().local_def_id_to_hir_id(<a href="#382">closure_def_id</a>);
-                    <span class="kw">let </span>data = <a class="self" href="#374">self</a>.<a href="#698-716">resolve</a>(<span class="kw-2">*</span><a href="#382">data</a>, <span class="kw-2">&amp;</span><a href="#383">closure_hir_id</a>);
+                    <span class="kw">let </span>data = <a class="self" href="#374">self</a>.<a href="#696-714">resolve</a>(<span class="kw-2">*</span><a href="#382">data</a>, <span class="kw-2">&amp;</span><a href="#383">closure_hir_id</a>);
                     (<a href="#382">closure_def_id</a>, <a href="#384">data</a>)
                 })
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
@@ -1257,7 +1255,7 @@
                                         <a href="#405">captured_place</a>.info.path_expr_id.unwrap_or_else(|| {
                                             <a class="self" href="#391">self</a>.<a href="#129-131">tcx</a>().hir().local_def_id_to_hir_id(<a href="#399">closure_def_id</a>)
                                         });
-                                    <a class="self" href="#391">self</a>.<a href="#698-716">resolve</a>(<a href="#405">captured_place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <span class="kw-2">&amp;</span><a href="#406">locatable</a>)
+                                    <a class="self" href="#391">self</a>.<a href="#696-714">resolve</a>(<a href="#405">captured_place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <span class="kw-2">&amp;</span><a href="#406">locatable</a>)
                                 })
                                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                             (<span class="kw-2">*</span><a href="#402">var_hir_id</a>, <a href="#403">min_list_wb</a>)
@@ -1282,7 +1280,7 @@
                         .iter()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(place, cause, hir_id)| {
                             <span class="kw">let </span>locatable = <a class="self" href="#422">self</a>.<a href="#129-131">tcx</a>().hir().local_def_id_to_hir_id(<a href="#430">closure_def_id</a>);
-                            <span class="kw">let </span>resolved_fake_read = <a class="self" href="#422">self</a>.<a href="#698-716">resolve</a>(<a href="#433">place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <span class="kw-2">&amp;</span><a href="#434">locatable</a>);
+                            <span class="kw">let </span>resolved_fake_read = <a class="self" href="#422">self</a>.<a href="#696-714">resolve</a>(<a href="#433">place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <span class="kw-2">&amp;</span><a href="#434">locatable</a>);
                             (<a href="#435">resolved_fake_read</a>, <span class="kw-2">*</span><a href="#433">cause</a>, <span class="kw-2">*</span><a href="#433">hir_id</a>)
                         })
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
@@ -1388,11 +1386,9 @@
         );
     }
 
-    <span class="kw">fn </span>visit_generator_interior_types(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">fn </span>visit_generator_interior(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#541">self</a>.fcx.typeck_results.borrow();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(fcx_typeck_results.hir_owner, <span class="self">self</span>.typeck_results.hir_owner);
-        <a class="self" href="#541">self</a>.typeck_results.generator_interior_types =
-            <a href="#542">fcx_typeck_results</a>.generator_interior_types.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
         <a class="self" href="#541">self</a>.<a href="#129-131">tcx</a>().with_stable_hashing_context(<span class="kw">move </span>|<span class="kw-2">ref </span>hcx| {
             <span class="kw">for </span>(<span class="kw-2">&amp;</span>expr_def_id, predicates) <span class="kw">in
                 </span>fcx_typeck_results.generator_interior_predicates.to_sorted(hcx, <span class="bool-val">false</span>).into_iter()
@@ -1438,9 +1434,9 @@
     }
 
     <span class="kw">fn </span>visit_field_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <a class="self" href="#590">self</a>.fcx.typeck_results.borrow_mut().field_indices_mut().remove(<a href="#590">hir_id</a>)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <a class="self" href="#588">self</a>.fcx.typeck_results.borrow_mut().field_indices_mut().remove(<a href="#588">hir_id</a>)
         {
-            <a class="self" href="#590">self</a>.typeck_results.field_indices_mut().insert(<a href="#590">hir_id</a>, <a href="#591">index</a>);
+            <a class="self" href="#588">self</a>.typeck_results.field_indices_mut().insert(<a href="#588">hir_id</a>, <a href="#589">index</a>);
         }
     }
 
@@ -1504,11 +1500,11 @@
     }
 
     <span class="kw">fn </span>visit_liberated_fn_sigs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#656">self</a>.fcx.typeck_results.borrow();
+        <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#654">self</a>.fcx.typeck_results.borrow();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(fcx_typeck_results.hir_owner, <span class="self">self</span>.typeck_results.hir_owner);
-        <span class="kw">let </span>common_hir_owner = <a href="#657">fcx_typeck_results</a>.hir_owner;
+        <span class="kw">let </span>common_hir_owner = <a href="#655">fcx_typeck_results</a>.hir_owner;
 
-        <span class="kw">let </span>fcx_liberated_fn_sigs = <a href="#657">fcx_typeck_results</a>.liberated_fn_sigs().items_in_stable_order();
+        <span class="kw">let </span>fcx_liberated_fn_sigs = <a href="#655">fcx_typeck_results</a>.liberated_fn_sigs().items_in_stable_order();
 
         <span class="kw">for </span>(local_id, <span class="kw-2">&amp;</span>fn_sig) <span class="kw">in </span>fcx_liberated_fn_sigs {
             <span class="kw">let </span>hir_id = hir::HirId { owner: common_hir_owner, local_id };
@@ -1518,11 +1514,11 @@
     }
 
     <span class="kw">fn </span>visit_fru_field_types(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#670">self</a>.fcx.typeck_results.borrow();
+        <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#668">self</a>.fcx.typeck_results.borrow();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(fcx_typeck_results.hir_owner, <span class="self">self</span>.typeck_results.hir_owner);
-        <span class="kw">let </span>common_hir_owner = <a href="#671">fcx_typeck_results</a>.hir_owner;
+        <span class="kw">let </span>common_hir_owner = <a href="#669">fcx_typeck_results</a>.hir_owner;
 
-        <span class="kw">let </span>fcx_fru_field_types = <a href="#671">fcx_typeck_results</a>.fru_field_types().items_in_stable_order();
+        <span class="kw">let </span>fcx_fru_field_types = <a href="#669">fcx_typeck_results</a>.fru_field_types().items_in_stable_order();
 
         <span class="kw">for </span>(local_id, ftys) <span class="kw">in </span>fcx_fru_field_types {
             <span class="kw">let </span>hir_id = hir::HirId { owner: common_hir_owner, local_id };
@@ -1532,9 +1528,9 @@
     }
 
     <span class="kw">fn </span>visit_offset_of_container_types(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#684">self</a>.fcx.typeck_results.borrow();
+        <span class="kw">let </span>fcx_typeck_results = <a class="self" href="#682">self</a>.fcx.typeck_results.borrow();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(fcx_typeck_results.hir_owner, <span class="self">self</span>.typeck_results.hir_owner);
-        <span class="kw">let </span>common_hir_owner = <a href="#685">fcx_typeck_results</a>.hir_owner;
+        <span class="kw">let </span>common_hir_owner = <a href="#683">fcx_typeck_results</a>.hir_owner;
 
         <span class="kw">for </span>(local_id, <span class="kw-2">&amp;</span>(container, <span class="kw-2">ref </span>indices)) <span class="kw">in
             </span>fcx_typeck_results.offset_of_data().items_in_stable_order()
@@ -1545,12 +1541,12 @@
         }
     }
 
-    <span class="kw">fn </span>resolve&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: T, span: <span class="kw-2">&amp;</span><span class="kw">dyn </span><a href="#719-721">Locatable</a>) -&gt; T
+    <span class="kw">fn </span>resolve&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: T, span: <span class="kw-2">&amp;</span><span class="kw">dyn </span><a href="#717-719">Locatable</a>) -&gt; T
     <span class="kw">where
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     {
-        <span class="kw">let </span><span class="kw-2">mut </span>resolver = Resolver::new(<a class="self" href="#698">self</a>.fcx, <a href="#698">span</a>, <a class="self" href="#698">self</a>.body);
-        <span class="kw">let </span>x = <a href="#698">x</a>.<a href="../../rustc_type_ir/fold/trait.TypeFoldable.html">fold_with</a>(<span class="kw-2">&amp;mut </span><a href="#702">resolver</a>);
+        <span class="kw">let </span><span class="kw-2">mut </span>resolver = Resolver::new(<a class="self" href="#696">self</a>.fcx, <a href="#696">span</a>, <a class="self" href="#696">self</a>.body);
+        <span class="kw">let </span>x = <a href="#696">x</a>.<a href="../../rustc_type_ir/fold/trait.TypeFoldable.html">fold_with</a>(<span class="kw-2">&amp;mut </span><a href="#700">resolver</a>);
         <span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) &amp;&amp; x.has_infer() {
             <a class="macro" href="../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(span.to_span(<span class="self">self</span>.fcx.tcx), <span class="string">&quot;writeback: `{:?}` has inference variables&quot;</span>, x);
         }
@@ -1558,11 +1554,11 @@
         <span class="comment">// We may have introduced e.g. `ty::Error`, if inference failed, make sure
         // to mark the `TypeckResults` as tainted in that case, so that downstream
         // users of the typeck results don&#39;t produce extra errors, or worse, ICEs.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <a href="#702">resolver</a>.replaced_with_error {
-            <a class="self" href="#698">self</a>.typeck_results.tainted_by_errors = <span class="prelude-val">Some</span>(<a href="#711">e</a>);
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(e) = <a href="#700">resolver</a>.replaced_with_error {
+            <a class="self" href="#696">self</a>.typeck_results.tainted_by_errors = <span class="prelude-val">Some</span>(<a href="#709">e</a>);
         }
 
-        <a href="#703">x</a>
+        <a href="#701">x</a>
     }
 }
 
@@ -1570,15 +1566,15 @@
     <span class="kw">fn </span>to_span(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>;
 }
 
-<span class="kw">impl </span><a href="#719-721">Locatable</a> <span class="kw">for </span><a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
+<span class="kw">impl </span><a href="#717-719">Locatable</a> <span class="kw">for </span><a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
     <span class="kw">fn </span>to_span(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-        <span class="kw-2">*</span><span class="self"><a href="#724">self</a>
+        <span class="kw-2">*</span><span class="self"><a href="#722">self</a>
     </span>}
 }
 
-<span class="kw">impl </span><a href="#719-721">Locatable</a> <span class="kw">for </span><a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a> {
+<span class="kw">impl </span><a href="#717-719">Locatable</a> <span class="kw">for </span><a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a> {
     <span class="kw">fn </span>to_span(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-        <a href="#730">tcx</a>.hir().span(<span class="kw-2">*</span><a class="self" href="#730">self</a>)
+        <a href="#728">tcx</a>.hir().span(<span class="kw-2">*</span><a class="self" href="#728">self</a>)
     }
 }
 
@@ -1586,7 +1582,7 @@
 /// unresolved types and so forth.
 </span><span class="kw">struct </span><a href="../../rustc_hir_typeck/writeback/struct.Resolver.html">Resolver</a>&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     fcx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;cx </span>FnCtxt&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-    span: <span class="kw-2">&amp;</span><span class="lifetime">&#39;cx </span><span class="kw">dyn </span><a href="#719-721">Locatable</a>,
+    span: <span class="kw-2">&amp;</span><span class="lifetime">&#39;cx </span><span class="kw">dyn </span><a href="#717-719">Locatable</a>,
     body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 
     <span class="doccomment">/// Set to `Some` if any `Ty` or `ty::Const` had to be replaced with an `Error`.
@@ -1596,22 +1592,22 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt; Resolver&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>new(
         fcx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;cx </span>FnCtxt&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-        span: <span class="kw-2">&amp;</span><span class="lifetime">&#39;cx </span><span class="kw">dyn </span><a href="#719-721">Locatable</a>,
+        span: <span class="kw-2">&amp;</span><span class="lifetime">&#39;cx </span><span class="kw">dyn </span><a href="#717-719">Locatable</a>,
         body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; Resolver&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#737-744">Resolver</a> { <a href="#748">fcx</a>, <a href="#749">span</a>, <a href="#750">body</a>, replaced_with_error: <span class="prelude-val">None </span>}
+        <a href="#735-742">Resolver</a> { <a href="#746">fcx</a>, <a href="#747">span</a>, <a href="#748">body</a>, replaced_with_error: <span class="prelude-val">None </span>}
     }
 
     <span class="kw">fn </span>report_error(<span class="kw-2">&amp;</span><span class="self">self</span>, p: <span class="kw">impl </span>Into&lt;ty::GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;) -&gt; <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a> {
-        <span class="kw">match </span><a class="self" href="#755">self</a>.fcx.tcx.sess.has_errors() {
-            <span class="prelude-val">Some</span>(e) =&gt; <a href="#757">e</a>,
-            <span class="prelude-val">None </span>=&gt; <span class="self"><a href="#755">self</a>
+        <span class="kw">match </span><a class="self" href="#753">self</a>.fcx.tcx.sess.has_errors() {
+            <span class="prelude-val">Some</span>(e) =&gt; <a href="#755">e</a>,
+            <span class="prelude-val">None </span>=&gt; <span class="self"><a href="#753">self</a>
                 </span>.fcx
                 .<a href="fn_ctxt/mod.rs.html#156-187">err_ctxt</a>()
                 .emit_inference_failure_err(
-                    <a class="self" href="#755">self</a>.fcx.tcx.hir().body_owner_def_id(<a class="self" href="#755">self</a>.body.id()),
-                    <a class="self" href="#755">self</a>.span.<a href="#720">to_span</a>(<a class="self" href="#755">self</a>.fcx.tcx),
-                    <a href="#755">p</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+                    <a class="self" href="#753">self</a>.fcx.tcx.hir().body_owner_def_id(<a class="self" href="#753">self</a>.body.id()),
+                    <a class="self" href="#753">self</a>.span.<a href="#718">to_span</a>(<a class="self" href="#753">self</a>.fcx.tcx),
+                    <a href="#753">p</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
                     E0282,
                     <span class="bool-val">false</span>,
                 )
@@ -1626,35 +1622,35 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeFolder&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span>EraseEarlyRegions&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>interner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#778">self</a>.tcx
+        <a class="self" href="#776">self</a>.tcx
     }
     <span class="kw">fn </span>fold_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">if </span>ty.has_type_flags(ty::TypeFlags::HAS_FREE_REGIONS) {
-            <a href="#781">ty</a>.<a href="../../rustc_type_ir/fold/trait.TypeSuperFoldable.html">super_fold_with</a>(<a class="self" href="#781">self</a>)
+            <a href="#779">ty</a>.<a href="../../rustc_type_ir/fold/trait.TypeSuperFoldable.html">super_fold_with</a>(<a class="self" href="#779">self</a>)
         } <span class="kw">else </span>{
-            <a href="#781">ty</a>
+            <a href="#779">ty</a>
         }
     }
     <span class="kw">fn </span>fold_region(<span class="kw-2">&amp;mut </span><span class="self">self</span>, r: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">if </span>r.is_late_bound() { <a href="#788">r</a> } <span class="kw">else </span>{ <a class="self" href="#788">self</a>.tcx.lifetimes.re_erased }
+        <span class="kw">if </span>r.is_late_bound() { <a href="#786">r</a> } <span class="kw">else </span>{ <a class="self" href="#786">self</a>.tcx.lifetimes.re_erased }
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt; TypeFolder&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span>Resolver&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>interner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#794">self</a>.fcx.tcx
+        <a class="self" href="#792">self</a>.fcx.tcx
     }
 
     <span class="kw">fn </span>fold_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">match </span><a class="self" href="#798">self</a>.fcx.fully_resolve(<a href="#798">t</a>) {
-            <span class="prelude-val">Ok</span>(t) <span class="kw">if </span><a class="self" href="#798">self</a>.fcx.next_trait_solver() =&gt; {
+        <span class="kw">match </span><a class="self" href="#796">self</a>.fcx.fully_resolve(<a href="#796">t</a>) {
+            <span class="prelude-val">Ok</span>(t) <span class="kw">if </span><a class="self" href="#796">self</a>.fcx.next_trait_solver() =&gt; {
                 <span class="comment">// We must normalize erasing regions here, since later lints
                 // expect that types that show up in the typeck are fully
                 // normalized.
-                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(t) = <a class="self" href="#798">self</a>.fcx.tcx.try_normalize_erasing_regions(<a class="self" href="#798">self</a>.fcx.param_env, <a href="#800">t</a>) {
-                    <a href="#804">t</a>
+                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(t) = <a class="self" href="#796">self</a>.fcx.tcx.try_normalize_erasing_regions(<a class="self" href="#796">self</a>.fcx.param_env, <a href="#798">t</a>) {
+                    <a href="#802">t</a>
                 } <span class="kw">else </span>{
-                    <a href="#773-775">EraseEarlyRegions</a> { tcx: <a class="self" href="#798">self</a>.fcx.tcx }.<a href="../../rustc_type_ir/fold/trait.TypeFolder.html">fold_ty</a>(<a href="#800">t</a>)
+                    <a href="#771-773">EraseEarlyRegions</a> { tcx: <a class="self" href="#796">self</a>.fcx.tcx }.<a href="../../rustc_type_ir/fold/trait.TypeFolder.html">fold_ty</a>(<a href="#798">t</a>)
                 }
             }
             <span class="prelude-val">Ok</span>(t) =&gt; {
@@ -1662,30 +1658,30 @@
                 // (e.g. keep `for&lt;&#39;a&gt;` named `for&lt;&#39;a&gt;`).
                 // This allows NLL to generate error messages that
                 // refer to the higher-ranked lifetime names written by the user.
-                </span><a href="#773-775">EraseEarlyRegions</a> { tcx: <a class="self" href="#798">self</a>.fcx.tcx }.<a href="../../rustc_type_ir/fold/trait.TypeFolder.html">fold_ty</a>(<a href="#810">t</a>)
+                </span><a href="#771-773">EraseEarlyRegions</a> { tcx: <a class="self" href="#796">self</a>.fcx.tcx }.<a href="../../rustc_type_ir/fold/trait.TypeFolder.html">fold_ty</a>(<a href="#808">t</a>)
             }
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;Resolver::fold_ty: input type `{:?}` not fully resolvable&quot;</span>, t);
-                <span class="kw">let </span>e = <a class="self" href="#798">self</a>.<a href="#755-770">report_error</a>(<a href="#798">t</a>);
-                <a class="self" href="#798">self</a>.replaced_with_error = <span class="prelude-val">Some</span>(<a href="#819">e</a>);
-                Ty::new_error(<a class="self" href="#798">self</a>.fcx.tcx, <a href="#819">e</a>)
+                <span class="kw">let </span>e = <a class="self" href="#796">self</a>.<a href="#753-768">report_error</a>(<a href="#796">t</a>);
+                <a class="self" href="#796">self</a>.replaced_with_error = <span class="prelude-val">Some</span>(<a href="#817">e</a>);
+                Ty::new_error(<a class="self" href="#796">self</a>.fcx.tcx, <a href="#817">e</a>)
             }
         }
     }
 
     <span class="kw">fn </span>fold_region(<span class="kw-2">&amp;mut </span><span class="self">self</span>, r: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(!r.is_late_bound(), <span class="string">&quot;Should not be resolving bound region.&quot;</span>);
-        <a class="self" href="#826">self</a>.fcx.tcx.lifetimes.re_erased
+        <a class="self" href="#824">self</a>.fcx.tcx.lifetimes.re_erased
     }
 
     <span class="kw">fn </span>fold_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ct: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">match </span><a class="self" href="#831">self</a>.fcx.fully_resolve(<a href="#831">ct</a>) {
-            <span class="prelude-val">Ok</span>(ct) =&gt; <a class="self" href="#831">self</a>.fcx.tcx.erase_regions(<a href="#833">ct</a>),
+        <span class="kw">match </span><a class="self" href="#829">self</a>.fcx.fully_resolve(<a href="#829">ct</a>) {
+            <span class="prelude-val">Ok</span>(ct) =&gt; <a class="self" href="#829">self</a>.fcx.tcx.erase_regions(<a href="#831">ct</a>),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;Resolver::fold_const: input const `{:?}` not fully resolvable&quot;</span>, ct);
-                <span class="kw">let </span>e = <a class="self" href="#831">self</a>.<a href="#755-770">report_error</a>(<a href="#831">ct</a>);
-                <a class="self" href="#831">self</a>.replaced_with_error = <span class="prelude-val">Some</span>(<a href="#836">e</a>);
-                ty::Const::new_error(<a class="self" href="#831">self</a>.fcx.tcx, <a href="#836">e</a>, <a href="#831">ct</a>.ty())
+                <span class="kw">let </span>e = <a class="self" href="#829">self</a>.<a href="#753-768">report_error</a>(<a href="#829">ct</a>);
+                <a class="self" href="#829">self</a>.replaced_with_error = <span class="prelude-val">Some</span>(<a href="#834">e</a>);
+                ty::Const::new_error(<a class="self" href="#829">self</a>.fcx.tcx, <a href="#834">e</a>, <a href="#829">ct</a>.ty())
             }
         }
     }

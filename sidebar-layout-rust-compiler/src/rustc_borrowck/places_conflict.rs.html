@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/places_conflict.rs`."><title>places_conflict.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/places_conflict.rs`."><title>places_conflict.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -519,6 +519,8 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The borrowck rules for proving disjointness are applied from the &quot;root&quot; of the
 //! borrow forwards, iterating over &quot;similar&quot; projections in lockstep until
 //! we can prove overlap one way or another. Essentially, we treat `Overlap` as
@@ -574,11 +576,11 @@
 </span><span class="attr">#![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 </span><span class="kw">use </span><a href="lib.rs.html#838-841"><span class="kw">crate</span>::ArtificialField</a>;
-<span class="kw">use </span><a href="lib.rs.html#2409-2424"><span class="kw">crate</span>::Overlap</a>;
+<span class="kw">use </span><a href="lib.rs.html#2411-2426"><span class="kw">crate</span>::Overlap</a>;
 <span class="kw">use crate</span>::{<a href="lib.rs.html#844-860">AccessDepth</a>, <a href="lib.rs.html#855">Deep</a>, <a href="lib.rs.html#850">Shallow</a>};
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
 <span class="kw">use </span>rustc_middle::mir::{
-    <a href="../../rustc_middle/mir/struct.Body.html">Body</a>, <a href="../../rustc_middle/mir/syntax/enum.BorrowKind.html">BorrowKind</a>, <a href="../../rustc_middle/mir/syntax/enum.MutBorrowKind.html">MutBorrowKind</a>, <a href="../../rustc_middle/mir/syntax/struct.Place.html">Place</a>, <a href="../../rustc_middle/mir/syntax/type.PlaceElem.html">PlaceElem</a>, <a href="../../rustc_middle/mir/struct.PlaceRef.html">PlaceRef</a>, <a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem</a>,
+    <a href="../../rustc_middle/mir/struct.Body.html">Body</a>, <a href="../../rustc_middle/mir/syntax/enum.BorrowKind.html">BorrowKind</a>, <a href="../../rustc_middle/mir/syntax/enum.MutBorrowKind.html">MutBorrowKind</a>, <a href="../../rustc_middle/mir/syntax/struct.Place.html">Place</a>, <a href="../../rustc_middle/mir/syntax/type.PlaceElem.html">PlaceElem</a>, <a href="../../rustc_middle/mir/statement/struct.PlaceRef.html">PlaceRef</a>, <a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem</a>,
 };
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cmp/fn.max.html">std::cmp::max</a>;
@@ -770,6 +772,7 @@
                 | (ProjectionElem::ConstantIndex { .. }, <span class="kw">_</span>, <span class="kw">_</span>)
                 | (ProjectionElem::Subslice { .. }, <span class="kw">_</span>, <span class="kw">_</span>)
                 | (ProjectionElem::OpaqueCast { .. }, <span class="kw">_</span>, <span class="kw">_</span>)
+                | (ProjectionElem::Subtype(<span class="kw">_</span>), <span class="kw">_</span>, <span class="kw">_</span>)
                 | (ProjectionElem::Downcast { .. }, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                     <span class="comment">// Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
@@ -814,33 +817,33 @@
     pi1_elem: PlaceElem&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     pi2_elem: PlaceElem&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     bias: <a href="#73-76">PlaceConflictBias</a>,
-) -&gt; <a href="lib.rs.html#2409-2424">Overlap</a> {
-    <span class="kw">match </span>(<a href="#293">pi1_elem</a>, <a href="#294">pi2_elem</a>) {
+) -&gt; <a href="lib.rs.html#2411-2426">Overlap</a> {
+    <span class="kw">match </span>(<a href="#294">pi1_elem</a>, <a href="#295">pi2_elem</a>) {
         (ProjectionElem::Deref, ProjectionElem::Deref) =&gt; {
             <span class="comment">// derefs (e.g., `*x` vs. `*x`) - recur.
             </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-DEREF&quot;</span>);
-            <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+            <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
         }
         (ProjectionElem::OpaqueCast(<span class="kw">_</span>), ProjectionElem::OpaqueCast(<span class="kw">_</span>)) =&gt; {
             <span class="comment">// casts to other types may always conflict irrespective of the type being cast to.
             </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-OPAQUE&quot;</span>);
-            <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+            <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
         }
         (ProjectionElem::Field(f1, <span class="kw">_</span>), ProjectionElem::Field(f2, <span class="kw">_</span>)) =&gt; {
             <span class="kw">if </span>f1 == f2 {
                 <span class="comment">// same field (e.g., `a.y` vs. `a.y`) - recur.
                 </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-FIELD&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
-                <span class="kw">let </span>ty = <a href="#292">pi1</a>.ty(<a href="#291">body</a>, <a href="#290">tcx</a>).ty;
+                <span class="kw">let </span>ty = <a href="#293">pi1</a>.ty(<a href="#292">body</a>, <a href="#291">tcx</a>).ty;
                 <span class="kw">if </span>ty.is_union() {
                     <span class="comment">// Different fields of a union, we are basically stuck.
                     </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: STUCK-UNION&quot;</span>);
-                    <a href="lib.rs.html#2415">Overlap::Arbitrary</a>
+                    <a href="lib.rs.html#2417">Overlap::Arbitrary</a>
                 } <span class="kw">else </span>{
                     <span class="comment">// Different fields of a struct (`a.x` vs. `a.y`). Disjoint!
                     </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-FIELD&quot;</span>);
-                    <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                    <a href="lib.rs.html#2425">Overlap::Disjoint</a>
                 }
             }
         }
@@ -871,10 +874,10 @@
             // ```
             </span><span class="kw">if </span>v1 == v2 {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-FIELD&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-FIELD&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             }
         }
         (
@@ -889,17 +892,17 @@
         ) =&gt; {
             <span class="comment">// Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
             // (if the indexes differ) or equal (if they are the same).
-            </span><span class="kw">match </span><a href="#295">bias</a> {
+            </span><span class="kw">match </span><a href="#296">bias</a> {
                 <a href="#74">PlaceConflictBias::Overlap</a> =&gt; {
                     <span class="comment">// If we are biased towards overlapping, then this is the recursive
                     // case that gives &quot;equal *or* disjoint&quot; its meaning.
                     </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-ARRAY-INDEX&quot;</span>);
-                    <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                    <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
                 }
                 <a href="#75">PlaceConflictBias::NoOverlap</a> =&gt; {
                     <span class="comment">// If we are biased towards no overlapping, then this is disjoint.
                     </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-ARRAY-INDEX&quot;</span>);
-                    <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                    <a href="lib.rs.html#2425">Overlap::Disjoint</a>
                 }
             }
         }
@@ -913,10 +916,10 @@
         ) =&gt; {
             <span class="kw">if </span>o1 == o2 {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             }
         }
         (
@@ -944,17 +947,17 @@
             },
         ) =&gt; {
             <span class="comment">// both patterns matched so it must be at least the greater of the two
-            </span><span class="kw">let </span>min_length = <a href="https://doc.rust-lang.org/nightly/core/cmp/fn.max.html">max</a>(<a href="#404">min_length1</a>, <a href="#409">min_length2</a>);
+            </span><span class="kw">let </span>min_length = <a href="https://doc.rust-lang.org/nightly/core/cmp/fn.max.html">max</a>(<a href="#405">min_length1</a>, <a href="#410">min_length2</a>);
             <span class="comment">// `offset_from_end` can be in range `[1..min_length]`, 1 indicates the last
             // element (like -1 in Python) and `min_length` the first.
             // Therefore, `min_length - offset_from_end` gives the minimal possible
             // offset from the beginning
             </span><span class="kw">if </span>offset_from_begin &gt;= min_length - offset_from_end {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX-FE&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             }
         }
         (
@@ -967,10 +970,10 @@
         ) =&gt; {
             <span class="kw">if </span>(from..to).contains(<span class="kw-2">&amp;</span>offset) {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-SUBSLICE&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX-SUBSLICE&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             }
         }
         (
@@ -983,10 +986,10 @@
         ) =&gt; {
             <span class="kw">if </span>offset &gt;= from {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-SLICE-CONSTANT-INDEX-SUBSLICE&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-SLICE-CONSTANT-INDEX-SUBSLICE&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             }
         }
         (
@@ -1002,10 +1005,10 @@
                     <span class="string">&quot;place_element_conflict: \
                        DISJOINT-OR-EQ-SLICE-CONSTANT-INDEX-SUBSLICE-FE&quot;
                 </span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-SLICE-CONSTANT-INDEX-SUBSLICE-FE&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             }
         }
         (
@@ -1014,21 +1017,22 @@
         ) =&gt; {
             <span class="kw">if </span>f2 &gt;= t1 || f1 &gt;= t2 {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-ARRAY-SUBSLICES&quot;</span>);
-                <a href="lib.rs.html#2423">Overlap::Disjoint</a>
+                <a href="lib.rs.html#2425">Overlap::Disjoint</a>
             } <span class="kw">else </span>{
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-ARRAY-SUBSLICES&quot;</span>);
-                <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+                <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
             }
         }
         (<a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::Subslice</a> { .. }, <a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::Subslice</a> { .. }) =&gt; {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES&quot;</span>);
-            <a href="lib.rs.html#2420">Overlap::EqualOrDisjoint</a>
+            <a href="lib.rs.html#2422">Overlap::EqualOrDisjoint</a>
         }
         (
             ProjectionElem::Deref
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(..)
             | <a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::ConstantIndex</a> { .. }
+            | ProjectionElem::Subtype(<span class="kw">_</span>)
             | <a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::OpaqueCast</a> { .. }
             | <a href="../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::Subslice</a> { .. }
             | ProjectionElem::Downcast(..),

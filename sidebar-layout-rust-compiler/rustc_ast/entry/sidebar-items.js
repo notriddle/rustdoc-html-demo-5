@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["EntryPointType"]};
+window.SIDEBAR_ITEMS = {"enum":["EntryPointType"],"fn":["entry_point_type"]};

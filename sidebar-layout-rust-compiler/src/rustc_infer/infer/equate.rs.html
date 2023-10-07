@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/equate.rs`."><title>equate.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_infer/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/equate.rs`."><title>equate.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_infer/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -188,26 +188,6 @@
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
 <a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="at.rs.html#38-41"><span class="kw">crate</span>::infer::DefineOpaqueTypes</a>;
 <span class="kw">use </span><a href="../traits/mod.rs.html#117"><span class="kw">crate</span>::traits::PredicateObligations</a>;
 
@@ -329,26 +309,6 @@
                         </span>.obligations,
                 );
             }
-            <span class="comment">// Optimization of GeneratorWitness relation since we know that all
-            // free regions are replaced with bound regions during construction.
-            // This greatly speeds up equating of GeneratorWitness.
-            </span>(<span class="kw-2">&amp;</span>ty::GeneratorWitness(a_types), <span class="kw-2">&amp;</span>ty::GeneratorWitness(b_types)) =&gt; {
-                <span class="kw">let </span>a_types = infcx.tcx.anonymize_bound_vars(a_types);
-                <span class="kw">let </span>b_types = infcx.tcx.anonymize_bound_vars(b_types);
-                <span class="kw">if </span>a_types.bound_vars() == b_types.bound_vars() {
-                    <span class="kw">let </span>(a_types, b_types) = infcx.instantiate_binder_with_placeholders(
-                        a_types.map_bound(|a_types| (a_types, b_types.skip_binder())),
-                    );
-                    <span class="kw">for </span>(a, b) <span class="kw">in </span>std::iter::zip(a_types, b_types) {
-                        <span class="self">self</span>.relate(a, b)<span class="question-mark">?</span>;
-                    }
-                } <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ty::error::TypeError::Sorts(ty::relate::expected_found(
-                        <span class="self">self</span>, a, b,
-                    )));
-                }
-            }
-
             <span class="kw">_ </span>=&gt; {
                 <span class="self">self</span>.fields.infcx.super_combine_tys(<span class="self">self</span>, a, b)<span class="question-mark">?</span>;
             }
@@ -363,14 +323,14 @@
         b: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; RelateResult&lt;<span class="lifetime">&#39;tcx</span>, ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;{}.regions({:?}, {:?})&quot;</span>, <span class="self">self</span>.tag(), a, b);
-        <span class="kw">let </span>origin = <a href="mod.rs.html#420">Subtype</a>(Box::new(<a class="self" href="#151">self</a>.fields.trace.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()));
-        <a class="self" href="#151">self</a>.fields
+        <span class="kw">let </span>origin = <a href="mod.rs.html#420">Subtype</a>(Box::new(<a class="self" href="#131">self</a>.fields.trace.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()));
+        <a class="self" href="#131">self</a>.fields
             .infcx
             .inner
             .borrow_mut()
             .<a href="mod.rs.html#236-241">unwrap_region_constraints</a>()
-            .<a href="region_constraints/mod.rs.html#469-496">make_eqregion</a>(<a href="#156">origin</a>, <a href="#152">a</a>, <a href="#153">b</a>);
-        <span class="prelude-val">Ok</span>(<a href="#152">a</a>)
+            .<a href="region_constraints/mod.rs.html#469-496">make_eqregion</a>(<a href="#136">origin</a>, <a href="#132">a</a>, <a href="#133">b</a>);
+        <span class="prelude-val">Ok</span>(<a href="#132">a</a>)
     }
 
     <span class="kw">fn </span>consts(
@@ -378,7 +338,7 @@
         a: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         b: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; RelateResult&lt;<span class="lifetime">&#39;tcx</span>, ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#167">self</a>.fields.infcx.<a href="combine.rs.html#139-284">super_combine_consts</a>(<a class="self" href="#167">self</a>, <a href="#168">a</a>, <a href="#169">b</a>)
+        <a class="self" href="#147">self</a>.fields.infcx.<a href="combine.rs.html#139-284">super_combine_consts</a>(<a class="self" href="#147">self</a>, <a href="#148">a</a>, <a href="#149">b</a>)
     }
 
     <span class="kw">fn </span>binders&lt;T&gt;(
@@ -391,7 +351,7 @@
     {
         <span class="comment">// A binder is equal to itself if it&#39;s structurally equal to itself
         </span><span class="kw">if </span>a == b {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#176">a</a>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#156">a</a>);
         }
 
         <span class="kw">if </span>a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
@@ -401,17 +361,17 @@
             <span class="comment">// Fast path for the common case.
             </span><span class="self">self</span>.relate(a.skip_binder(), b.skip_binder())<span class="question-mark">?</span>;
         }
-        <span class="prelude-val">Ok</span>(<a href="#176">a</a>)
+        <span class="prelude-val">Ok</span>(<a href="#156">a</a>)
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; ObligationEmittingRelation&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>Equate&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>register_predicates(<span class="kw-2">&amp;mut </span><span class="self">self</span>, obligations: <span class="kw">impl </span>IntoIterator&lt;Item: ty::ToPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;) {
-        <a class="self" href="#199">self</a>.fields.<a href="combine.rs.html#501-505">register_predicates</a>(<a href="#199">obligations</a>);
+        <a class="self" href="#179">self</a>.fields.<a href="combine.rs.html#501-505">register_predicates</a>(<a href="#179">obligations</a>);
     }
 
     <span class="kw">fn </span>register_obligations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, obligations: PredicateObligations&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a class="self" href="#203">self</a>.fields.<a href="combine.rs.html#497-499">register_obligations</a>(<a href="#203">obligations</a>);
+        <a class="self" href="#183">self</a>.fields.<a href="combine.rs.html#497-499">register_obligations</a>(<a href="#183">obligations</a>);
     }
 
     <span class="kw">fn </span>alias_relate_direction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../../rustc_middle/ty/enum.AliasRelationDirection.html">ty::AliasRelationDirection</a> {

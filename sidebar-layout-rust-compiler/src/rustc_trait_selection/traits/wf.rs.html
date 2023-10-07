@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/wf.rs`."><title>wf.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/wf.rs`."><title>wf.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -983,15 +983,6 @@
 <a href="#983" id="983">983</a>
 <a href="#984" id="984">984</a>
 <a href="#985" id="985">985</a>
-<a href="#986" id="986">986</a>
-<a href="#987" id="987">987</a>
-<a href="#988" id="988">988</a>
-<a href="#989" id="989">989</a>
-<a href="#990" id="990">990</a>
-<a href="#991" id="991">991</a>
-<a href="#992" id="992">992</a>
-<a href="#993" id="993">993</a>
-<a href="#994" id="994">994</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_trait_selection/infer/struct.InferCtxt.html"><span class="kw">crate</span>::infer::InferCtxt</a>;
 <span class="kw">use </span><a href="../lib.rs.html#47"><span class="kw">crate</span>::traits</a>;
 <span class="kw">use </span><a href="../../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
@@ -1053,11 +1044,11 @@
     };
 
     <span class="kw">let </span><span class="kw-2">mut </span>wf =
-        <a href="#195-203">WfPredicates</a> { <a href="#18">infcx</a>, <a href="#19">param_env</a>, <a href="#20">body_id</a>, <a href="#23">span</a>, out: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <a href="#21">recursion_depth</a>, item: <span class="prelude-val">None </span>};
-    <a href="#61">wf</a>.<a href="#519">compute</a>(<a href="#26">arg</a>);
+        <a href="#187-195">WfPredicates</a> { <a href="#18">infcx</a>, <a href="#19">param_env</a>, <a href="#20">body_id</a>, <a href="#23">span</a>, out: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <a href="#21">recursion_depth</a>, item: <span class="prelude-val">None </span>};
+    <a href="#61">wf</a>.<a href="#511">compute</a>(<a href="#26">arg</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;wf::obligations({:?}, body_id={:?}) = {:?}&quot;</span>, arg, body_id, wf.out);
 
-    <span class="kw">let </span>result = <a href="#61">wf</a>.<a href="#304-336">normalize</a>(<a href="#18">infcx</a>);
+    <span class="kw">let </span>result = <a href="#61">wf</a>.<a href="#296-328">normalize</a>(<a href="#18">infcx</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;wf::obligations({:?}, body_id={:?}) ~~&gt; {:?}&quot;</span>, arg, body_id, result);
     <span class="prelude-val">Some</span>(<a href="#66">result</a>)
 }
@@ -1084,7 +1075,7 @@
         <span class="kw">return </span><span class="prelude-val">Some</span>(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[]);
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>wf = <a href="#195-203">WfPredicates</a> {
+    <span class="kw">let </span><span class="kw-2">mut </span>wf = <a href="#187-195">WfPredicates</a> {
         <a href="#76">infcx</a>,
         <a href="#77">param_env</a>,
         body_id: <a href="../../../rustc_span/def_id/constant.CRATE_DEF_ID.html">CRATE_DEF_ID</a>,
@@ -1093,23 +1084,23 @@
         recursion_depth: <span class="number">0</span>,
         item: <span class="prelude-val">None</span>,
     };
-    <a href="#93">wf</a>.<a href="#519">compute</a>(<a href="#78">arg</a>);
+    <a href="#93">wf</a>.<a href="#511">compute</a>(<a href="#78">arg</a>);
     <span class="prelude-val">Some</span>(<a href="#93">wf</a>.out)
 }
 
 <span class="doccomment">/// Returns the obligations that make this trait reference
 /// well-formed. For example, if there is a trait `Set` defined like
-/// `trait Set&lt;K:Eq&gt;`, then the trait reference `Foo: Set&lt;Bar&gt;` is WF
+/// `trait Set&lt;K: Eq&gt;`, then the trait bound `Foo: Set&lt;Bar&gt;` is WF
 /// if `Bar: Eq`.
 </span><span class="kw">pub fn </span><a href="../../../rustc_trait_selection/traits/wf/fn.trait_obligations.html">trait_obligations</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     body_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
-    trait_pred: <span class="kw-2">&amp;</span>ty::TraitPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    trait_pred: ty::TraitPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Item&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; Vec&lt;traits::PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>wf = <a href="#195-203">WfPredicates</a> {
+    <span class="kw">let </span><span class="kw-2">mut </span>wf = <a href="#187-195">WfPredicates</a> {
         <a href="#111">infcx</a>,
         <a href="#112">param_env</a>,
         <a href="#113">body_id</a>,
@@ -1118,17 +1109,22 @@
         recursion_depth: <span class="number">0</span>,
         item: <span class="prelude-val">Some</span>(<a href="#116">item</a>),
     };
-    <a href="#118">wf</a>.<a href="#339-410">compute_trait_pred</a>(<a href="#114">trait_pred</a>, <a href="#230">Elaborate::All</a>);
+    <a href="#118">wf</a>.<a href="#331-402">compute_trait_pred</a>(<a href="#114">trait_pred</a>, <a href="#222">Elaborate::All</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(obligations = <span class="question-mark">?</span>wf.out);
-    <a href="#118">wf</a>.<a href="#304-336">normalize</a>(<a href="#111">infcx</a>)
+    <a href="#118">wf</a>.<a href="#296-328">normalize</a>(<a href="#111">infcx</a>)
 }
 
-<span class="attr">#[instrument(skip(infcx), ret)]
-</span><span class="kw">pub fn </span><a href="../../../rustc_trait_selection/traits/wf/fn.predicate_obligations.html">predicate_obligations</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
+<span class="doccomment">/// Returns the requirements for `clause` to be well-formed.
+///
+/// For example, if there is a trait `Set` defined like
+/// `trait Set&lt;K: Eq&gt;`, then the trait bound `Foo: Set&lt;Bar&gt;` is WF
+/// if `Bar: Eq`.
+</span><span class="attr">#[instrument(skip(infcx), ret)]
+</span><span class="kw">pub fn </span><a href="../../../rustc_trait_selection/traits/wf/fn.clause_obligations.html">clause_obligations</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     body_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
-    predicate: ty::Predicate&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    clause: ty::Clause&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
 ) -&gt; Vec&lt;traits::PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>wf = WfPredicates {
@@ -1142,44 +1138,31 @@
     };
 
     <span class="comment">// It&#39;s ok to skip the binder here because wf code is prepared for it
-    </span><span class="kw">match </span>predicate.kind().skip_binder() {
-        ty::PredicateKind::Clause(ty::ClauseKind::Trait(t)) =&gt; {
-            wf.compute_trait_pred(<span class="kw-2">&amp;</span>t, Elaborate::None);
+    </span><span class="kw">match </span>clause.kind().skip_binder() {
+        ty::ClauseKind::Trait(t) =&gt; {
+            wf.compute_trait_pred(t, Elaborate::None);
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..)) =&gt; {}
-        ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-            ty,
-            _reg,
-        ))) =&gt; {
+        ty::ClauseKind::RegionOutlives(..) =&gt; {}
+        ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) =&gt; {
             wf.compute(ty.into());
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::Projection(t)) =&gt; {
+        ty::ClauseKind::Projection(t) =&gt; {
             wf.compute_projection(t.projection_ty);
             wf.compute(<span class="kw">match </span>t.term.unpack() {
                 ty::TermKind::Ty(ty) =&gt; ty.into(),
                 ty::TermKind::Const(c) =&gt; c.into(),
             })
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) =&gt; {
+        ty::ClauseKind::ConstArgHasType(ct, ty) =&gt; {
             wf.compute(ct.into());
             wf.compute(ty.into());
         }
-        ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) =&gt; {
+        ty::ClauseKind::WellFormed(arg) =&gt; {
             wf.compute(arg);
         }
 
-        ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) =&gt; {
+        ty::ClauseKind::ConstEvaluatable(ct) =&gt; {
             wf.compute(ct.into());
-        }
-
-        ty::PredicateKind::ObjectSafe(<span class="kw">_</span>)
-        | ty::PredicateKind::ClosureKind(..)
-        | ty::PredicateKind::Subtype(..)
-        | ty::PredicateKind::Coerce(..)
-        | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::Ambiguous
-        | ty::PredicateKind::AliasRelate(..) =&gt; {
-            <span class="macro">bug!</span>(<span class="string">&quot;We should only wf check where clauses, unexpected predicate: {predicate:?}&quot;</span>)
         }
     }
 
@@ -1227,7 +1210,7 @@
 
 <span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/wf/fn.extend_cause_with_original_assoc_item_obligation.html">extend_cause_with_original_assoc_item_obligation</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    trait_ref: <span class="kw-2">&amp;</span>ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    trait_ref: ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     item: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>hir::Item&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     cause: <span class="kw-2">&amp;mut </span>traits::ObligationCause&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     pred: ty::Predicate&lt;<span class="lifetime">&#39;tcx</span>&gt;,
@@ -1236,50 +1219,50 @@
         <span class="string">&quot;extended_cause_with_original_assoc_item_obligation {:?} {:?} {:?} {:?}&quot;</span>,
         trait_ref, item, cause, pred
     );
-    <span class="kw">let </span>(items, impl_def_id) = <span class="kw">match </span><a href="#237">item</a> {
+    <span class="kw">let </span>(items, impl_def_id) = <span class="kw">match </span><a href="#229">item</a> {
         <span class="prelude-val">Some</span>(<a href="../../../rustc_hir/hir/struct.Item.html">hir::Item</a> { kind: hir::ItemKind::Impl(impl_), owner_id, .. }) =&gt; {
-            (<a href="#246">impl_</a>.items, <span class="kw-2">*</span><a href="#246">owner_id</a>)
+            (<a href="#238">impl_</a>.items, <span class="kw-2">*</span><a href="#238">owner_id</a>)
         }
         <span class="kw">_ </span>=&gt; <span class="kw">return</span>,
     };
     <span class="kw">let </span>fix_span =
-        |impl_item_ref: <span class="kw-2">&amp;</span><a href="../../../rustc_hir/hir/struct.ImplItemRef.html">hir::ImplItemRef</a>| <span class="kw">match </span><a href="#235">tcx</a>.hir().impl_item(<a href="#252">impl_item_ref</a>.id).kind {
-            hir::ImplItemKind::Const(ty, <span class="kw">_</span>) | hir::ImplItemKind::Type(ty) =&gt; <a href="#253">ty</a>.span,
-            <span class="kw">_ </span>=&gt; <a href="#252">impl_item_ref</a>.span,
+        |impl_item_ref: <span class="kw-2">&amp;</span><a href="../../../rustc_hir/hir/struct.ImplItemRef.html">hir::ImplItemRef</a>| <span class="kw">match </span><a href="#227">tcx</a>.hir().impl_item(<a href="#244">impl_item_ref</a>.id).kind {
+            hir::ImplItemKind::Const(ty, <span class="kw">_</span>) | hir::ImplItemKind::Type(ty) =&gt; <a href="#245">ty</a>.span,
+            <span class="kw">_ </span>=&gt; <a href="#244">impl_item_ref</a>.span,
         };
 
     <span class="comment">// It is fine to skip the binder as we don&#39;t care about regions here.
-    </span><span class="kw">match </span><a href="#239">pred</a>.kind().skip_binder() {
+    </span><span class="kw">match </span><a href="#231">pred</a>.kind().skip_binder() {
         ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =&gt; {
             <span class="comment">// The obligation comes not from the current `impl` nor the `trait` being implemented,
             // but rather from a &quot;second order&quot; obligation, where an associated type has a
             // projection coming from another associated type. See
             // `tests/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ty::Alias(ty::Projection, projection_ty)) = <a href="#259">proj</a>.term.ty().map(|ty| <a href="#265">ty</a>.kind())
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ty::Alias(ty::Projection, projection_ty)) = <a href="#251">proj</a>.term.ty().map(|ty| <a href="#257">ty</a>.kind())
                 &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>impl_item_id) =
-                    <a href="#235">tcx</a>.impl_item_implementor_ids(<a href="#245">impl_def_id</a>).get(<span class="kw-2">&amp;</span><a href="#265">projection_ty</a>.def_id)
-                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(impl_item_span) = <a href="#245">items</a>
+                    <a href="#227">tcx</a>.impl_item_implementor_ids(<a href="#237">impl_def_id</a>).get(<span class="kw-2">&amp;</span><a href="#257">projection_ty</a>.def_id)
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(impl_item_span) = <a href="#237">items</a>
                     .iter()
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|item| <a href="#270">item</a>.id.owner_id.to_def_id() == <a href="#266">impl_item_id</a>)
-                    .map(<a href="#251">fix_span</a>)
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|item| <a href="#262">item</a>.id.owner_id.to_def_id() == <a href="#258">impl_item_id</a>)
+                    .map(<a href="#243">fix_span</a>)
             {
-                <a href="#238">cause</a>.span = <a href="#268">impl_item_span</a>;
+                <a href="#230">cause</a>.span = <a href="#260">impl_item_span</a>;
             }
         }
         ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =&gt; {
             <span class="comment">// An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;extended_cause_with_original_assoc_item_obligation trait proj {:?}&quot;</span>, pred);
-            <span class="kw">if let </span>ty::Alias(ty::Projection, <a href="../../../rustc_middle/ty/sty/struct.AliasTy.html">ty::AliasTy</a> { def_id, .. }) = <span class="kw-2">*</span><a href="#276">pred</a>.self_ty().kind()
+            <span class="kw">if let </span>ty::Alias(ty::Projection, <a href="../../../rustc_middle/ty/sty/struct.AliasTy.html">ty::AliasTy</a> { def_id, .. }) = <span class="kw-2">*</span><a href="#268">pred</a>.self_ty().kind()
                 &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>impl_item_id) =
-                    <a href="#235">tcx</a>.impl_item_implementor_ids(<a href="#245">impl_def_id</a>).get(<span class="kw-2">&amp;</span><a href="#280">def_id</a>)
-                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(impl_item_span) = <a href="#245">items</a>
+                    <a href="#227">tcx</a>.impl_item_implementor_ids(<a href="#237">impl_def_id</a>).get(<span class="kw-2">&amp;</span><a href="#272">def_id</a>)
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(impl_item_span) = <a href="#237">items</a>
                     .iter()
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|item| <a href="#285">item</a>.id.owner_id.to_def_id() == <a href="#281">impl_item_id</a>)
-                    .map(<a href="#251">fix_span</a>)
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|item| <a href="#277">item</a>.id.owner_id.to_def_id() == <a href="#273">impl_item_id</a>)
+                    .map(<a href="#243">fix_span</a>)
             {
-                <a href="#238">cause</a>.span = <a href="#283">impl_item_span</a>;
+                <a href="#230">cause</a>.span = <a href="#275">impl_item_span</a>;
             }
         }
         <span class="kw">_ </span>=&gt; {}
@@ -1288,11 +1271,11 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; WfPredicates&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>tcx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#296">self</a>.infcx.tcx
+        <a class="self" href="#288">self</a>.infcx.tcx
     }
 
     <span class="kw">fn </span>cause(<span class="kw-2">&amp;</span><span class="self">self</span>, code: traits::ObligationCauseCode&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; traits::ObligationCause&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        traits::ObligationCause::new(<a class="self" href="#300">self</a>.span, <a class="self" href="#300">self</a>.body_id, <a href="#300">code</a>)
+        traits::ObligationCause::new(<a class="self" href="#292">self</a>.span, <a class="self" href="#292">self</a>.body_id, <a href="#292">code</a>)
     }
 
     <span class="kw">fn </span>normalize(<span class="self">self</span>, infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Vec&lt;traits::PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
@@ -1303,12 +1286,12 @@
         // If the user relies on normalized types, e.g. for `fn implied_outlives_bounds`,
         // it is their responsibility to normalize while avoiding ambiguity.
         </span><span class="kw">if </span>infcx.next_trait_solver() {
-            <span class="kw">return </span><a class="self" href="#304">self</a>.out;
+            <span class="kw">return </span><a class="self" href="#296">self</a>.out;
         }
 
-        <span class="kw">let </span>cause = <a class="self" href="#304">self</a>.<a href="#300-302">cause</a>(traits::WellFormed(<span class="prelude-val">None</span>));
-        <span class="kw">let </span>param_env = <a class="self" href="#304">self</a>.param_env;
-        <span class="kw">let </span><span class="kw-2">mut </span>obligations = Vec::with_capacity(<a class="self" href="#304">self</a>.out.len());
+        <span class="kw">let </span>cause = <a class="self" href="#296">self</a>.<a href="#292-294">cause</a>(traits::WellFormed(<span class="prelude-val">None</span>));
+        <span class="kw">let </span>param_env = <a class="self" href="#296">self</a>.param_env;
+        <span class="kw">let </span><span class="kw-2">mut </span>obligations = Vec::with_capacity(<a class="self" href="#296">self</a>.out.len());
         <span class="kw">for </span><span class="kw-2">mut </span>obligation <span class="kw">in </span><span class="self">self</span>.out {
             <span class="macro">assert!</span>(!obligation.has_escaping_bound_vars());
             <span class="kw">let </span><span class="kw-2">mut </span>selcx = traits::SelectionContext::new(infcx);
@@ -1326,77 +1309,77 @@
             obligation.predicate = normalized_predicate;
             obligations.push(obligation);
         }
-        <a href="#317">obligations</a>
+        <a href="#309">obligations</a>
     }
 
     <span class="doccomment">/// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
-    </span><span class="kw">fn </span>compute_trait_pred(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trait_pred: <span class="kw-2">&amp;</span>ty::TraitPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;, elaborate: <a href="#229-232">Elaborate</a>) {
-        <span class="kw">let </span>tcx = <a class="self" href="#339">self</a>.<a href="#296-298">tcx</a>();
-        <span class="kw">let </span>trait_ref = <span class="kw-2">&amp;</span><a href="#339">trait_pred</a>.trait_ref;
+    </span><span class="kw">fn </span>compute_trait_pred(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trait_pred: ty::TraitPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;, elaborate: <a href="#221-224">Elaborate</a>) {
+        <span class="kw">let </span>tcx = <a class="self" href="#331">self</a>.<a href="#288-290">tcx</a>();
+        <span class="kw">let </span>trait_ref = <a href="#331">trait_pred</a>.trait_ref;
 
         <span class="comment">// Negative trait predicates don&#39;t require supertraits to hold, just
         // that their args are WF.
         </span><span class="kw">if </span>trait_pred.polarity == ty::ImplPolarity::Negative {
-            <a class="self" href="#339">self</a>.<a href="#414-418">compute_negative_trait_pred</a>(<a href="#341">trait_ref</a>);
+            <a class="self" href="#331">self</a>.<a href="#406-410">compute_negative_trait_pred</a>(<a href="#333">trait_ref</a>);
             <span class="kw">return</span>;
         }
 
         <span class="comment">// if the trait predicate is not const, the wf obligations should not be const as well.
-        </span><span class="kw">let </span>obligations = <a class="self" href="#339">self</a>.<a href="#818">nominal_obligations</a>(<a href="#341">trait_ref</a>.def_id, <a href="#341">trait_ref</a>.args);
+        </span><span class="kw">let </span>obligations = <a class="self" href="#331">self</a>.<a href="#809">nominal_obligations</a>(<a href="#333">trait_ref</a>.def_id, <a href="#333">trait_ref</a>.args);
 
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;compute_trait_pred obligations {:?}&quot;</span>, obligations);
-        <span class="kw">let </span>param_env = <a class="self" href="#339">self</a>.param_env;
-        <span class="kw">let </span>depth = <a class="self" href="#339">self</a>.recursion_depth;
+        <span class="kw">let </span>param_env = <a class="self" href="#331">self</a>.param_env;
+        <span class="kw">let </span>depth = <a class="self" href="#331">self</a>.recursion_depth;
 
-        <span class="kw">let </span>item = <a class="self" href="#339">self</a>.item;
+        <span class="kw">let </span>item = <a class="self" href="#331">self</a>.item;
 
         <span class="kw">let </span>extend = |<a href="../../../rustc_trait_selection/traits/type.PredicateObligation.html">traits::PredicateObligation</a> { predicate, <span class="kw-2">mut </span>cause, .. }| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_trait_pred) = <a href="#359">predicate</a>.to_opt_poly_trait_pred() {
-                <a href="#359">cause</a> = <a href="#359">cause</a>.derived_cause(
-                    <a href="#360">parent_trait_pred</a>,
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_trait_pred) = <a href="#351">predicate</a>.to_opt_poly_trait_pred() {
+                <a href="#351">cause</a> = <a href="#351">cause</a>.derived_cause(
+                    <a href="#352">parent_trait_pred</a>,
                     traits::ObligationCauseCode::DerivedObligation,
                 );
             }
-            <a href="#234-293">extend_cause_with_original_assoc_item_obligation</a>(
-                <a href="#340">tcx</a>, <a href="#341">trait_ref</a>, <a href="#357">item</a>, <span class="kw-2">&amp;mut </span><a href="#359">cause</a>, <a href="#359">predicate</a>,
+            <a href="#226-285">extend_cause_with_original_assoc_item_obligation</a>(
+                <a href="#332">tcx</a>, <a href="#333">trait_ref</a>, <a href="#349">item</a>, <span class="kw-2">&amp;mut </span><a href="#351">cause</a>, <a href="#351">predicate</a>,
             );
-            traits::Obligation::with_depth(<a href="#340">tcx</a>, <a href="#359">cause</a>, <a href="#355">depth</a>, <a href="#354">param_env</a>, <a href="#359">predicate</a>)
+            traits::Obligation::with_depth(<a href="#332">tcx</a>, <a href="#351">cause</a>, <a href="#347">depth</a>, <a href="#346">param_env</a>, <a href="#351">predicate</a>)
         };
 
-        <span class="kw">if let </span><a href="#230">Elaborate::All</a> = <a href="#339">elaborate</a> {
-            <span class="kw">let </span>implied_obligations = <a href="../../../rustc_trait_selection/traits/fn.elaborate.html">traits::util::elaborate</a>(<a href="#340">tcx</a>, <a href="#351">obligations</a>);
-            <span class="kw">let </span>implied_obligations = <a href="#373">implied_obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#359">extend</a>);
-            <a class="self" href="#339">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#374">implied_obligations</a>);
+        <span class="kw">if let </span><a href="#222">Elaborate::All</a> = <a href="#331">elaborate</a> {
+            <span class="kw">let </span>implied_obligations = <a href="../../../rustc_trait_selection/traits/fn.elaborate.html">traits::util::elaborate</a>(<a href="#332">tcx</a>, <a href="#343">obligations</a>);
+            <span class="kw">let </span>implied_obligations = <a href="#365">implied_obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#351">extend</a>);
+            <a class="self" href="#331">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#366">implied_obligations</a>);
         } <span class="kw">else </span>{
-            <a class="self" href="#339">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#351">obligations</a>);
+            <a class="self" href="#331">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#343">obligations</a>);
         }
 
-        <a class="self" href="#339">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(
-            <a href="#341">trait_ref</a>
+        <a class="self" href="#331">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(
+            <a href="#333">trait_ref</a>
                 .args
                 .iter()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(<span class="kw">_</span>, arg)| {
                     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
                 })
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(<span class="kw">_</span>, arg)| !<a href="#388">arg</a>.<a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">has_escaping_bound_vars</a>())
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(<span class="kw">_</span>, arg)| !<a href="#380">arg</a>.<a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">has_escaping_bound_vars</a>())
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, arg)| {
-                    <span class="kw">let </span><span class="kw-2">mut </span>cause = traits::ObligationCause::misc(<a class="self" href="#339">self</a>.span, <a class="self" href="#339">self</a>.body_id);
+                    <span class="kw">let </span><span class="kw-2">mut </span>cause = traits::ObligationCause::misc(<a class="self" href="#331">self</a>.span, <a class="self" href="#331">self</a>.body_id);
                     <span class="comment">// The first subst is the self ty - use the correct span for it.
                     </span><span class="kw">if </span>i == <span class="number">0 </span>{
                         <span class="kw">if let </span><span class="prelude-val">Some</span>(hir::ItemKind::Impl(<a href="../../../rustc_hir/hir/struct.Impl.html">hir::Impl</a> { self_ty, .. })) =
-                            <a href="#357">item</a>.map(|i| <span class="kw-2">&amp;</span><a href="#394">i</a>.kind)
+                            <a href="#349">item</a>.map(|i| <span class="kw-2">&amp;</span><a href="#386">i</a>.kind)
                         {
-                            <a href="#390">cause</a>.span = <a href="#393">self_ty</a>.span;
+                            <a href="#382">cause</a>.span = <a href="#385">self_ty</a>.span;
                         }
                     }
                     traits::Obligation::with_depth(
-                        <a href="#340">tcx</a>,
-                        <a href="#390">cause</a>,
-                        <a href="#355">depth</a>,
-                        <a href="#354">param_env</a>,
+                        <a href="#332">tcx</a>,
+                        <a href="#382">cause</a>,
+                        <a href="#347">depth</a>,
+                        <a href="#346">param_env</a>,
                         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                            <a href="#389">arg</a>,
+                            <a href="#381">arg</a>,
                         ))),
                     )
                 }),
@@ -1405,7 +1388,7 @@
 
     <span class="comment">// Compute the obligations that are required for `trait_ref` to be WF,
     // given that it is a *negative* trait predicate.
-    </span><span class="kw">fn </span>compute_negative_trait_pred(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trait_ref: <span class="kw-2">&amp;</span>ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+    </span><span class="kw">fn </span>compute_negative_trait_pred(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trait_ref: ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="kw">for </span>arg <span class="kw">in </span>trait_ref.args {
             <span class="self">self</span>.compute(arg);
         }
@@ -1435,10 +1418,10 @@
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        </span><span class="kw">let </span>obligations = <a class="self" href="#422">self</a>.<a href="#818">nominal_obligations</a>(<a href="#422">data</a>.def_id, <a href="#422">data</a>.args);
-        <a class="self" href="#422">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#444">obligations</a>);
+        </span><span class="kw">let </span>obligations = <a class="self" href="#414">self</a>.<a href="#809">nominal_obligations</a>(<a href="#414">data</a>.def_id, <a href="#414">data</a>.args);
+        <a class="self" href="#414">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#436">obligations</a>);
 
-        <a class="self" href="#422">self</a>.<a href="#477-501">compute_projection_args</a>(<a href="#422">data</a>.args);
+        <a class="self" href="#414">self</a>.<a href="#469-493">compute_projection_args</a>(<a href="#414">data</a>.args);
     }
 
     <span class="kw">fn </span>compute_inherent_projection(<span class="kw-2">&amp;mut </span><span class="self">self</span>, data: ty::AliasTy&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
@@ -1454,40 +1437,40 @@
             <span class="comment">// FIXME(inherent_associated_types): Should this happen inside of a snapshot?
             // FIXME(inherent_associated_types): This is incompatible with the new solver and lazy norm!
             </span><span class="kw">let </span>args = <a href="project.rs.html#1407-1448">traits::project::compute_inherent_assoc_ty_args</a>(
-                <span class="kw-2">&amp;mut </span>traits::SelectionContext::new(<a class="self" href="#450">self</a>.infcx),
-                <a class="self" href="#450">self</a>.param_env,
-                <a href="#450">data</a>,
-                <a class="self" href="#450">self</a>.<a href="#300-302">cause</a>(traits::WellFormed(<span class="prelude-val">None</span>)),
-                <a class="self" href="#450">self</a>.recursion_depth,
-                <span class="kw-2">&amp;mut </span><a class="self" href="#450">self</a>.out,
+                <span class="kw-2">&amp;mut </span>traits::SelectionContext::new(<a class="self" href="#442">self</a>.infcx),
+                <a class="self" href="#442">self</a>.param_env,
+                <a href="#442">data</a>,
+                <a class="self" href="#442">self</a>.<a href="#292-294">cause</a>(traits::WellFormed(<span class="prelude-val">None</span>)),
+                <a class="self" href="#442">self</a>.recursion_depth,
+                <span class="kw-2">&amp;mut </span><a class="self" href="#442">self</a>.out,
             );
-            <span class="kw">let </span>obligations = <a class="self" href="#450">self</a>.<a href="#818">nominal_obligations</a>(<a href="#450">data</a>.def_id, <a href="#462">args</a>);
-            <a class="self" href="#450">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#470">obligations</a>);
+            <span class="kw">let </span>obligations = <a class="self" href="#442">self</a>.<a href="#809">nominal_obligations</a>(<a href="#442">data</a>.def_id, <a href="#454">args</a>);
+            <a class="self" href="#442">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#462">obligations</a>);
         }
 
-        <a class="self" href="#450">self</a>.<a href="#477-501">compute_projection_args</a>(<a href="#450">data</a>.args);
+        <a class="self" href="#442">self</a>.<a href="#469-493">compute_projection_args</a>(<a href="#442">data</a>.args);
     }
 
     <span class="kw">fn </span>compute_projection_args(<span class="kw-2">&amp;mut </span><span class="self">self</span>, args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">let </span>tcx = <a class="self" href="#477">self</a>.<a href="#296-298">tcx</a>();
-        <span class="kw">let </span>cause = <a class="self" href="#477">self</a>.<a href="#300-302">cause</a>(traits::WellFormed(<span class="prelude-val">None</span>));
-        <span class="kw">let </span>param_env = <a class="self" href="#477">self</a>.param_env;
-        <span class="kw">let </span>depth = <a class="self" href="#477">self</a>.recursion_depth;
+        <span class="kw">let </span>tcx = <a class="self" href="#469">self</a>.<a href="#288-290">tcx</a>();
+        <span class="kw">let </span>cause = <a class="self" href="#469">self</a>.<a href="#292-294">cause</a>(traits::WellFormed(<span class="prelude-val">None</span>));
+        <span class="kw">let </span>param_env = <a class="self" href="#469">self</a>.param_env;
+        <span class="kw">let </span>depth = <a class="self" href="#469">self</a>.recursion_depth;
 
-        <a class="self" href="#477">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(
-            <a href="#477">args</a>.iter()
+        <a class="self" href="#469">self</a>.out.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(
+            <a href="#469">args</a>.iter()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|arg| {
                     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
                 })
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|arg| !<a href="#488">arg</a>.<a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">has_escaping_bound_vars</a>())
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|arg| !<a href="#480">arg</a>.<a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">has_escaping_bound_vars</a>())
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| {
                     traits::Obligation::with_depth(
-                        <a href="#478">tcx</a>,
-                        <a href="#479">cause</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
-                        <a href="#481">depth</a>,
-                        <a href="#480">param_env</a>,
+                        <a href="#470">tcx</a>,
+                        <a href="#471">cause</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
+                        <a href="#473">depth</a>,
+                        <a href="#472">param_env</a>,
                         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
-                            <a href="#489">arg</a>,
+                            <a href="#481">arg</a>,
                         ))),
                     )
                 }),
@@ -1496,15 +1479,15 @@
 
     <span class="kw">fn </span>require_sized(<span class="kw-2">&amp;mut </span><span class="self">self</span>, subty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, cause: traits::ObligationCauseCode&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="kw">if </span>!subty.has_escaping_bound_vars() {
-            <span class="kw">let </span>cause = <a class="self" href="#503">self</a>.<a href="#300-302">cause</a>(<a href="#503">cause</a>);
+            <span class="kw">let </span>cause = <a class="self" href="#495">self</a>.<a href="#292-294">cause</a>(<a href="#495">cause</a>);
             <span class="kw">let </span>trait_ref =
-                ty::TraitRef::from_lang_item(<a class="self" href="#503">self</a>.<a href="#296-298">tcx</a>(), LangItem::Sized, <a href="#505">cause</a>.span, [<a href="#503">subty</a>]);
-            <a class="self" href="#503">self</a>.out.push(traits::Obligation::with_depth(
-                <a class="self" href="#503">self</a>.<a href="#296-298">tcx</a>(),
-                <a href="#505">cause</a>,
-                <a class="self" href="#503">self</a>.recursion_depth,
-                <a class="self" href="#503">self</a>.param_env,
-                ty::Binder::dummy(<a href="#506">trait_ref</a>),
+                ty::TraitRef::from_lang_item(<a class="self" href="#495">self</a>.<a href="#288-290">tcx</a>(), LangItem::Sized, <a href="#497">cause</a>.span, [<a href="#495">subty</a>]);
+            <a class="self" href="#495">self</a>.out.push(traits::Obligation::with_depth(
+                <a class="self" href="#495">self</a>.<a href="#288-290">tcx</a>(),
+                <a href="#497">cause</a>,
+                <a class="self" href="#495">self</a>.recursion_depth,
+                <a class="self" href="#495">self</a>.param_env,
+                ty::Binder::dummy(<a href="#498">trait_ref</a>),
             ));
         }
     }
@@ -1603,7 +1586,6 @@
                 | ty::Error(<span class="kw">_</span>)
                 | ty::Str
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Never
                 | ty::Param(<span class="kw">_</span>)
                 | ty::Bound(..)
@@ -1885,11 +1867,11 @@
         // Note: in fact we only permit builtin traits, not `Bar&lt;&#39;d&gt;`, I
         // am looking forward to the future here.
         </span><span class="kw">if </span>!data.has_escaping_bound_vars() &amp;&amp; !region.has_escaping_bound_vars() {
-            <span class="kw">let </span>implicit_bounds = <a href="#921-939">object_region_bounds</a>(<a class="self" href="#857">self</a>.<a href="#296-298">tcx</a>(), <a href="#859">data</a>);
+            <span class="kw">let </span>implicit_bounds = <a href="#912-930">object_region_bounds</a>(<a class="self" href="#848">self</a>.<a href="#288-290">tcx</a>(), <a href="#850">data</a>);
 
-            <span class="kw">let </span>explicit_bound = <a href="#860">region</a>;
+            <span class="kw">let </span>explicit_bound = <a href="#851">region</a>;
 
-            <a class="self" href="#857">self</a>.out.reserve(<a href="#894">implicit_bounds</a>.len());
+            <a class="self" href="#848">self</a>.out.reserve(<a href="#885">implicit_bounds</a>.len());
             <span class="kw">for </span>implicit_bound <span class="kw">in </span>implicit_bounds {
                 <span class="kw">let </span>cause = <span class="self">self</span>.cause(traits::ObjectTypeBound(ty, explicit_bound));
                 <span class="kw">let </span>outlives =
@@ -1919,17 +1901,17 @@
     <span class="comment">// Since we don&#39;t actually *know* the self type for an object,
     // this &quot;open(err)&quot; serves as a kind of dummy standin -- basically
     // a placeholder type.
-    </span><span class="kw">let </span>open_ty = Ty::new_fresh(<a href="#922">tcx</a>, <span class="number">0</span>);
+    </span><span class="kw">let </span>open_ty = Ty::new_fresh(<a href="#913">tcx</a>, <span class="number">0</span>);
 
-    <span class="kw">let </span>predicates = <a href="#923">existential_predicates</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|predicate| {
-        <span class="kw">if let </span>ty::ExistentialPredicate::Projection(<span class="kw">_</span>) = <a href="#930">predicate</a>.skip_binder() {
+    <span class="kw">let </span>predicates = <a href="#914">existential_predicates</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|predicate| {
+        <span class="kw">if let </span>ty::ExistentialPredicate::Projection(<span class="kw">_</span>) = <a href="#921">predicate</a>.skip_binder() {
             <span class="prelude-val">None
         </span>} <span class="kw">else </span>{
-            <span class="prelude-val">Some</span>(<a href="#930">predicate</a>.with_self_ty(<a href="#922">tcx</a>, <a href="#928">open_ty</a>))
+            <span class="prelude-val">Some</span>(<a href="#921">predicate</a>.with_self_ty(<a href="#913">tcx</a>, <a href="#919">open_ty</a>))
         }
     });
 
-    <a href="#957">required_region_bounds</a>(<a href="#922">tcx</a>, <a href="#928">open_ty</a>, <a href="#930">predicates</a>)
+    <a href="#948">required_region_bounds</a>(<a href="#913">tcx</a>, <a href="#919">open_ty</a>, <a href="#921">predicates</a>)
 }
 
 <span class="doccomment">/// Given a set of predicates that apply to an object type, returns

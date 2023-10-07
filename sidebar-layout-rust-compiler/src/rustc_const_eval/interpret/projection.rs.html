@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/projection.rs`."><title>projection.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/projection.rs`."><title>projection.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -333,6 +333,10 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This file implements &quot;place projections&quot;; basically a symmetric API for 3 types: MPlaceTy, OpTy, PlaceTy.
 //!
 //! OpTy and PlaceTy generally work by &quot;let&#39;s see if we are actually an MPlaceTy, and do something custom if not&quot;.
@@ -350,9 +354,9 @@
 <span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/type.TyAndLayout.html">TyAndLayout</a>};
 <span class="kw">use </span><a href="../../../rustc_middle/ty/struct.Ty.html">rustc_middle::ty::Ty</a>;
 <span class="kw">use </span><a href="../../../rustc_abi/struct.Size.html">rustc_target::abi::Size</a>;
-<span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>};
+<span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>};
 
-<span class="kw">use super</span>::{<a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#108-116">MPlaceTy</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="place.rs.html#26-31">MemPlaceMeta</a>, <a href="operand.rs.html#296-307">OpTy</a>, <a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>};
+<span class="kw">use super</span>::{<a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#107-115">MPlaceTy</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="place.rs.html#25-30">MemPlaceMeta</a>, <a href="operand.rs.html#315-326">OpTy</a>, <a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>};
 
 <span class="doccomment">/// A thing that we can project into, and that has a layout.
 </span><span class="kw">pub trait </span><a href="../../../rustc_const_eval/interpret/projection/trait.Projectable.html">Projectable</a>&lt;<span class="lifetime">&#39;tcx</span>, Prov: <a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance</a>&gt;: <a href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html">Sized</a> + <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">std::fmt::Debug</a> {
@@ -371,7 +375,7 @@
         <span class="kw">if </span>layout.is_unsized() {
             <span class="comment">// We need to consult `meta` metadata
             </span><span class="kw">match </span><a href="#35">layout</a>.ty.kind() {
-                ty::Slice(..) | ty::Str =&gt; <a class="self" href="#32">self</a>.<a href="#28">meta</a>().<a href="place.rs.html#35-42">unwrap_meta</a>().to_target_usize(<a href="#33">ecx</a>),
+                ty::Slice(..) | ty::Str =&gt; <a class="self" href="#32">self</a>.<a href="#28">meta</a>().<a href="place.rs.html#34-41">unwrap_meta</a>().to_target_usize(<a href="#33">ecx</a>),
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;len not supported on unsized type {:?}&quot;</span>, layout.ty),
             }
         } <span class="kw">else </span>{
@@ -401,7 +405,7 @@
         ecx: <span class="kw-2">&amp;</span>InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(layout.is_sized());
-        <a class="self" href="#63">self</a>.<a href="#53-59">offset_with_meta</a>(<a href="#64">offset</a>, <a href="place.rs.html#30">MemPlaceMeta::None</a>, <a href="#65">layout</a>, <a href="#66">ecx</a>)
+        <a class="self" href="#63">self</a>.<a href="#53-59">offset_with_meta</a>(<a href="#64">offset</a>, <a href="place.rs.html#29">MemPlaceMeta::None</a>, <a href="#65">layout</a>, <a href="#66">ecx</a>)
     }
 
     <span class="attr">#[inline]
@@ -412,7 +416,7 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.layout().is_sized() &amp;&amp; layout.is_sized());
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="self">self</span>.layout().size, layout.size);
-        <a class="self" href="#74">self</a>.<a href="#53-59">offset_with_meta</a>(Size::ZERO, <a href="place.rs.html#30">MemPlaceMeta::None</a>, <a href="#75">layout</a>, <a href="#76">ecx</a>)
+        <a class="self" href="#74">self</a>.<a href="#53-59">offset_with_meta</a>(Size::ZERO, <a href="place.rs.html#29">MemPlaceMeta::None</a>, <a href="#75">layout</a>, <a href="#76">ecx</a>)
     }
 
     <span class="doccomment">/// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
@@ -491,7 +495,7 @@
         } <span class="kw">else </span>{
             <span class="comment">// base_meta could be present; we might be accessing a sized field of an unsized
             // struct.
-            </span>(<a href="place.rs.html#30">MemPlaceMeta::None</a>, <a href="#133">offset</a>)
+            </span>(<a href="place.rs.html#29">MemPlaceMeta::None</a>, <a href="#133">offset</a>)
         };
 
         <a href="#125">base</a>.<a href="#53-59">offset_with_meta</a>(<a href="#137">offset</a>, <a href="#137">meta</a>, <a href="#134">field_layout</a>, <a class="self" href="#124">self</a>)
@@ -501,7 +505,7 @@
     </span><span class="kw">pub fn </span>project_downcast&lt;P: Projectable&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         base: <span class="kw-2">&amp;</span>P,
-        variant: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, P&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!base.meta().has_meta());
         <span class="comment">// Downcasts only change the layout.
@@ -624,11 +628,11 @@
             <span class="comment">// It is not nice to match on the type, but that seems to be the only way to
             // implement this.
             </span>ty::Array(inner, <span class="kw">_</span>) =&gt; {
-                (<a href="place.rs.html#30">MemPlaceMeta::None</a>, Ty::new_array(<a class="self" href="#256">self</a>.tcx.tcx, <span class="kw-2">*</span><a href="#291">inner</a>, <a href="#287">inner_len</a>))
+                (<a href="place.rs.html#29">MemPlaceMeta::None</a>, Ty::new_array(<a class="self" href="#256">self</a>.tcx.tcx, <span class="kw-2">*</span><a href="#291">inner</a>, <a href="#287">inner_len</a>))
             }
             ty::Slice(..) =&gt; {
                 <span class="kw">let </span>len = Scalar::from_target_usize(<a href="#287">inner_len</a>, <a class="self" href="#256">self</a>);
-                (<a href="place.rs.html#28">MemPlaceMeta::Meta</a>(<a href="#295">len</a>), <a href="#257">base</a>.<a href="#25">layout</a>().ty)
+                (<a href="place.rs.html#27">MemPlaceMeta::Meta</a>(<a href="#295">len</a>), <a href="#257">base</a>.<a href="#25">layout</a>().ty)
             }
             <span class="kw">_ </span>=&gt; {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
@@ -651,7 +655,11 @@
     {
         <span class="kw">use </span>rustc_middle::mir::ProjectionElem::<span class="kw-2">*</span>;
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>proj_elem {
-            OpaqueCast(ty) =&gt; base.transmute(<span class="self">self</span>.layout_of(ty)<span class="question-mark">?</span>, <span class="self">self</span>)<span class="question-mark">?</span>,
+            OpaqueCast(ty) =&gt; {
+                <span class="macro">span_bug!</span>(<span class="self">self</span>.cur_span(), <span class="string">&quot;OpaqueCast({ty}) encountered after borrowck&quot;</span>)
+            }
+            <span class="comment">// We don&#39;t want anything happening here, this is here as a dummy.
+            </span>Subtype(<span class="kw">_</span>) =&gt; base.transmute(base.layout(), <span class="self">self</span>)<span class="question-mark">?</span>,
             Field(field, <span class="kw">_</span>) =&gt; <span class="self">self</span>.project_field(base, field.index())<span class="question-mark">?</span>,
             Downcast(<span class="kw">_</span>, variant) =&gt; <span class="self">self</span>.project_downcast(base, variant)<span class="question-mark">?</span>,
             Deref =&gt; <span class="self">self</span>.deref_pointer(<span class="kw-2">&amp;</span>base.to_op(<span class="self">self</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>.into(),

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/collect/type_of/opaque.rs`."><title>opaque.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/collect/type_of/opaque.rs`."><title>opaque.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -351,10 +351,15 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../../rustc_errors/enum.StashKey.html">rustc_errors::StashKey</a>;
 <span class="kw">use </span><a href="../../../../rustc_span/def_id/struct.LocalDefId.html">rustc_hir::def_id::LocalDefId</a>;
 <span class="kw">use </span>rustc_hir::intravisit::{<a class="self" href="../../../../rustc_hir/intravisit/index.html">self</a>, <a href="../../../../rustc_hir/intravisit/trait.Visitor.html">Visitor</a>};
-<span class="kw">use </span>rustc_hir::{<span class="self"><a href="../../../../rustc_hir/index.html">self</a> </span><span class="kw">as </span>hir, <a href="../../../../rustc_hir/hir/struct.Expr.html">Expr</a>, <a href="../../../../rustc_hir/hir/struct.ImplItem.html">ImplItem</a>, <a href="../../../../rustc_hir/hir/struct.Item.html">Item</a>, <a href="../../../../rustc_hir/hir/enum.Node.html">Node</a>, <a href="../../../../rustc_hir/hir/struct.TraitItem.html">TraitItem</a>};
+<span class="kw">use </span>rustc_hir::{<span class="self"><a href="../../../../rustc_hir/index.html">self</a> </span><span class="kw">as </span>hir, <a href="../../../../rustc_hir/def/index.html">def</a>, <a href="../../../../rustc_hir/hir/struct.Expr.html">Expr</a>, <a href="../../../../rustc_hir/hir/struct.ImplItem.html">ImplItem</a>, <a href="../../../../rustc_hir/hir/struct.Item.html">Item</a>, <a href="../../../../rustc_hir/hir/enum.Node.html">Node</a>, <a href="../../../../rustc_hir/hir/struct.TraitItem.html">TraitItem</a>};
 <span class="kw">use </span><a href="../../../../rustc_middle/hir/nested_filter/index.html">rustc_middle::hir::nested_filter</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../../rustc_middle/ty/index.html">self</a>, <a href="../../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>};
 <span class="kw">use </span><a href="../../../../rustc_span/span_encoding/constant.DUMMY_SP.html">rustc_span::DUMMY_SP</a>;
@@ -427,9 +432,14 @@
 
         hidden.ty
     } <span class="kw">else </span>{
+        <span class="kw">let </span><span class="kw-2">mut </span>parent_def_id = def_id;
+        <span class="kw">while </span>tcx.def_kind(parent_def_id) == def::DefKind::OpaqueTy {
+            <span class="comment">// Account for `type Alias = impl Trait&lt;Foo = impl Trait&gt;;` (#116031)
+            </span>parent_def_id = tcx.local_parent(parent_def_id);
+        }
         <span class="kw">let </span>reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(tcx.local_parent(def_id).to_def_id()),
+            name: tcx.item_name(parent_def_id.to_def_id()),
             what: <span class="kw">match </span>tcx.hir().get(scope) {
                 <span class="kw">_ if </span>scope == hir::CRATE_HIR_ID =&gt; <span class="string">&quot;module&quot;</span>,
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(<span class="kw">_</span>), .. }) =&gt; <span class="string">&quot;module&quot;</span>,
@@ -538,34 +548,34 @@
     <span class="kw">type </span>NestedFilter = <a href="../../../../rustc_middle/hir/nested_filter/struct.All.html">nested_filter::All</a>;
 
     <span class="kw">fn </span>nested_visit_map(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Map {
-        <a class="self" href="#187">self</a>.tcx.hir()
+        <a class="self" href="#192">self</a>.tcx.hir()
     }
     <span class="kw">fn </span>visit_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ex: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">if let </span>hir::ExprKind::Closure(closure) = <a href="#190">ex</a>.kind {
-            <a class="self" href="#190">self</a>.<a href="#111">check</a>(<a href="#191">closure</a>.def_id);
+        <span class="kw">if let </span>hir::ExprKind::Closure(closure) = <a href="#195">ex</a>.kind {
+            <a class="self" href="#195">self</a>.<a href="#116">check</a>(<a href="#196">closure</a>.def_id);
         }
-        intravisit::walk_expr(<a class="self" href="#190">self</a>, <a href="#190">ex</a>);
+        intravisit::walk_expr(<a class="self" href="#195">self</a>, <a href="#195">ex</a>);
     }
     <span class="kw">fn </span>visit_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, it: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Item&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>it.owner_id);
         <span class="comment">// The opaque type itself or its children are not within its reveal scope.
         </span><span class="kw">if </span>it.owner_id.def_id != <span class="self">self</span>.def_id {
-            <a class="self" href="#196">self</a>.<a href="#111">check</a>(<a href="#196">it</a>.owner_id.def_id);
-            intravisit::walk_item(<a class="self" href="#196">self</a>, <a href="#196">it</a>);
+            <a class="self" href="#201">self</a>.<a href="#116">check</a>(<a href="#201">it</a>.owner_id.def_id);
+            intravisit::walk_item(<a class="self" href="#201">self</a>, <a href="#201">it</a>);
         }
     }
     <span class="kw">fn </span>visit_impl_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, it: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ImplItem&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>it.owner_id);
         <span class="comment">// The opaque type itself or its children are not within its reveal scope.
         </span><span class="kw">if </span>it.owner_id.def_id != <span class="self">self</span>.def_id {
-            <a class="self" href="#204">self</a>.<a href="#111">check</a>(<a href="#204">it</a>.owner_id.def_id);
-            intravisit::walk_impl_item(<a class="self" href="#204">self</a>, <a href="#204">it</a>);
+            <a class="self" href="#209">self</a>.<a href="#116">check</a>(<a href="#209">it</a>.owner_id.def_id);
+            intravisit::walk_impl_item(<a class="self" href="#209">self</a>, <a href="#209">it</a>);
         }
     }
     <span class="kw">fn </span>visit_trait_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, it: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>TraitItem&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>it.owner_id);
-        <a class="self" href="#212">self</a>.<a href="#111">check</a>(<a href="#212">it</a>.owner_id.def_id);
-        intravisit::walk_trait_item(<a class="self" href="#212">self</a>, <a href="#212">it</a>);
+        <a class="self" href="#217">self</a>.<a href="#116">check</a>(<a href="#217">it</a>.owner_id.def_id);
+        intravisit::walk_trait_item(<a class="self" href="#217">self</a>, <a href="#217">it</a>);
     }
 }
 
@@ -574,7 +584,7 @@
     def_id: <a href="../../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     owner_def_id: <a href="../../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
 ) -&gt; Ty&lt;<span class="lifetime">&#39;_</span>&gt; {
-    <span class="kw">let </span>tables = <a href="#220">tcx</a>.typeck(<a href="#222">owner_def_id</a>);
+    <span class="kw">let </span>tables = <a href="#225">tcx</a>.typeck(<a href="#227">owner_def_id</a>);
 
     <span class="comment">// Check that all of the opaques we inferred during HIR are compatible.
     // FIXME: We explicitly don&#39;t check that the types inferred during HIR
@@ -603,29 +613,29 @@
         }
     }
 
-    <span class="kw">let </span>mir_opaque_ty = <a href="#220">tcx</a>.mir_borrowck(<a href="#222">owner_def_id</a>).concrete_opaque_types.get(<span class="kw-2">&amp;</span><a href="#221">def_id</a>).copied();
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(mir_opaque_ty) = <a href="#253">mir_opaque_ty</a> {
-        <span class="kw">let </span>scope = <a href="#220">tcx</a>.hir().local_def_id_to_hir_id(<a href="#222">owner_def_id</a>);
+    <span class="kw">let </span>mir_opaque_ty = <a href="#225">tcx</a>.mir_borrowck(<a href="#227">owner_def_id</a>).concrete_opaque_types.get(<span class="kw-2">&amp;</span><a href="#226">def_id</a>).copied();
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(mir_opaque_ty) = <a href="#258">mir_opaque_ty</a> {
+        <span class="kw">let </span>scope = <a href="#225">tcx</a>.hir().local_def_id_to_hir_id(<a href="#227">owner_def_id</a>);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>scope);
-        <span class="kw">let </span><span class="kw-2">mut </span>locator = <a href="#289-296">RpitConstraintChecker</a> { <a href="#221">def_id</a>, <a href="#220">tcx</a>, found: <a href="#254">mir_opaque_ty</a> };
+        <span class="kw">let </span><span class="kw-2">mut </span>locator = <a href="#294-301">RpitConstraintChecker</a> { <a href="#226">def_id</a>, <a href="#225">tcx</a>, found: <a href="#259">mir_opaque_ty</a> };
 
-        <span class="kw">match </span><a href="#220">tcx</a>.hir().get(<a href="#255">scope</a>) {
-            Node::Item(it) =&gt; intravisit::walk_item(<span class="kw-2">&amp;mut </span><a href="#257">locator</a>, <a href="#260">it</a>),
-            Node::ImplItem(it) =&gt; intravisit::walk_impl_item(<span class="kw-2">&amp;mut </span><a href="#257">locator</a>, <a href="#261">it</a>),
-            Node::TraitItem(it) =&gt; intravisit::walk_trait_item(<span class="kw-2">&amp;mut </span><a href="#257">locator</a>, <a href="#262">it</a>),
+        <span class="kw">match </span><a href="#225">tcx</a>.hir().get(<a href="#260">scope</a>) {
+            Node::Item(it) =&gt; intravisit::walk_item(<span class="kw-2">&amp;mut </span><a href="#262">locator</a>, <a href="#265">it</a>),
+            Node::ImplItem(it) =&gt; intravisit::walk_impl_item(<span class="kw-2">&amp;mut </span><a href="#262">locator</a>, <a href="#266">it</a>),
+            Node::TraitItem(it) =&gt; intravisit::walk_trait_item(<span class="kw-2">&amp;mut </span><a href="#262">locator</a>, <a href="#267">it</a>),
             other =&gt; <a class="macro" href="../../../../rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;{:?} is not a valid scope for an opaque type item&quot;</span>, other),
         }
 
-        <a href="#254">mir_opaque_ty</a>.ty
+        <a href="#259">mir_opaque_ty</a>.ty
     } <span class="kw">else </span>{
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(guar) = <a href="#224">tables</a>.tainted_by_errors {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(guar) = <a href="#229">tables</a>.tainted_by_errors {
             <span class="comment">// Some error in the owner fn prevented us from populating
             // the `concrete_opaque_types` table.
-            </span>Ty::new_error(<a href="#220">tcx</a>, <a href="#268">guar</a>)
+            </span>Ty::new_error(<a href="#225">tcx</a>, <a href="#273">guar</a>)
         } <span class="kw">else </span>{
             <span class="comment">// Fall back to the RPIT we inferred during HIR typeck
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(hir_opaque_ty) = <a href="#231">hir_opaque_ty</a> {
-                <a href="#274">hir_opaque_ty</a>.ty
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(hir_opaque_ty) = <a href="#236">hir_opaque_ty</a> {
+                <a href="#279">hir_opaque_ty</a>.ty
             } <span class="kw">else </span>{
                 <span class="comment">// We failed to resolve the opaque type or it
                 // resolves to itself. We interpret this as the
@@ -633,7 +643,7 @@
                 // so we can just make the hidden type be `!`.
                 // For backwards compatibility reasons, we fall back to
                 // `()` until we the diverging default is changed.
-                </span>Ty::new_diverging_default(<a href="#220">tcx</a>)
+                </span>Ty::new_diverging_default(<a href="#225">tcx</a>)
             }
         }
     }
@@ -674,34 +684,34 @@
     <span class="kw">type </span>NestedFilter = <a href="../../../../rustc_middle/hir/nested_filter/struct.OnlyBodies.html">nested_filter::OnlyBodies</a>;
 
     <span class="kw">fn </span>nested_visit_map(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Map {
-        <a class="self" href="#323">self</a>.tcx.hir()
+        <a class="self" href="#328">self</a>.tcx.hir()
     }
     <span class="kw">fn </span>visit_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ex: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">if let </span>hir::ExprKind::Closure(closure) = <a href="#326">ex</a>.kind {
-            <a class="self" href="#326">self</a>.<a href="#299">check</a>(<a href="#327">closure</a>.def_id);
+        <span class="kw">if let </span>hir::ExprKind::Closure(closure) = <a href="#331">ex</a>.kind {
+            <a class="self" href="#331">self</a>.<a href="#304">check</a>(<a href="#332">closure</a>.def_id);
         }
-        intravisit::walk_expr(<a class="self" href="#326">self</a>, <a href="#326">ex</a>);
+        intravisit::walk_expr(<a class="self" href="#331">self</a>, <a href="#331">ex</a>);
     }
     <span class="kw">fn </span>visit_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, it: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Item&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>it.owner_id);
         <span class="comment">// The opaque type itself or its children are not within its reveal scope.
         </span><span class="kw">if </span>it.owner_id.def_id != <span class="self">self</span>.def_id {
-            <a class="self" href="#332">self</a>.<a href="#299">check</a>(<a href="#332">it</a>.owner_id.def_id);
-            intravisit::walk_item(<a class="self" href="#332">self</a>, <a href="#332">it</a>);
+            <a class="self" href="#337">self</a>.<a href="#304">check</a>(<a href="#337">it</a>.owner_id.def_id);
+            intravisit::walk_item(<a class="self" href="#337">self</a>, <a href="#337">it</a>);
         }
     }
     <span class="kw">fn </span>visit_impl_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, it: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ImplItem&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>it.owner_id);
         <span class="comment">// The opaque type itself or its children are not within its reveal scope.
         </span><span class="kw">if </span>it.owner_id.def_id != <span class="self">self</span>.def_id {
-            <a class="self" href="#340">self</a>.<a href="#299">check</a>(<a href="#340">it</a>.owner_id.def_id);
-            intravisit::walk_impl_item(<a class="self" href="#340">self</a>, <a href="#340">it</a>);
+            <a class="self" href="#345">self</a>.<a href="#304">check</a>(<a href="#345">it</a>.owner_id.def_id);
+            intravisit::walk_impl_item(<a class="self" href="#345">self</a>, <a href="#345">it</a>);
         }
     }
     <span class="kw">fn </span>visit_trait_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, it: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>TraitItem&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>it.owner_id);
-        <a class="self" href="#348">self</a>.<a href="#299">check</a>(<a href="#348">it</a>.owner_id.def_id);
-        intravisit::walk_trait_item(<a class="self" href="#348">self</a>, <a href="#348">it</a>);
+        <a class="self" href="#353">self</a>.<a href="#304">check</a>(<a href="#353">it</a>.owner_id.def_id);
+        intravisit::walk_trait_item(<a class="self" href="#353">self</a>, <a href="#353">it</a>);
     }
 }
 </code></pre></div></section></main></body></html>

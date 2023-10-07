@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/sync.rs`."><title>sync.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/sync.rs`."><title>sync.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -921,7 +921,7 @@
     </span><span class="kw">fn </span>rwlock_dequeue_and_lock_reader(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#83">RwLockId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>this = <a class="self" href="#234">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(reader) = <a href="#235">this</a>.machine.threads.sync.rwlocks[<a href="#234">id</a>].reader_queue.pop_front() {
-            <a href="#235">this</a>.<a href="thread.rs.html#989-991">unblock_thread</a>(<a href="#236">reader</a>);
+            <a href="#235">this</a>.<a href="thread.rs.html#988-990">unblock_thread</a>(<a href="#236">reader</a>);
             <a href="#235">this</a>.<a href="#457-467">rwlock_reader_lock</a>(<a href="#234">id</a>, <a href="#236">reader</a>);
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
@@ -935,7 +935,7 @@
     </span><span class="kw">fn </span>rwlock_dequeue_and_lock_writer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#83">RwLockId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>this = <a class="self" href="#248">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(writer) = <a href="#249">this</a>.machine.threads.sync.rwlocks[<a href="#248">id</a>].writer_queue.pop_front() {
-            <a href="#249">this</a>.<a href="thread.rs.html#989-991">unblock_thread</a>(<a href="#250">writer</a>);
+            <a href="#249">this</a>.<a href="thread.rs.html#988-990">unblock_thread</a>(<a href="#250">writer</a>);
             <a href="#249">this</a>.<a href="#520-529">rwlock_writer_lock</a>(<a href="#248">id</a>, <a href="#250">writer</a>);
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
@@ -949,7 +949,7 @@
     </span><span class="kw">fn </span>mutex_dequeue_and_lock(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#64">MutexId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>this = <a class="self" href="#262">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(thread) = <a href="#263">this</a>.machine.threads.sync.mutexes[<a href="#262">id</a>].queue.pop_front() {
-            <a href="#263">this</a>.<a href="thread.rs.html#989-991">unblock_thread</a>(<a href="#264">thread</a>);
+            <a href="#263">this</a>.<a href="thread.rs.html#988-990">unblock_thread</a>(<a href="#264">thread</a>);
             <a href="#263">this</a>.<a href="#349-365">mutex_lock</a>(<a href="#262">id</a>, <a href="#264">thread</a>);
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
@@ -1057,7 +1057,7 @@
     /// return `None`.
     </span><span class="kw">fn </span>mutex_unlock(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#64">MutexId</a>, expected_owner: <a href="thread.rs.html#45">ThreadId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt; {
         <span class="kw">let </span>this = <a class="self" href="#371">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_span = <a href="#372">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#372">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>mutex = <span class="kw-2">&amp;mut </span><a href="#372">this</a>.machine.threads.sync.mutexes[<a href="#371">id</a>];
         <span class="kw">if let </span><span class="prelude-val">Some</span>(current_owner) = <a href="#374">mutex</a>.owner {
             <span class="comment">// Mutex is locked.
@@ -1095,7 +1095,7 @@
         <span class="kw">let </span>this = <a class="self" href="#407">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(this.mutex_is_locked(id), <span class="string">&quot;queing on unlocked mutex&quot;</span>);
         <a href="#408">this</a>.machine.threads.sync.mutexes[<a href="#407">id</a>].queue.push_back(<a href="#407">thread</a>);
-        <a href="#408">this</a>.<a href="thread.rs.html#984-986">block_thread</a>(<a href="#407">thread</a>);
+        <a href="#408">this</a>.<a href="thread.rs.html#983-985">block_thread</a>(<a href="#407">thread</a>);
     }
 
     <span class="doccomment">/// Provides the closure with the next RwLockId. Creates that RwLock if the closure returns None,
@@ -1157,7 +1157,7 @@
     /// Returns `true` if succeeded, `false` if this `reader` did not hold the lock.
     </span><span class="kw">fn </span>rwlock_reader_unlock(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#83">RwLockId</a>, reader: <a href="thread.rs.html#45">ThreadId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>this = <a class="self" href="#471">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_span = <a href="#472">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#472">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>rwlock = <span class="kw-2">&amp;mut </span><a href="#472">this</a>.machine.threads.sync.rwlocks[<a href="#471">id</a>];
         <span class="kw">match </span><a href="#474">rwlock</a>.readers.entry(<a href="#471">reader</a>) {
             Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
@@ -1199,7 +1199,7 @@
         <span class="kw">let </span>this = <a class="self" href="#511">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(this.rwlock_is_write_locked(id), <span class="string">&quot;read-queueing on not write locked rwlock&quot;</span>);
         <a href="#512">this</a>.machine.threads.sync.rwlocks[<a href="#511">id</a>].reader_queue.push_back(<a href="#511">reader</a>);
-        <a href="#512">this</a>.<a href="thread.rs.html#984-986">block_thread</a>(<a href="#511">reader</a>);
+        <a href="#512">this</a>.<a href="thread.rs.html#983-985">block_thread</a>(<a href="#511">reader</a>);
     }
 
     <span class="doccomment">/// Lock by setting the writer that owns the lock.
@@ -1219,7 +1219,7 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>rwlock_writer_unlock(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#83">RwLockId</a>, expected_writer: <a href="thread.rs.html#45">ThreadId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>this = <a class="self" href="#533">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_span = <a href="#534">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#534">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>rwlock = <span class="kw-2">&amp;mut </span><a href="#534">this</a>.machine.threads.sync.rwlocks[<a href="#533">id</a>];
         <span class="kw">if let </span><span class="prelude-val">Some</span>(current_writer) = <a href="#536">rwlock</a>.writer {
             <span class="kw">if </span>current_writer != expected_writer {
@@ -1268,7 +1268,7 @@
         <span class="kw">let </span>this = <a class="self" href="#580">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(this.rwlock_is_locked(id), <span class="string">&quot;write-queueing on unlocked rwlock&quot;</span>);
         <a href="#581">this</a>.machine.threads.sync.rwlocks[<a href="#580">id</a>].writer_queue.push_back(<a href="#580">writer</a>);
-        <a href="#581">this</a>.<a href="thread.rs.html#984-986">block_thread</a>(<a href="#580">writer</a>);
+        <a href="#581">this</a>.<a href="thread.rs.html#983-985">block_thread</a>(<a href="#580">writer</a>);
     }
 
     <span class="doccomment">/// Provides the closure with the next CondvarId. Creates that Condvar if the closure returns None,
@@ -1311,8 +1311,8 @@
     /// variable.
     </span><span class="kw">fn </span>condvar_signal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#118">CondvarId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="thread.rs.html#45">ThreadId</a>, <a href="#127-130">CondvarLock</a>)&gt; {
         <span class="kw">let </span>this = <a class="self" href="#625">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_thread = <a href="#626">this</a>.<a href="thread.rs.html#908-911">get_active_thread</a>();
-        <span class="kw">let </span>current_span = <a href="#626">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_thread = <a href="#626">this</a>.<a href="thread.rs.html#907-910">get_active_thread</a>();
+        <span class="kw">let </span>current_span = <a href="#626">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>condvar = <span class="kw-2">&amp;mut </span><a href="#626">this</a>.machine.threads.sync.condvars[<a href="#625">id</a>];
         <span class="kw">let </span>data_race = <span class="kw-2">&amp;</span><a href="#626">this</a>.machine.data_race;
 
@@ -1345,8 +1345,8 @@
 
     <span class="kw">fn </span>futex_wake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>, bitset: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="thread.rs.html#45">ThreadId</a>&gt; {
         <span class="kw">let </span>this = <a class="self" href="#659">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_thread = <a href="#660">this</a>.<a href="thread.rs.html#908-911">get_active_thread</a>();
-        <span class="kw">let </span>current_span = <a href="#660">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_thread = <a href="#660">this</a>.<a href="thread.rs.html#907-910">get_active_thread</a>();
+        <span class="kw">let </span>current_span = <a href="#660">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>futex = <span class="kw-2">&amp;mut </span>this.machine.threads.sync.futexes.get_mut(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>;
         <span class="kw">let </span>data_race = <span class="kw-2">&amp;</span><a href="#660">this</a>.machine.data_race;
 

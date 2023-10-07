@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BinOpToken","CommentKind","Delimiter","LitKind","Nonterminal","NonterminalKind","TokenKind"],"fn":["ident_can_begin_expr","ident_can_begin_type"],"mod":["size_asserts"],"struct":["Lit","Token"]};
+window.SIDEBAR_ITEMS = {"enum":["BinOpToken","CommentKind","Delimiter","LitKind","Nonterminal","NonterminalKind","TokenKind"],"fn":["ident_can_begin_expr","ident_can_begin_type"],"struct":["Lit","Token"]};

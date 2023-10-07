@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/mir/block.rs`."><title>block.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/mir/block.rs`."><title>block.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1765,10 +1765,6 @@
 <a href="#1765" id="1765">1765</a>
 <a href="#1766" id="1766">1766</a>
 <a href="#1767" id="1767">1767</a>
-<a href="#1768" id="1768">1768</a>
-<a href="#1769" id="1769">1769</a>
-<a href="#1770" id="1770">1770</a>
-<a href="#1771" id="1771">1771</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="operand.rs.html#67-73"><span class="kw">super</span>::operand::OperandRef</a>;
 <span class="kw">use </span><span class="kw">super</span>::operand::OperandValue::{<a href="operand.rs.html#38">Immediate</a>, <a href="operand.rs.html#46">Pair</a>, <a href="operand.rs.html#31">Ref</a>, <a href="operand.rs.html#55">ZeroSized</a>};
 <span class="kw">use </span><a href="place.rs.html#16-28"><span class="kw">super</span>::place::PlaceRef</a>;
@@ -1783,7 +1779,7 @@
 <span class="kw">use </span><a href="../../../rustc_ast/index.html">rustc_ast</a> <span class="kw">as </span>ast;
 <span class="kw">use </span>rustc_ast::{<a href="../../../rustc_ast/ast/struct.InlineAsmOptions.html">InlineAsmOptions</a>, <a href="../../../rustc_ast/ast/enum.InlineAsmTemplatePiece.html">InlineAsmTemplatePiece</a>};
 <span class="kw">use </span><a href="../../../rustc_hir/lang_items/enum.LangItem.html">rustc_hir::lang_items::LangItem</a>;
-<span class="kw">use </span>rustc_middle::mir::{<a class="self" href="../../../rustc_middle/mir/index.html">self</a>, <a href="../../../rustc_middle/mir/syntax/enum.AssertKind.html">AssertKind</a>, <a href="../../../rustc_middle/mir/terminator/struct.SwitchTargets.html">SwitchTargets</a>, <a href="../../../rustc_middle/mir/syntax/enum.UnwindTerminateReason.html">UnwindTerminateReason</a>};
+<span class="kw">use </span>rustc_middle::mir::{<a class="self" href="../../../rustc_middle/mir/index.html">self</a>, <a href="../../../rustc_middle/mir/syntax/enum.AssertKind.html">AssertKind</a>, <a href="../../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>, <a href="../../../rustc_middle/mir/syntax/enum.UnwindTerminateReason.html">UnwindTerminateReason</a>};
 <span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">HasTyCtxt</a>, <a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/enum.ValidityRequirement.html">ValidityRequirement</a>};
 <span class="kw">use </span>rustc_middle::ty::print::{<a href="../../../rustc_middle/ty/print/pretty/macro.with_no_trimmed_paths.html">with_no_trimmed_paths</a>, <a href="../../../rustc_middle/ty/print/pretty/macro.with_no_visible_paths.html">with_no_visible_paths</a>};
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/instance/struct.Instance.html">Instance</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>};
@@ -1830,7 +1826,7 @@
         // be unreachable, and we don&#39;t have yet a way to skip building it in
         // such an eventuality (which may be a better solution than this).
         </span><span class="kw">if </span>fx.funclets[funclet_bb].is_none() {
-            <a href="#49">fx</a>.<a href="#1515-1523">landing_pad_for</a>(<a href="#52">funclet_bb</a>);
+            <a href="#49">fx</a>.<a href="#1511-1519">landing_pad_for</a>(<a href="#52">funclet_bb</a>);
         }
         <span class="prelude-val">Some</span>(
             <a href="#49">fx</a>.funclets[<a href="#52">funclet_bb</a>]
@@ -1847,9 +1843,9 @@
         target: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>,
     ) -&gt; Bx::BasicBlock {
         <span class="kw">let </span>(needs_landing_pad, is_cleanupret) = <a class="self" href="#74">self</a>.<a href="#97-120">llbb_characteristics</a>(<a href="#75">fx</a>, <a href="#76">target</a>);
-        <span class="kw">let </span><span class="kw-2">mut </span>lltarget = <a href="#75">fx</a>.<a href="#1642-1644">llbb</a>(<a href="#76">target</a>);
+        <span class="kw">let </span><span class="kw-2">mut </span>lltarget = <a href="#75">fx</a>.<a href="#1638-1640">llbb</a>(<a href="#76">target</a>);
         <span class="kw">if </span>needs_landing_pad {
-            <a href="#79">lltarget</a> = <a href="#75">fx</a>.<a href="#1515-1523">landing_pad_for</a>(<a href="#76">target</a>);
+            <a href="#79">lltarget</a> = <a href="#75">fx</a>.<a href="#1511-1519">landing_pad_for</a>(<a href="#76">target</a>);
         }
         <span class="kw">if </span>is_cleanupret {
             <span class="comment">// Cross-funclet jump - need a trampoline
@@ -1902,9 +1898,9 @@
             <span class="comment">// We can merge the successor into this bb, so no need for a `br`.
             </span><a href="#34">MergingSucc::True</a>
         } <span class="kw">else </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>lltarget = <a href="#124">fx</a>.<a href="#1642-1644">llbb</a>(<a href="#126">target</a>);
+            <span class="kw">let </span><span class="kw-2">mut </span>lltarget = <a href="#124">fx</a>.<a href="#1638-1640">llbb</a>(<a href="#126">target</a>);
             <span class="kw">if </span>needs_landing_pad {
-                <a href="#134">lltarget</a> = <a href="#124">fx</a>.<a href="#1515-1523">landing_pad_for</a>(<a href="#126">target</a>);
+                <a href="#134">lltarget</a> = <a href="#124">fx</a>.<a href="#1511-1519">landing_pad_for</a>(<a href="#126">target</a>);
             }
             <span class="kw">if </span>is_cleanupret {
                 <span class="comment">// micro-optimization: generate a `ret` rather than a jump
@@ -1962,16 +1958,16 @@
 
                     </span><span class="prelude-val">None
                 </span>} <span class="kw">else </span>{
-                    <span class="prelude-val">Some</span>(<a href="#153">fx</a>.<a href="#1561-1636">terminate_block</a>(<a href="#181">reason</a>))
+                    <span class="prelude-val">Some</span>(<a href="#153">fx</a>.<a href="#1557-1632">terminate_block</a>(<a href="#181">reason</a>))
                 }
             }
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(unwind_block) = <a href="#177">unwind_block</a> {
             <span class="kw">let </span>ret_llbb = <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, target)) = <a href="#158">destination</a> {
-                <a href="#153">fx</a>.<a href="#1642-1644">llbb</a>(<a href="#200">target</a>)
+                <a href="#153">fx</a>.<a href="#1638-1640">llbb</a>(<a href="#200">target</a>)
             } <span class="kw">else </span>{
-                <a href="#153">fx</a>.<a href="#1551-1559">unreachable_block</a>()
+                <a href="#153">fx</a>.<a href="#1547-1555">unreachable_block</a>()
             };
             <span class="kw">let </span>invokeret = <a href="#154">bx</a>.<a href="../traits/builder.rs.html#73-83">invoke</a>(
                 <a href="#165">fn_ty</a>,
@@ -1984,34 +1980,30 @@
                 <a class="self" href="#152">self</a>.<a href="#47-69">funclet</a>(<a href="#153">fx</a>),
             );
             <span class="kw">if </span>fx.mir[<span class="self">self</span>.bb].is_cleanup {
-                <a href="#154">bx</a>.<a href="../traits/builder.rs.html#335">do_not_inline</a>(<a href="#205">invokeret</a>);
+                <a href="#154">bx</a>.<a href="../traits/builder.rs.html#335">apply_attrs_to_cleanup_callsite</a>(<a href="#205">invokeret</a>);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>((ret_dest, target)) = <a href="#158">destination</a> {
-                <a href="#154">bx</a>.<a href="../traits/builder.rs.html#56">switch_to_block</a>(<a href="#153">fx</a>.<a href="#1642-1644">llbb</a>(<a href="#219">target</a>));
-                <a href="#153">fx</a>.<a href="debuginfo.rs.html#216-221">set_debug_loc</a>(<a href="#154">bx</a>, <a class="self" href="#152">self</a>.terminator.source_info);
+                <a href="#154">bx</a>.<a href="../traits/builder.rs.html#56">switch_to_block</a>(<a href="#153">fx</a>.<a href="#1638-1640">llbb</a>(<a href="#219">target</a>));
+                <a href="#153">fx</a>.<a href="debuginfo.rs.html#207-212">set_debug_loc</a>(<a href="#154">bx</a>, <a class="self" href="#152">self</a>.terminator.source_info);
                 <span class="kw">for </span>tmp <span class="kw">in </span>copied_constant_arguments {
                     bx.lifetime_end(tmp.llval, tmp.layout.size);
                 }
-                <a href="#153">fx</a>.<a href="#1725-1759">store_return</a>(<a href="#154">bx</a>, <a href="#219">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#155">fn_abi</a>.ret, <a href="#205">invokeret</a>);
+                <a href="#153">fx</a>.<a href="#1721-1755">store_return</a>(<a href="#154">bx</a>, <a href="#219">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#155">fn_abi</a>.ret, <a href="#205">invokeret</a>);
             }
             <a href="#33">MergingSucc::False</a>
         } <span class="kw">else </span>{
             <span class="kw">let </span>llret = <a href="#154">bx</a>.<a href="../traits/builder.rs.html#324-332">call</a>(<a href="#165">fn_ty</a>, <a href="#167">fn_attrs</a>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#155">fn_abi</a>), <a href="#156">fn_ptr</a>, <span class="kw-2">&amp;</span><a href="#157">llargs</a>, <a class="self" href="#152">self</a>.<a href="#47-69">funclet</a>(<a href="#153">fx</a>));
             <span class="kw">if </span>fx.mir[<span class="self">self</span>.bb].is_cleanup {
-                <span class="comment">// Cleanup is always the cold path. Don&#39;t inline
-                // drop glue. Also, when there is a deeply-nested
-                // struct, there are &quot;symmetry&quot; issues that cause
-                // exponential inlining - see issue #41696.
-                </span><a href="#154">bx</a>.<a href="../traits/builder.rs.html#335">do_not_inline</a>(<a href="#229">llret</a>);
+                <a href="#154">bx</a>.<a href="../traits/builder.rs.html#335">apply_attrs_to_cleanup_callsite</a>(<a href="#229">llret</a>);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>((ret_dest, target)) = <a href="#158">destination</a> {
                 <span class="kw">for </span>tmp <span class="kw">in </span>copied_constant_arguments {
                     bx.lifetime_end(tmp.llval, tmp.layout.size);
                 }
-                <a href="#153">fx</a>.<a href="#1725-1759">store_return</a>(<a href="#154">bx</a>, <a href="#238">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#155">fn_abi</a>.ret, <a href="#229">llret</a>);
-                <a class="self" href="#152">self</a>.<a href="#122-147">funclet_br</a>(<a href="#153">fx</a>, <a href="#154">bx</a>, <a href="#238">target</a>, <a href="#161">mergeable_succ</a>)
+                <a href="#153">fx</a>.<a href="#1721-1755">store_return</a>(<a href="#154">bx</a>, <a href="#234">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#155">fn_abi</a>.ret, <a href="#229">llret</a>);
+                <a class="self" href="#152">self</a>.<a href="#122-147">funclet_br</a>(<a href="#153">fx</a>, <a href="#154">bx</a>, <a href="#234">target</a>, <a href="#161">mergeable_succ</a>)
             } <span class="kw">else </span>{
                 <a href="#154">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
                 <a href="#33">MergingSucc::False</a>
@@ -2033,36 +2025,36 @@
         instance: Instance&lt;<span class="lifetime">&#39;_</span>&gt;,
         mergeable_succ: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <a href="#32-35">MergingSucc</a> {
-        <span class="kw">let </span>unwind_target = <span class="kw">match </span><a href="#261">unwind</a> {
-            mir::UnwindAction::Cleanup(cleanup) =&gt; <span class="prelude-val">Some</span>(<a class="self" href="#253">self</a>.<a href="#73-95">llbb_with_cleanup</a>(<a href="#254">fx</a>, <a href="#266">cleanup</a>)),
-            mir::UnwindAction::Terminate(reason) =&gt; <span class="prelude-val">Some</span>(<a href="#254">fx</a>.<a href="#1561-1636">terminate_block</a>(<a href="#267">reason</a>)),
+        <span class="kw">let </span>unwind_target = <span class="kw">match </span><a href="#257">unwind</a> {
+            mir::UnwindAction::Cleanup(cleanup) =&gt; <span class="prelude-val">Some</span>(<a class="self" href="#249">self</a>.<a href="#73-95">llbb_with_cleanup</a>(<a href="#250">fx</a>, <a href="#262">cleanup</a>)),
+            mir::UnwindAction::Terminate(reason) =&gt; <span class="prelude-val">Some</span>(<a href="#250">fx</a>.<a href="#1557-1632">terminate_block</a>(<a href="#263">reason</a>)),
             mir::UnwindAction::Continue =&gt; <span class="prelude-val">None</span>,
             mir::UnwindAction::Unreachable =&gt; <span class="prelude-val">None</span>,
         };
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(cleanup) = <a href="#265">unwind_target</a> {
-            <span class="kw">let </span>ret_llbb = <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#260">destination</a> {
-                <a href="#254">fx</a>.<a href="#1642-1644">llbb</a>(<a href="#273">target</a>)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(cleanup) = <a href="#261">unwind_target</a> {
+            <span class="kw">let </span>ret_llbb = <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#256">destination</a> {
+                <a href="#250">fx</a>.<a href="#1638-1640">llbb</a>(<a href="#269">target</a>)
             } <span class="kw">else </span>{
-                <a href="#254">fx</a>.<a href="#1551-1559">unreachable_block</a>()
+                <a href="#250">fx</a>.<a href="#1547-1555">unreachable_block</a>()
             };
 
-            <a href="#255">bx</a>.<a href="../traits/asm.rs.html#47-55">codegen_inline_asm</a>(
-                <a href="#256">template</a>,
-                <span class="kw-2">&amp;</span><a href="#257">operands</a>,
-                <a href="#258">options</a>,
-                <a href="#259">line_spans</a>,
-                <a href="#262">instance</a>,
-                <span class="prelude-val">Some</span>((<a href="#273">ret_llbb</a>, <a href="#272">cleanup</a>, <a class="self" href="#253">self</a>.<a href="#47-69">funclet</a>(<a href="#254">fx</a>))),
+            <a href="#251">bx</a>.<a href="../traits/asm.rs.html#47-55">codegen_inline_asm</a>(
+                <a href="#252">template</a>,
+                <span class="kw-2">&amp;</span><a href="#253">operands</a>,
+                <a href="#254">options</a>,
+                <a href="#255">line_spans</a>,
+                <a href="#258">instance</a>,
+                <span class="prelude-val">Some</span>((<a href="#269">ret_llbb</a>, <a href="#268">cleanup</a>, <a class="self" href="#249">self</a>.<a href="#47-69">funclet</a>(<a href="#250">fx</a>))),
             );
             <a href="#33">MergingSucc::False</a>
         } <span class="kw">else </span>{
-            <a href="#255">bx</a>.<a href="../traits/asm.rs.html#47-55">codegen_inline_asm</a>(<a href="#256">template</a>, <span class="kw-2">&amp;</span><a href="#257">operands</a>, <a href="#258">options</a>, <a href="#259">line_spans</a>, <a href="#262">instance</a>, <span class="prelude-val">None</span>);
+            <a href="#251">bx</a>.<a href="../traits/asm.rs.html#47-55">codegen_inline_asm</a>(<a href="#252">template</a>, <span class="kw-2">&amp;</span><a href="#253">operands</a>, <a href="#254">options</a>, <a href="#255">line_spans</a>, <a href="#258">instance</a>, <span class="prelude-val">None</span>);
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#260">destination</a> {
-                <a class="self" href="#253">self</a>.<a href="#122-147">funclet_br</a>(<a href="#254">fx</a>, <a href="#255">bx</a>, <a href="#291">target</a>, <a href="#263">mergeable_succ</a>)
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#256">destination</a> {
+                <a class="self" href="#249">self</a>.<a href="#122-147">funclet_br</a>(<a href="#250">fx</a>, <a href="#251">bx</a>, <a href="#287">target</a>, <a href="#259">mergeable_succ</a>)
             } <span class="kw">else </span>{
-                <a href="#255">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
+                <a href="#251">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
                 <a href="#33">MergingSucc::False</a>
             }
         }
@@ -2073,17 +2065,17 @@
 </span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Bx: BuilderMethods&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; FunctionCx&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Bx&gt; {
     <span class="doccomment">/// Generates code for a `Resume` terminator.
     </span><span class="kw">fn </span>codegen_resume_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, helper: TerminatorCodegenHelper&lt;<span class="lifetime">&#39;tcx</span>&gt;, bx: <span class="kw-2">&amp;mut </span>Bx) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(funclet) = <a href="#304">helper</a>.<a href="#47-69">funclet</a>(<a class="self" href="#304">self</a>) {
-            <a href="#304">bx</a>.<a href="../traits/builder.rs.html#282">cleanup_ret</a>(<a href="#305">funclet</a>, <span class="prelude-val">None</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(funclet) = <a href="#300">helper</a>.<a href="#47-69">funclet</a>(<a class="self" href="#300">self</a>) {
+            <a href="#300">bx</a>.<a href="../traits/builder.rs.html#282">cleanup_ret</a>(<a href="#301">funclet</a>, <span class="prelude-val">None</span>);
         } <span class="kw">else </span>{
-            <span class="kw">let </span>slot = <a class="self" href="#304">self</a>.<a href="#1498-1511">get_personality_slot</a>(<a href="#304">bx</a>);
-            <span class="kw">let </span>exn0 = <a href="#308">slot</a>.<a href="place.rs.html#93-200">project_field</a>(<a href="#304">bx</a>, <span class="number">0</span>);
-            <span class="kw">let </span>exn0 = <a href="#304">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#309">exn0</a>).<a href="operand.rs.html#202-207">immediate</a>();
-            <span class="kw">let </span>exn1 = <a href="#308">slot</a>.<a href="place.rs.html#93-200">project_field</a>(<a href="#304">bx</a>, <span class="number">1</span>);
-            <span class="kw">let </span>exn1 = <a href="#304">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#311">exn1</a>).<a href="operand.rs.html#202-207">immediate</a>();
-            <a href="#308">slot</a>.<a href="place.rs.html#425-427">storage_dead</a>(<a href="#304">bx</a>);
+            <span class="kw">let </span>slot = <a class="self" href="#300">self</a>.<a href="#1494-1507">get_personality_slot</a>(<a href="#300">bx</a>);
+            <span class="kw">let </span>exn0 = <a href="#304">slot</a>.<a href="place.rs.html#93-200">project_field</a>(<a href="#300">bx</a>, <span class="number">0</span>);
+            <span class="kw">let </span>exn0 = <a href="#300">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#305">exn0</a>).<a href="operand.rs.html#198-203">immediate</a>();
+            <span class="kw">let </span>exn1 = <a href="#304">slot</a>.<a href="place.rs.html#93-200">project_field</a>(<a href="#300">bx</a>, <span class="number">1</span>);
+            <span class="kw">let </span>exn1 = <a href="#300">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#307">exn1</a>).<a href="operand.rs.html#198-203">immediate</a>();
+            <a href="#304">slot</a>.<a href="place.rs.html#425-427">storage_dead</a>(<a href="#300">bx</a>);
 
-            <a href="#304">bx</a>.<a href="../traits/builder.rs.html#278">resume</a>(<a href="#310">exn0</a>, <a href="#312">exn1</a>);
+            <a href="#300">bx</a>.<a href="../traits/builder.rs.html#278">resume</a>(<a href="#306">exn0</a>, <a href="#308">exn1</a>);
         }
     }
 
@@ -2092,29 +2084,29 @@
         helper: TerminatorCodegenHelper&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         bx: <span class="kw-2">&amp;mut </span>Bx,
         discr: <span class="kw-2">&amp;</span>mir::Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        targets: <span class="kw-2">&amp;</span><a href="../../../rustc_middle/mir/terminator/struct.SwitchTargets.html">SwitchTargets</a>,
+        targets: <span class="kw-2">&amp;</span><a href="../../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
     ) {
-        <span class="kw">let </span>discr = <a class="self" href="#320">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#322">bx</a>, <span class="kw-2">&amp;</span><a href="#323">discr</a>);
-        <span class="kw">let </span>switch_ty = <a href="#326">discr</a>.layout.ty;
-        <span class="kw">let </span><span class="kw-2">mut </span>target_iter = <a href="#324">targets</a>.iter();
+        <span class="kw">let </span>discr = <a class="self" href="#316">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#318">bx</a>, <span class="kw-2">&amp;</span><a href="#319">discr</a>);
+        <span class="kw">let </span>switch_ty = <a href="#322">discr</a>.layout.ty;
+        <span class="kw">let </span><span class="kw-2">mut </span>target_iter = <a href="#320">targets</a>.iter();
         <span class="kw">if </span>target_iter.len() == <span class="number">1 </span>{
             <span class="comment">// If there are two targets (one conditional, one fallback), emit `br` instead of
             // `switch`.
-            </span><span class="kw">let </span>(test_value, target) = <a href="#328">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
-            <span class="kw">let </span>lltrue = <a href="#321">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#320">self</a>, <a href="#332">target</a>);
-            <span class="kw">let </span>llfalse = <a href="#321">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#320">self</a>, <a href="#324">targets</a>.otherwise());
+            </span><span class="kw">let </span>(test_value, target) = <a href="#324">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+            <span class="kw">let </span>lltrue = <a href="#317">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#316">self</a>, <a href="#328">target</a>);
+            <span class="kw">let </span>llfalse = <a href="#317">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#316">self</a>, <a href="#320">targets</a>.otherwise());
             <span class="kw">if </span>switch_ty == bx.tcx().types.bool {
                 <span class="comment">// Don&#39;t generate trivial icmps when switching on bool.
-                </span><span class="kw">match </span><a href="#332">test_value</a> {
-                    <span class="number">0 </span>=&gt; <a href="#322">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#326">discr</a>.<a href="operand.rs.html#202-207">immediate</a>(), <a href="#334">llfalse</a>, <a href="#333">lltrue</a>),
-                    <span class="number">1 </span>=&gt; <a href="#322">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#326">discr</a>.<a href="operand.rs.html#202-207">immediate</a>(), <a href="#333">lltrue</a>, <a href="#334">llfalse</a>),
+                </span><span class="kw">match </span><a href="#328">test_value</a> {
+                    <span class="number">0 </span>=&gt; <a href="#318">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#322">discr</a>.<a href="operand.rs.html#198-203">immediate</a>(), <a href="#330">llfalse</a>, <a href="#329">lltrue</a>),
+                    <span class="number">1 </span>=&gt; <a href="#318">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#322">discr</a>.<a href="operand.rs.html#198-203">immediate</a>(), <a href="#329">lltrue</a>, <a href="#330">llfalse</a>),
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
                 }
             } <span class="kw">else </span>{
-                <span class="kw">let </span>switch_llty = <a href="#322">bx</a>.<a href="../traits/type_.rs.html#111">immediate_backend_type</a>(<a href="#322">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#327">switch_ty</a>));
-                <span class="kw">let </span>llval = <a href="#322">bx</a>.<a href="../traits/consts.rs.html#18">const_uint_big</a>(<a href="#343">switch_llty</a>, <a href="#332">test_value</a>);
-                <span class="kw">let </span>cmp = <a href="#322">bx</a>.<a href="../traits/builder.rs.html#230">icmp</a>(<a href="../common.rs.html#13">IntPredicate::IntEQ</a>, <a href="#326">discr</a>.<a href="operand.rs.html#202-207">immediate</a>(), <a href="#344">llval</a>);
-                <a href="#322">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#345">cmp</a>, <a href="#333">lltrue</a>, <a href="#334">llfalse</a>);
+                <span class="kw">let </span>switch_llty = <a href="#318">bx</a>.<a href="../traits/type_.rs.html#111">immediate_backend_type</a>(<a href="#318">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#323">switch_ty</a>));
+                <span class="kw">let </span>llval = <a href="#318">bx</a>.<a href="../traits/consts.rs.html#18">const_uint_big</a>(<a href="#339">switch_llty</a>, <a href="#328">test_value</a>);
+                <span class="kw">let </span>cmp = <a href="#318">bx</a>.<a href="../traits/builder.rs.html#230">icmp</a>(<a href="../common.rs.html#13">IntPredicate::IntEQ</a>, <a href="#322">discr</a>.<a href="operand.rs.html#198-203">immediate</a>(), <a href="#340">llval</a>);
+                <a href="#318">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#341">cmp</a>, <a href="#329">lltrue</a>, <a href="#330">llfalse</a>);
             }
         } <span class="kw">else if </span><span class="self">self</span>.cx.sess().opts.optimize == OptLevel::No
             &amp;&amp; target_iter.len() == <span class="number">2
@@ -2132,19 +2124,19 @@
             //   worse generated code because LLVM can no longer tell that the value being switched
             //   on can only have two values, e.g. 0 and 1.
             //
-            </span><span class="kw">let </span>(test_value1, target1) = <a href="#328">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
-            <span class="kw">let </span>(_test_value2, target2) = <a href="#328">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
-            <span class="kw">let </span>ll1 = <a href="#321">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#320">self</a>, <a href="#364">target1</a>);
-            <span class="kw">let </span>ll2 = <a href="#321">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#320">self</a>, <a href="#365">target2</a>);
-            <span class="kw">let </span>switch_llty = <a href="#322">bx</a>.<a href="../traits/type_.rs.html#111">immediate_backend_type</a>(<a href="#322">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#327">switch_ty</a>));
-            <span class="kw">let </span>llval = <a href="#322">bx</a>.<a href="../traits/consts.rs.html#18">const_uint_big</a>(<a href="#368">switch_llty</a>, <a href="#364">test_value1</a>);
-            <span class="kw">let </span>cmp = <a href="#322">bx</a>.<a href="../traits/builder.rs.html#230">icmp</a>(<a href="../common.rs.html#13">IntPredicate::IntEQ</a>, <a href="#326">discr</a>.<a href="operand.rs.html#202-207">immediate</a>(), <a href="#369">llval</a>);
-            <a href="#322">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#370">cmp</a>, <a href="#366">ll1</a>, <a href="#367">ll2</a>);
+            </span><span class="kw">let </span>(test_value1, target1) = <a href="#324">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+            <span class="kw">let </span>(_test_value2, target2) = <a href="#324">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+            <span class="kw">let </span>ll1 = <a href="#317">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#316">self</a>, <a href="#360">target1</a>);
+            <span class="kw">let </span>ll2 = <a href="#317">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#316">self</a>, <a href="#361">target2</a>);
+            <span class="kw">let </span>switch_llty = <a href="#318">bx</a>.<a href="../traits/type_.rs.html#111">immediate_backend_type</a>(<a href="#318">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#323">switch_ty</a>));
+            <span class="kw">let </span>llval = <a href="#318">bx</a>.<a href="../traits/consts.rs.html#18">const_uint_big</a>(<a href="#364">switch_llty</a>, <a href="#360">test_value1</a>);
+            <span class="kw">let </span>cmp = <a href="#318">bx</a>.<a href="../traits/builder.rs.html#230">icmp</a>(<a href="../common.rs.html#13">IntPredicate::IntEQ</a>, <a href="#322">discr</a>.<a href="operand.rs.html#198-203">immediate</a>(), <a href="#365">llval</a>);
+            <a href="#318">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#366">cmp</a>, <a href="#362">ll1</a>, <a href="#363">ll2</a>);
         } <span class="kw">else </span>{
-            <a href="#322">bx</a>.<a href="../traits/builder.rs.html#67-72">switch</a>(
-                <a href="#326">discr</a>.<a href="operand.rs.html#202-207">immediate</a>(),
-                <a href="#321">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#320">self</a>, <a href="#324">targets</a>.otherwise()),
-                <a href="#328">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(value, target)| (<a href="#376">value</a>, <a href="#321">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#320">self</a>, <a href="#376">target</a>))),
+            <a href="#318">bx</a>.<a href="../traits/builder.rs.html#67-72">switch</a>(
+                <a href="#322">discr</a>.<a href="operand.rs.html#198-203">immediate</a>(),
+                <a href="#317">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#316">self</a>, <a href="#320">targets</a>.otherwise()),
+                <a href="#324">target_iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(value, target)| (<a href="#372">value</a>, <a href="#317">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#316">self</a>, <a href="#372">target</a>))),
             );
         }
     }
@@ -2153,10 +2145,10 @@
         <span class="comment">// Call `va_end` if this is the definition of a C-variadic function.
         </span><span class="kw">if </span><span class="self">self</span>.fn_abi.c_variadic {
             <span class="comment">// The `VaList` &quot;spoofed&quot; argument is just after all the real arguments.
-            </span><span class="kw">let </span>va_list_arg_idx = <a class="self" href="#381">self</a>.fn_abi.args.len();
-            <span class="kw">match </span><a class="self" href="#381">self</a>.locals[mir::Local::from_usize(<span class="number">1 </span>+ <a href="#385">va_list_arg_idx</a>)] {
+            </span><span class="kw">let </span>va_list_arg_idx = <a class="self" href="#377">self</a>.fn_abi.args.len();
+            <span class="kw">match </span><a class="self" href="#377">self</a>.locals[mir::Local::from_usize(<span class="number">1 </span>+ <a href="#381">va_list_arg_idx</a>)] {
                 <a href="mod.rs.html#130">LocalRef::Place</a>(va_list) =&gt; {
-                    <a href="#381">bx</a>.<a href="../traits/intrinsic.rs.html#38">va_end</a>(<a href="#387">va_list</a>.llval);
+                    <a href="#377">bx</a>.<a href="../traits/intrinsic.rs.html#38">va_end</a>(<a href="#383">va_list</a>.llval);
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;C-variadic function must have a `VaList` place&quot;</span>),
             }
@@ -2166,54 +2158,54 @@
             // so we should make sure that we never actually do.
             // We play it safe by using a well-defined `abort`, but we could go for immediate UB
             // if that turns out to be helpful.
-            </span><a href="#381">bx</a>.<a href="../traits/intrinsic.rs.html#20">abort</a>();
+            </span><a href="#377">bx</a>.<a href="../traits/intrinsic.rs.html#20">abort</a>();
             <span class="comment">// `abort` does not terminate the block, so we still need to generate
             // an `unreachable` terminator after it.
-            </span><a href="#381">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
+            </span><a href="#377">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>llval = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#381">self</a>.fn_abi.ret.mode {
+        <span class="kw">let </span>llval = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#377">self</a>.fn_abi.ret.mode {
             PassMode::Ignore | <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Indirect</a> { .. } =&gt; {
-                <a href="#381">bx</a>.<a href="../traits/builder.rs.html#58">ret_void</a>();
+                <a href="#377">bx</a>.<a href="../traits/builder.rs.html#58">ret_void</a>();
                 <span class="kw">return</span>;
             }
 
             PassMode::Direct(<span class="kw">_</span>) | PassMode::Pair(..) =&gt; {
-                <span class="kw">let </span>op = <a class="self" href="#381">self</a>.<a href="operand.rs.html#541-564">codegen_consume</a>(<a href="#381">bx</a>, mir::Place::return_place().as_ref());
-                <span class="kw">if let </span><a href="operand.rs.html#31">Ref</a>(llval, <span class="kw">_</span>, align) = <a href="#411">op</a>.val {
-                    <a href="#381">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#381">bx</a>.<a href="../traits/type_.rs.html#97">backend_type</a>(<a href="#411">op</a>.layout), <a href="#412">llval</a>, <a href="#412">align</a>)
+                <span class="kw">let </span>op = <a class="self" href="#377">self</a>.<a href="operand.rs.html#537-560">codegen_consume</a>(<a href="#377">bx</a>, mir::Place::return_place().as_ref());
+                <span class="kw">if let </span><a href="operand.rs.html#31">Ref</a>(llval, <span class="kw">_</span>, align) = <a href="#407">op</a>.val {
+                    <a href="#377">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#377">bx</a>.<a href="../traits/type_.rs.html#97">backend_type</a>(<a href="#407">op</a>.layout), <a href="#408">llval</a>, <a href="#408">align</a>)
                 } <span class="kw">else </span>{
-                    <a href="#411">op</a>.<a href="operand.rs.html#233-250">immediate_or_packed_pair</a>(<a href="#381">bx</a>)
+                    <a href="#407">op</a>.<a href="operand.rs.html#229-246">immediate_or_packed_pair</a>(<a href="#377">bx</a>)
                 }
             }
 
             <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { cast: cast_ty, pad_i32: <span class="kw">_ </span>} =&gt; {
-                <span class="kw">let </span>op = <span class="kw">match </span><a class="self" href="#381">self</a>.locals[mir::RETURN_PLACE] {
-                    <a href="mod.rs.html#137">LocalRef::Operand</a>(op) =&gt; <a href="#421">op</a>,
+                <span class="kw">let </span>op = <span class="kw">match </span><a class="self" href="#377">self</a>.locals[mir::RETURN_PLACE] {
+                    <a href="mod.rs.html#137">LocalRef::Operand</a>(op) =&gt; <a href="#417">op</a>,
                     <a href="mod.rs.html#139">LocalRef::PendingOperand</a> =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;use of return before def&quot;</span>),
                     <a href="mod.rs.html#130">LocalRef::Place</a>(cg_place) =&gt; <a href="operand.rs.html#67-73">OperandRef</a> {
-                        val: <a href="operand.rs.html#31">Ref</a>(<a href="#423">cg_place</a>.llval, <span class="prelude-val">None</span>, <a href="#423">cg_place</a>.align),
-                        layout: <a href="#423">cg_place</a>.layout,
+                        val: <a href="operand.rs.html#31">Ref</a>(<a href="#419">cg_place</a>.llval, <span class="prelude-val">None</span>, <a href="#419">cg_place</a>.align),
+                        layout: <a href="#419">cg_place</a>.layout,
                     },
                     <a href="mod.rs.html#135">LocalRef::UnsizedPlace</a>(<span class="kw">_</span>) =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;return type must be sized&quot;</span>),
                 };
-                <span class="kw">let </span>llslot = <span class="kw">match </span><a href="#420">op</a>.val {
+                <span class="kw">let </span>llslot = <span class="kw">match </span><a href="#416">op</a>.val {
                     <a href="operand.rs.html#38">Immediate</a>(<span class="kw">_</span>) | <a href="operand.rs.html#46">Pair</a>(..) =&gt; {
-                        <span class="kw">let </span>scratch = PlaceRef::alloca(<a href="#381">bx</a>, <a class="self" href="#381">self</a>.fn_abi.ret.layout);
-                        <a href="#420">op</a>.val.<a href="operand.rs.html#376-382">store</a>(<a href="#381">bx</a>, <a href="#431">scratch</a>);
-                        <a href="#431">scratch</a>.llval
+                        <span class="kw">let </span>scratch = PlaceRef::alloca(<a href="#377">bx</a>, <a class="self" href="#377">self</a>.fn_abi.ret.layout);
+                        <a href="#416">op</a>.val.<a href="operand.rs.html#372-378">store</a>(<a href="#377">bx</a>, <a href="#427">scratch</a>);
+                        <a href="#427">scratch</a>.llval
                     }
                     <a href="operand.rs.html#31">Ref</a>(llval, <span class="kw">_</span>, align) =&gt; {
                         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(align, op.layout.align.abi, <span class="string">&quot;return place is unaligned!&quot;</span>);
-                        <a href="#435">llval</a>
+                        <a href="#431">llval</a>
                     }
                     <a href="operand.rs.html#55">ZeroSized</a> =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;ZST return value shouldn&#39;t be in PassMode::Cast&quot;</span>),
                 };
-                <span class="kw">let </span>ty = <a href="#381">bx</a>.<a href="../traits/type_.rs.html#98">cast_backend_type</a>(<a href="#419">cast_ty</a>);
-                <a href="#381">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#441">ty</a>, <a href="#429">llslot</a>, <a class="self" href="#381">self</a>.fn_abi.ret.layout.align.abi)
+                <span class="kw">let </span>ty = <a href="#377">bx</a>.<a href="../traits/type_.rs.html#98">cast_backend_type</a>(<a href="#415">cast_ty</a>);
+                <a href="#377">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#437">ty</a>, <a href="#425">llslot</a>, <a class="self" href="#377">self</a>.fn_abi.ret.layout.align.abi)
             }
         };
-        <a href="#381">bx</a>.<a href="../traits/builder.rs.html#59">ret</a>(<a href="#404">llval</a>);
+        <a href="#377">bx</a>.<a href="../traits/builder.rs.html#59">ret</a>(<a href="#400">llval</a>);
     }
 
     <span class="attr">#[tracing::instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>, helper, bx))]
@@ -2347,70 +2339,70 @@
         unwind: <a href="../../../rustc_middle/mir/syntax/enum.UnwindAction.html">mir::UnwindAction</a>,
         mergeable_succ: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <a href="#32-35">MergingSucc</a> {
-        <span class="kw">let </span>span = <a href="#571">terminator</a>.source_info.span;
-        <span class="kw">let </span>cond = <a class="self" href="#568">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#570">bx</a>, <a href="#572">cond</a>).<a href="operand.rs.html#202-207">immediate</a>();
-        <span class="kw">let </span><span class="kw-2">mut </span>const_cond = <a href="#570">bx</a>.<a href="../traits/consts.rs.html#33">const_to_opt_u128</a>(<a href="#580">cond</a>, <span class="bool-val">false</span>).map(|c| <a href="#581">c</a> == <span class="number">1</span>);
+        <span class="kw">let </span>span = <a href="#567">terminator</a>.source_info.span;
+        <span class="kw">let </span>cond = <a class="self" href="#564">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#566">bx</a>, <a href="#568">cond</a>).<a href="operand.rs.html#198-203">immediate</a>();
+        <span class="kw">let </span><span class="kw-2">mut </span>const_cond = <a href="#566">bx</a>.<a href="../traits/consts.rs.html#33">const_to_opt_u128</a>(<a href="#576">cond</a>, <span class="bool-val">false</span>).map(|c| <a href="#577">c</a> == <span class="number">1</span>);
 
         <span class="comment">// This case can currently arise only from functions marked
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn&#39;t use overflow checks.
         </span><span class="kw">if </span>!bx.cx().check_overflow() &amp;&amp; msg.is_optional_overflow_check() {
-            <a href="#581">const_cond</a> = <span class="prelude-val">Some</span>(<a href="#573">expected</a>);
+            <a href="#577">const_cond</a> = <span class="prelude-val">Some</span>(<a href="#569">expected</a>);
         }
 
         <span class="comment">// Don&#39;t codegen the panic block if success if known.
         </span><span class="kw">if </span>const_cond == <span class="prelude-val">Some</span>(expected) {
-            <span class="kw">return </span><a href="#569">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#568">self</a>, <a href="#570">bx</a>, <a href="#575">target</a>, <a href="#577">mergeable_succ</a>);
+            <span class="kw">return </span><a href="#565">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#564">self</a>, <a href="#566">bx</a>, <a href="#571">target</a>, <a href="#573">mergeable_succ</a>);
         }
 
         <span class="comment">// Pass the condition through llvm.expect for branch hinting.
-        </span><span class="kw">let </span>cond = <a href="#570">bx</a>.<a href="../traits/intrinsic.rs.html#22">expect</a>(<a href="#580">cond</a>, <a href="#573">expected</a>);
+        </span><span class="kw">let </span>cond = <a href="#566">bx</a>.<a href="../traits/intrinsic.rs.html#22">expect</a>(<a href="#576">cond</a>, <a href="#569">expected</a>);
 
         <span class="comment">// Create the failure block and the conditional branch to it.
-        </span><span class="kw">let </span>lltarget = <a href="#569">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#568">self</a>, <a href="#575">target</a>);
-        <span class="kw">let </span>panic_block = <a href="#570">bx</a>.<a href="../traits/builder.rs.html#54">append_sibling_block</a>(<span class="string">&quot;panic&quot;</span>);
+        </span><span class="kw">let </span>lltarget = <a href="#565">helper</a>.<a href="#73-95">llbb_with_cleanup</a>(<a class="self" href="#564">self</a>, <a href="#571">target</a>);
+        <span class="kw">let </span>panic_block = <a href="#566">bx</a>.<a href="../traits/builder.rs.html#54">append_sibling_block</a>(<span class="string">&quot;panic&quot;</span>);
         <span class="kw">if </span>expected {
-            <a href="#570">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#597">cond</a>, <a href="#600">lltarget</a>, <a href="#601">panic_block</a>);
+            <a href="#566">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#593">cond</a>, <a href="#596">lltarget</a>, <a href="#597">panic_block</a>);
         } <span class="kw">else </span>{
-            <a href="#570">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#597">cond</a>, <a href="#601">panic_block</a>, <a href="#600">lltarget</a>);
+            <a href="#566">bx</a>.<a href="../traits/builder.rs.html#61-66">cond_br</a>(<a href="#593">cond</a>, <a href="#597">panic_block</a>, <a href="#596">lltarget</a>);
         }
 
         <span class="comment">// After this point, bx is the block for the call to panic.
-        </span><a href="#570">bx</a>.<a href="../traits/builder.rs.html#56">switch_to_block</a>(<a href="#601">panic_block</a>);
-        <a class="self" href="#568">self</a>.<a href="debuginfo.rs.html#216-221">set_debug_loc</a>(<a href="#570">bx</a>, <a href="#571">terminator</a>.source_info);
+        </span><a href="#566">bx</a>.<a href="../traits/builder.rs.html#56">switch_to_block</a>(<a href="#597">panic_block</a>);
+        <a class="self" href="#564">self</a>.<a href="debuginfo.rs.html#207-212">set_debug_loc</a>(<a href="#566">bx</a>, <a href="#567">terminator</a>.source_info);
 
         <span class="comment">// Get the location information.
-        </span><span class="kw">let </span>location = <a class="self" href="#568">self</a>.<a href="#1453-1496">get_caller_location</a>(<a href="#570">bx</a>, <a href="#571">terminator</a>.source_info).<a href="operand.rs.html#202-207">immediate</a>();
+        </span><span class="kw">let </span>location = <a class="self" href="#564">self</a>.<a href="#1449-1492">get_caller_location</a>(<a href="#566">bx</a>, <a href="#567">terminator</a>.source_info).<a href="operand.rs.html#198-203">immediate</a>();
 
         <span class="comment">// Put together the arguments to the panic entry point.
-        </span><span class="kw">let </span>(lang_item, args) = <span class="kw">match </span><a href="#574">msg</a> {
+        </span><span class="kw">let </span>(lang_item, args) = <span class="kw">match </span><a href="#570">msg</a> {
             <a href="../../../rustc_middle/mir/syntax/enum.AssertKind.html">AssertKind::BoundsCheck</a> { <span class="kw-2">ref </span>len, <span class="kw-2">ref </span>index } =&gt; {
-                <span class="kw">let </span>len = <a class="self" href="#568">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#570">bx</a>, <a href="#617">len</a>).<a href="operand.rs.html#202-207">immediate</a>();
-                <span class="kw">let </span>index = <a class="self" href="#568">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#570">bx</a>, <a href="#617">index</a>).<a href="operand.rs.html#202-207">immediate</a>();
+                <span class="kw">let </span>len = <a class="self" href="#564">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#566">bx</a>, <a href="#613">len</a>).<a href="operand.rs.html#198-203">immediate</a>();
+                <span class="kw">let </span>index = <a class="self" href="#564">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#566">bx</a>, <a href="#613">index</a>).<a href="operand.rs.html#198-203">immediate</a>();
                 <span class="comment">// It&#39;s `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 </span>(LangItem::PanicBoundsCheck, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[index, len, location])
             }
             <a href="../../../rustc_middle/mir/syntax/enum.AssertKind.html">AssertKind::MisalignedPointerDereference</a> { <span class="kw-2">ref </span>required, <span class="kw-2">ref </span>found } =&gt; {
-                <span class="kw">let </span>required = <a class="self" href="#568">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#570">bx</a>, <a href="#624">required</a>).<a href="operand.rs.html#202-207">immediate</a>();
-                <span class="kw">let </span>found = <a class="self" href="#568">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#570">bx</a>, <a href="#624">found</a>).<a href="operand.rs.html#202-207">immediate</a>();
+                <span class="kw">let </span>required = <a class="self" href="#564">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#566">bx</a>, <a href="#620">required</a>).<a href="operand.rs.html#198-203">immediate</a>();
+                <span class="kw">let </span>found = <a class="self" href="#564">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#566">bx</a>, <a href="#620">found</a>).<a href="operand.rs.html#198-203">immediate</a>();
                 <span class="comment">// It&#39;s `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 </span>(LangItem::PanicMisalignedPointerDereference, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[required, found, location])
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="kw">let </span>msg = <a href="#570">bx</a>.<a href="../traits/consts.rs.html#29">const_str</a>(<a href="#574">msg</a>.description());
+                <span class="kw">let </span>msg = <a href="#566">bx</a>.<a href="../traits/consts.rs.html#29">const_str</a>(<a href="#570">msg</a>.description());
                 <span class="comment">// It&#39;s `pub fn panic(expr: &amp;str)`, with the wide reference being passed
                 // as two arguments, and `#[track_caller]` adds an implicit third argument.
                 </span>(LangItem::Panic, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[msg.<span class="number">0</span>, msg.<span class="number">1</span>, location])
             }
         };
 
-        <span class="kw">let </span>(fn_abi, llfn) = <a href="../common.rs.html#119-128">common::build_langcall</a>(<a href="#570">bx</a>, <span class="prelude-val">Some</span>(<a href="#579">span</a>), <a href="#616">lang_item</a>);
+        <span class="kw">let </span>(fn_abi, llfn) = <a href="../common.rs.html#119-128">common::build_langcall</a>(<a href="#566">bx</a>, <span class="prelude-val">Some</span>(<a href="#575">span</a>), <a href="#612">lang_item</a>);
 
         <span class="comment">// Codegen the actual panic invoke/call.
-        </span><span class="kw">let </span>merging_succ = <a href="#569">helper</a>.<a href="#151-249">do_call</a>(<a class="self" href="#568">self</a>, <a href="#570">bx</a>, <a href="#639">fn_abi</a>, <a href="#639">llfn</a>, <span class="kw-2">&amp;</span><a href="#616">args</a>, <span class="prelude-val">None</span>, <a href="#576">unwind</a>, <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);
+        </span><span class="kw">let </span>merging_succ = <a href="#565">helper</a>.<a href="#151-245">do_call</a>(<a class="self" href="#564">self</a>, <a href="#566">bx</a>, <a href="#635">fn_abi</a>, <a href="#635">llfn</a>, <span class="kw-2">&amp;</span><a href="#612">args</a>, <span class="prelude-val">None</span>, <a href="#572">unwind</a>, <span class="kw-2">&amp;</span>[], <span class="bool-val">false</span>);
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(merging_succ, MergingSucc::False);
         <a href="#33">MergingSucc::False</a>
     }
@@ -2422,18 +2414,18 @@
         terminator: <span class="kw-2">&amp;</span>mir::Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         reason: <a href="../../../rustc_middle/mir/syntax/enum.UnwindTerminateReason.html">UnwindTerminateReason</a>,
     ) {
-        <span class="kw">let </span>span = <a href="#651">terminator</a>.source_info.span;
-        <a class="self" href="#648">self</a>.<a href="debuginfo.rs.html#216-221">set_debug_loc</a>(<a href="#650">bx</a>, <a href="#651">terminator</a>.source_info);
+        <span class="kw">let </span>span = <a href="#647">terminator</a>.source_info.span;
+        <a class="self" href="#644">self</a>.<a href="debuginfo.rs.html#207-212">set_debug_loc</a>(<a href="#646">bx</a>, <a href="#647">terminator</a>.source_info);
 
         <span class="comment">// Obtain the panic entry point.
-        </span><span class="kw">let </span>(fn_abi, llfn) = <a href="../common.rs.html#119-128">common::build_langcall</a>(<a href="#650">bx</a>, <span class="prelude-val">Some</span>(<a href="#654">span</a>), <a href="#652">reason</a>.lang_item());
+        </span><span class="kw">let </span>(fn_abi, llfn) = <a href="../common.rs.html#119-128">common::build_langcall</a>(<a href="#646">bx</a>, <span class="prelude-val">Some</span>(<a href="#650">span</a>), <a href="#648">reason</a>.lang_item());
 
         <span class="comment">// Codegen the actual panic invoke/call.
-        </span><span class="kw">let </span>merging_succ = <a href="#649">helper</a>.<a href="#151-249">do_call</a>(
-            <a class="self" href="#648">self</a>,
-            <a href="#650">bx</a>,
-            <a href="#658">fn_abi</a>,
-            <a href="#658">llfn</a>,
+        </span><span class="kw">let </span>merging_succ = <a href="#645">helper</a>.<a href="#151-245">do_call</a>(
+            <a class="self" href="#644">self</a>,
+            <a href="#646">bx</a>,
+            <a href="#654">fn_abi</a>,
+            <a href="#654">llfn</a>,
             <span class="kw-2">&amp;</span>[],
             <span class="prelude-val">None</span>,
             mir::UnwindAction::Unreachable,
@@ -2458,16 +2450,16 @@
         <span class="comment">// Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
-        </span><span class="kw">let </span>panic_intrinsic = <a href="#680">intrinsic</a>.and_then(|s| ValidityRequirement::from_intrinsic(<a href="#690">s</a>));
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(requirement) = <a href="#690">panic_intrinsic</a> {
-            <span class="kw">let </span>ty = <a href="#681">instance</a>.unwrap().args.type_at(<span class="number">0</span>);
+        </span><span class="kw">let </span>panic_intrinsic = <a href="#676">intrinsic</a>.and_then(|s| ValidityRequirement::from_intrinsic(<a href="#686">s</a>));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(requirement) = <a href="#686">panic_intrinsic</a> {
+            <span class="kw">let </span>ty = <a href="#677">instance</a>.unwrap().args.type_at(<span class="number">0</span>);
 
-            <span class="kw">let </span>do_panic = !<a href="#679">bx</a>
+            <span class="kw">let </span>do_panic = !<a href="#675">bx</a>
                 .<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>()
-                .check_validity_requirement((<a href="#691">requirement</a>, <a href="#679">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>().and(<a href="#692">ty</a>)))
+                .check_validity_requirement((<a href="#687">requirement</a>, <a href="#675">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>().and(<a href="#688">ty</a>)))
                 .expect(<span class="string">&quot;expect to have layout during codegen&quot;</span>);
 
-            <span class="kw">let </span>layout = <a href="#679">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#692">ty</a>);
+            <span class="kw">let </span>layout = <a href="#675">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#688">ty</a>);
 
             <span class="prelude-val">Some</span>(<span class="kw">if </span>do_panic {
                 <span class="kw">let </span>msg_str = <a class="macro" href="../../../rustc_middle/ty/print/pretty/macro.with_no_visible_paths.html">with_no_visible_paths!</a>({
@@ -2484,28 +2476,28 @@
                         }
                     })
                 });
-                <span class="kw">let </span>msg = <a href="#679">bx</a>.<a href="../traits/consts.rs.html#29">const_str</a>(<span class="kw-2">&amp;</span><a href="#702">msg_str</a>);
+                <span class="kw">let </span>msg = <a href="#675">bx</a>.<a href="../traits/consts.rs.html#29">const_str</a>(<span class="kw-2">&amp;</span><a href="#698">msg_str</a>);
 
                 <span class="comment">// Obtain the panic entry point.
                 </span><span class="kw">let </span>(fn_abi, llfn) =
-                    <a href="../common.rs.html#119-128">common::build_langcall</a>(<a href="#679">bx</a>, <span class="prelude-val">Some</span>(<a href="#682">source_info</a>.span), LangItem::PanicNounwind);
+                    <a href="../common.rs.html#119-128">common::build_langcall</a>(<a href="#675">bx</a>, <span class="prelude-val">Some</span>(<a href="#678">source_info</a>.span), LangItem::PanicNounwind);
 
                 <span class="comment">// Codegen the actual panic invoke/call.
-                </span><a href="#678">helper</a>.<a href="#151-249">do_call</a>(
-                    <a class="self" href="#677">self</a>,
-                    <a href="#679">bx</a>,
-                    <a href="#719">fn_abi</a>,
-                    <a href="#719">llfn</a>,
-                    <span class="kw-2">&amp;</span>[<a href="#716">msg</a>.<span class="number">0</span>, <a href="#716">msg</a>.<span class="number">1</span>],
-                    <a href="#683">target</a>.as_ref().map(|bb| (<a href="#1764">ReturnDest::Nothing</a>, <span class="kw-2">*</span><a href="#729">bb</a>)),
-                    <a href="#684">unwind</a>,
+                </span><a href="#674">helper</a>.<a href="#151-245">do_call</a>(
+                    <a class="self" href="#673">self</a>,
+                    <a href="#675">bx</a>,
+                    <a href="#715">fn_abi</a>,
+                    <a href="#715">llfn</a>,
+                    <span class="kw-2">&amp;</span>[<a href="#712">msg</a>.<span class="number">0</span>, <a href="#712">msg</a>.<span class="number">1</span>],
+                    <a href="#679">target</a>.as_ref().map(|bb| (<a href="#1760">ReturnDest::Nothing</a>, <span class="kw-2">*</span><a href="#725">bb</a>)),
+                    <a href="#680">unwind</a>,
                     <span class="kw-2">&amp;</span>[],
-                    <a href="#685">mergeable_succ</a>,
+                    <a href="#681">mergeable_succ</a>,
                 )
             } <span class="kw">else </span>{
                 <span class="comment">// a NOP
-                </span><span class="kw">let </span>target = <a href="#683">target</a>.unwrap();
-                <a href="#678">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#677">self</a>, <a href="#679">bx</a>, <a href="#736">target</a>, <a href="#685">mergeable_succ</a>)
+                </span><span class="kw">let </span>target = <a href="#679">target</a>.unwrap();
+                <a href="#674">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#673">self</a>, <a href="#675">bx</a>, <a href="#732">target</a>, <a href="#681">mergeable_succ</a>)
             })
         } <span class="kw">else </span>{
             <span class="prelude-val">None
@@ -2525,112 +2517,112 @@
         fn_span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         mergeable_succ: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <a href="#32-35">MergingSucc</a> {
-        <span class="kw">let </span>source_info = <a href="#748">terminator</a>.source_info;
-        <span class="kw">let </span>span = <a href="#757">source_info</a>.span;
+        <span class="kw">let </span>source_info = <a href="#744">terminator</a>.source_info;
+        <span class="kw">let </span>span = <a href="#753">source_info</a>.span;
 
         <span class="comment">// Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
-        </span><span class="kw">let </span>callee = <a class="self" href="#745">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#747">bx</a>, <a href="#749">func</a>);
+        </span><span class="kw">let </span>callee = <a class="self" href="#741">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#743">bx</a>, <a href="#745">func</a>);
 
-        <span class="kw">let </span>(instance, <span class="kw-2">mut </span>llfn) = <span class="kw">match </span><span class="kw-2">*</span><a href="#761">callee</a>.layout.ty.kind() {
+        <span class="kw">let </span>(instance, <span class="kw-2">mut </span>llfn) = <span class="kw">match </span><span class="kw-2">*</span><a href="#757">callee</a>.layout.ty.kind() {
             ty::FnDef(def_id, args) =&gt; (
                 <span class="prelude-val">Some</span>(
                     ty::Instance::expect_resolve(
-                        <a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
+                        <a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
                         ty::ParamEnv::reveal_all(),
-                        <a href="#764">def_id</a>,
-                        <a href="#764">args</a>,
+                        <a href="#760">def_id</a>,
+                        <a href="#760">args</a>,
                     )
-                    .polymorphize(<a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>()),
+                    .polymorphize(<a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>()),
                 ),
                 <span class="prelude-val">None</span>,
             ),
-            ty::FnPtr(<span class="kw">_</span>) =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<a href="#761">callee</a>.<a href="operand.rs.html#202-207">immediate</a>())),
+            ty::FnPtr(<span class="kw">_</span>) =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<a href="#757">callee</a>.<a href="operand.rs.html#198-203">immediate</a>())),
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;{} is not callable&quot;</span>, callee.layout.ty),
         };
-        <span class="kw">let </span>def = <a href="#763">instance</a>.map(|i| <a href="#779">i</a>.def);
+        <span class="kw">let </span>def = <a href="#759">instance</a>.map(|i| <a href="#775">i</a>.def);
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ty::InstanceDef::DropGlue(<span class="kw">_</span>, <span class="prelude-val">None</span>)) = <a href="#779">def</a> {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ty::InstanceDef::DropGlue(<span class="kw">_</span>, <span class="prelude-val">None</span>)) = <a href="#775">def</a> {
             <span class="comment">// Empty drop glue; a no-op.
-            </span><span class="kw">let </span>target = <a href="#752">target</a>.unwrap();
-            <span class="kw">return </span><a href="#746">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#745">self</a>, <a href="#747">bx</a>, <a href="#783">target</a>, <a href="#755">mergeable_succ</a>);
+            </span><span class="kw">let </span>target = <a href="#748">target</a>.unwrap();
+            <span class="kw">return </span><a href="#742">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#741">self</a>, <a href="#743">bx</a>, <a href="#779">target</a>, <a href="#751">mergeable_succ</a>);
         }
 
         <span class="comment">// FIXME(eddyb) avoid computing this if possible, when `instance` is
         // available - right now `sig` is only needed for getting the `abi`
         // and figuring out how many extra args were passed to a C-variadic `fn`.
-        </span><span class="kw">let </span>sig = <a href="#761">callee</a>.layout.ty.fn_sig(<a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>());
-        <span class="kw">let </span>abi = <a href="#790">sig</a>.abi();
+        </span><span class="kw">let </span>sig = <a href="#757">callee</a>.layout.ty.fn_sig(<a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>());
+        <span class="kw">let </span>abi = <a href="#786">sig</a>.abi();
 
         <span class="comment">// Handle intrinsics old codegen wants Expr&#39;s for, ourselves.
-        </span><span class="kw">let </span>intrinsic = <span class="kw">match </span><a href="#779">def</a> {
-            <span class="prelude-val">Some</span>(ty::InstanceDef::Intrinsic(def_id)) =&gt; <span class="prelude-val">Some</span>(<a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().item_name(<a href="#795">def_id</a>)),
+        </span><span class="kw">let </span>intrinsic = <span class="kw">match </span><a href="#775">def</a> {
+            <span class="prelude-val">Some</span>(ty::InstanceDef::Intrinsic(def_id)) =&gt; <span class="prelude-val">Some</span>(<a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().item_name(<a href="#791">def_id</a>)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         };
 
-        <span class="kw">let </span>extra_args = <span class="kw-2">&amp;</span><a href="#750">args</a>[<a href="#790">sig</a>.inputs().skip_binder().len()..];
-        <span class="kw">let </span>extra_args = <a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().mk_type_list_from_iter(<a href="#799">extra_args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|op_arg| {
-            <span class="kw">let </span>op_ty = <a href="#800">op_arg</a>.ty(<a class="self" href="#745">self</a>.mir, <a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>());
-            <a class="self" href="#745">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#801">op_ty</a>)
+        <span class="kw">let </span>extra_args = <span class="kw-2">&amp;</span><a href="#746">args</a>[<a href="#786">sig</a>.inputs().skip_binder().len()..];
+        <span class="kw">let </span>extra_args = <a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().mk_type_list_from_iter(<a href="#795">extra_args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|op_arg| {
+            <span class="kw">let </span>op_ty = <a href="#796">op_arg</a>.ty(<a class="self" href="#741">self</a>.mir, <a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>());
+            <a class="self" href="#741">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#797">op_ty</a>)
         }));
 
-        <span class="kw">let </span>fn_abi = <span class="kw">match </span><a href="#763">instance</a> {
-            <span class="prelude-val">Some</span>(instance) =&gt; <a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.FnAbiOf.html">fn_abi_of_instance</a>(<a href="#806">instance</a>, <a href="#800">extra_args</a>),
-            <span class="prelude-val">None </span>=&gt; <a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.FnAbiOf.html">fn_abi_of_fn_ptr</a>(<a href="#790">sig</a>, <a href="#800">extra_args</a>),
+        <span class="kw">let </span>fn_abi = <span class="kw">match </span><a href="#759">instance</a> {
+            <span class="prelude-val">Some</span>(instance) =&gt; <a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.FnAbiOf.html">fn_abi_of_instance</a>(<a href="#802">instance</a>, <a href="#796">extra_args</a>),
+            <span class="prelude-val">None </span>=&gt; <a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.FnAbiOf.html">fn_abi_of_fn_ptr</a>(<a href="#786">sig</a>, <a href="#796">extra_args</a>),
         };
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(merging_succ) = <a class="self" href="#745">self</a>.<a href="#676-742">codegen_panic_intrinsic</a>(
-            <span class="kw-2">&amp;</span><a href="#746">helper</a>,
-            <a href="#747">bx</a>,
-            <a href="#794">intrinsic</a>,
-            <a href="#763">instance</a>,
-            <a href="#757">source_info</a>,
-            <a href="#752">target</a>,
-            <a href="#753">unwind</a>,
-            <a href="#755">mergeable_succ</a>,
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(merging_succ) = <a class="self" href="#741">self</a>.<a href="#672-738">codegen_panic_intrinsic</a>(
+            <span class="kw-2">&amp;</span><a href="#742">helper</a>,
+            <a href="#743">bx</a>,
+            <a href="#790">intrinsic</a>,
+            <a href="#759">instance</a>,
+            <a href="#753">source_info</a>,
+            <a href="#748">target</a>,
+            <a href="#749">unwind</a>,
+            <a href="#751">mergeable_succ</a>,
         ) {
-            <span class="kw">return </span><a href="#810">merging_succ</a>;
+            <span class="kw">return </span><a href="#806">merging_succ</a>;
         }
 
         <span class="comment">// The arguments we&#39;ll be passing. Plus one to account for outptr, if used.
-        </span><span class="kw">let </span>arg_count = <a href="#805">fn_abi</a>.args.len() + <a href="#805">fn_abi</a>.ret.is_indirect() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>;
-        <span class="kw">let </span><span class="kw-2">mut </span>llargs = Vec::with_capacity(<a href="#824">arg_count</a>);
+        </span><span class="kw">let </span>arg_count = <a href="#801">fn_abi</a>.args.len() + <a href="#801">fn_abi</a>.ret.is_indirect() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>;
+        <span class="kw">let </span><span class="kw-2">mut </span>llargs = Vec::with_capacity(<a href="#820">arg_count</a>);
 
         <span class="comment">// Prepare the return value destination
         </span><span class="kw">let </span>ret_dest = <span class="kw">if </span>target.is_some() {
-            <span class="kw">let </span>is_intrinsic = <a href="#794">intrinsic</a>.is_some();
-            <a class="self" href="#745">self</a>.<a href="#1660-1722">make_return_dest</a>(<a href="#747">bx</a>, <a href="#751">destination</a>, <span class="kw-2">&amp;</span><a href="#805">fn_abi</a>.ret, <span class="kw-2">&amp;mut </span><a href="#825">llargs</a>, <a href="#829">is_intrinsic</a>)
+            <span class="kw">let </span>is_intrinsic = <a href="#790">intrinsic</a>.is_some();
+            <a class="self" href="#741">self</a>.<a href="#1656-1718">make_return_dest</a>(<a href="#743">bx</a>, <a href="#747">destination</a>, <span class="kw-2">&amp;</span><a href="#801">fn_abi</a>.ret, <span class="kw-2">&amp;mut </span><a href="#821">llargs</a>, <a href="#825">is_intrinsic</a>)
         } <span class="kw">else </span>{
-            <a href="#1764">ReturnDest::Nothing</a>
+            <a href="#1760">ReturnDest::Nothing</a>
         };
 
         <span class="kw">if </span>intrinsic == <span class="prelude-val">Some</span>(sym::caller_location) {
-            <span class="kw">return if let </span><span class="prelude-val">Some</span>(target) = <a href="#752">target</a> {
+            <span class="kw">return if let </span><span class="prelude-val">Some</span>(target) = <a href="#748">target</a> {
                 <span class="kw">let </span>location =
-                    <a class="self" href="#745">self</a>.<a href="#1453-1496">get_caller_location</a>(<a href="#747">bx</a>, <a href="../../../rustc_middle/mir/struct.SourceInfo.html">mir::SourceInfo</a> { span: <a href="#754">fn_span</a>, ..<a href="#757">source_info</a> });
+                    <a class="self" href="#741">self</a>.<a href="#1449-1492">get_caller_location</a>(<a href="#743">bx</a>, <a href="../../../rustc_middle/mir/struct.SourceInfo.html">mir::SourceInfo</a> { span: <a href="#750">fn_span</a>, ..<a href="#753">source_info</a> });
 
-                <span class="kw">if let </span><a href="#1768">ReturnDest::IndirectOperand</a>(tmp, <span class="kw">_</span>) = <a href="#828">ret_dest</a> {
-                    <a href="#837">location</a>.val.<a href="operand.rs.html#376-382">store</a>(<a href="#747">bx</a>, <a href="#840">tmp</a>);
+                <span class="kw">if let </span><a href="#1764">ReturnDest::IndirectOperand</a>(tmp, <span class="kw">_</span>) = <a href="#824">ret_dest</a> {
+                    <a href="#833">location</a>.val.<a href="operand.rs.html#372-378">store</a>(<a href="#743">bx</a>, <a href="#836">tmp</a>);
                 }
-                <a class="self" href="#745">self</a>.<a href="#1725-1759">store_return</a>(<a href="#747">bx</a>, <a href="#828">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#805">fn_abi</a>.ret, <a href="#837">location</a>.<a href="operand.rs.html#202-207">immediate</a>());
-                <a href="#746">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#745">self</a>, <a href="#747">bx</a>, <a href="#836">target</a>, <a href="#755">mergeable_succ</a>)
+                <a class="self" href="#741">self</a>.<a href="#1721-1755">store_return</a>(<a href="#743">bx</a>, <a href="#824">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#801">fn_abi</a>.ret, <a href="#833">location</a>.<a href="operand.rs.html#198-203">immediate</a>());
+                <a href="#742">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#741">self</a>, <a href="#743">bx</a>, <a href="#832">target</a>, <a href="#751">mergeable_succ</a>)
             } <span class="kw">else </span>{
                 <a href="#33">MergingSucc::False</a>
             };
         }
 
-        <span class="kw">match </span><a href="#794">intrinsic</a> {
+        <span class="kw">match </span><a href="#790">intrinsic</a> {
             <span class="prelude-val">None </span>| <span class="prelude-val">Some</span>(sym::drop_in_place) =&gt; {}
             <span class="prelude-val">Some</span>(intrinsic) =&gt; {
-                <span class="kw">let </span>dest = <span class="kw">match </span><a href="#828">ret_dest</a> {
-                    <span class="kw">_ if </span><a href="#805">fn_abi</a>.ret.is_indirect() =&gt; <a href="#825">llargs</a>[<span class="number">0</span>],
-                    <a href="#1764">ReturnDest::Nothing</a> =&gt; <a href="#747">bx</a>.<a href="../traits/consts.rs.html#10">const_undef</a>(<a href="#747">bx</a>.<a href="../traits/type_.rs.html#29">type_ptr</a>()),
-                    <a href="#1768">ReturnDest::IndirectOperand</a>(dst, <span class="kw">_</span>) | <a href="#1766">ReturnDest::Store</a>(dst) =&gt; <a href="#856">dst</a>.llval,
-                    <a href="#1770">ReturnDest::DirectOperand</a>(<span class="kw">_</span>) =&gt; {
+                <span class="kw">let </span>dest = <span class="kw">match </span><a href="#824">ret_dest</a> {
+                    <span class="kw">_ if </span><a href="#801">fn_abi</a>.ret.is_indirect() =&gt; <a href="#821">llargs</a>[<span class="number">0</span>],
+                    <a href="#1760">ReturnDest::Nothing</a> =&gt; <a href="#743">bx</a>.<a href="../traits/consts.rs.html#10">const_undef</a>(<a href="#743">bx</a>.<a href="../traits/type_.rs.html#29">type_ptr</a>()),
+                    <a href="#1764">ReturnDest::IndirectOperand</a>(dst, <span class="kw">_</span>) | <a href="#1762">ReturnDest::Store</a>(dst) =&gt; <a href="#852">dst</a>.llval,
+                    <a href="#1766">ReturnDest::DirectOperand</a>(<span class="kw">_</span>) =&gt; {
                         <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Cannot use direct operand with an intrinsic call&quot;</span>)
                     }
                 };
 
-                <span class="kw">let </span>args: Vec&lt;<span class="kw">_</span>&gt; = <a href="#750">args</a>
+                <span class="kw">let </span>args: Vec&lt;<span class="kw">_</span>&gt; = <a href="#746">args</a>
                     .iter()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, arg)| {
@@ -2639,38 +2631,38 @@
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
                         </span><span class="kw">if </span>i == <span class="number">2 </span>&amp;&amp; intrinsic == sym::simd_shuffle {
-                            <span class="kw">if let </span>mir::Operand::Constant(constant) = <a href="#865">arg</a> {
-                                <span class="kw">let </span>(llval, ty) = <a class="self" href="#745">self</a>.<a href="constant.rs.html#65-101">simd_shuffle_indices</a>(<span class="kw-2">&amp;</span><a href="#747">bx</a>, <a href="#871">constant</a>);
+                            <span class="kw">if let </span>mir::Operand::Constant(constant) = <a href="#861">arg</a> {
+                                <span class="kw">let </span>(llval, ty) = <a class="self" href="#741">self</a>.<a href="constant.rs.html#67-103">simd_shuffle_indices</a>(<span class="kw-2">&amp;</span><a href="#743">bx</a>, <a href="#867">constant</a>);
                                 <span class="kw">return </span><a href="operand.rs.html#67-73">OperandRef</a> {
-                                    val: <a href="operand.rs.html#38">Immediate</a>(<a href="#872">llval</a>),
-                                    layout: <a href="#747">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#872">ty</a>),
+                                    val: <a href="operand.rs.html#38">Immediate</a>(<a href="#868">llval</a>),
+                                    layout: <a href="#743">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#868">ty</a>),
                                 };
                             } <span class="kw">else </span>{
                                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(span, <span class="string">&quot;shuffle indices must be constant&quot;</span>);
                             }
                         }
 
-                        <a class="self" href="#745">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#747">bx</a>, <a href="#865">arg</a>)
+                        <a class="self" href="#741">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#743">bx</a>, <a href="#861">arg</a>)
                     })
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
                 <span class="self">Self</span>::codegen_intrinsic_call(
-                    <a href="#747">bx</a>,
-                    <span class="kw-2">*</span><a href="#763">instance</a>.as_ref().unwrap(),
-                    <span class="kw-2">&amp;</span><a href="#805">fn_abi</a>,
-                    <span class="kw-2">&amp;</span><a href="#862">args</a>,
-                    <a href="#853">dest</a>,
-                    <a href="#758">span</a>,
+                    <a href="#743">bx</a>,
+                    <span class="kw-2">*</span><a href="#759">instance</a>.as_ref().unwrap(),
+                    <span class="kw-2">&amp;</span><a href="#801">fn_abi</a>,
+                    <span class="kw-2">&amp;</span><a href="#858">args</a>,
+                    <a href="#849">dest</a>,
+                    <a href="#754">span</a>,
                 );
 
-                <span class="kw">if let </span><a href="#1768">ReturnDest::IndirectOperand</a>(dst, <span class="kw">_</span>) = <a href="#828">ret_dest</a> {
-                    <a class="self" href="#745">self</a>.<a href="#1725-1759">store_return</a>(<a href="#747">bx</a>, <a href="#828">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#805">fn_abi</a>.ret, <a href="#895">dst</a>.llval);
+                <span class="kw">if let </span><a href="#1764">ReturnDest::IndirectOperand</a>(dst, <span class="kw">_</span>) = <a href="#824">ret_dest</a> {
+                    <a class="self" href="#741">self</a>.<a href="#1721-1755">store_return</a>(<a href="#743">bx</a>, <a href="#824">ret_dest</a>, <span class="kw-2">&amp;</span><a href="#801">fn_abi</a>.ret, <a href="#891">dst</a>.llval);
                 }
 
-                <span class="kw">return if let </span><span class="prelude-val">Some</span>(target) = <a href="#752">target</a> {
-                    <a href="#746">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#745">self</a>, <a href="#747">bx</a>, <a href="#899">target</a>, <a href="#755">mergeable_succ</a>)
+                <span class="kw">return if let </span><span class="prelude-val">Some</span>(target) = <a href="#748">target</a> {
+                    <a href="#742">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#741">self</a>, <a href="#743">bx</a>, <a href="#895">target</a>, <a href="#751">mergeable_succ</a>)
                 } <span class="kw">else </span>{
-                    <a href="#747">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
+                    <a href="#743">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
                     <a href="#33">MergingSucc::False</a>
                 };
             }
@@ -2678,10 +2670,10 @@
 
         <span class="comment">// Split the rust-call tupled arguments off.
         </span><span class="kw">let </span>(first_args, untuple) = <span class="kw">if </span>abi == Abi::RustCall &amp;&amp; !args.is_empty() {
-            <span class="kw">let </span>(tup, args) = <a href="#750">args</a>.split_last().unwrap();
-            (<a href="#910">args</a>, <span class="prelude-val">Some</span>(<a href="#910">tup</a>))
+            <span class="kw">let </span>(tup, args) = <a href="#746">args</a>.split_last().unwrap();
+            (<a href="#906">args</a>, <span class="prelude-val">Some</span>(<a href="#906">tup</a>))
         } <span class="kw">else </span>{
-            (<a href="#750">args</a>, <span class="prelude-val">None</span>)
+            (<a href="#746">args</a>, <span class="prelude-val">None</span>)
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>copied_constant_arguments = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
@@ -2778,17 +2770,17 @@
 
             <span class="self">self</span>.codegen_argument(bx, op, <span class="kw-2">&amp;mut </span>llargs, <span class="kw-2">&amp;</span>fn_abi.args[i]);
         }
-        <span class="kw">let </span>num_untupled = <a href="#909">untuple</a>.map(|tup| {
-            <a class="self" href="#745">self</a>.<a href="#1424-1451">codegen_arguments_untupled</a>(<a href="#747">bx</a>, <a href="#1010">tup</a>, <span class="kw-2">&amp;mut </span><a href="#825">llargs</a>, <span class="kw-2">&amp;</span><a href="#805">fn_abi</a>.args[<a href="#909">first_args</a>.len()..])
+        <span class="kw">let </span>num_untupled = <a href="#905">untuple</a>.map(|tup| {
+            <a class="self" href="#741">self</a>.<a href="#1420-1447">codegen_arguments_untupled</a>(<a href="#743">bx</a>, <a href="#1006">tup</a>, <span class="kw-2">&amp;mut </span><a href="#821">llargs</a>, <span class="kw-2">&amp;</span><a href="#801">fn_abi</a>.args[<a href="#905">first_args</a>.len()..])
         });
 
         <span class="kw">let </span>needs_location =
-            <a href="#763">instance</a>.is_some_and(|i| <a href="#1015">i</a>.def.requires_caller_location(<a class="self" href="#745">self</a>.cx.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>()));
+            <a href="#759">instance</a>.is_some_and(|i| <a href="#1011">i</a>.def.requires_caller_location(<a class="self" href="#741">self</a>.cx.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>()));
         <span class="kw">if </span>needs_location {
-            <span class="kw">let </span>mir_args = <span class="kw">if let </span><span class="prelude-val">Some</span>(num_untupled) = <a href="#1010">num_untupled</a> {
-                <a href="#909">first_args</a>.len() + <a href="#1017">num_untupled</a>
+            <span class="kw">let </span>mir_args = <span class="kw">if let </span><span class="prelude-val">Some</span>(num_untupled) = <a href="#1006">num_untupled</a> {
+                <a href="#905">first_args</a>.len() + <a href="#1013">num_untupled</a>
             } <span class="kw">else </span>{
-                <a href="#750">args</a>.len()
+                <a href="#746">args</a>.len()
             };
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(
                 fn_abi.args.len(),
@@ -2796,32 +2788,32 @@
                 <span class="string">&quot;#[track_caller] fn&#39;s must have 1 more argument in their ABI than in their MIR: {instance:?} {fn_span:?} {fn_abi:?}&quot;</span>,
             );
             <span class="kw">let </span>location =
-                <a class="self" href="#745">self</a>.<a href="#1453-1496">get_caller_location</a>(<a href="#747">bx</a>, <a href="../../../rustc_middle/mir/struct.SourceInfo.html">mir::SourceInfo</a> { span: <a href="#754">fn_span</a>, ..<a href="#757">source_info</a> });
+                <a class="self" href="#741">self</a>.<a href="#1449-1492">get_caller_location</a>(<a href="#743">bx</a>, <a href="../../../rustc_middle/mir/struct.SourceInfo.html">mir::SourceInfo</a> { span: <a href="#750">fn_span</a>, ..<a href="#753">source_info</a> });
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
                 <span class="string">&quot;codegen_call_terminator({:?}): location={:?} (fn_span {:?})&quot;</span>,
                 terminator, location, fn_span
             );
 
-            <span class="kw">let </span>last_arg = <a href="#805">fn_abi</a>.args.last().unwrap();
-            <a class="self" href="#745">self</a>.<a href="#1302-1422">codegen_argument</a>(<a href="#747">bx</a>, <a href="#1027">location</a>, <span class="kw-2">&amp;mut </span><a href="#825">llargs</a>, <a href="#1034">last_arg</a>);
+            <span class="kw">let </span>last_arg = <a href="#801">fn_abi</a>.args.last().unwrap();
+            <a class="self" href="#741">self</a>.<a href="#1298-1418">codegen_argument</a>(<a href="#743">bx</a>, <a href="#1023">location</a>, <span class="kw-2">&amp;mut </span><a href="#821">llargs</a>, <a href="#1030">last_arg</a>);
         }
 
-        <span class="kw">let </span>fn_ptr = <span class="kw">match </span>(<a href="#763">instance</a>, <a href="#763">llfn</a>) {
-            (<span class="prelude-val">Some</span>(instance), <span class="prelude-val">None</span>) =&gt; <a href="#747">bx</a>.<a href="../traits/misc.rs.html#14">get_fn_addr</a>(<a href="#1039">instance</a>),
-            (<span class="kw">_</span>, <span class="prelude-val">Some</span>(llfn)) =&gt; <a href="#1040">llfn</a>,
+        <span class="kw">let </span>fn_ptr = <span class="kw">match </span>(<a href="#759">instance</a>, <a href="#759">llfn</a>) {
+            (<span class="prelude-val">Some</span>(instance), <span class="prelude-val">None</span>) =&gt; <a href="#743">bx</a>.<a href="../traits/misc.rs.html#14">get_fn_addr</a>(<a href="#1035">instance</a>),
+            (<span class="kw">_</span>, <span class="prelude-val">Some</span>(llfn)) =&gt; <a href="#1036">llfn</a>,
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(span, <span class="string">&quot;no instance or llfn for call&quot;</span>),
         };
 
-        <a href="#746">helper</a>.<a href="#151-249">do_call</a>(
-            <a class="self" href="#745">self</a>,
-            <a href="#747">bx</a>,
-            <a href="#805">fn_abi</a>,
-            <a href="#1038">fn_ptr</a>,
-            <span class="kw-2">&amp;</span><a href="#825">llargs</a>,
-            <a href="#752">target</a>.as_ref().map(|<span class="kw-2">&amp;</span>target| (<a href="#828">ret_dest</a>, <a href="#1050">target</a>)),
-            <a href="#753">unwind</a>,
-            <span class="kw-2">&amp;</span><a href="#916">copied_constant_arguments</a>,
-            <a href="#755">mergeable_succ</a>,
+        <a href="#742">helper</a>.<a href="#151-245">do_call</a>(
+            <a class="self" href="#741">self</a>,
+            <a href="#743">bx</a>,
+            <a href="#801">fn_abi</a>,
+            <a href="#1034">fn_ptr</a>,
+            <span class="kw-2">&amp;</span><a href="#821">llargs</a>,
+            <a href="#748">target</a>.as_ref().map(|<span class="kw-2">&amp;</span>target| (<a href="#824">ret_dest</a>, <a href="#1046">target</a>)),
+            <a href="#749">unwind</a>,
+            <span class="kw-2">&amp;</span><a href="#912">copied_constant_arguments</a>,
+            <a href="#751">mergeable_succ</a>,
         )
     }
 
@@ -2839,85 +2831,85 @@
         instance: Instance&lt;<span class="lifetime">&#39;_</span>&gt;,
         mergeable_succ: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <a href="#32-35">MergingSucc</a> {
-        <span class="kw">let </span>span = <a href="#1061">terminator</a>.source_info.span;
+        <span class="kw">let </span>span = <a href="#1057">terminator</a>.source_info.span;
 
-        <span class="kw">let </span>operands: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1063">operands</a>
+        <span class="kw">let </span>operands: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1059">operands</a>
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|op| <span class="kw">match </span><span class="kw-2">*</span><a href="#1075">op</a> {
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|op| <span class="kw">match </span><span class="kw-2">*</span><a href="#1071">op</a> {
                 <a href="../../../rustc_middle/mir/syntax/enum.InlineAsmOperand.html">mir::InlineAsmOperand::In</a> { reg, <span class="kw-2">ref </span>value } =&gt; {
-                    <span class="kw">let </span>value = <a class="self" href="#1058">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#1060">bx</a>, <a href="#1076">value</a>);
-                    <a href="../traits/asm.rs.html#12-15">InlineAsmOperandRef::In</a> { <a href="#1076">reg</a>, <a href="#1077">value</a> }
+                    <span class="kw">let </span>value = <a class="self" href="#1054">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#1056">bx</a>, <a href="#1072">value</a>);
+                    <a href="../traits/asm.rs.html#12-15">InlineAsmOperandRef::In</a> { <a href="#1072">reg</a>, <a href="#1073">value</a> }
                 }
                 <a href="../../../rustc_middle/mir/syntax/enum.InlineAsmOperand.html">mir::InlineAsmOperand::Out</a> { reg, late, <span class="kw-2">ref </span>place } =&gt; {
-                    <span class="kw">let </span>place = <a href="#1080">place</a>.map(|place| <a class="self" href="#1058">self</a>.<a href="place.rs.html#431">codegen_place</a>(<a href="#1060">bx</a>, <a href="#1081">place</a>.as_ref()));
-                    <a href="../traits/asm.rs.html#16-20">InlineAsmOperandRef::Out</a> { <a href="#1080">reg</a>, <a href="#1080">late</a>, <a href="#1081">place</a> }
+                    <span class="kw">let </span>place = <a href="#1076">place</a>.map(|place| <a class="self" href="#1054">self</a>.<a href="place.rs.html#431">codegen_place</a>(<a href="#1056">bx</a>, <a href="#1077">place</a>.as_ref()));
+                    <a href="../traits/asm.rs.html#16-20">InlineAsmOperandRef::Out</a> { <a href="#1076">reg</a>, <a href="#1076">late</a>, <a href="#1077">place</a> }
                 }
                 <a href="../../../rustc_middle/mir/syntax/enum.InlineAsmOperand.html">mir::InlineAsmOperand::InOut</a> { reg, late, <span class="kw-2">ref </span>in_value, <span class="kw-2">ref </span>out_place } =&gt; {
-                    <span class="kw">let </span>in_value = <a class="self" href="#1058">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#1060">bx</a>, <a href="#1084">in_value</a>);
+                    <span class="kw">let </span>in_value = <a class="self" href="#1054">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#1056">bx</a>, <a href="#1080">in_value</a>);
                     <span class="kw">let </span>out_place =
-                        <a href="#1084">out_place</a>.map(|out_place| <a class="self" href="#1058">self</a>.<a href="place.rs.html#431">codegen_place</a>(<a href="#1060">bx</a>, <a href="#1087">out_place</a>.as_ref()));
-                    <a href="../traits/asm.rs.html#21-26">InlineAsmOperandRef::InOut</a> { <a href="#1084">reg</a>, <a href="#1084">late</a>, <a href="#1085">in_value</a>, <a href="#1086">out_place</a> }
+                        <a href="#1080">out_place</a>.map(|out_place| <a class="self" href="#1054">self</a>.<a href="place.rs.html#431">codegen_place</a>(<a href="#1056">bx</a>, <a href="#1083">out_place</a>.as_ref()));
+                    <a href="../traits/asm.rs.html#21-26">InlineAsmOperandRef::InOut</a> { <a href="#1080">reg</a>, <a href="#1080">late</a>, <a href="#1081">in_value</a>, <a href="#1082">out_place</a> }
                 }
                 <a href="../../../rustc_middle/mir/syntax/enum.InlineAsmOperand.html">mir::InlineAsmOperand::Const</a> { <span class="kw-2">ref </span>value } =&gt; {
-                    <span class="kw">let </span>const_value = <a class="self" href="#1058">self</a>.<a href="constant.rs.html#23-27">eval_mir_constant</a>(<a href="#1090">value</a>);
+                    <span class="kw">let </span>const_value = <a class="self" href="#1054">self</a>.<a href="constant.rs.html#23-29">eval_mir_constant</a>(<a href="#1086">value</a>);
                     <span class="kw">let </span>string = <a href="../common.rs.html#194-216">common::asm_const_to_str</a>(
-                        <a href="#1060">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
-                        <a href="#1071">span</a>,
-                        <a href="#1091">const_value</a>,
-                        <a href="#1060">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#1090">value</a>.ty()),
+                        <a href="#1056">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
+                        <a href="#1067">span</a>,
+                        <a href="#1087">const_value</a>,
+                        <a href="#1056">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#1086">value</a>.ty()),
                     );
-                    <a href="../traits/asm.rs.html#27-29">InlineAsmOperandRef::Const</a> { <a href="#1092">string</a> }
+                    <a href="../traits/asm.rs.html#27-29">InlineAsmOperandRef::Const</a> { <a href="#1088">string</a> }
                 }
                 <a href="../../../rustc_middle/mir/syntax/enum.InlineAsmOperand.html">mir::InlineAsmOperand::SymFn</a> { <span class="kw-2">ref </span>value } =&gt; {
-                    <span class="kw">let </span>literal = <a class="self" href="#1058">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#1100">value</a>.literal);
-                    <span class="kw">if let </span>ty::FnDef(def_id, args) = <span class="kw-2">*</span><a href="#1101">literal</a>.ty().kind() {
+                    <span class="kw">let </span>const_ = <a class="self" href="#1054">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#1096">value</a>.const_);
+                    <span class="kw">if let </span>ty::FnDef(def_id, args) = <span class="kw-2">*</span><a href="#1097">const_</a>.ty().kind() {
                         <span class="kw">let </span>instance = ty::Instance::resolve_for_fn_ptr(
-                            <a href="#1060">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
+                            <a href="#1056">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
                             ty::ParamEnv::reveal_all(),
-                            <a href="#1102">def_id</a>,
-                            <a href="#1102">args</a>,
+                            <a href="#1098">def_id</a>,
+                            <a href="#1098">args</a>,
                         )
                         .unwrap();
-                        <a href="../traits/asm.rs.html#30-32">InlineAsmOperandRef::SymFn</a> { <a href="#1103">instance</a> }
+                        <a href="../traits/asm.rs.html#30-32">InlineAsmOperandRef::SymFn</a> { <a href="#1099">instance</a> }
                     } <span class="kw">else </span>{
                         <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(span, <span class="string">&quot;invalid type for asm sym (fn)&quot;</span>);
                     }
                 }
                 <a href="../../../rustc_middle/mir/syntax/enum.InlineAsmOperand.html">mir::InlineAsmOperand::SymStatic</a> { def_id } =&gt; {
-                    <a href="../traits/asm.rs.html#33-35">InlineAsmOperandRef::SymStatic</a> { <a href="#1115">def_id</a> }
+                    <a href="../traits/asm.rs.html#33-35">InlineAsmOperandRef::SymStatic</a> { <a href="#1111">def_id</a> }
                 }
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-        <a href="#1059">helper</a>.<a href="#252-298">do_inlineasm</a>(
-            <a class="self" href="#1058">self</a>,
-            <a href="#1060">bx</a>,
-            <a href="#1062">template</a>,
-            <span class="kw-2">&amp;</span><a href="#1073">operands</a>,
-            <a href="#1064">options</a>,
-            <a href="#1065">line_spans</a>,
-            <a href="#1066">destination</a>,
-            <a href="#1067">unwind</a>,
-            <a href="#1068">instance</a>,
-            <a href="#1069">mergeable_succ</a>,
+        <a href="#1055">helper</a>.<a href="#248-294">do_inlineasm</a>(
+            <a class="self" href="#1054">self</a>,
+            <a href="#1056">bx</a>,
+            <a href="#1058">template</a>,
+            <span class="kw-2">&amp;</span><a href="#1069">operands</a>,
+            <a href="#1060">options</a>,
+            <a href="#1061">line_spans</a>,
+            <a href="#1062">destination</a>,
+            <a href="#1063">unwind</a>,
+            <a href="#1064">instance</a>,
+            <a href="#1065">mergeable_succ</a>,
         )
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Bx: BuilderMethods&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; FunctionCx&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Bx&gt; {
     <span class="kw">pub fn </span>codegen_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>) {
-        <span class="kw">let </span>llbb = <span class="kw">match </span><a class="self" href="#1137">self</a>.<a href="#1647-1658">try_llbb</a>(<a href="#1137">bb</a>) {
-            <span class="prelude-val">Some</span>(llbb) =&gt; <a href="#1139">llbb</a>,
+        <span class="kw">let </span>llbb = <span class="kw">match </span><a class="self" href="#1133">self</a>.<a href="#1643-1654">try_llbb</a>(<a href="#1133">bb</a>) {
+            <span class="prelude-val">Some</span>(llbb) =&gt; <a href="#1135">llbb</a>,
             <span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
         };
-        <span class="kw">let </span>bx = <span class="kw-2">&amp;mut </span>Bx::build(<a class="self" href="#1137">self</a>.cx, <a href="#1138">llbb</a>);
-        <span class="kw">let </span>mir = <a class="self" href="#1137">self</a>.mir;
+        <span class="kw">let </span>bx = <span class="kw-2">&amp;mut </span>Bx::build(<a class="self" href="#1133">self</a>.cx, <a href="#1134">llbb</a>);
+        <span class="kw">let </span>mir = <a class="self" href="#1133">self</a>.mir;
 
         <span class="comment">// MIR basic blocks stop at any function call. This may not be the case
         // for the backend&#39;s basic blocks, in which case we might be able to
         // combine multiple MIR basic blocks into a single backend basic block.
         </span><span class="kw">loop </span>{
-            <span class="kw">let </span>data = <span class="kw-2">&amp;</span><a href="#1143">mir</a>[<a href="#1137">bb</a>];
+            <span class="kw">let </span>data = <span class="kw-2">&amp;</span><a href="#1139">mir</a>[<a href="#1133">bb</a>];
 
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;codegen_block({:?}={:?})&quot;</span>, bb, data);
 
@@ -2925,8 +2917,8 @@
                 <span class="self">self</span>.codegen_statement(bx, statement);
             }
 
-            <span class="kw">let </span>merging_succ = <a class="self" href="#1137">self</a>.<a href="#1177-1300">codegen_terminator</a>(<a href="#1142">bx</a>, <a href="#1137">bb</a>, <a href="#1149">data</a>.terminator());
-            <span class="kw">if let </span><a href="#33">MergingSucc::False</a> = <a href="#1157">merging_succ</a> {
+            <span class="kw">let </span>merging_succ = <a class="self" href="#1133">self</a>.<a href="#1173-1296">codegen_terminator</a>(<a href="#1138">bx</a>, <a href="#1133">bb</a>, <a href="#1145">data</a>.terminator());
+            <span class="kw">if let </span><a href="#33">MergingSucc::False</a> = <a href="#1153">merging_succ</a> {
                 <span class="kw">break</span>;
             }
 
@@ -2937,11 +2929,11 @@
             // Note: we must not have already generated code for the successor.
             // This is implicitly ensured by the reverse postorder traversal,
             // and the assertion explicitly guarantees that.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>successors = <a href="#1149">data</a>.terminator().successors();
-            <span class="kw">let </span>succ = <a href="#1169">successors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>successors = <a href="#1145">data</a>.terminator().successors();
+            <span class="kw">let </span>succ = <a href="#1165">successors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="macro">matches!</span>(<span class="self">self</span>.cached_llbbs[succ], CachedLlbb::None));
-            <a class="self" href="#1137">self</a>.cached_llbbs[<a href="#1170">succ</a>] = <a href="mod.rs.html#39">CachedLlbb::Skip</a>;
-            <a href="#1137">bb</a> = <a href="#1170">succ</a>;
+            <a class="self" href="#1133">self</a>.cached_llbbs[<a href="#1166">succ</a>] = <a href="mod.rs.html#39">CachedLlbb::Skip</a>;
+            <a href="#1133">bb</a> = <a href="#1166">succ</a>;
         }
     }
 
@@ -2953,15 +2945,15 @@
     ) -&gt; <a href="#32-35">MergingSucc</a> {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;codegen_terminator: {:?}&quot;</span>, terminator);
 
-        <span class="kw">let </span>helper = <a href="#39-42">TerminatorCodegenHelper</a> { <a href="#1180">bb</a>, <a href="#1181">terminator</a> };
+        <span class="kw">let </span>helper = <a href="#39-42">TerminatorCodegenHelper</a> { <a href="#1176">bb</a>, <a href="#1177">terminator</a> };
 
         <span class="kw">let </span>mergeable_succ = || {
             <span class="comment">// Note: any call to `switch_to_block` will invalidate a `true` value
             // of `mergeable_succ`.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>successors = <a href="#1181">terminator</a>.successors();
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(succ) = <a href="#1190">successors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>()
+            </span><span class="kw">let </span><span class="kw-2">mut </span>successors = <a href="#1177">terminator</a>.successors();
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(succ) = <a href="#1186">successors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>()
                 &amp;&amp; successors.next().is_none()
-                &amp;&amp; <span class="kw">let </span><span class="kw-2">&amp;</span>[succ_pred] = <a class="self" href="#1178">self</a>.mir.basic_blocks.predecessors()[<a href="#1191">succ</a>].as_slice()
+                &amp;&amp; <span class="kw">let </span><span class="kw-2">&amp;</span>[succ_pred] = <a class="self" href="#1174">self</a>.mir.basic_blocks.predecessors()[<a href="#1187">succ</a>].as_slice()
             {
                 <span class="comment">// bb has a single successor, and bb is its only predecessor. This
                 // makes it a candidate for merging.
@@ -2972,52 +2964,52 @@
             </span>}
         };
 
-        <a class="self" href="#1178">self</a>.<a href="debuginfo.rs.html#216-221">set_debug_loc</a>(<a href="#1179">bx</a>, <a href="#1181">terminator</a>.source_info);
-        <span class="kw">match </span><a href="#1181">terminator</a>.kind {
+        <a class="self" href="#1174">self</a>.<a href="debuginfo.rs.html#207-212">set_debug_loc</a>(<a href="#1175">bx</a>, <a href="#1177">terminator</a>.source_info);
+        <span class="kw">match </span><a href="#1177">terminator</a>.kind {
             mir::TerminatorKind::UnwindResume =&gt; {
-                <a class="self" href="#1178">self</a>.<a href="#304-317">codegen_resume_terminator</a>(<a href="#1185">helper</a>, <a href="#1179">bx</a>);
+                <a class="self" href="#1174">self</a>.<a href="#300-313">codegen_resume_terminator</a>(<a href="#1181">helper</a>, <a href="#1175">bx</a>);
                 <a href="#33">MergingSucc::False</a>
             }
 
             mir::TerminatorKind::UnwindTerminate(reason) =&gt; {
-                <a class="self" href="#1178">self</a>.<a href="#647-673">codegen_terminate_terminator</a>(<a href="#1185">helper</a>, <a href="#1179">bx</a>, <a href="#1181">terminator</a>, <a href="#1211">reason</a>);
+                <a class="self" href="#1174">self</a>.<a href="#643-669">codegen_terminate_terminator</a>(<a href="#1181">helper</a>, <a href="#1175">bx</a>, <a href="#1177">terminator</a>, <a href="#1207">reason</a>);
                 <a href="#33">MergingSucc::False</a>
             }
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Goto</a> { target } =&gt; {
-                <a href="#1185">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#1178">self</a>, <a href="#1179">bx</a>, <a href="#1216">target</a>, <a href="#1187">mergeable_succ</a>())
+                <a href="#1181">helper</a>.<a href="#122-147">funclet_br</a>(<a class="self" href="#1174">self</a>, <a href="#1175">bx</a>, <a href="#1212">target</a>, <a href="#1183">mergeable_succ</a>())
             }
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::SwitchInt</a> { <span class="kw-2">ref </span>discr, <span class="kw-2">ref </span>targets } =&gt; {
-                <a class="self" href="#1178">self</a>.<a href="#319-379">codegen_switchint_terminator</a>(<a href="#1185">helper</a>, <a href="#1179">bx</a>, <a href="#1220">discr</a>, <a href="#1220">targets</a>);
+                <a class="self" href="#1174">self</a>.<a href="#315-375">codegen_switchint_terminator</a>(<a href="#1181">helper</a>, <a href="#1175">bx</a>, <a href="#1216">discr</a>, <a href="#1216">targets</a>);
                 <a href="#33">MergingSucc::False</a>
             }
 
             mir::TerminatorKind::Return =&gt; {
-                <a class="self" href="#1178">self</a>.<a href="#381-446">codegen_return_terminator</a>(<a href="#1179">bx</a>);
+                <a class="self" href="#1174">self</a>.<a href="#377-442">codegen_return_terminator</a>(<a href="#1175">bx</a>);
                 <a href="#33">MergingSucc::False</a>
             }
 
             mir::TerminatorKind::Unreachable =&gt; {
-                <a href="#1179">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
+                <a href="#1175">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
                 <a href="#33">MergingSucc::False</a>
             }
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Drop</a> { place, target, unwind, replace: <span class="kw">_ </span>} =&gt; {
-                <a class="self" href="#1178">self</a>.<a href="#448">codegen_drop_terminator</a>(<a href="#1185">helper</a>, <a href="#1179">bx</a>, <a href="#1235">place</a>, <a href="#1235">target</a>, <a href="#1235">unwind</a>, <a href="#1187">mergeable_succ</a>())
+                <a class="self" href="#1174">self</a>.<a href="#444">codegen_drop_terminator</a>(<a href="#1181">helper</a>, <a href="#1175">bx</a>, <a href="#1231">place</a>, <a href="#1231">target</a>, <a href="#1231">unwind</a>, <a href="#1183">mergeable_succ</a>())
             }
 
-            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Assert</a> { <span class="kw-2">ref </span>cond, expected, <span class="kw-2">ref </span>msg, target, unwind } =&gt; <span class="self"><a href="#1178">self</a>
-                </span>.<a href="#567-645">codegen_assert_terminator</a>(
-                    <a href="#1185">helper</a>,
-                    <a href="#1179">bx</a>,
-                    <a href="#1181">terminator</a>,
-                    <a href="#1239">cond</a>,
-                    <a href="#1239">expected</a>,
-                    <a href="#1239">msg</a>,
-                    <a href="#1239">target</a>,
-                    <a href="#1239">unwind</a>,
-                    <a href="#1187">mergeable_succ</a>(),
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Assert</a> { <span class="kw-2">ref </span>cond, expected, <span class="kw-2">ref </span>msg, target, unwind } =&gt; <span class="self"><a href="#1174">self</a>
+                </span>.<a href="#563-641">codegen_assert_terminator</a>(
+                    <a href="#1181">helper</a>,
+                    <a href="#1175">bx</a>,
+                    <a href="#1177">terminator</a>,
+                    <a href="#1235">cond</a>,
+                    <a href="#1235">expected</a>,
+                    <a href="#1235">msg</a>,
+                    <a href="#1235">target</a>,
+                    <a href="#1235">unwind</a>,
+                    <a href="#1183">mergeable_succ</a>(),
                 ),
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Call</a> {
@@ -3028,17 +3020,17 @@
                 unwind,
                 call_source: <span class="kw">_</span>,
                 fn_span,
-            } =&gt; <a class="self" href="#1178">self</a>.<a href="#744-1055">codegen_call_terminator</a>(
-                <a href="#1185">helper</a>,
-                <a href="#1179">bx</a>,
-                <a href="#1181">terminator</a>,
-                <a href="#1253">func</a>,
-                <a href="#1254">args</a>,
-                <a href="#1255">destination</a>,
-                <a href="#1256">target</a>,
-                <a href="#1257">unwind</a>,
-                <a href="#1259">fn_span</a>,
-                <a href="#1187">mergeable_succ</a>(),
+            } =&gt; <a class="self" href="#1174">self</a>.<a href="#740-1051">codegen_call_terminator</a>(
+                <a href="#1181">helper</a>,
+                <a href="#1175">bx</a>,
+                <a href="#1177">terminator</a>,
+                <a href="#1249">func</a>,
+                <a href="#1250">args</a>,
+                <a href="#1251">destination</a>,
+                <a href="#1252">target</a>,
+                <a href="#1253">unwind</a>,
+                <a href="#1255">fn_span</a>,
+                <a href="#1183">mergeable_succ</a>(),
             ),
             mir::TerminatorKind::GeneratorDrop | <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Yield</a> { .. } =&gt; {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;generator ops in codegen&quot;</span>)
@@ -3054,18 +3046,18 @@
                 line_spans,
                 destination,
                 unwind,
-            } =&gt; <a class="self" href="#1178">self</a>.<a href="#1057-1133">codegen_asm_terminator</a>(
-                <a href="#1185">helper</a>,
-                <a href="#1179">bx</a>,
-                <a href="#1181">terminator</a>,
-                <a href="#1280">template</a>,
-                <a href="#1281">operands</a>,
-                <a href="#1282">options</a>,
-                <a href="#1283">line_spans</a>,
-                <a href="#1284">destination</a>,
-                <a href="#1285">unwind</a>,
-                <a class="self" href="#1178">self</a>.instance,
-                <a href="#1187">mergeable_succ</a>(),
+            } =&gt; <a class="self" href="#1174">self</a>.<a href="#1053-1129">codegen_asm_terminator</a>(
+                <a href="#1181">helper</a>,
+                <a href="#1175">bx</a>,
+                <a href="#1177">terminator</a>,
+                <a href="#1276">template</a>,
+                <a href="#1277">operands</a>,
+                <a href="#1278">options</a>,
+                <a href="#1279">line_spans</a>,
+                <a href="#1280">destination</a>,
+                <a href="#1281">unwind</a>,
+                <a class="self" href="#1174">self</a>.instance,
+                <a href="#1183">mergeable_succ</a>(),
             ),
         }
     }
@@ -3077,24 +3069,24 @@
         llargs: <span class="kw-2">&amp;mut </span>Vec&lt;Bx::Value&gt;,
         arg: <span class="kw-2">&amp;</span>ArgAbi&lt;<span class="lifetime">&#39;tcx</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) {
-        <span class="kw">match </span><a href="#1307">arg</a>.mode {
+        <span class="kw">match </span><a href="#1303">arg</a>.mode {
             PassMode::Ignore =&gt; <span class="kw">return</span>,
             <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { pad_i32: <span class="bool-val">true</span>, .. } =&gt; {
                 <span class="comment">// Fill padding with undef value, where applicable.
-                </span><a href="#1306">llargs</a>.push(<a href="#1304">bx</a>.<a href="../traits/consts.rs.html#10">const_undef</a>(<a href="#1304">bx</a>.<a href="../traits/type_.rs.html#101">reg_backend_type</a>(<span class="kw-2">&amp;</span>Reg::i32())));
+                </span><a href="#1302">llargs</a>.push(<a href="#1300">bx</a>.<a href="../traits/consts.rs.html#10">const_undef</a>(<a href="#1300">bx</a>.<a href="../traits/type_.rs.html#101">reg_backend_type</a>(<span class="kw-2">&amp;</span>Reg::i32())));
             }
-            PassMode::Pair(..) =&gt; <span class="kw">match </span><a href="#1305">op</a>.val {
+            PassMode::Pair(..) =&gt; <span class="kw">match </span><a href="#1301">op</a>.val {
                 <a href="operand.rs.html#46">Pair</a>(a, b) =&gt; {
-                    <a href="#1306">llargs</a>.push(<a href="#1316">a</a>);
-                    <a href="#1306">llargs</a>.push(<a href="#1316">b</a>);
+                    <a href="#1302">llargs</a>.push(<a href="#1312">a</a>);
+                    <a href="#1302">llargs</a>.push(<a href="#1312">b</a>);
                     <span class="kw">return</span>;
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;codegen_argument: {:?} invalid for pair argument&quot;</span>, op),
             },
-            <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Indirect</a> { attrs: <span class="kw">_</span>, meta_attrs: <span class="prelude-val">Some</span>(<span class="kw">_</span>), on_stack: <span class="kw">_ </span>} =&gt; <span class="kw">match </span><a href="#1305">op</a>.val {
+            <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Indirect</a> { attrs: <span class="kw">_</span>, meta_attrs: <span class="prelude-val">Some</span>(<span class="kw">_</span>), on_stack: <span class="kw">_ </span>} =&gt; <span class="kw">match </span><a href="#1301">op</a>.val {
                 <a href="operand.rs.html#31">Ref</a>(a, <span class="prelude-val">Some</span>(b), <span class="kw">_</span>) =&gt; {
-                    <a href="#1306">llargs</a>.push(<a href="#1324">a</a>);
-                    <a href="#1306">llargs</a>.push(<a href="#1324">b</a>);
+                    <a href="#1302">llargs</a>.push(<a href="#1320">a</a>);
+                    <a href="#1302">llargs</a>.push(<a href="#1320">b</a>);
                     <span class="kw">return</span>;
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;codegen_argument: {:?} invalid for unsized indirect argument&quot;</span>, op),
@@ -3103,54 +3095,54 @@
         }
 
         <span class="comment">// Force by-ref if we have to load through a cast pointer.
-        </span><span class="kw">let </span>(<span class="kw-2">mut </span>llval, align, by_ref) = <span class="kw">match </span><a href="#1305">op</a>.val {
-            <a href="operand.rs.html#38">Immediate</a>(<span class="kw">_</span>) | <a href="operand.rs.html#46">Pair</a>(..) =&gt; <span class="kw">match </span><a href="#1307">arg</a>.mode {
+        </span><span class="kw">let </span>(<span class="kw-2">mut </span>llval, align, by_ref) = <span class="kw">match </span><a href="#1301">op</a>.val {
+            <a href="operand.rs.html#38">Immediate</a>(<span class="kw">_</span>) | <a href="operand.rs.html#46">Pair</a>(..) =&gt; <span class="kw">match </span><a href="#1303">arg</a>.mode {
                 <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Indirect</a> { attrs, .. } =&gt; {
                     <span class="comment">// Indirect argument may have higher alignment requirements than the type&#39;s alignment.
                     // This can happen, e.g. when passing types with &lt;4 byte alignment on the stack on x86.
-                    </span><span class="kw">let </span>required_align = <span class="kw">match </span><a href="#1337">attrs</a>.pointee_align {
-                        <span class="prelude-val">Some</span>(pointee_align) =&gt; cmp::max(<a href="#1341">pointee_align</a>, <a href="#1307">arg</a>.layout.align.abi),
-                        <span class="prelude-val">None </span>=&gt; <a href="#1307">arg</a>.layout.align.abi,
+                    </span><span class="kw">let </span>required_align = <span class="kw">match </span><a href="#1333">attrs</a>.pointee_align {
+                        <span class="prelude-val">Some</span>(pointee_align) =&gt; cmp::max(<a href="#1337">pointee_align</a>, <a href="#1303">arg</a>.layout.align.abi),
+                        <span class="prelude-val">None </span>=&gt; <a href="#1303">arg</a>.layout.align.abi,
                     };
-                    <span class="kw">let </span>scratch = PlaceRef::alloca_aligned(<a href="#1304">bx</a>, <a href="#1307">arg</a>.layout, <a href="#1340">required_align</a>);
-                    <a href="#1305">op</a>.val.<a href="operand.rs.html#376-382">store</a>(<a href="#1304">bx</a>, <a href="#1344">scratch</a>);
-                    (<a href="#1344">scratch</a>.llval, <a href="#1344">scratch</a>.align, <span class="bool-val">true</span>)
+                    <span class="kw">let </span>scratch = PlaceRef::alloca_aligned(<a href="#1300">bx</a>, <a href="#1303">arg</a>.layout, <a href="#1336">required_align</a>);
+                    <a href="#1301">op</a>.val.<a href="operand.rs.html#372-378">store</a>(<a href="#1300">bx</a>, <a href="#1340">scratch</a>);
+                    (<a href="#1340">scratch</a>.llval, <a href="#1340">scratch</a>.align, <span class="bool-val">true</span>)
                 }
                 <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { .. } =&gt; {
-                    <span class="kw">let </span>scratch = PlaceRef::alloca(<a href="#1304">bx</a>, <a href="#1307">arg</a>.layout);
-                    <a href="#1305">op</a>.val.<a href="operand.rs.html#376-382">store</a>(<a href="#1304">bx</a>, <a href="#1349">scratch</a>);
-                    (<a href="#1349">scratch</a>.llval, <a href="#1349">scratch</a>.align, <span class="bool-val">true</span>)
+                    <span class="kw">let </span>scratch = PlaceRef::alloca(<a href="#1300">bx</a>, <a href="#1303">arg</a>.layout);
+                    <a href="#1301">op</a>.val.<a href="operand.rs.html#372-378">store</a>(<a href="#1300">bx</a>, <a href="#1345">scratch</a>);
+                    (<a href="#1345">scratch</a>.llval, <a href="#1345">scratch</a>.align, <span class="bool-val">true</span>)
                 }
-                <span class="kw">_ </span>=&gt; (<a href="#1305">op</a>.<a href="operand.rs.html#233-250">immediate_or_packed_pair</a>(<a href="#1304">bx</a>), <a href="#1307">arg</a>.layout.align.abi, <span class="bool-val">false</span>),
+                <span class="kw">_ </span>=&gt; (<a href="#1301">op</a>.<a href="operand.rs.html#229-246">immediate_or_packed_pair</a>(<a href="#1300">bx</a>), <a href="#1303">arg</a>.layout.align.abi, <span class="bool-val">false</span>),
             },
-            <a href="operand.rs.html#31">Ref</a>(llval, <span class="kw">_</span>, align) =&gt; <span class="kw">match </span><a href="#1307">arg</a>.mode {
+            <a href="operand.rs.html#31">Ref</a>(llval, <span class="kw">_</span>, align) =&gt; <span class="kw">match </span><a href="#1303">arg</a>.mode {
                 <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Indirect</a> { attrs, .. } =&gt; {
-                    <span class="kw">let </span>required_align = <span class="kw">match </span><a href="#1356">attrs</a>.pointee_align {
-                        <span class="prelude-val">Some</span>(pointee_align) =&gt; cmp::max(<a href="#1358">pointee_align</a>, <a href="#1307">arg</a>.layout.align.abi),
-                        <span class="prelude-val">None </span>=&gt; <a href="#1307">arg</a>.layout.align.abi,
+                    <span class="kw">let </span>required_align = <span class="kw">match </span><a href="#1352">attrs</a>.pointee_align {
+                        <span class="prelude-val">Some</span>(pointee_align) =&gt; cmp::max(<a href="#1354">pointee_align</a>, <a href="#1303">arg</a>.layout.align.abi),
+                        <span class="prelude-val">None </span>=&gt; <a href="#1303">arg</a>.layout.align.abi,
                     };
                     <span class="kw">if </span>align &lt; required_align {
                         <span class="comment">// For `foo(packed.large_field)`, and types with &lt;4 byte alignment on x86,
                         // alignment requirements may be higher than the type&#39;s alignment, so copy
                         // to a higher-aligned alloca.
-                        </span><span class="kw">let </span>scratch = PlaceRef::alloca_aligned(<a href="#1304">bx</a>, <a href="#1307">arg</a>.layout, <a href="#1357">required_align</a>);
+                        </span><span class="kw">let </span>scratch = PlaceRef::alloca_aligned(<a href="#1300">bx</a>, <a href="#1303">arg</a>.layout, <a href="#1353">required_align</a>);
                         <a href="../base.rs.html#356-378">base::memcpy_ty</a>(
-                            <a href="#1304">bx</a>,
-                            <a href="#1365">scratch</a>.llval,
-                            <a href="#1365">scratch</a>.align,
-                            <a href="#1355">llval</a>,
-                            <a href="#1355">align</a>,
-                            <a href="#1305">op</a>.layout,
+                            <a href="#1300">bx</a>,
+                            <a href="#1361">scratch</a>.llval,
+                            <a href="#1361">scratch</a>.align,
+                            <a href="#1351">llval</a>,
+                            <a href="#1351">align</a>,
+                            <a href="#1301">op</a>.layout,
                             MemFlags::empty(),
                         );
-                        (<a href="#1365">scratch</a>.llval, <a href="#1365">scratch</a>.align, <span class="bool-val">true</span>)
+                        (<a href="#1361">scratch</a>.llval, <a href="#1361">scratch</a>.align, <span class="bool-val">true</span>)
                     } <span class="kw">else </span>{
-                        (<a href="#1355">llval</a>, <a href="#1355">align</a>, <span class="bool-val">true</span>)
+                        (<a href="#1351">llval</a>, <a href="#1351">align</a>, <span class="bool-val">true</span>)
                     }
                 }
-                <span class="kw">_ </span>=&gt; (<a href="#1355">llval</a>, <a href="#1355">align</a>, <span class="bool-val">true</span>),
+                <span class="kw">_ </span>=&gt; (<a href="#1351">llval</a>, <a href="#1351">align</a>, <span class="bool-val">true</span>),
             },
-            <a href="operand.rs.html#55">ZeroSized</a> =&gt; <span class="kw">match </span><a href="#1307">arg</a>.mode {
+            <a href="operand.rs.html#55">ZeroSized</a> =&gt; <span class="kw">match </span><a href="#1303">arg</a>.mode {
                 <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Indirect</a> { on_stack, .. } =&gt; {
                     <span class="kw">if </span>on_stack {
                         <span class="comment">// It doesn&#39;t seem like any target can have `byval` ZSTs, so this assert
@@ -3160,8 +3152,8 @@
                     <span class="comment">// Though `extern &quot;Rust&quot;` doesn&#39;t pass ZSTs, some ABIs pass
                     // a pointer for `repr(C)` structs even when empty, so get
                     // one from an `alloca` (which can be left uninitialized).
-                    </span><span class="kw">let </span>scratch = PlaceRef::alloca(<a href="#1304">bx</a>, <a href="#1307">arg</a>.layout);
-                    (<a href="#1392">scratch</a>.llval, <a href="#1392">scratch</a>.align, <span class="bool-val">true</span>)
+                    </span><span class="kw">let </span>scratch = PlaceRef::alloca(<a href="#1300">bx</a>, <a href="#1303">arg</a>.layout);
+                    (<a href="#1388">scratch</a>.llval, <a href="#1388">scratch</a>.align, <span class="bool-val">true</span>)
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;ZST {op:?} wasn&#39;t ignored, but was passed with abi {arg:?}&quot;</span>),
             },
@@ -3169,27 +3161,27 @@
 
         <span class="kw">if </span>by_ref &amp;&amp; !arg.is_indirect() {
             <span class="comment">// Have to load the argument, maybe while casting it.
-            </span><span class="kw">if let </span><a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { cast: ty, .. } = <span class="kw-2">&amp;</span><a href="#1307">arg</a>.mode {
-                <span class="kw">let </span>llty = <a href="#1304">bx</a>.<a href="../traits/type_.rs.html#98">cast_backend_type</a>(<a href="#1401">ty</a>);
-                <a href="#1335">llval</a> = <a href="#1304">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#1402">llty</a>, <a href="#1335">llval</a>, <a href="#1335">align</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">min</a>(<a href="#1307">arg</a>.layout.align.abi));
+            </span><span class="kw">if let </span><a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { cast: ty, .. } = <span class="kw-2">&amp;</span><a href="#1303">arg</a>.mode {
+                <span class="kw">let </span>llty = <a href="#1300">bx</a>.<a href="../traits/type_.rs.html#98">cast_backend_type</a>(<a href="#1397">ty</a>);
+                <a href="#1331">llval</a> = <a href="#1300">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#1398">llty</a>, <a href="#1331">llval</a>, <a href="#1331">align</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">min</a>(<a href="#1303">arg</a>.layout.align.abi));
             } <span class="kw">else </span>{
                 <span class="comment">// We can&#39;t use `PlaceRef::load` here because the argument
                 // may have a type we don&#39;t treat as immediate, but the ABI
                 // used for this call is passing it by-value. In that case,
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
-                </span><a href="#1335">llval</a> = <a href="#1304">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#1304">bx</a>.<a href="../traits/type_.rs.html#97">backend_type</a>(<a href="#1307">arg</a>.layout), <a href="#1335">llval</a>, <a href="#1335">align</a>);
-                <span class="kw">if let </span>abi::Abi::Scalar(scalar) = <a href="#1307">arg</a>.layout.abi {
+                </span><a href="#1331">llval</a> = <a href="#1300">bx</a>.<a href="../traits/builder.rs.html#142">load</a>(<a href="#1300">bx</a>.<a href="../traits/type_.rs.html#97">backend_type</a>(<a href="#1303">arg</a>.layout), <a href="#1331">llval</a>, <a href="#1331">align</a>);
+                <span class="kw">if let </span>abi::Abi::Scalar(scalar) = <a href="#1303">arg</a>.layout.abi {
                     <span class="kw">if </span>scalar.is_bool() {
-                        <a href="#1304">bx</a>.<a href="../traits/builder.rs.html#162">range_metadata</a>(<a href="#1335">llval</a>, <a href="../../../rustc_abi/struct.WrappingRange.html">WrappingRange</a> { start: <span class="number">0</span>, end: <span class="number">1 </span>});
+                        <a href="#1300">bx</a>.<a href="../traits/builder.rs.html#162">range_metadata</a>(<a href="#1331">llval</a>, <a href="../../../rustc_abi/struct.WrappingRange.html">WrappingRange</a> { start: <span class="number">0</span>, end: <span class="number">1 </span>});
                     }
                 }
                 <span class="comment">// We store bools as `i8` so we need to truncate to `i1`.
-                </span><a href="#1335">llval</a> = <a href="#1304">bx</a>.<a href="../traits/builder.rs.html#130-136">to_immediate</a>(<a href="#1335">llval</a>, <a href="#1307">arg</a>.layout);
+                </span><a href="#1331">llval</a> = <a href="#1300">bx</a>.<a href="../traits/builder.rs.html#130-136">to_immediate</a>(<a href="#1331">llval</a>, <a href="#1303">arg</a>.layout);
             }
         }
 
-        <a href="#1306">llargs</a>.push(<a href="#1335">llval</a>);
+        <a href="#1302">llargs</a>.push(<a href="#1331">llval</a>);
     }
 
     <span class="kw">fn </span>codegen_arguments_untupled(
@@ -3199,17 +3191,17 @@
         llargs: <span class="kw-2">&amp;mut </span>Vec&lt;Bx::Value&gt;,
         args: <span class="kw-2">&amp;</span>[ArgAbi&lt;<span class="lifetime">&#39;tcx</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;],
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <span class="kw">let </span>tuple = <a class="self" href="#1425">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#1426">bx</a>, <a href="#1427">operand</a>);
+        <span class="kw">let </span>tuple = <a class="self" href="#1421">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#1422">bx</a>, <a href="#1423">operand</a>);
 
         <span class="comment">// Handle both by-ref and immediate tuples.
-        </span><span class="kw">if let </span><a href="operand.rs.html#31">Ref</a>(llval, <span class="prelude-val">None</span>, align) = <a href="#1431">tuple</a>.val {
-            <span class="kw">let </span>tuple_ptr = PlaceRef::new_sized_aligned(<a href="#1434">llval</a>, <a href="#1431">tuple</a>.layout, <a href="#1434">align</a>);
+        </span><span class="kw">if let </span><a href="operand.rs.html#31">Ref</a>(llval, <span class="prelude-val">None</span>, align) = <a href="#1427">tuple</a>.val {
+            <span class="kw">let </span>tuple_ptr = PlaceRef::new_sized_aligned(<a href="#1430">llval</a>, <a href="#1427">tuple</a>.layout, <a href="#1430">align</a>);
             <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..tuple.layout.fields.count() {
                 <span class="kw">let </span>field_ptr = tuple_ptr.project_field(bx, i);
                 <span class="kw">let </span>field = bx.load_operand(field_ptr);
                 <span class="self">self</span>.codegen_argument(bx, field, llargs, <span class="kw-2">&amp;</span>args[i]);
             }
-        } <span class="kw">else if let </span><a href="operand.rs.html#31">Ref</a>(<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="kw">_</span>) = <a href="#1431">tuple</a>.val {
+        } <span class="kw">else if let </span><a href="operand.rs.html#31">Ref</a>(<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="kw">_</span>) = <a href="#1427">tuple</a>.val {
             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;closure arguments must be sized&quot;</span>)
         } <span class="kw">else </span>{
             <span class="comment">// If the tuple is immediate, the elements are as well.
@@ -3218,7 +3210,7 @@
                 <span class="self">self</span>.codegen_argument(bx, op, llargs, <span class="kw-2">&amp;</span>args[i]);
             }
         }
-        <a href="#1431">tuple</a>.layout.fields.count()
+        <a href="#1427">tuple</a>.layout.fields.count()
     }
 
     <span class="kw">fn </span>get_caller_location(
@@ -3226,17 +3218,17 @@
         bx: <span class="kw-2">&amp;mut </span>Bx,
         <span class="kw-2">mut </span>source_info: <a href="../../../rustc_middle/mir/struct.SourceInfo.html">mir::SourceInfo</a>,
     ) -&gt; OperandRef&lt;<span class="lifetime">&#39;tcx</span>, Bx::Value&gt; {
-        <span class="kw">let </span>tcx = <a href="#1455">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>();
+        <span class="kw">let </span>tcx = <a href="#1451">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>();
 
         <span class="kw">let </span><span class="kw-2">mut </span>span_to_caller_location = |span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>| {
-            <span class="kw">let </span>topmost = <a href="#1460">span</a>.ctxt().outer_expn().expansion_cause().unwrap_or(<a href="#1460">span</a>);
-            <span class="kw">let </span>caller = <a href="#1458">tcx</a>.sess.source_map().lookup_char_pos(<a href="#1461">topmost</a>.lo());
-            <span class="kw">let </span>const_loc = <a href="#1458">tcx</a>.const_caller_location((
-                Symbol::intern(<span class="kw-2">&amp;</span><a href="#1462">caller</a>.file.name.prefer_remapped().to_string_lossy()),
-                <a href="#1462">caller</a>.line <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
-                <a href="#1462">caller</a>.col_display <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> + <span class="number">1</span>,
+            <span class="kw">let </span>topmost = <a href="#1456">span</a>.ctxt().outer_expn().expansion_cause().unwrap_or(<a href="#1456">span</a>);
+            <span class="kw">let </span>caller = <a href="#1454">tcx</a>.sess.source_map().lookup_char_pos(<a href="#1457">topmost</a>.lo());
+            <span class="kw">let </span>const_loc = <a href="#1454">tcx</a>.const_caller_location((
+                Symbol::intern(<span class="kw-2">&amp;</span><a href="#1458">caller</a>.file.name.prefer_remapped().to_string_lossy()),
+                <a href="#1458">caller</a>.line <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
+                <a href="#1458">caller</a>.col_display <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> + <span class="number">1</span>,
             ));
-            OperandRef::from_const(<a href="#1455">bx</a>, <a href="#1463">const_loc</a>, <a href="#1455">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().caller_location_ty())
+            OperandRef::from_const(<a href="#1451">bx</a>, <a href="#1459">const_loc</a>, <a href="#1451">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().caller_location_ty())
         };
 
         <span class="comment">// Walk up the `SourceScope`s, in case some of them are from MIR inlining.
@@ -3244,94 +3236,94 @@
         // function, and will be replaced with outer callsite spans as long
         // as the inlined functions were `#[track_caller]`.
         </span><span class="kw">loop </span>{
-            <span class="kw">let </span>scope_data = <span class="kw-2">&amp;</span><a class="self" href="#1454">self</a>.mir.source_scopes[<a href="#1456">source_info</a>.scope];
+            <span class="kw">let </span>scope_data = <span class="kw-2">&amp;</span><a class="self" href="#1450">self</a>.mir.source_scopes[<a href="#1452">source_info</a>.scope];
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((callee, callsite_span)) = <a href="#1476">scope_data</a>.inlined {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((callee, callsite_span)) = <a href="#1472">scope_data</a>.inlined {
                 <span class="comment">// Stop inside the most nested non-`#[track_caller]` function,
                 // before ever reaching its caller (which is irrelevant).
                 </span><span class="kw">if </span>!callee.def.requires_caller_location(tcx) {
-                    <span class="kw">return </span><a href="#1460">span_to_caller_location</a>(<a href="#1456">source_info</a>.span);
+                    <span class="kw">return </span><a href="#1456">span_to_caller_location</a>(<a href="#1452">source_info</a>.span);
                 }
-                <a href="#1456">source_info</a>.span = <a href="#1478">callsite_span</a>;
+                <a href="#1452">source_info</a>.span = <a href="#1474">callsite_span</a>;
             }
 
             <span class="comment">// Skip past all of the parents with `inlined: None`.
-            </span><span class="kw">match </span><a href="#1476">scope_data</a>.inlined_parent_scope {
-                <span class="prelude-val">Some</span>(parent) =&gt; <a href="#1456">source_info</a>.scope = <a href="#1489">parent</a>,
+            </span><span class="kw">match </span><a href="#1472">scope_data</a>.inlined_parent_scope {
+                <span class="prelude-val">Some</span>(parent) =&gt; <a href="#1452">source_info</a>.scope = <a href="#1485">parent</a>,
                 <span class="prelude-val">None </span>=&gt; <span class="kw">break</span>,
             }
         }
 
         <span class="comment">// No inlined `SourceScope`s, or all of them were `#[track_caller]`.
-        </span><a class="self" href="#1454">self</a>.caller_location.unwrap_or_else(|| <a href="#1460">span_to_caller_location</a>(<a href="#1456">source_info</a>.span))
+        </span><a class="self" href="#1450">self</a>.caller_location.unwrap_or_else(|| <a href="#1456">span_to_caller_location</a>(<a href="#1452">source_info</a>.span))
     }
 
     <span class="kw">fn </span>get_personality_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bx: <span class="kw-2">&amp;mut </span>Bx) -&gt; PlaceRef&lt;<span class="lifetime">&#39;tcx</span>, Bx::Value&gt; {
-        <span class="kw">let </span>cx = <a href="#1498">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = <a class="self" href="#1498">self</a>.personality_slot {
-            <a href="#1500">slot</a>
+        <span class="kw">let </span>cx = <a href="#1494">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = <a class="self" href="#1494">self</a>.personality_slot {
+            <a href="#1496">slot</a>
         } <span class="kw">else </span>{
-            <span class="kw">let </span>layout = <a href="#1499">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(Ty::new_tup(
-                <a href="#1499">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
-                <span class="kw-2">&amp;</span>[Ty::new_mut_ptr(<a href="#1499">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(), <a href="#1499">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().types.u8), <a href="#1499">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().types.i32],
+            <span class="kw">let </span>layout = <a href="#1495">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(Ty::new_tup(
+                <a href="#1495">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(),
+                <span class="kw-2">&amp;</span>[Ty::new_mut_ptr(<a href="#1495">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(), <a href="#1495">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().types.u8), <a href="#1495">cx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>().types.i32],
             ));
-            <span class="kw">let </span>slot = PlaceRef::alloca(<a href="#1498">bx</a>, <a href="#1503">layout</a>);
-            <a class="self" href="#1498">self</a>.personality_slot = <span class="prelude-val">Some</span>(<a href="#1507">slot</a>);
-            <a href="#1507">slot</a>
+            <span class="kw">let </span>slot = PlaceRef::alloca(<a href="#1494">bx</a>, <a href="#1499">layout</a>);
+            <a class="self" href="#1494">self</a>.personality_slot = <span class="prelude-val">Some</span>(<a href="#1503">slot</a>);
+            <a href="#1503">slot</a>
         }
     }
 
     <span class="doccomment">/// Returns the landing/cleanup pad wrapper around the given basic block.
     </span><span class="comment">// FIXME(eddyb) rename this to `eh_pad_for`.
     </span><span class="kw">fn </span>landing_pad_for(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>) -&gt; Bx::BasicBlock {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(landing_pad) = <a class="self" href="#1515">self</a>.landing_pads[<a href="#1515">bb</a>] {
-            <span class="kw">return </span><a href="#1516">landing_pad</a>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(landing_pad) = <a class="self" href="#1511">self</a>.landing_pads[<a href="#1511">bb</a>] {
+            <span class="kw">return </span><a href="#1512">landing_pad</a>;
         }
 
-        <span class="kw">let </span>landing_pad = <a class="self" href="#1515">self</a>.<a href="#1526-1549">landing_pad_for_uncached</a>(<a href="#1515">bb</a>);
-        <a class="self" href="#1515">self</a>.landing_pads[<a href="#1515">bb</a>] = <span class="prelude-val">Some</span>(<a href="#1520">landing_pad</a>);
-        <a href="#1520">landing_pad</a>
+        <span class="kw">let </span>landing_pad = <a class="self" href="#1511">self</a>.<a href="#1522-1545">landing_pad_for_uncached</a>(<a href="#1511">bb</a>);
+        <a class="self" href="#1511">self</a>.landing_pads[<a href="#1511">bb</a>] = <span class="prelude-val">Some</span>(<a href="#1516">landing_pad</a>);
+        <a href="#1516">landing_pad</a>
     }
 
     <span class="comment">// FIXME(eddyb) rename this to `eh_pad_for_uncached`.
     </span><span class="kw">fn </span>landing_pad_for_uncached(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>) -&gt; Bx::BasicBlock {
-        <span class="kw">let </span>llbb = <a class="self" href="#1526">self</a>.<a href="#1642-1644">llbb</a>(<a href="#1526">bb</a>);
+        <span class="kw">let </span>llbb = <a class="self" href="#1522">self</a>.<a href="#1638-1640">llbb</a>(<a href="#1522">bb</a>);
         <span class="kw">if </span>base::wants_new_eh_instructions(<span class="self">self</span>.cx.sess()) {
-            <span class="kw">let </span>cleanup_bb = Bx::append_block(<a class="self" href="#1526">self</a>.cx, <a class="self" href="#1526">self</a>.llfn, <span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;funclet_{bb:?}&quot;</span>));
-            <span class="kw">let </span><span class="kw-2">mut </span>cleanup_bx = Bx::build(<a class="self" href="#1526">self</a>.cx, <a href="#1529">cleanup_bb</a>);
-            <span class="kw">let </span>funclet = <a href="#1530">cleanup_bx</a>.<a href="../traits/builder.rs.html#281">cleanup_pad</a>(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>[]);
-            <a href="#1530">cleanup_bx</a>.<a href="../traits/builder.rs.html#60">br</a>(<a href="#1527">llbb</a>);
-            <a class="self" href="#1526">self</a>.funclets[<a href="#1526">bb</a>] = <span class="prelude-val">Some</span>(<a href="#1531">funclet</a>);
-            <a href="#1529">cleanup_bb</a>
+            <span class="kw">let </span>cleanup_bb = Bx::append_block(<a class="self" href="#1522">self</a>.cx, <a class="self" href="#1522">self</a>.llfn, <span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;funclet_{bb:?}&quot;</span>));
+            <span class="kw">let </span><span class="kw-2">mut </span>cleanup_bx = Bx::build(<a class="self" href="#1522">self</a>.cx, <a href="#1525">cleanup_bb</a>);
+            <span class="kw">let </span>funclet = <a href="#1526">cleanup_bx</a>.<a href="../traits/builder.rs.html#281">cleanup_pad</a>(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>[]);
+            <a href="#1526">cleanup_bx</a>.<a href="../traits/builder.rs.html#60">br</a>(<a href="#1523">llbb</a>);
+            <a class="self" href="#1522">self</a>.funclets[<a href="#1522">bb</a>] = <span class="prelude-val">Some</span>(<a href="#1527">funclet</a>);
+            <a href="#1525">cleanup_bb</a>
         } <span class="kw">else </span>{
-            <span class="kw">let </span>cleanup_llbb = Bx::append_block(<a class="self" href="#1526">self</a>.cx, <a class="self" href="#1526">self</a>.llfn, <span class="string">&quot;cleanup&quot;</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>cleanup_bx = Bx::build(<a class="self" href="#1526">self</a>.cx, <a href="#1536">cleanup_llbb</a>);
+            <span class="kw">let </span>cleanup_llbb = Bx::append_block(<a class="self" href="#1522">self</a>.cx, <a class="self" href="#1522">self</a>.llfn, <span class="string">&quot;cleanup&quot;</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>cleanup_bx = Bx::build(<a class="self" href="#1522">self</a>.cx, <a href="#1532">cleanup_llbb</a>);
 
-            <span class="kw">let </span>llpersonality = <a class="self" href="#1526">self</a>.cx.<a href="../traits/misc.rs.html#15">eh_personality</a>();
-            <span class="kw">let </span>(exn0, exn1) = <a href="#1537">cleanup_bx</a>.<a href="../traits/builder.rs.html#276">cleanup_landing_pad</a>(<a href="#1539">llpersonality</a>);
+            <span class="kw">let </span>llpersonality = <a class="self" href="#1522">self</a>.cx.<a href="../traits/misc.rs.html#15">eh_personality</a>();
+            <span class="kw">let </span>(exn0, exn1) = <a href="#1533">cleanup_bx</a>.<a href="../traits/builder.rs.html#276">cleanup_landing_pad</a>(<a href="#1535">llpersonality</a>);
 
-            <span class="kw">let </span>slot = <a class="self" href="#1526">self</a>.<a href="#1498-1511">get_personality_slot</a>(<span class="kw-2">&amp;mut </span><a href="#1537">cleanup_bx</a>);
-            <a href="#1542">slot</a>.<a href="place.rs.html#421-423">storage_live</a>(<span class="kw-2">&amp;mut </span><a href="#1537">cleanup_bx</a>);
-            <a href="operand.rs.html#46">Pair</a>(<a href="#1540">exn0</a>, <a href="#1540">exn1</a>).<a href="operand.rs.html#376-382">store</a>(<span class="kw-2">&amp;mut </span><a href="#1537">cleanup_bx</a>, <a href="#1542">slot</a>);
+            <span class="kw">let </span>slot = <a class="self" href="#1522">self</a>.<a href="#1494-1507">get_personality_slot</a>(<span class="kw-2">&amp;mut </span><a href="#1533">cleanup_bx</a>);
+            <a href="#1538">slot</a>.<a href="place.rs.html#421-423">storage_live</a>(<span class="kw-2">&amp;mut </span><a href="#1533">cleanup_bx</a>);
+            <a href="operand.rs.html#46">Pair</a>(<a href="#1536">exn0</a>, <a href="#1536">exn1</a>).<a href="operand.rs.html#372-378">store</a>(<span class="kw-2">&amp;mut </span><a href="#1533">cleanup_bx</a>, <a href="#1538">slot</a>);
 
-            <a href="#1537">cleanup_bx</a>.<a href="../traits/builder.rs.html#60">br</a>(<a href="#1527">llbb</a>);
-            <a href="#1536">cleanup_llbb</a>
+            <a href="#1533">cleanup_bx</a>.<a href="../traits/builder.rs.html#60">br</a>(<a href="#1523">llbb</a>);
+            <a href="#1532">cleanup_llbb</a>
         }
     }
 
     <span class="kw">fn </span>unreachable_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Bx::BasicBlock {
-        <a class="self" href="#1551">self</a>.unreachable_block.unwrap_or_else(|| {
-            <span class="kw">let </span>llbb = Bx::append_block(<a class="self" href="#1551">self</a>.cx, <a class="self" href="#1551">self</a>.llfn, <span class="string">&quot;unreachable&quot;</span>);
-            <span class="kw">let </span><span class="kw-2">mut </span>bx = Bx::build(<a class="self" href="#1551">self</a>.cx, <a href="#1553">llbb</a>);
-            <a href="#1554">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
-            <a class="self" href="#1551">self</a>.unreachable_block = <span class="prelude-val">Some</span>(<a href="#1553">llbb</a>);
-            <a href="#1553">llbb</a>
+        <a class="self" href="#1547">self</a>.unreachable_block.unwrap_or_else(|| {
+            <span class="kw">let </span>llbb = Bx::append_block(<a class="self" href="#1547">self</a>.cx, <a class="self" href="#1547">self</a>.llfn, <span class="string">&quot;unreachable&quot;</span>);
+            <span class="kw">let </span><span class="kw-2">mut </span>bx = Bx::build(<a class="self" href="#1547">self</a>.cx, <a href="#1549">llbb</a>);
+            <a href="#1550">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
+            <a class="self" href="#1547">self</a>.unreachable_block = <span class="prelude-val">Some</span>(<a href="#1549">llbb</a>);
+            <a href="#1549">llbb</a>
         })
     }
 
     <span class="kw">fn </span>terminate_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, reason: <a href="../../../rustc_middle/mir/syntax/enum.UnwindTerminateReason.html">UnwindTerminateReason</a>) -&gt; Bx::BasicBlock {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((cached_bb, cached_reason)) = <a class="self" href="#1561">self</a>.terminate_block &amp;&amp; reason == cached_reason {
-            <span class="kw">return </span><a href="#1562">cached_bb</a>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((cached_bb, cached_reason)) = <a class="self" href="#1557">self</a>.terminate_block &amp;&amp; reason == cached_reason {
+            <span class="kw">return </span><a href="#1558">cached_bb</a>;
         }
 
         <span class="kw">let </span>funclet;
@@ -3367,43 +3359,43 @@
             //         %cp = catchpad within %cs [null, i32 64, null]
             //         ...
 
-            </span><a href="#1567">llbb</a> = Bx::append_block(<a class="self" href="#1561">self</a>.cx, <a class="self" href="#1561">self</a>.llfn, <span class="string">&quot;cs_terminate&quot;</span>);
-            <span class="kw">let </span>cp_llbb = Bx::append_block(<a class="self" href="#1561">self</a>.cx, <a class="self" href="#1561">self</a>.llfn, <span class="string">&quot;cp_terminate&quot;</span>);
+            </span><a href="#1563">llbb</a> = Bx::append_block(<a class="self" href="#1557">self</a>.cx, <a class="self" href="#1557">self</a>.llfn, <span class="string">&quot;cs_terminate&quot;</span>);
+            <span class="kw">let </span>cp_llbb = Bx::append_block(<a class="self" href="#1557">self</a>.cx, <a class="self" href="#1557">self</a>.llfn, <span class="string">&quot;cp_terminate&quot;</span>);
 
-            <span class="kw">let </span><span class="kw-2">mut </span>cs_bx = Bx::build(<a class="self" href="#1561">self</a>.cx, <a href="#1567">llbb</a>);
-            <span class="kw">let </span>cs = <a href="#1602">cs_bx</a>.<a href="../traits/builder.rs.html#284-289">catch_switch</a>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>[<a href="#1600">cp_llbb</a>]);
+            <span class="kw">let </span><span class="kw-2">mut </span>cs_bx = Bx::build(<a class="self" href="#1557">self</a>.cx, <a href="#1563">llbb</a>);
+            <span class="kw">let </span>cs = <a href="#1598">cs_bx</a>.<a href="../traits/builder.rs.html#284-289">catch_switch</a>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>[<a href="#1596">cp_llbb</a>]);
 
             <span class="comment">// The &quot;null&quot; here is actually a RTTI type descriptor for the
             // C++ personality function, but `catch (...)` has no type so
             // it&#39;s null. The 64 here is actually a bitfield which
             // represents that this is a catch-all block.
-            </span><a href="#1568">bx</a> = Bx::build(<a class="self" href="#1561">self</a>.cx, <a href="#1600">cp_llbb</a>);
+            </span><a href="#1564">bx</a> = Bx::build(<a class="self" href="#1557">self</a>.cx, <a href="#1596">cp_llbb</a>);
             <span class="kw">let </span>null =
-                <a href="#1568">bx</a>.<a href="../traits/consts.rs.html#7">const_null</a>(<a href="#1568">bx</a>.<a href="../traits/type_.rs.html#30">type_ptr_ext</a>(<a href="#1568">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../../../rustc_abi/trait.HasDataLayout.html">data_layout</a>().instruction_address_space));
-            <span class="kw">let </span>sixty_four = <a href="#1568">bx</a>.<a href="../traits/consts.rs.html#21">const_i32</a>(<span class="number">64</span>);
-            <a href="#1566">funclet</a> = <span class="prelude-val">Some</span>(<a href="#1568">bx</a>.<a href="../traits/builder.rs.html#283">catch_pad</a>(<a href="#1603">cs</a>, <span class="kw-2">&amp;</span>[<a href="#1610">null</a>, <a href="#1612">sixty_four</a>, <a href="#1610">null</a>]));
+                <a href="#1564">bx</a>.<a href="../traits/consts.rs.html#7">const_null</a>(<a href="#1564">bx</a>.<a href="../traits/type_.rs.html#30">type_ptr_ext</a>(<a href="#1564">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../../../rustc_abi/trait.HasDataLayout.html">data_layout</a>().instruction_address_space));
+            <span class="kw">let </span>sixty_four = <a href="#1564">bx</a>.<a href="../traits/consts.rs.html#21">const_i32</a>(<span class="number">64</span>);
+            <a href="#1562">funclet</a> = <span class="prelude-val">Some</span>(<a href="#1564">bx</a>.<a href="../traits/builder.rs.html#283">catch_pad</a>(<a href="#1599">cs</a>, <span class="kw-2">&amp;</span>[<a href="#1606">null</a>, <a href="#1608">sixty_four</a>, <a href="#1606">null</a>]));
         } <span class="kw">else </span>{
-            <a href="#1567">llbb</a> = Bx::append_block(<a class="self" href="#1561">self</a>.cx, <a class="self" href="#1561">self</a>.llfn, <span class="string">&quot;terminate&quot;</span>);
-            <a href="#1568">bx</a> = Bx::build(<a class="self" href="#1561">self</a>.cx, <a href="#1567">llbb</a>);
+            <a href="#1563">llbb</a> = Bx::append_block(<a class="self" href="#1557">self</a>.cx, <a class="self" href="#1557">self</a>.llfn, <span class="string">&quot;terminate&quot;</span>);
+            <a href="#1564">bx</a> = Bx::build(<a class="self" href="#1557">self</a>.cx, <a href="#1563">llbb</a>);
 
-            <span class="kw">let </span>llpersonality = <a class="self" href="#1561">self</a>.cx.<a href="../traits/misc.rs.html#15">eh_personality</a>();
-            <a href="#1568">bx</a>.<a href="../traits/builder.rs.html#277">filter_landing_pad</a>(<a href="#1618">llpersonality</a>);
+            <span class="kw">let </span>llpersonality = <a class="self" href="#1557">self</a>.cx.<a href="../traits/misc.rs.html#15">eh_personality</a>();
+            <a href="#1564">bx</a>.<a href="../traits/builder.rs.html#277">filter_landing_pad</a>(<a href="#1614">llpersonality</a>);
 
-            <a href="#1566">funclet</a> = <span class="prelude-val">None</span>;
+            <a href="#1562">funclet</a> = <span class="prelude-val">None</span>;
         }
 
-        <a class="self" href="#1561">self</a>.<a href="debuginfo.rs.html#216-221">set_debug_loc</a>(<span class="kw-2">&amp;mut </span><a href="#1568">bx</a>, mir::SourceInfo::outermost(<a class="self" href="#1561">self</a>.mir.span));
+        <a class="self" href="#1557">self</a>.<a href="debuginfo.rs.html#207-212">set_debug_loc</a>(<span class="kw-2">&amp;mut </span><a href="#1564">bx</a>, mir::SourceInfo::outermost(<a class="self" href="#1557">self</a>.mir.span));
 
-        <span class="kw">let </span>(fn_abi, fn_ptr) = <a href="../common.rs.html#119-128">common::build_langcall</a>(<span class="kw-2">&amp;</span><a href="#1568">bx</a>, <span class="prelude-val">None</span>, <a href="#1561">reason</a>.lang_item());
-        <span class="kw">let </span>fn_ty = <a href="#1568">bx</a>.<a href="../traits/type_.rs.html#99">fn_decl_backend_type</a>(<span class="kw-2">&amp;</span><a href="#1626">fn_abi</a>);
+        <span class="kw">let </span>(fn_abi, fn_ptr) = <a href="../common.rs.html#119-128">common::build_langcall</a>(<span class="kw-2">&amp;</span><a href="#1564">bx</a>, <span class="prelude-val">None</span>, <a href="#1557">reason</a>.lang_item());
+        <span class="kw">let </span>fn_ty = <a href="#1564">bx</a>.<a href="../traits/type_.rs.html#99">fn_decl_backend_type</a>(<span class="kw-2">&amp;</span><a href="#1622">fn_abi</a>);
 
-        <span class="kw">let </span>llret = <a href="#1568">bx</a>.<a href="../traits/builder.rs.html#324-332">call</a>(<a href="#1627">fn_ty</a>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#1626">fn_abi</a>), <a href="#1626">fn_ptr</a>, <span class="kw-2">&amp;</span>[], <a href="#1566">funclet</a>.as_ref());
-        <a href="#1568">bx</a>.<a href="../traits/builder.rs.html#335">do_not_inline</a>(<a href="#1629">llret</a>);
+        <span class="kw">let </span>llret = <a href="#1564">bx</a>.<a href="../traits/builder.rs.html#324-332">call</a>(<a href="#1623">fn_ty</a>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#1622">fn_abi</a>), <a href="#1622">fn_ptr</a>, <span class="kw-2">&amp;</span>[], <a href="#1562">funclet</a>.as_ref());
+        <a href="#1564">bx</a>.<a href="../traits/builder.rs.html#335">apply_attrs_to_cleanup_callsite</a>(<a href="#1625">llret</a>);
 
-        <a href="#1568">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
+        <a href="#1564">bx</a>.<a href="../traits/builder.rs.html#84">unreachable</a>();
 
-        <a class="self" href="#1561">self</a>.terminate_block = <span class="prelude-val">Some</span>((<a href="#1567">llbb</a>, <a href="#1561">reason</a>));
-        <a href="#1567">llbb</a>
+        <a class="self" href="#1557">self</a>.terminate_block = <span class="prelude-val">Some</span>((<a href="#1563">llbb</a>, <a href="#1557">reason</a>));
+        <a href="#1563">llbb</a>
     }
 
     <span class="doccomment">/// Get the backend `BasicBlock` for a MIR `BasicBlock`, either already
@@ -3411,19 +3403,19 @@
     </span><span class="comment">// FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
     // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
     </span><span class="kw">pub fn </span>llbb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>) -&gt; Bx::BasicBlock {
-        <a class="self" href="#1642">self</a>.<a href="#1647-1658">try_llbb</a>(<a href="#1642">bb</a>).unwrap()
+        <a class="self" href="#1638">self</a>.<a href="#1643-1654">try_llbb</a>(<a href="#1638">bb</a>).unwrap()
     }
 
     <span class="doccomment">/// Like `llbb`, but may fail if the basic block should be skipped.
     </span><span class="kw">pub fn </span>try_llbb(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>) -&gt; <span class="prelude-ty">Option</span>&lt;Bx::BasicBlock&gt; {
-        <span class="kw">match </span><a class="self" href="#1647">self</a>.cached_llbbs[<a href="#1647">bb</a>] {
+        <span class="kw">match </span><a class="self" href="#1643">self</a>.cached_llbbs[<a href="#1643">bb</a>] {
             <a href="mod.rs.html#33">CachedLlbb::None</a> =&gt; {
                 <span class="comment">// FIXME(eddyb) only name the block if `fewer_names` is `false`.
-                </span><span class="kw">let </span>llbb = Bx::append_block(<a class="self" href="#1647">self</a>.cx, <a class="self" href="#1647">self</a>.llfn, <span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{bb:?}&quot;</span>));
-                <a class="self" href="#1647">self</a>.cached_llbbs[<a href="#1647">bb</a>] = <a href="mod.rs.html#36">CachedLlbb::Some</a>(<a href="#1651">llbb</a>);
-                <span class="prelude-val">Some</span>(<a href="#1651">llbb</a>)
+                </span><span class="kw">let </span>llbb = Bx::append_block(<a class="self" href="#1643">self</a>.cx, <a class="self" href="#1643">self</a>.llfn, <span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{bb:?}&quot;</span>));
+                <a class="self" href="#1643">self</a>.cached_llbbs[<a href="#1643">bb</a>] = <a href="mod.rs.html#36">CachedLlbb::Some</a>(<a href="#1647">llbb</a>);
+                <span class="prelude-val">Some</span>(<a href="#1647">llbb</a>)
             }
-            <a href="mod.rs.html#36">CachedLlbb::Some</a>(llbb) =&gt; <span class="prelude-val">Some</span>(<a href="#1655">llbb</a>),
+            <a href="mod.rs.html#36">CachedLlbb::Some</a>(llbb) =&gt; <span class="prelude-val">Some</span>(<a href="#1651">llbb</a>),
             <a href="mod.rs.html#39">CachedLlbb::Skip</a> =&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -3438,11 +3430,11 @@
     ) -&gt; ReturnDest&lt;<span class="lifetime">&#39;tcx</span>, Bx::Value&gt; {
         <span class="comment">// If the return is ignored, we can just return a do-nothing `ReturnDest`.
         </span><span class="kw">if </span>fn_ret.is_ignore() {
-            <span class="kw">return </span><a href="#1764">ReturnDest::Nothing</a>;
+            <span class="kw">return </span><a href="#1760">ReturnDest::Nothing</a>;
         }
-        <span class="kw">let </span>dest = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <a href="#1663">dest</a>.as_local() {
-            <span class="kw">match </span><a class="self" href="#1661">self</a>.locals[<a href="#1672">index</a>] {
-                <a href="mod.rs.html#130">LocalRef::Place</a>(dest) =&gt; <a href="#1674">dest</a>,
+        <span class="kw">let </span>dest = <span class="kw">if let </span><span class="prelude-val">Some</span>(index) = <a href="#1659">dest</a>.as_local() {
+            <span class="kw">match </span><a class="self" href="#1657">self</a>.locals[<a href="#1668">index</a>] {
+                <a href="mod.rs.html#130">LocalRef::Place</a>(dest) =&gt; <a href="#1670">dest</a>,
                 <a href="mod.rs.html#135">LocalRef::UnsizedPlace</a>(<span class="kw">_</span>) =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;return type must be sized&quot;</span>),
                 <a href="mod.rs.html#139">LocalRef::PendingOperand</a> =&gt; {
                     <span class="comment">// Handle temporary places, specifically `Operand` ones, as
@@ -3450,19 +3442,19 @@
                     </span><span class="kw">return if </span>fn_ret.is_indirect() {
                         <span class="comment">// Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
-                        </span><span class="kw">let </span>tmp = PlaceRef::alloca(<a href="#1662">bx</a>, <a href="#1664">fn_ret</a>.layout);
-                        <a href="#1682">tmp</a>.<a href="place.rs.html#421-423">storage_live</a>(<a href="#1662">bx</a>);
-                        <a href="#1665">llargs</a>.push(<a href="#1682">tmp</a>.llval);
-                        <a href="#1768">ReturnDest::IndirectOperand</a>(<a href="#1682">tmp</a>, <a href="#1672">index</a>)
+                        </span><span class="kw">let </span>tmp = PlaceRef::alloca(<a href="#1658">bx</a>, <a href="#1660">fn_ret</a>.layout);
+                        <a href="#1678">tmp</a>.<a href="place.rs.html#421-423">storage_live</a>(<a href="#1658">bx</a>);
+                        <a href="#1661">llargs</a>.push(<a href="#1678">tmp</a>.llval);
+                        <a href="#1764">ReturnDest::IndirectOperand</a>(<a href="#1678">tmp</a>, <a href="#1668">index</a>)
                     } <span class="kw">else if </span>is_intrinsic {
                         <span class="comment">// Currently, intrinsics always need a location to store
                         // the result, so we create a temporary `alloca` for the
                         // result.
-                        </span><span class="kw">let </span>tmp = PlaceRef::alloca(<a href="#1662">bx</a>, <a href="#1664">fn_ret</a>.layout);
-                        <a href="#1690">tmp</a>.<a href="place.rs.html#421-423">storage_live</a>(<a href="#1662">bx</a>);
-                        <a href="#1768">ReturnDest::IndirectOperand</a>(<a href="#1690">tmp</a>, <a href="#1672">index</a>)
+                        </span><span class="kw">let </span>tmp = PlaceRef::alloca(<a href="#1658">bx</a>, <a href="#1660">fn_ret</a>.layout);
+                        <a href="#1686">tmp</a>.<a href="place.rs.html#421-423">storage_live</a>(<a href="#1658">bx</a>);
+                        <a href="#1764">ReturnDest::IndirectOperand</a>(<a href="#1686">tmp</a>, <a href="#1668">index</a>)
                     } <span class="kw">else </span>{
-                        <a href="#1770">ReturnDest::DirectOperand</a>(<a href="#1672">index</a>)
+                        <a href="#1766">ReturnDest::DirectOperand</a>(<a href="#1668">index</a>)
                     };
                 }
                 <a href="mod.rs.html#137">LocalRef::Operand</a>(<span class="kw">_</span>) =&gt; {
@@ -3470,9 +3462,9 @@
                 }
             }
         } <span class="kw">else </span>{
-            <a class="self" href="#1661">self</a>.<a href="place.rs.html#431">codegen_place</a>(
-                <a href="#1662">bx</a>,
-                <a href="../../../rustc_middle/mir/struct.PlaceRef.html">mir::PlaceRef</a> { local: <a href="#1663">dest</a>.local, projection: <span class="kw-2">&amp;</span><a href="#1663">dest</a>.projection },
+            <a class="self" href="#1657">self</a>.<a href="place.rs.html#431">codegen_place</a>(
+                <a href="#1658">bx</a>,
+                <a href="../../../rustc_middle/mir/statement/struct.PlaceRef.html">mir::PlaceRef</a> { local: <a href="#1659">dest</a>.local, projection: <span class="kw-2">&amp;</span><a href="#1659">dest</a>.projection },
             )
         };
         <span class="kw">if </span>fn_ret.is_indirect() {
@@ -3485,10 +3477,10 @@
                 // to create a temporary.
                 </span><a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.mir.span, <span class="string">&quot;can&#39;t directly store to unaligned value&quot;</span>);
             }
-            <a href="#1665">llargs</a>.push(<a href="#1672">dest</a>.llval);
-            <a href="#1764">ReturnDest::Nothing</a>
+            <a href="#1661">llargs</a>.push(<a href="#1668">dest</a>.llval);
+            <a href="#1760">ReturnDest::Nothing</a>
         } <span class="kw">else </span>{
-            <a href="#1766">ReturnDest::Store</a>(<a href="#1672">dest</a>)
+            <a href="#1762">ReturnDest::Store</a>(<a href="#1668">dest</a>)
         }
     }
 
@@ -3500,31 +3492,31 @@
         ret_abi: <span class="kw-2">&amp;</span>ArgAbi&lt;<span class="lifetime">&#39;tcx</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         llval: Bx::Value,
     ) {
-        <span class="kw">use </span><a href="#1762-1771"><span class="self">self</span>::ReturnDest</a>::<span class="kw-2">*</span>;
+        <span class="kw">use </span><a href="#1758-1767"><span class="self">self</span>::ReturnDest</a>::<span class="kw-2">*</span>;
 
-        <span class="kw">match </span><a href="#1728">dest</a> {
-            <a href="#1764">Nothing</a> =&gt; (),
-            <a href="#1766">Store</a>(dst) =&gt; <a href="#1727">bx</a>.<a href="../traits/type_.rs.html#164-169">store_arg</a>(<span class="kw-2">&amp;</span><a href="#1729">ret_abi</a>, <a href="#1730">llval</a>, <a href="#1736">dst</a>),
-            <a href="#1768">IndirectOperand</a>(tmp, index) =&gt; {
-                <span class="kw">let </span>op = <a href="#1727">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#1737">tmp</a>);
-                <a href="#1737">tmp</a>.<a href="place.rs.html#425-427">storage_dead</a>(<a href="#1727">bx</a>);
-                <a class="self" href="#1726">self</a>.<a href="locals.rs.html#54-74">overwrite_local</a>(<a href="#1737">index</a>, <a href="mod.rs.html#137">LocalRef::Operand</a>(<a href="#1738">op</a>));
-                <a class="self" href="#1726">self</a>.<a href="debuginfo.rs.html#277-397">debug_introduce_local</a>(<a href="#1727">bx</a>, <a href="#1737">index</a>);
+        <span class="kw">match </span><a href="#1724">dest</a> {
+            <a href="#1760">Nothing</a> =&gt; (),
+            <a href="#1762">Store</a>(dst) =&gt; <a href="#1723">bx</a>.<a href="../traits/type_.rs.html#164-169">store_arg</a>(<span class="kw-2">&amp;</span><a href="#1725">ret_abi</a>, <a href="#1726">llval</a>, <a href="#1732">dst</a>),
+            <a href="#1764">IndirectOperand</a>(tmp, index) =&gt; {
+                <span class="kw">let </span>op = <a href="#1723">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#1733">tmp</a>);
+                <a href="#1733">tmp</a>.<a href="place.rs.html#425-427">storage_dead</a>(<a href="#1723">bx</a>);
+                <a class="self" href="#1722">self</a>.<a href="locals.rs.html#54-74">overwrite_local</a>(<a href="#1733">index</a>, <a href="mod.rs.html#137">LocalRef::Operand</a>(<a href="#1734">op</a>));
+                <a class="self" href="#1722">self</a>.<a href="debuginfo.rs.html#268-388">debug_introduce_local</a>(<a href="#1723">bx</a>, <a href="#1733">index</a>);
             }
-            <a href="#1770">DirectOperand</a>(index) =&gt; {
+            <a href="#1766">DirectOperand</a>(index) =&gt; {
                 <span class="comment">// If there is a cast, we have to store and reload.
-                </span><span class="kw">let </span>op = <span class="kw">if let </span><a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { .. } = <a href="#1729">ret_abi</a>.mode {
-                    <span class="kw">let </span>tmp = PlaceRef::alloca(<a href="#1727">bx</a>, <a href="#1729">ret_abi</a>.layout);
-                    <a href="#1746">tmp</a>.<a href="place.rs.html#421-423">storage_live</a>(<a href="#1727">bx</a>);
-                    <a href="#1727">bx</a>.<a href="../traits/type_.rs.html#164-169">store_arg</a>(<span class="kw-2">&amp;</span><a href="#1729">ret_abi</a>, <a href="#1730">llval</a>, <a href="#1746">tmp</a>);
-                    <span class="kw">let </span>op = <a href="#1727">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#1746">tmp</a>);
-                    <a href="#1746">tmp</a>.<a href="place.rs.html#425-427">storage_dead</a>(<a href="#1727">bx</a>);
-                    <a href="#1749">op</a>
+                </span><span class="kw">let </span>op = <span class="kw">if let </span><a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode::Cast</a> { .. } = <a href="#1725">ret_abi</a>.mode {
+                    <span class="kw">let </span>tmp = PlaceRef::alloca(<a href="#1723">bx</a>, <a href="#1725">ret_abi</a>.layout);
+                    <a href="#1742">tmp</a>.<a href="place.rs.html#421-423">storage_live</a>(<a href="#1723">bx</a>);
+                    <a href="#1723">bx</a>.<a href="../traits/type_.rs.html#164-169">store_arg</a>(<span class="kw-2">&amp;</span><a href="#1725">ret_abi</a>, <a href="#1726">llval</a>, <a href="#1742">tmp</a>);
+                    <span class="kw">let </span>op = <a href="#1723">bx</a>.<a href="../traits/builder.rs.html#151-152">load_operand</a>(<a href="#1742">tmp</a>);
+                    <a href="#1742">tmp</a>.<a href="place.rs.html#425-427">storage_dead</a>(<a href="#1723">bx</a>);
+                    <a href="#1745">op</a>
                 } <span class="kw">else </span>{
-                    OperandRef::from_immediate_or_packed_pair(<a href="#1727">bx</a>, <a href="#1730">llval</a>, <a href="#1729">ret_abi</a>.layout)
+                    OperandRef::from_immediate_or_packed_pair(<a href="#1723">bx</a>, <a href="#1726">llval</a>, <a href="#1725">ret_abi</a>.layout)
                 };
-                <a class="self" href="#1726">self</a>.<a href="locals.rs.html#54-74">overwrite_local</a>(<a href="#1743">index</a>, <a href="mod.rs.html#137">LocalRef::Operand</a>(<a href="#1745">op</a>));
-                <a class="self" href="#1726">self</a>.<a href="debuginfo.rs.html#277-397">debug_introduce_local</a>(<a href="#1727">bx</a>, <a href="#1743">index</a>);
+                <a class="self" href="#1722">self</a>.<a href="locals.rs.html#54-74">overwrite_local</a>(<a href="#1739">index</a>, <a href="mod.rs.html#137">LocalRef::Operand</a>(<a href="#1741">op</a>));
+                <a class="self" href="#1722">self</a>.<a href="debuginfo.rs.html#268-388">debug_introduce_local</a>(<a href="#1723">bx</a>, <a href="#1739">index</a>);
             }
         }
     }

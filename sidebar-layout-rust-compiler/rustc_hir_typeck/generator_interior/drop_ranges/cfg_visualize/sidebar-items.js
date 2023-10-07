@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["write_graph_to_file"],"struct":["DropRangesGraph"]};

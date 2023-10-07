@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/terminator.rs`."><title>terminator.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/terminator.rs`."><title>terminator.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -961,11 +961,6 @@
 <a href="#961" id="961">961</a>
 <a href="#962" id="962">962</a>
 <a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html">std::borrow::Cow</a>;
 
 <span class="kw">use </span><a href="https://docs.rs/either/1/either/enum.Either.html">either::Either</a>;
@@ -979,7 +974,7 @@
     },
 };
 <span class="kw">use </span><a href="../../../rustc_span/symbol/sym/index.html">rustc_span::sym</a>;
-<span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>};
+<span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>};
 <span class="kw">use </span>rustc_target::abi::{
     call::{<a href="../../../rustc_target/abi/call/struct.ArgAbi.html">ArgAbi</a>, <a href="../../../rustc_target/abi/call/struct.FnAbi.html">FnAbi</a>, <a href="../../../rustc_target/abi/call/enum.PassMode.html">PassMode</a>},
     <a href="../../../rustc_abi/enum.Integer.html">Integer</a>,
@@ -987,10 +982,10 @@
 <span class="kw">use </span><a href="../../../rustc_target/spec/abi/enum.Abi.html">rustc_target::spec::abi::Abi</a>;
 
 <span class="kw">use super</span>::{
-    AllocId, <a href="memory.rs.html#75-78">FnVal</a>, <a href="operand.rs.html#91-94">ImmTy</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#108-116">MPlaceTy</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="operand.rs.html#296-307">OpTy</a>, <a href="place.rs.html#229-237">PlaceTy</a>, <a href="projection.rs.html#23-89">Projectable</a>,
+    AllocId, <a href="memory.rs.html#75-78">FnVal</a>, <a href="operand.rs.html#96-99">ImmTy</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#107-115">MPlaceTy</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="operand.rs.html#315-326">OpTy</a>, <a href="place.rs.html#228-236">PlaceTy</a>, <a href="projection.rs.html#23-89">Projectable</a>,
     <a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>, <a href="eval_context.rs.html#143-155">StackPopCleanup</a>,
 };
-<span class="kw">use </span><a href="../lib.rs.html#44"><span class="kw">crate</span>::fluent_generated</a> <span class="kw">as </span>fluent;
+<span class="kw">use </span><a href="../lib.rs.html#43"><span class="kw">crate</span>::fluent_generated</a> <span class="kw">as </span>fluent;
 
 <span class="doccomment">/// An argment passed to a function.
 </span><span class="attr">#[derive(Clone, Debug)]
@@ -1020,7 +1015,7 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <span class="kw">match </span><a href="#51">arg</a> {
             <a href="#31">FnArg::Copy</a>(op) =&gt; <span class="prelude-val">Ok</span>(<a href="#54">op</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
-            <a href="#34">FnArg::InPlace</a>(place) =&gt; <a class="self" href="#50">self</a>.<a href="operand.rs.html#616-637">place_to_op</a>(<span class="kw-2">&amp;</span><a href="#55">place</a>),
+            <a href="#34">FnArg::InPlace</a>(place) =&gt; <a class="self" href="#50">self</a>.<a href="operand.rs.html#631-652">place_to_op</a>(<span class="kw-2">&amp;</span><a href="#55">place</a>),
         }
     }
 
@@ -1054,7 +1049,7 @@
                 <span class="self">self</span>.pop_stack_frame(<span class="comment">/* unwinding */ </span><span class="bool-val">false</span>)<span class="question-mark">?
             </span>}
 
-            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">Goto</a> { target } =&gt; <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#773-775">go_to_block</a>(<a href="#89">target</a>),
+            <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">Goto</a> { target } =&gt; <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#775-777">go_to_block</a>(<a href="#89">target</a>),
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">SwitchInt</a> { <span class="kw-2">ref </span>discr, <span class="kw-2">ref </span>targets } =&gt; {
                 <span class="kw">let </span>discr = <span class="self">self</span>.read_immediate(<span class="kw-2">&amp;</span><span class="self">self</span>.eval_operand(discr, <span class="prelude-val">None</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -1066,20 +1061,18 @@
                 <span class="kw">for </span>(const_int, target) <span class="kw">in </span>targets.iter() {
                     <span class="comment">// Compare using MIR BinOp::Eq, to also support pointer values.
                     // (Avoiding `self.binary_op` as that does some redundant layout computation.)
-                    </span><span class="kw">let </span>res = <span class="self">self
-                        </span>.overflowing_binary_op(
-                            mir::BinOp::Eq,
-                            <span class="kw-2">&amp;</span>discr,
-                            <span class="kw-2">&amp;</span>ImmTy::from_uint(const_int, discr.layout),
-                        )<span class="question-mark">?
-                        </span>.<span class="number">0</span>;
-                    <span class="kw">if </span>res.to_bool()<span class="question-mark">? </span>{
+                    </span><span class="kw">let </span>res = <span class="self">self</span>.wrapping_binary_op(
+                        mir::BinOp::Eq,
+                        <span class="kw-2">&amp;</span>discr,
+                        <span class="kw-2">&amp;</span>ImmTy::from_uint(const_int, discr.layout),
+                    )<span class="question-mark">?</span>;
+                    <span class="kw">if </span>res.to_scalar().to_bool()<span class="question-mark">? </span>{
                         target_block = target;
                         <span class="kw">break</span>;
                     }
                 }
 
-                <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#773-775">go_to_block</a>(<a href="#96">target_block</a>);
+                <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#775-777">go_to_block</a>(<a href="#96">target_block</a>);
             }
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">Call</a> {
@@ -1096,30 +1089,30 @@
                 <span class="kw">let </span>func = <span class="self">self</span>.eval_operand(func, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
                 <span class="kw">let </span>args = <span class="self">self</span>.eval_fn_call_arguments(args)<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>fn_sig_binder = <a href="#128">func</a>.layout.ty.fn_sig(<span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx);
+                <span class="kw">let </span>fn_sig_binder = <a href="#126">func</a>.layout.ty.fn_sig(<span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx);
                 <span class="kw">let </span>fn_sig =
-                    <a class="self" href="#80">self</a>.tcx.normalize_erasing_late_bound_regions(<a class="self" href="#80">self</a>.param_env, <a href="#131">fn_sig_binder</a>);
-                <span class="kw">let </span>extra_args = <span class="kw-2">&amp;</span><a href="#129">args</a>[<a href="#132">fn_sig</a>.inputs().len()..];
+                    <a class="self" href="#80">self</a>.tcx.normalize_erasing_late_bound_regions(<a class="self" href="#80">self</a>.param_env, <a href="#129">fn_sig_binder</a>);
+                <span class="kw">let </span>extra_args = <span class="kw-2">&amp;</span><a href="#127">args</a>[<a href="#130">fn_sig</a>.inputs().len()..];
                 <span class="kw">let </span>extra_args =
-                    <a class="self" href="#80">self</a>.tcx.mk_type_list_from_iter(<a href="#134">extra_args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| <a href="#136">arg</a>.<a href="#38-43">layout</a>().ty));
+                    <a class="self" href="#80">self</a>.tcx.mk_type_list_from_iter(<a href="#132">extra_args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| <a href="#134">arg</a>.<a href="#38-43">layout</a>().ty));
 
-                <span class="kw">let </span>(fn_val, fn_abi, with_caller_location) = <span class="kw">match </span><span class="kw-2">*</span><a href="#128">func</a>.layout.ty.kind() {
+                <span class="kw">let </span>(fn_val, fn_abi, with_caller_location) = <span class="kw">match </span><span class="kw-2">*</span><a href="#126">func</a>.layout.ty.kind() {
                     ty::FnPtr(_sig) =&gt; {
                         <span class="kw">let </span>fn_ptr = <span class="self">self</span>.read_pointer(<span class="kw-2">&amp;</span>func)<span class="question-mark">?</span>;
                         <span class="kw">let </span>fn_val = <span class="self">self</span>.get_ptr_fn(fn_ptr)<span class="question-mark">?</span>;
-                        (<a href="#141">fn_val</a>, <span class="self">self</span>.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)<span class="question-mark">?</span>, <span class="bool-val">false</span>)
+                        (<a href="#139">fn_val</a>, <span class="self">self</span>.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)<span class="question-mark">?</span>, <span class="bool-val">false</span>)
                     }
                     ty::FnDef(def_id, args) =&gt; {
                         <span class="kw">let </span>instance = <span class="self">self</span>.resolve(def_id, args)<span class="question-mark">?</span>;
                         (
-                            <a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#145">instance</a>),
+                            <a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#143">instance</a>),
                             <span class="self">self</span>.fn_abi_of_instance(instance, extra_args)<span class="question-mark">?</span>,
-                            <a href="#145">instance</a>.def.requires_caller_location(<span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx),
+                            <a href="#143">instance</a>.def.requires_caller_location(<span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx),
                         )
                     }
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                         terminator.source_info.span,
-                        <span class="string">&quot;invalid callee of type {:?}&quot;</span>,
+                        <span class="string">&quot;invalid callee of type {}&quot;</span>,
                         func.layout.ty
                     ),
                 };
@@ -1143,15 +1136,15 @@
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">Drop</a> { place, target, unwind, replace: <span class="kw">_ </span>} =&gt; {
                 <span class="kw">let </span>frame = <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#503-505">frame</a>();
-                <span class="kw">let </span>ty = <a href="#176">place</a>.ty(<span class="kw-2">&amp;</span><a href="#177">frame</a>.body.local_decls, <span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx).ty;
+                <span class="kw">let </span>ty = <a href="#174">place</a>.ty(<span class="kw-2">&amp;</span><a href="#175">frame</a>.body.local_decls, <span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx).ty;
                 <span class="kw">let </span>ty = <span class="self">self</span>.subst_from_frame_and_normalize_erasing_regions(frame, ty)<span class="question-mark">?</span>;
-                <span class="kw">let </span>instance = Instance::resolve_drop_in_place(<span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx, <a href="#179">ty</a>);
-                <span class="kw">if let </span>ty::InstanceDef::DropGlue(<span class="kw">_</span>, <span class="prelude-val">None</span>) = <a href="#180">instance</a>.def {
+                <span class="kw">let </span>instance = Instance::resolve_drop_in_place(<span class="kw-2">*</span><a class="self" href="#80">self</a>.tcx, <a href="#177">ty</a>);
+                <span class="kw">if let </span>ty::InstanceDef::DropGlue(<span class="kw">_</span>, <span class="prelude-val">None</span>) = <a href="#178">instance</a>.def {
                     <span class="comment">// This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a
                     // generic. In order to make sure that generic and non-generic code behaves
                     // roughly the same (and in keeping with Mir semantics) we do nothing here.
-                    </span><a class="self" href="#80">self</a>.<a href="eval_context.rs.html#773-775">go_to_block</a>(<a href="#176">target</a>);
+                    </span><a class="self" href="#80">self</a>.<a href="eval_context.rs.html#775-777">go_to_block</a>(<a href="#174">target</a>);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
                 <span class="kw">let </span>place = <span class="self">self</span>.eval_place(place)<span class="question-mark">?</span>;
@@ -1161,10 +1154,10 @@
 
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">Assert</a> { <span class="kw-2">ref </span>cond, expected, <span class="kw-2">ref </span>msg, target, unwind } =&gt; {
                 <span class="kw">let </span>ignored =
-                    M::ignore_optional_overflow_checks(<a class="self" href="#80">self</a>) &amp;&amp; <a href="#194">msg</a>.is_optional_overflow_check();
+                    M::ignore_optional_overflow_checks(<a class="self" href="#80">self</a>) &amp;&amp; <a href="#192">msg</a>.is_optional_overflow_check();
                 <span class="kw">let </span>cond_val = <span class="self">self</span>.read_scalar(<span class="kw-2">&amp;</span><span class="self">self</span>.eval_operand(cond, <span class="prelude-val">None</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>.to_bool()<span class="question-mark">?</span>;
                 <span class="kw">if </span>ignored || expected == cond_val {
-                    <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#773-775">go_to_block</a>(<a href="#194">target</a>);
+                    <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#775-777">go_to_block</a>(<a href="#192">target</a>);
                 } <span class="kw">else </span>{
                     M::assert_panic(<span class="self">self</span>, msg, unwind)<span class="question-mark">?</span>;
                 }
@@ -1200,8 +1193,8 @@
                 <span class="kw">if </span>options.contains(InlineAsmOptions::NORETURN) {
                     <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_noreturn_asm_returned);
                 }
-                <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#773-775">go_to_block</a>(
-                    <a href="#230">destination</a>
+                <a class="self" href="#80">self</a>.<a href="eval_context.rs.html#775-777">go_to_block</a>(
+                    <a href="#228">destination</a>
                         .expect(<span class="string">&quot;InlineAsm terminators without noreturn must have a destination&quot;</span>),
                 )
             }
@@ -1215,9 +1208,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ops: <span class="kw-2">&amp;</span>[mir::Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;],
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Vec&lt;FnArg&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt;&gt; {
-        <a href="#248">ops</a>.iter()
+        <a href="#246">ops</a>.iter()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|op| {
-                <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#251">op</a> {
+                <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#249">op</a> {
                     mir::Operand::Move(place) =&gt; <a href="#34">FnArg::InPlace</a>(<span class="self">self</span>.eval_place(<span class="kw-2">*</span>place)<span class="question-mark">?</span>),
                     <span class="kw">_ </span>=&gt; <a href="#31">FnArg::Copy</a>(<span class="self">self</span>.eval_operand(op, <span class="prelude-val">None</span>)<span class="question-mark">?</span>),
                 })
@@ -1234,53 +1227,53 @@
         layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         may_unfold: <span class="kw">impl </span>Fn(AdtDef&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">match </span><a href="#266">layout</a>.ty.kind() {
-            ty::Adt(adt_def, <span class="kw">_</span>) <span class="kw">if </span><a href="#270">adt_def</a>.repr().transparent() &amp;&amp; <a href="#267">may_unfold</a>(<span class="kw-2">*</span><a href="#270">adt_def</a>) =&gt; {
+        <span class="kw">match </span><a href="#264">layout</a>.ty.kind() {
+            ty::Adt(adt_def, <span class="kw">_</span>) <span class="kw">if </span><a href="#268">adt_def</a>.repr().transparent() &amp;&amp; <a href="#265">may_unfold</a>(<span class="kw-2">*</span><a href="#268">adt_def</a>) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!adt_def.is_enum());
                 <span class="comment">// Find the non-1-ZST field, and recurse.
-                </span><span class="kw">let </span>(<span class="kw">_</span>, field) = <a href="#266">layout</a>.non_1zst_field(<a class="self" href="#265">self</a>).unwrap();
-                <a class="self" href="#265">self</a>.<a href="#264-279">unfold_transparent</a>(<a href="#273">field</a>, <a href="#267">may_unfold</a>)
+                </span><span class="kw">let </span>(<span class="kw">_</span>, field) = <a href="#264">layout</a>.non_1zst_field(<a class="self" href="#263">self</a>).unwrap();
+                <a class="self" href="#263">self</a>.<a href="#262-277">unfold_transparent</a>(<a href="#271">field</a>, <a href="#265">may_unfold</a>)
             }
             <span class="comment">// Not a transparent type, no further unfolding.
-            </span><span class="kw">_ </span>=&gt; <a href="#266">layout</a>,
+            </span><span class="kw">_ </span>=&gt; <a href="#264">layout</a>,
         }
     }
 
     <span class="doccomment">/// Unwrap types that are guaranteed a null-pointer-optimization
     </span><span class="kw">fn </span>unfold_npo(<span class="kw-2">&amp;</span><span class="self">self</span>, layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
         <span class="comment">// Check if this is `Option` wrapping some type.
-        </span><span class="kw">let </span>inner = <span class="kw">match </span><a href="#282">layout</a>.ty.kind() {
-            ty::Adt(def, args) <span class="kw">if </span><a class="self" href="#282">self</a>.tcx.is_diagnostic_item(sym::Option, <a href="#285">def</a>.did()) =&gt; {
-                <a href="#285">args</a>[<span class="number">0</span>].as_type().unwrap()
+        </span><span class="kw">let </span>inner = <span class="kw">match </span><a href="#280">layout</a>.ty.kind() {
+            ty::Adt(def, args) <span class="kw">if </span><a class="self" href="#280">self</a>.tcx.is_diagnostic_item(sym::Option, <a href="#283">def</a>.did()) =&gt; {
+                <a href="#283">args</a>[<span class="number">0</span>].as_type().unwrap()
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// Not an `Option`.
-                </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#282">layout</a>);
+                </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#280">layout</a>);
             }
         };
         <span class="kw">let </span>inner = <span class="self">self</span>.layout_of(inner)<span class="question-mark">?</span>;
         <span class="comment">// Check if the inner type is one of the NPO-guaranteed ones.
         // For that we first unpeel transparent *structs* (but not unions).
         </span><span class="kw">let </span>is_npo = |def: AdtDef&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
-            <a class="self" href="#282">self</a>.tcx.has_attr(<a href="#296">def</a>.did(), sym::rustc_nonnull_optimization_guaranteed)
+            <a class="self" href="#280">self</a>.tcx.has_attr(<a href="#294">def</a>.did(), sym::rustc_nonnull_optimization_guaranteed)
         };
-        <span class="kw">let </span>inner = <a class="self" href="#282">self</a>.<a href="#264-279">unfold_transparent</a>(<a href="#293">inner</a>, <span class="comment">/* may_unfold */ </span>|def| {
+        <span class="kw">let </span>inner = <a class="self" href="#280">self</a>.<a href="#262-277">unfold_transparent</a>(<a href="#291">inner</a>, <span class="comment">/* may_unfold */ </span>|def| {
             <span class="comment">// Stop at NPO tpyes so that we don&#39;t miss that attribute in the check below!
-            </span><a href="#299">def</a>.is_struct() &amp;&amp; !<a href="#296">is_npo</a>(<a href="#299">def</a>)
+            </span><a href="#297">def</a>.is_struct() &amp;&amp; !<a href="#294">is_npo</a>(<a href="#297">def</a>)
         });
-        <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#299">inner</a>.ty.kind() {
+        <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#297">inner</a>.ty.kind() {
             ty::Ref(..) | ty::FnPtr(..) =&gt; {
                 <span class="comment">// Option&lt;&amp;T&gt; behaves like &amp;T, and same for fn()
-                </span><a href="#299">inner</a>
+                </span><a href="#297">inner</a>
             }
-            ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#296">is_npo</a>(<span class="kw-2">*</span><a href="#308">def</a>) =&gt; {
+            ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#294">is_npo</a>(<span class="kw-2">*</span><a href="#306">def</a>) =&gt; {
                 <span class="comment">// Once we found a `nonnull_optimization_guaranteed` type, further strip off
                 // newtype structs from it to find the underlying ABI type.
-                </span><a class="self" href="#282">self</a>.<a href="#264-279">unfold_transparent</a>(<a href="#299">inner</a>, <span class="comment">/* may_unfold */ </span>|def| <a href="#311">def</a>.is_struct())
+                </span><a class="self" href="#280">self</a>.<a href="#262-277">unfold_transparent</a>(<a href="#297">inner</a>, <span class="comment">/* may_unfold */ </span>|def| <a href="#309">def</a>.is_struct())
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// Everything else we do not unfold.
-                </span><a href="#282">layout</a>
+                </span><a href="#280">layout</a>
             }
         })
     }
@@ -1299,11 +1292,11 @@
         }
         <span class="comment">// 1-ZST are compatible with all 1-ZST (and with nothing else).
         </span><span class="kw">if </span>caller.is_1zst() || callee.is_1zst() {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#325">caller</a>.is_1zst() &amp;&amp; <a href="#326">callee</a>.is_1zst());
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#323">caller</a>.is_1zst() &amp;&amp; <a href="#324">callee</a>.is_1zst());
         }
         <span class="comment">// Unfold newtypes and NPO optimizations.
         </span><span class="kw">let </span>unfold = |layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
-            <a class="self" href="#324">self</a>.<a href="#282-318">unfold_npo</a>(<a class="self" href="#324">self</a>.<a href="#264-279">unfold_transparent</a>(<a href="#337">layout</a>, <span class="comment">/* may_unfold */ </span>|_def| <span class="bool-val">true</span>))
+            <a class="self" href="#322">self</a>.<a href="#280-316">unfold_npo</a>(<a class="self" href="#322">self</a>.<a href="#262-277">unfold_transparent</a>(<a href="#335">layout</a>, <span class="comment">/* may_unfold */ </span>|_def| <span class="bool-val">true</span>))
         };
         <span class="kw">let </span>caller = unfold(caller)<span class="question-mark">?</span>;
         <span class="kw">let </span>callee = unfold(callee)<span class="question-mark">?</span>;
@@ -1314,29 +1307,29 @@
         // must be compatible. So we just accept everything with Pointer ABI as compatible,
         // even if this will accept some code that is not stably guaranteed to work.
         // This also handles function pointers.
-        </span><span class="kw">let </span>thin_pointer = |layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;| <span class="kw">match </span><a href="#349">layout</a>.abi {
-            abi::Abi::Scalar(s) =&gt; <span class="kw">match </span><a href="#350">s</a>.primitive() {
-                abi::Primitive::Pointer(addr_space) =&gt; <span class="prelude-val">Some</span>(<a href="#351">addr_space</a>),
+        </span><span class="kw">let </span>thin_pointer = |layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;| <span class="kw">match </span><a href="#347">layout</a>.abi {
+            abi::Abi::Scalar(s) =&gt; <span class="kw">match </span><a href="#348">s</a>.primitive() {
+                abi::Primitive::Pointer(addr_space) =&gt; <span class="prelude-val">Some</span>(<a href="#349">addr_space</a>),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             },
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         };
-        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(caller), <span class="prelude-val">Some</span>(callee)) = (<a href="#349">thin_pointer</a>(<a href="#340">caller</a>), <a href="#349">thin_pointer</a>(<a href="#341">callee</a>)) {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#356">caller</a> == <a href="#356">callee</a>);
+        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(caller), <span class="prelude-val">Some</span>(callee)) = (<a href="#347">thin_pointer</a>(<a href="#338">caller</a>), <a href="#347">thin_pointer</a>(<a href="#339">callee</a>)) {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#354">caller</a> == <a href="#354">callee</a>);
         }
         <span class="comment">// For wide pointers we have to get the pointee type.
         </span><span class="kw">let </span>pointee_ty = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <span class="prelude-ty">Option</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
             <span class="comment">// We cannot use `builtin_deref` here since we need to reject `Box&lt;T, MyAlloc&gt;`.
-            </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw">match </span><a href="#360">ty</a>.kind() {
-                ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) =&gt; <span class="kw-2">*</span><a href="#363">ty</a>,
-                ty::RawPtr(mt) =&gt; <a href="#364">mt</a>.ty,
+            </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw">match </span><a href="#358">ty</a>.kind() {
+                ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) =&gt; <span class="kw-2">*</span><a href="#361">ty</a>,
+                ty::RawPtr(mt) =&gt; <a href="#362">mt</a>.ty,
                 <span class="comment">// We should only accept `Box` with the default allocator.
                 // It&#39;s hard to test for that though so we accept every 1-ZST allocator.
                 </span>ty::Adt(def, args)
-                    <span class="kw">if </span><a href="#367">def</a>.is_box()
-                        &amp;&amp; <a class="self" href="#324">self</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#367">args</a>[<span class="number">1</span>].expect_ty()).is_ok_and(|l| <a href="#369">l</a>.is_1zst()) =&gt;
+                    <span class="kw">if </span><a href="#365">def</a>.is_box()
+                        &amp;&amp; <a class="self" href="#322">self</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#365">args</a>[<span class="number">1</span>].expect_ty()).is_ok_and(|l| <a href="#367">l</a>.is_1zst()) =&gt;
                 {
-                    <a href="#367">args</a>[<span class="number">0</span>].expect_ty()
+                    <a href="#365">args</a>[<span class="number">0</span>].expect_ty()
                 }
                 <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
             }))
@@ -1344,32 +1337,32 @@
         <span class="kw">if let </span>(<span class="prelude-val">Some</span>(caller), <span class="prelude-val">Some</span>(callee)) = (pointee_ty(caller.ty)<span class="question-mark">?</span>, pointee_ty(callee.ty)<span class="question-mark">?</span>) {
             <span class="comment">// This is okay if they have the same metadata type.
             </span><span class="kw">let </span>meta_ty = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
-                <span class="kw">let </span>(meta, only_if_sized) = <a href="#378">ty</a>.ptr_metadata_ty(<span class="kw-2">*</span><a class="self" href="#324">self</a>.tcx, |ty| <a href="#379">ty</a>);
+                <span class="kw">let </span>(meta, only_if_sized) = <a href="#376">ty</a>.ptr_metadata_ty(<span class="kw-2">*</span><a class="self" href="#322">self</a>.tcx, |ty| <a href="#377">ty</a>);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(
                     !only_if_sized,
                     <span class="string">&quot;there should be no more &#39;maybe has that metadata&#39; types during interpretation&quot;
                 </span>);
-                <a href="#379">meta</a>
+                <a href="#377">meta</a>
             };
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#378">meta_ty</a>(<a href="#376">caller</a>) == <a href="#378">meta_ty</a>(<a href="#376">callee</a>));
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#376">meta_ty</a>(<a href="#374">caller</a>) == <a href="#376">meta_ty</a>(<a href="#374">callee</a>));
         }
 
         <span class="comment">// Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
         </span><span class="kw">let </span>int_ty = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
-            <span class="prelude-val">Some</span>(<span class="kw">match </span><a href="#390">ty</a>.kind() {
-                ty::Int(ity) =&gt; (Integer::from_int_ty(<span class="kw-2">&amp;</span><a class="self" href="#324">self</a>.tcx, <span class="kw-2">*</span><a href="#392">ity</a>), <span class="comment">/* signed */ </span><span class="bool-val">true</span>),
-                ty::Uint(uty) =&gt; (Integer::from_uint_ty(<span class="kw-2">&amp;</span><a class="self" href="#324">self</a>.tcx, <span class="kw-2">*</span><a href="#393">uty</a>), <span class="comment">/* signed */ </span><span class="bool-val">false</span>),
+            <span class="prelude-val">Some</span>(<span class="kw">match </span><a href="#388">ty</a>.kind() {
+                ty::Int(ity) =&gt; (Integer::from_int_ty(<span class="kw-2">&amp;</span><a class="self" href="#322">self</a>.tcx, <span class="kw-2">*</span><a href="#390">ity</a>), <span class="comment">/* signed */ </span><span class="bool-val">true</span>),
+                ty::Uint(uty) =&gt; (Integer::from_uint_ty(<span class="kw-2">&amp;</span><a class="self" href="#322">self</a>.tcx, <span class="kw-2">*</span><a href="#391">uty</a>), <span class="comment">/* signed */ </span><span class="bool-val">false</span>),
                 <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
             })
         };
-        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(caller), <span class="prelude-val">Some</span>(callee)) = (<a href="#390">int_ty</a>(<a href="#340">caller</a>.ty), <a href="#390">int_ty</a>(<a href="#341">callee</a>.ty)) {
+        <span class="kw">if let </span>(<span class="prelude-val">Some</span>(caller), <span class="prelude-val">Some</span>(callee)) = (<a href="#388">int_ty</a>(<a href="#338">caller</a>.ty), <a href="#388">int_ty</a>(<a href="#339">callee</a>.ty)) {
             <span class="comment">// This is okay if they are the same integer type.
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#397">caller</a> == <a href="#397">callee</a>);
+            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#395">caller</a> == <a href="#395">callee</a>);
         }
 
         <span class="comment">// Fall back to exact equality.
         // FIXME: We are missing the rules for &quot;repr(C) wrapping compatible types&quot;.
-        </span><span class="prelude-val">Ok</span>(<a href="#340">caller</a> == <a href="#341">callee</a>)
+        </span><span class="prelude-val">Ok</span>(<a href="#338">caller</a> == <a href="#339">callee</a>)
     }
 
     <span class="kw">fn </span>check_argument_compat(
@@ -1417,7 +1410,7 @@
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
         <span class="comment">// Find next caller arg.
-        </span><span class="kw">let </span><span class="prelude-val">Some</span>((caller_arg, caller_abi)) = <a href="#431">caller_args</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>() <span class="kw">else </span>{
+        </span><span class="kw">let </span><span class="prelude-val">Some</span>((caller_arg, caller_abi)) = <a href="#429">caller_args</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>() <span class="kw">else </span>{
             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_not_enough_caller_args);
         };
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(caller_arg.layout().layout, caller_abi.layout.layout);
@@ -1437,8 +1430,8 @@
         // did in-place of by-copy argument passing, except for pointer equality tests.
         </span><span class="kw">let </span>caller_arg_copy = <span class="self">self</span>.copy_fn_arg(<span class="kw-2">&amp;</span>caller_arg)<span class="question-mark">?</span>;
         <span class="kw">if </span>!already_live {
-            <span class="kw">let </span>local = <a href="#435">callee_arg</a>.as_local().unwrap();
-            <span class="kw">let </span>meta = <a href="#470">caller_arg_copy</a>.<a href="projection.rs.html#28">meta</a>();
+            <span class="kw">let </span>local = <a href="#433">callee_arg</a>.as_local().unwrap();
+            <span class="kw">let </span>meta = <a href="#468">caller_arg_copy</a>.<a href="projection.rs.html#28">meta</a>();
             <span class="comment">// `check_argument_compat` ensures that if metadata is needed, both have the same type,
             // so we know they will use the metadata the same way.
             </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!meta.has_meta() || caller_arg_copy.layout.ty == callee_ty);
@@ -1453,7 +1446,7 @@
         // specifically.)
         </span><span class="self">self</span>.copy_op(<span class="kw-2">&amp;</span>caller_arg_copy, <span class="kw-2">&amp;</span>callee_arg, <span class="comment">/*allow_transmute*/ </span><span class="bool-val">true</span>)<span class="question-mark">?</span>;
         <span class="comment">// If this was an in-place pass, protect the place it comes from for the duration of the call.
-        </span><span class="kw">if let </span><a href="#34">FnArg::InPlace</a>(place) = <a href="#452">caller_arg</a> {
+        </span><span class="kw">if let </span><a href="#34">FnArg::InPlace</a>(place) = <a href="#450">caller_arg</a> {
             M::protect_in_place_function_argument(<span class="self">self</span>, place)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -1479,32 +1472,32 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;eval_fn_call: {:#?}&quot;</span>, fn_val);
 
-        <span class="kw">let </span>instance = <span class="kw">match </span><a href="#504">fn_val</a> {
-            <a href="memory.rs.html#76">FnVal::Instance</a>(instance) =&gt; <a href="#515">instance</a>,
+        <span class="kw">let </span>instance = <span class="kw">match </span><a href="#502">fn_val</a> {
+            <a href="memory.rs.html#76">FnVal::Instance</a>(instance) =&gt; <a href="#513">instance</a>,
             <a href="memory.rs.html#77">FnVal::Other</a>(extra) =&gt; {
                 <span class="kw">return </span>M::call_extra_fn(
-                    <a class="self" href="#503">self</a>,
-                    <a href="#516">extra</a>,
-                    <a href="#505">caller_abi</a>,
-                    <a href="#506">args</a>,
-                    <a href="#508">destination</a>,
-                    <a href="#509">target</a>,
-                    <a href="#510">unwind</a>,
+                    <a class="self" href="#501">self</a>,
+                    <a href="#514">extra</a>,
+                    <a href="#503">caller_abi</a>,
+                    <a href="#504">args</a>,
+                    <a href="#506">destination</a>,
+                    <a href="#507">target</a>,
+                    <a href="#508">unwind</a>,
                 );
             }
         };
 
-        <span class="kw">match </span><a href="#514">instance</a>.def {
+        <span class="kw">match </span><a href="#512">instance</a>.def {
             ty::InstanceDef::Intrinsic(def_id) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.tcx.is_intrinsic(def_id));
                 <span class="comment">// FIXME: Should `InPlace` arguments be reset to uninit?
                 </span>M::call_intrinsic(
-                    <a class="self" href="#503">self</a>,
-                    <a href="#514">instance</a>,
+                    <a class="self" href="#501">self</a>,
+                    <a href="#512">instance</a>,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.copy_fn_args(args)<span class="question-mark">?</span>,
-                    <a href="#508">destination</a>,
-                    <a href="#509">target</a>,
-                    <a href="#510">unwind</a>,
+                    <a href="#506">destination</a>,
+                    <a href="#507">target</a>,
+                    <a href="#508">unwind</a>,
                 )
             }
             ty::InstanceDef::VTableShim(..)
@@ -1556,7 +1549,7 @@
 
                 <span class="kw">if </span>!callee_fn_abi.can_unwind {
                     <span class="comment">// The callee cannot unwind, so force the `Unreachable` unwind handling.
-                    </span><a href="#510">unwind</a> = mir::UnwindAction::Unreachable;
+                    </span><a href="#508">unwind</a> = mir::UnwindAction::Unreachable;
                 }
 
                 <span class="self">self</span>.push_stack_frame(
@@ -1603,7 +1596,7 @@
                     </span><span class="kw">let </span>caller_args: Cow&lt;<span class="lifetime">&#39;_</span>, [FnArg&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;]&gt; =
                         <span class="kw">if </span>caller_abi == Abi::RustCall &amp;&amp; !args.is_empty() {
                             <span class="comment">// Untuple
-                            </span><span class="kw">let </span>(untuple_arg, args) = <a href="#506">args</a>.split_last().unwrap();
+                            </span><span class="kw">let </span>(untuple_arg, args) = <a href="#504">args</a>.split_last().unwrap();
                             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;eval_fn_call: Will pass last argument by untupling&quot;</span>);
                             Cow::from(
                                 args.iter()
@@ -1616,7 +1609,7 @@
                             )
                         } <span class="kw">else </span>{
                             <span class="comment">// Plain arg passing
-                            </span>Cow::from(<a href="#506">args</a>)
+                            </span>Cow::from(<a href="#504">args</a>)
                         };
                     <span class="comment">// If `with_caller_location` is set we pretend there is an extra argument (that
                     // we will not pass).
@@ -1625,9 +1618,9 @@
                         caller_fn_abi.args.len(),
                         <span class="string">&quot;mismatch between caller ABI and caller arguments&quot;</span>,
                     );
-                    <span class="kw">let </span><span class="kw-2">mut </span>caller_args = <a href="#635">caller_args</a>
+                    <span class="kw">let </span><span class="kw-2">mut </span>caller_args = <a href="#633">caller_args</a>
                         .iter()
-                        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">zip</a>(<a href="#505">caller_fn_abi</a>.args.iter())
+                        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">zip</a>(<a href="#503">caller_fn_abi</a>.args.iter())
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|arg_and_abi| !<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(arg_and_abi.<span class="number">1</span>.mode, PassMode::Ignore));
 
                     <span class="comment">// Now we have to spread them out across the callee&#39;s locals,
@@ -1635,7 +1628,7 @@
                     // this is a single iterator (that handles `spread_arg`), then
                     // `pass_argument` would be the loop body. It takes care to
                     // not advance `caller_iter` for ignored arguments.
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>callee_args_abis = <a href="#568">callee_fn_abi</a>.args.iter();
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>callee_args_abis = <a href="#566">callee_fn_abi</a>.args.iter();
                     <span class="kw">for </span>local <span class="kw">in </span>body.args_iter() {
                         <span class="comment">// Construct the destination place for this argument. At this point all
                         // locals are still dead, so we cannot construct a `PlaceTy`.
@@ -1649,10 +1642,7 @@
                             </span><span class="self">self</span>.storage_live(local)<span class="question-mark">?</span>;
                             <span class="comment">// Must be a tuple
                             </span><span class="kw">let </span>ty::Tuple(fields) = ty.kind() <span class="kw">else </span>{
-                                <span class="macro">span_bug!</span>(
-                                    <span class="self">self</span>.cur_span(),
-                                    <span class="string">&quot;non-tuple type for `spread_arg`: {ty:?}&quot;
-                                </span>)
+                                <span class="macro">span_bug!</span>(<span class="self">self</span>.cur_span(), <span class="string">&quot;non-tuple type for `spread_arg`: {ty}&quot;</span>)
                             };
                             <span class="kw">for </span>(i, field_ty) <span class="kw">in </span>fields.iter().enumerate() {
                                 <span class="kw">let </span>dest = dest.project_deeper(
@@ -1685,7 +1675,7 @@
                     }
                     <span class="comment">// If the callee needs a caller location, pretend we consume one more argument from the ABI.
                     </span><span class="kw">if </span>instance.def.requires_caller_location(<span class="kw-2">*</span><span class="self">self</span>.tcx) {
-                        <a href="#670">callee_args_abis</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+                        <a href="#668">callee_args_abis</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
                     }
                     <span class="comment">// Now we should have no more caller args or callee arg ABIs
                     </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(
@@ -1704,7 +1694,7 @@
                     }
                     <span class="comment">// Ensure the return place is aligned and dereferenceable, and protect it for
                     // in-place return value passing.
-                    </span><span class="kw">if let </span>Either::Left(mplace) = <a href="#508">destination</a>.<a href="place.rs.html#264-271">as_mplace_or_local</a>() {
+                    </span><span class="kw">if let </span>Either::Left(mplace) = <a href="#506">destination</a>.<a href="place.rs.html#263-270">as_mplace_or_local</a>() {
                         <span class="self">self</span>.check_mplace(<span class="kw-2">&amp;</span>mplace)<span class="question-mark">?</span>;
                     } <span class="kw">else </span>{
                         <span class="comment">// Nothing to do for locals, they are always properly allocated and aligned.
@@ -1714,10 +1704,10 @@
                     <span class="comment">// Don&#39;t forget to mark &quot;initially live&quot; locals as live.
                     </span><span class="self">self</span>.storage_live_for_always_live_locals()<span class="question-mark">?</span>;
                 };
-                <span class="kw">match </span><a href="#603">res</a> {
+                <span class="kw">match </span><a href="#601">res</a> {
                     <span class="prelude-val">Err</span>(err) =&gt; {
-                        <a class="self" href="#503">self</a>.<a href="eval_context.rs.html#489-493">stack_mut</a>().pop();
-                        <span class="prelude-val">Err</span>(<a href="#750">err</a>)
+                        <a class="self" href="#501">self</a>.<a href="eval_context.rs.html#489-493">stack_mut</a>().pop();
+                        <span class="prelude-val">Err</span>(<a href="#745">err</a>)
                     }
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
                 }
@@ -1725,7 +1715,7 @@
             <span class="comment">// `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
             // codegen&#39;d / interpreted as virtual calls through the vtable.
             </span>ty::InstanceDef::Virtual(def_id, idx) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>args = <a href="#506">args</a>.to_vec();
+                <span class="kw">let </span><span class="kw-2">mut </span>args = <a href="#504">args</a>.to_vec();
                 <span class="comment">// We have to implement all &quot;object safe receivers&quot;. So we have to go search for a
                 // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
                 // unwrap those newtypes until we are there.
@@ -1734,7 +1724,7 @@
                 // `Immediate` receiver.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>receiver = <span class="self">self</span>.copy_fn_arg(<span class="kw-2">&amp;</span>args[<span class="number">0</span>])<span class="question-mark">?</span>;
                 <span class="kw">let </span>receiver_place = <span class="kw">loop </span>{
-                    <span class="kw">match </span><a href="#767">receiver</a>.layout.ty.kind() {
+                    <span class="kw">match </span><a href="#762">receiver</a>.layout.ty.kind() {
                         ty::Ref(..) | ty::RawPtr(..) =&gt; {
                             <span class="comment">// We do *not* use `deref_pointer` here: we don&#39;t want to conceptually
                             // create a place that must be dereferenceable, since the receiver might
@@ -1744,7 +1734,7 @@
                             </span><span class="kw">let </span>val = <span class="self">self</span>.read_immediate(<span class="kw-2">&amp;</span>receiver)<span class="question-mark">?</span>;
                             <span class="kw">break </span><span class="self">self</span>.ref_to_mplace(<span class="kw-2">&amp;</span>val)<span class="question-mark">?</span>;
                         }
-                        ty::Dynamic(.., ty::Dyn) =&gt; <span class="kw">break </span><a href="#767">receiver</a>.<a href="place.rs.html#352-359">assert_mem_place</a>(), <span class="comment">// no immediate unsized values
+                        ty::Dynamic(.., ty::Dyn) =&gt; <span class="kw">break </span><a href="#762">receiver</a>.<a href="place.rs.html#351-358">assert_mem_place</a>(), <span class="comment">// no immediate unsized values
                         </span>ty::Dynamic(.., ty::DynStar) =&gt; {
                             <span class="comment">// Not clear how to handle this, so far we assume the receiver is always a pointer.
                             </span><a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
@@ -1755,17 +1745,17 @@
                         <span class="kw">_ </span>=&gt; {
                             <span class="comment">// Not there yet, search for the only non-ZST field.
                             // (The rules for `DispatchFromDyn` ensure there&#39;s exactly one such field.)
-                            </span><span class="kw">let </span>(idx, <span class="kw">_</span>) = <a href="#767">receiver</a>.layout.non_1zst_field(<a class="self" href="#503">self</a>).expect(
+                            </span><span class="kw">let </span>(idx, <span class="kw">_</span>) = <a href="#762">receiver</a>.layout.non_1zst_field(<a class="self" href="#501">self</a>).expect(
                                 <span class="string">&quot;not exactly one non-1-ZST field in a `DispatchFromDyn` type&quot;</span>,
                             );
-                            <a href="#767">receiver</a> = <span class="self">self</span>.project_field(<span class="kw-2">&amp;</span>receiver, idx)<span class="question-mark">?</span>;
+                            <a href="#762">receiver</a> = <span class="self">self</span>.project_field(<span class="kw-2">&amp;</span>receiver, idx)<span class="question-mark">?</span>;
                         }
                     }
                 };
 
                 <span class="comment">// Obtain the underlying trait we are working on, and the adjusted receiver argument.
                 </span><span class="kw">let </span>(vptr, dyn_ty, adjusted_receiver) = <span class="kw">if let </span>ty::Dynamic(data, <span class="kw">_</span>, ty::DynStar) =
-                    <a href="#768">receiver_place</a>.layout.ty.kind()
+                    <a href="#763">receiver_place</a>.layout.ty.kind()
                 {
                     <span class="kw">let </span>(recv, vptr) = <span class="self">self</span>.unpack_dyn_star(<span class="kw-2">&amp;</span>receiver_place)<span class="question-mark">?</span>;
                     <span class="kw">let </span>(dyn_ty, dyn_trait) = <span class="self">self</span>.get_ptr_vtable(vptr)<span class="question-mark">?</span>;
@@ -1773,14 +1763,14 @@
                         <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_dyn_star_call_vtable_mismatch);
                     }
 
-                    (<a href="#802">vptr</a>, <a href="#803">dyn_ty</a>, <a href="#802">recv</a>.<a href="place.rs.html#169-171">ptr</a>())
+                    (<a href="#797">vptr</a>, <a href="#798">dyn_ty</a>, <a href="#797">recv</a>.<a href="place.rs.html#168-170">ptr</a>())
                 } <span class="kw">else </span>{
                     <span class="comment">// Doesn&#39;t have to be a `dyn Trait`, but the unsized tail must be `dyn Trait`.
                     // (For that reason we also cannot use `unpack_dyn_trait`.)
-                    </span><span class="kw">let </span>receiver_tail = <span class="self"><a href="#503">self</a>
+                    </span><span class="kw">let </span>receiver_tail = <span class="self"><a href="#501">self</a>
                         </span>.tcx
-                        .struct_tail_erasing_lifetimes(<a href="#768">receiver_place</a>.layout.ty, <a class="self" href="#503">self</a>.param_env);
-                    <span class="kw">let </span>ty::Dynamic(data, <span class="kw">_</span>, ty::Dyn) = <a href="#812">receiver_tail</a>.kind() <span class="kw">else </span>{
+                        .struct_tail_erasing_lifetimes(<a href="#763">receiver_place</a>.layout.ty, <a class="self" href="#501">self</a>.param_env);
+                    <span class="kw">let </span>ty::Dynamic(data, <span class="kw">_</span>, ty::Dyn) = <a href="#807">receiver_tail</a>.kind() <span class="kw">else </span>{
                         <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                             <span class="self">self</span>.cur_span(),
                             <span class="string">&quot;dynamic call on non-`dyn` type {}&quot;</span>,
@@ -1799,43 +1789,43 @@
                     <span class="comment">// It might be surprising that we use a pointer as the receiver even if this
                     // is a by-val case; this works because by-val passing of an unsized `dyn
                     // Trait` to a function is actually desugared to a pointer.
-                    </span>(<a href="#825">vptr</a>, <a href="#826">dyn_ty</a>, <a href="#768">receiver_place</a>.<a href="place.rs.html#169-171">ptr</a>())
+                    </span>(<a href="#820">vptr</a>, <a href="#821">dyn_ty</a>, <a href="#763">receiver_place</a>.<a href="place.rs.html#168-170">ptr</a>())
                 };
 
                 <span class="comment">// Now determine the actual method to call. We can do that in two different ways and
                 // compare them to ensure everything fits.
                 </span><span class="kw">let </span><span class="prelude-val">Some</span>(ty::VtblEntry::Method(fn_inst)) =
-                    <span class="self">self</span>.get_vtable_entries(vptr)<span class="question-mark">?</span>.get(<a href="#759">idx</a>).copied()
+                    <span class="self">self</span>.get_vtable_entries(vptr)<span class="question-mark">?</span>.get(<a href="#754">idx</a>).copied()
                 <span class="kw">else </span>{
                     <span class="comment">// FIXME(fee1-dead) these could be variants of the UB info enum instead of this
                     </span><a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_dyn_call_not_a_method);
                 };
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;Virtual call dispatches to {fn_inst:#?}&quot;</span>);
                 <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.cfg.html">cfg!</a>(debug_assertions) {
-                    <span class="kw">let </span>tcx = <span class="kw-2">*</span><a class="self" href="#503">self</a>.tcx;
+                    <span class="kw">let </span>tcx = <span class="kw-2">*</span><a class="self" href="#501">self</a>.tcx;
 
-                    <span class="kw">let </span>trait_def_id = <a href="#847">tcx</a>.trait_of_item(<a href="#759">def_id</a>).unwrap();
+                    <span class="kw">let </span>trait_def_id = <a href="#842">tcx</a>.trait_of_item(<a href="#754">def_id</a>).unwrap();
                     <span class="kw">let </span>virtual_trait_ref =
-                        ty::TraitRef::from_method(<a href="#847">tcx</a>, <a href="#849">trait_def_id</a>, <a href="#514">instance</a>.args);
+                        ty::TraitRef::from_method(<a href="#842">tcx</a>, <a href="#844">trait_def_id</a>, <a href="#512">instance</a>.args);
                     <span class="kw">let </span>existential_trait_ref =
-                        ty::ExistentialTraitRef::erase_self_ty(<a href="#847">tcx</a>, <a href="#850">virtual_trait_ref</a>);
-                    <span class="kw">let </span>concrete_trait_ref = <a href="#852">existential_trait_ref</a>.with_self_ty(<a href="#847">tcx</a>, <a href="#799">dyn_ty</a>);
+                        ty::ExistentialTraitRef::erase_self_ty(<a href="#842">tcx</a>, <a href="#845">virtual_trait_ref</a>);
+                    <span class="kw">let </span>concrete_trait_ref = <a href="#847">existential_trait_ref</a>.with_self_ty(<a href="#842">tcx</a>, <a href="#794">dyn_ty</a>);
 
                     <span class="kw">let </span>concrete_method = Instance::resolve_for_vtable(
-                        <a href="#847">tcx</a>,
-                        <a class="self" href="#503">self</a>.param_env,
-                        <a href="#759">def_id</a>,
-                        <a href="#514">instance</a>.args.rebase_onto(<a href="#847">tcx</a>, <a href="#849">trait_def_id</a>, <a href="#854">concrete_trait_ref</a>.args),
+                        <a href="#842">tcx</a>,
+                        <a class="self" href="#501">self</a>.param_env,
+                        <a href="#754">def_id</a>,
+                        <a href="#512">instance</a>.args.rebase_onto(<a href="#842">tcx</a>, <a href="#844">trait_def_id</a>, <a href="#849">concrete_trait_ref</a>.args),
                     )
                     .unwrap();
                     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(fn_inst, concrete_method);
                 }
 
                 <span class="comment">// Adjust receiver argument. Layout can be any (thin) ptr.
-                </span><span class="kw">let </span>receiver_ty = Ty::new_mut_ptr(<a class="self" href="#503">self</a>.tcx.tcx, <a href="#799">dyn_ty</a>);
-                <a href="#760">args</a>[<span class="number">0</span>] = <a href="#31">FnArg::Copy</a>(
+                </span><span class="kw">let </span>receiver_ty = Ty::new_mut_ptr(<a class="self" href="#501">self</a>.tcx.tcx, <a href="#794">dyn_ty</a>);
+                <a href="#755">args</a>[<span class="number">0</span>] = <a href="#31">FnArg::Copy</a>(
                     ImmTy::from_immediate(
-                        Scalar::from_maybe_pointer(<a href="#799">adjusted_receiver</a>, <a class="self" href="#503">self</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+                        Scalar::from_maybe_pointer(<a href="#794">adjusted_receiver</a>, <a class="self" href="#501">self</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
                         <span class="self">self</span>.layout_of(receiver_ty)<span class="question-mark">?</span>,
                     )
                     .<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
@@ -1845,25 +1835,25 @@
                 // already fine! Just the type is bogus. This is due to what `force_thin_self_ptr`
                 // does in `fn_abi_new_uncached`; supposedly, codegen relies on having the bogus
                 // type, so we just patch this up locally.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>caller_fn_abi = <a href="#505">caller_fn_abi</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
-                <a href="#880">caller_fn_abi</a>.args[<span class="number">0</span>].layout.ty = <a href="#867">receiver_ty</a>;
+                </span><span class="kw">let </span><span class="kw-2">mut </span>caller_fn_abi = <a href="#503">caller_fn_abi</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+                <a href="#875">caller_fn_abi</a>.args[<span class="number">0</span>].layout.ty = <a href="#862">receiver_ty</a>;
 
                 <span class="comment">// recurse with concrete function
-                </span><a class="self" href="#503">self</a>.<a href="#502-895">eval_fn_call</a>(
-                    <a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#839">fn_inst</a>),
-                    (<a href="#505">caller_abi</a>, <span class="kw-2">&amp;</span><a href="#880">caller_fn_abi</a>),
-                    <span class="kw-2">&amp;</span><a href="#760">args</a>,
-                    <a href="#507">with_caller_location</a>,
-                    <a href="#508">destination</a>,
-                    <a href="#509">target</a>,
-                    <a href="#510">unwind</a>,
+                </span><a class="self" href="#501">self</a>.<a href="#500-890">eval_fn_call</a>(
+                    <a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#834">fn_inst</a>),
+                    (<a href="#503">caller_abi</a>, <span class="kw-2">&amp;</span><a href="#875">caller_fn_abi</a>),
+                    <span class="kw-2">&amp;</span><a href="#755">args</a>,
+                    <a href="#505">with_caller_location</a>,
+                    <a href="#506">destination</a>,
+                    <a href="#507">target</a>,
+                    <a href="#508">unwind</a>,
                 )
             }
         }
     }
 
     <span class="kw">fn </span>check_fn_target_features(<span class="kw-2">&amp;</span><span class="self">self</span>, instance: ty::Instance&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ()&gt; {
-        <span class="kw">let </span>attrs = <a class="self" href="#897">self</a>.tcx.codegen_fn_attrs(<a href="#897">instance</a>.def_id());
+        <span class="kw">let </span>attrs = <a class="self" href="#892">self</a>.tcx.codegen_fn_attrs(<a href="#892">instance</a>.def_id());
         <span class="kw">if </span>attrs
             .target_features
             .iter()
@@ -1894,13 +1884,13 @@
         target: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>,
         unwind: <a href="../../../rustc_middle/mir/syntax/enum.UnwindAction.html">mir::UnwindAction</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;drop_in_place: {:?},\n  {:?}, {:?}&quot;</span>, <span class="kw-2">*</span>place, place.layout.ty, instance);
+        <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;drop_in_place: {:?},\n  instance={:?}&quot;</span>, place, instance);
         <span class="comment">// We take the address of the object. This may well be unaligned, which is fine
         // for us here. However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.
         </span><span class="kw">let </span>place = <span class="self">self</span>.force_allocation(place)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>place = <span class="kw">match </span><a href="#933">place</a>.layout.ty.kind() {
+        <span class="kw">let </span>place = <span class="kw">match </span><a href="#928">place</a>.layout.ty.kind() {
             ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::Dyn) =&gt; {
                 <span class="comment">// Dropping a trait object. Need to find actual drop fn.
                 </span><span class="self">self</span>.unpack_dyn_trait(<span class="kw-2">&amp;</span>place)<span class="question-mark">?</span>.<span class="number">0
@@ -1914,23 +1904,23 @@
                     instance,
                     ty::Instance::resolve_drop_in_place(<span class="kw-2">*</span><span class="self">self</span>.tcx, place.layout.ty)
                 );
-                <a href="#933">place</a>
+                <a href="#928">place</a>
             }
         };
-        <span class="kw">let </span>instance = ty::Instance::resolve_drop_in_place(<span class="kw-2">*</span><a class="self" href="#923">self</a>.tcx, <a href="#935">place</a>.layout.ty);
+        <span class="kw">let </span>instance = ty::Instance::resolve_drop_in_place(<span class="kw-2">*</span><a class="self" href="#918">self</a>.tcx, <a href="#930">place</a>.layout.ty);
         <span class="kw">let </span>fn_abi = <span class="self">self</span>.fn_abi_of_instance(instance, ty::List::empty())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>arg = <span class="self">self</span>.mplace_to_ref(<span class="kw-2">&amp;</span>place)<span class="question-mark">?</span>;
         <span class="kw">let </span>ret = MPlaceTy::fake_alloc_zst(<span class="self">self</span>.layout_of(<span class="self">self</span>.tcx.types.unit)<span class="question-mark">?</span>);
 
-        <a class="self" href="#923">self</a>.<a href="#502-895">eval_fn_call</a>(
-            <a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#952">instance</a>),
-            (Abi::Rust, <a href="#953">fn_abi</a>),
-            <span class="kw-2">&amp;</span>[<a href="#31">FnArg::Copy</a>(<a href="#955">arg</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())],
+        <a class="self" href="#918">self</a>.<a href="#500-890">eval_fn_call</a>(
+            <a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#947">instance</a>),
+            (Abi::Rust, <a href="#948">fn_abi</a>),
+            <span class="kw-2">&amp;</span>[<a href="#31">FnArg::Copy</a>(<a href="#950">arg</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())],
             <span class="bool-val">false</span>,
-            <span class="kw-2">&amp;</span><a href="#956">ret</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
-            <span class="prelude-val">Some</span>(<a href="#926">target</a>),
-            <a href="#927">unwind</a>,
+            <span class="kw-2">&amp;</span><a href="#951">ret</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+            <span class="prelude-val">Some</span>(<a href="#921">target</a>),
+            <a href="#922">unwind</a>,
         )
     }
 }

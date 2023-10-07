@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/shims/intrinsics/simd.rs`."><title>simd.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/shims/intrinsics/simd.rs`."><title>simd.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -663,13 +663,35 @@
 <a href="#663" id="663">663</a>
 <a href="#664" id="664">664</a>
 <a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>rustc_apfloat::{Float, Round};
 <span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">HasParamEnv</a>, <a href="../../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>};
 <span class="kw">use </span>rustc_middle::{<a href="../../../../rustc_middle/mir/index.html">mir</a>, <a href="../../../../rustc_middle/ty/index.html">ty</a>, <a href="../../../../rustc_type_ir/enum.FloatTy.html">ty::FloatTy</a>};
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/enum.Endian.html">Endian</a>, <a href="../../../../rustc_abi/trait.HasDataLayout.html">HasDataLayout</a>, <a href="../../../../rustc_abi/struct.Size.html">Size</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/enum.Endian.html">Endian</a>, <a href="../../../../rustc_abi/trait.HasDataLayout.html">HasDataLayout</a>};
 
 <span class="kw">use crate</span>::<span class="kw-2">*</span>;
-<span class="kw">use </span><a href="../../helpers.rs.html#1112-1122">helpers::check_arg_count</a>;
+<span class="kw">use </span>helpers::{<a href="../../helpers.rs.html#1173-1179">bool_to_simd_element</a>, <a href="../../helpers.rs.html#1130-1140">check_arg_count</a>, <a href="../../helpers.rs.html#1181-1188">simd_element_to_bool</a>};
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;mir</span>&gt; EvalContextExt&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><span class="kw">crate</span>::MiriInterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {}
 <span class="kw">pub trait </span><a href="../../../../miri/shims/intrinsics/simd/trait.EvalContextExt.html">EvalContextExt</a>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;mir</span>&gt;: <span class="kw">crate</span>::MiriInterpCxExt&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -677,6 +699,7 @@
     </span><span class="kw">fn </span>emulate_simd_intrinsic(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         intrinsic_name: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
+        generic_args: ty::GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         args: <span class="kw-2">&amp;</span>[OpTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;],
         dest: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -708,16 +731,16 @@
                 </span><span class="kw">enum </span>Op {
                     MirOp(<a href="../../../../rustc_middle/mir/syntax/enum.UnOp.html">mir::UnOp</a>),
                     Abs,
-                    HostOp(<a href="#35-41">HostFloatOp</a>),
+                    HostOp(<a href="#36-42">HostFloatOp</a>),
                 }
                 <span class="kw">let </span>which = <span class="kw">match </span><a href="#14">intrinsic_name</a> {
-                    <span class="string">&quot;neg&quot; </span>=&gt; <a href="#44">Op::MirOp</a>(mir::UnOp::Neg),
-                    <span class="string">&quot;fabs&quot; </span>=&gt; <a href="#45">Op::Abs</a>,
-                    <span class="string">&quot;ceil&quot; </span>=&gt; <a href="#46">Op::HostOp</a>(<a href="#36">HostFloatOp::Ceil</a>),
-                    <span class="string">&quot;floor&quot; </span>=&gt; <a href="#46">Op::HostOp</a>(<a href="#37">HostFloatOp::Floor</a>),
-                    <span class="string">&quot;round&quot; </span>=&gt; <a href="#46">Op::HostOp</a>(<a href="#38">HostFloatOp::Round</a>),
-                    <span class="string">&quot;trunc&quot; </span>=&gt; <a href="#46">Op::HostOp</a>(<a href="#39">HostFloatOp::Trunc</a>),
-                    <span class="string">&quot;fsqrt&quot; </span>=&gt; <a href="#46">Op::HostOp</a>(<a href="#40">HostFloatOp::Sqrt</a>),
+                    <span class="string">&quot;neg&quot; </span>=&gt; <a href="#45">Op::MirOp</a>(mir::UnOp::Neg),
+                    <span class="string">&quot;fabs&quot; </span>=&gt; <a href="#46">Op::Abs</a>,
+                    <span class="string">&quot;ceil&quot; </span>=&gt; <a href="#47">Op::HostOp</a>(<a href="#37">HostFloatOp::Ceil</a>),
+                    <span class="string">&quot;floor&quot; </span>=&gt; <a href="#47">Op::HostOp</a>(<a href="#38">HostFloatOp::Floor</a>),
+                    <span class="string">&quot;round&quot; </span>=&gt; <a href="#47">Op::HostOp</a>(<a href="#39">HostFloatOp::Round</a>),
+                    <span class="string">&quot;trunc&quot; </span>=&gt; <a href="#47">Op::HostOp</a>(<a href="#40">HostFloatOp::Trunc</a>),
+                    <span class="string">&quot;fsqrt&quot; </span>=&gt; <a href="#47">Op::HostOp</a>(<a href="#41">HostFloatOp::Sqrt</a>),
                     <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                 };
 
@@ -725,7 +748,7 @@
                     <span class="kw">let </span>op = this.read_immediate(<span class="kw-2">&amp;</span>this.project_index(<span class="kw-2">&amp;</span>op, i)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                     <span class="kw">let </span>dest = this.project_index(<span class="kw-2">&amp;</span>dest, i)<span class="question-mark">?</span>;
                     <span class="kw">let </span>val = <span class="kw">match </span>which {
-                        Op::MirOp(mir_op) =&gt; this.unary_op(mir_op, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>.to_scalar(),
+                        Op::MirOp(mir_op) =&gt; this.wrapping_unary_op(mir_op, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>.to_scalar(),
                         Op::Abs =&gt; {
                             <span class="comment">// Works for f32 and f64.
                             </span><span class="kw">let </span>ty::Float(float_ty) = op.layout.ty.kind() <span class="kw">else </span>{
@@ -812,27 +835,27 @@
                     WrappingOffset,
                 }
                 <span class="kw">let </span>which = <span class="kw">match </span><a href="#14">intrinsic_name</a> {
-                    <span class="string">&quot;add&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Add),
-                    <span class="string">&quot;sub&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Sub),
-                    <span class="string">&quot;mul&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Mul),
-                    <span class="string">&quot;div&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Div),
-                    <span class="string">&quot;rem&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Rem),
-                    <span class="string">&quot;shl&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Shl),
-                    <span class="string">&quot;shr&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Shr),
-                    <span class="string">&quot;and&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::BitAnd),
-                    <span class="string">&quot;or&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::BitOr),
-                    <span class="string">&quot;xor&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::BitXor),
-                    <span class="string">&quot;eq&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Eq),
-                    <span class="string">&quot;ne&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Ne),
-                    <span class="string">&quot;lt&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Lt),
-                    <span class="string">&quot;le&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Le),
-                    <span class="string">&quot;gt&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Gt),
-                    <span class="string">&quot;ge&quot; </span>=&gt; <a href="#143">Op::MirOp</a>(BinOp::Ge),
-                    <span class="string">&quot;fmax&quot; </span>=&gt; <a href="#145">Op::FMax</a>,
-                    <span class="string">&quot;fmin&quot; </span>=&gt; <a href="#146">Op::FMin</a>,
-                    <span class="string">&quot;saturating_add&quot; </span>=&gt; <a href="#144">Op::SaturatingOp</a>(BinOp::Add),
-                    <span class="string">&quot;saturating_sub&quot; </span>=&gt; <a href="#144">Op::SaturatingOp</a>(BinOp::Sub),
-                    <span class="string">&quot;arith_offset&quot; </span>=&gt; <a href="#147">Op::WrappingOffset</a>,
+                    <span class="string">&quot;add&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Add),
+                    <span class="string">&quot;sub&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Sub),
+                    <span class="string">&quot;mul&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Mul),
+                    <span class="string">&quot;div&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Div),
+                    <span class="string">&quot;rem&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Rem),
+                    <span class="string">&quot;shl&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Shl),
+                    <span class="string">&quot;shr&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Shr),
+                    <span class="string">&quot;and&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::BitAnd),
+                    <span class="string">&quot;or&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::BitOr),
+                    <span class="string">&quot;xor&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::BitXor),
+                    <span class="string">&quot;eq&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Eq),
+                    <span class="string">&quot;ne&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Ne),
+                    <span class="string">&quot;lt&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Lt),
+                    <span class="string">&quot;le&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Le),
+                    <span class="string">&quot;gt&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Gt),
+                    <span class="string">&quot;ge&quot; </span>=&gt; <a href="#144">Op::MirOp</a>(BinOp::Ge),
+                    <span class="string">&quot;fmax&quot; </span>=&gt; <a href="#146">Op::FMax</a>,
+                    <span class="string">&quot;fmin&quot; </span>=&gt; <a href="#147">Op::FMin</a>,
+                    <span class="string">&quot;saturating_add&quot; </span>=&gt; <a href="#145">Op::SaturatingOp</a>(BinOp::Add),
+                    <span class="string">&quot;saturating_sub&quot; </span>=&gt; <a href="#145">Op::SaturatingOp</a>(BinOp::Sub),
+                    <span class="string">&quot;arith_offset&quot; </span>=&gt; <a href="#148">Op::WrappingOffset</a>,
                     <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                 };
 
@@ -842,7 +865,7 @@
                     <span class="kw">let </span>dest = this.project_index(<span class="kw-2">&amp;</span>dest, i)<span class="question-mark">?</span>;
                     <span class="kw">let </span>val = <span class="kw">match </span>which {
                         Op::MirOp(mir_op) =&gt; {
-                            <span class="kw">let </span>(val, overflowed, ty) = this.overflowing_binary_op(mir_op, <span class="kw-2">&amp;</span>left, <span class="kw-2">&amp;</span>right)<span class="question-mark">?</span>;
+                            <span class="kw">let </span>(val, overflowed) = this.overflowing_binary_op(mir_op, <span class="kw-2">&amp;</span>left, <span class="kw-2">&amp;</span>right)<span class="question-mark">?</span>;
                             <span class="kw">if </span><span class="macro">matches!</span>(mir_op, BinOp::Shl | BinOp::Shr) {
                                 <span class="comment">// Shifts have extra UB as SIMD operations that the MIR binop does not have.
                                 // See &lt;https://github.com/rust-lang/rust/issues/91237&gt;.
@@ -853,13 +876,13 @@
                             }
                             <span class="kw">if </span><span class="macro">matches!</span>(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                                 <span class="comment">// Special handling for boolean-returning operations
-                                </span><span class="macro">assert_eq!</span>(ty, this.tcx.types.bool);
-                                <span class="kw">let </span>val = val.to_bool().unwrap();
+                                </span><span class="macro">assert_eq!</span>(val.layout.ty, this.tcx.types.bool);
+                                <span class="kw">let </span>val = val.to_scalar().to_bool().unwrap();
                                 bool_to_simd_element(val, dest.layout.size)
                             } <span class="kw">else </span>{
-                                <span class="macro">assert_ne!</span>(ty, this.tcx.types.bool);
-                                <span class="macro">assert_eq!</span>(ty, dest.layout.ty);
-                                val
+                                <span class="macro">assert_ne!</span>(val.layout.ty, this.tcx.types.bool);
+                                <span class="macro">assert_eq!</span>(val.layout.ty, dest.layout.ty);
+                                val.to_scalar()
                             }
                         }
                         Op::SaturatingOp(mir_op) =&gt; {
@@ -940,7 +963,7 @@
                 <span class="kw">let </span>(op, op_len) = this.operand_to_simd(op)<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>imm_from_bool =
-                    |b| ImmTy::from_scalar(Scalar::from_bool(<a href="#278">b</a>), <a href="#18">this</a>.machine.layouts.bool);
+                    |b| ImmTy::from_scalar(Scalar::from_bool(<a href="#279">b</a>), <a href="#19">this</a>.machine.layouts.bool);
 
                 <span class="kw">enum </span>Op {
                     MirOp(<a href="../../../../rustc_middle/mir/syntax/enum.BinOp.html">BinOp</a>),
@@ -949,13 +972,13 @@
                     Min,
                 }
                 <span class="kw">let </span>which = <span class="kw">match </span><a href="#14">intrinsic_name</a> {
-                    <span class="string">&quot;reduce_and&quot; </span>=&gt; <a href="#281">Op::MirOp</a>(BinOp::BitAnd),
-                    <span class="string">&quot;reduce_or&quot; </span>=&gt; <a href="#281">Op::MirOp</a>(BinOp::BitOr),
-                    <span class="string">&quot;reduce_xor&quot; </span>=&gt; <a href="#281">Op::MirOp</a>(BinOp::BitXor),
-                    <span class="string">&quot;reduce_any&quot; </span>=&gt; <a href="#282">Op::MirOpBool</a>(BinOp::BitOr),
-                    <span class="string">&quot;reduce_all&quot; </span>=&gt; <a href="#282">Op::MirOpBool</a>(BinOp::BitAnd),
-                    <span class="string">&quot;reduce_max&quot; </span>=&gt; <a href="#283">Op::Max</a>,
-                    <span class="string">&quot;reduce_min&quot; </span>=&gt; <a href="#284">Op::Min</a>,
+                    <span class="string">&quot;reduce_and&quot; </span>=&gt; <a href="#282">Op::MirOp</a>(BinOp::BitAnd),
+                    <span class="string">&quot;reduce_or&quot; </span>=&gt; <a href="#282">Op::MirOp</a>(BinOp::BitOr),
+                    <span class="string">&quot;reduce_xor&quot; </span>=&gt; <a href="#282">Op::MirOp</a>(BinOp::BitXor),
+                    <span class="string">&quot;reduce_any&quot; </span>=&gt; <a href="#283">Op::MirOpBool</a>(BinOp::BitOr),
+                    <span class="string">&quot;reduce_all&quot; </span>=&gt; <a href="#283">Op::MirOpBool</a>(BinOp::BitAnd),
+                    <span class="string">&quot;reduce_max&quot; </span>=&gt; <a href="#284">Op::Max</a>,
+                    <span class="string">&quot;reduce_min&quot; </span>=&gt; <a href="#285">Op::Min</a>,
                     <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                 };
 
@@ -963,24 +986,24 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>res = this.read_immediate(<span class="kw-2">&amp;</span>this.project_index(<span class="kw-2">&amp;</span>op, <span class="number">0</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                 <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(which, Op::MirOpBool(<span class="kw">_</span>)) {
                     <span class="comment">// Convert to `bool` scalar.
-                    </span><a href="#298">res</a> = <a href="#277">imm_from_bool</a>(simd_element_to_bool(res)<span class="question-mark">?</span>);
+                    </span><a href="#299">res</a> = <a href="#278">imm_from_bool</a>(simd_element_to_bool(res)<span class="question-mark">?</span>);
                 }
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..op_len {
                     <span class="kw">let </span>op = this.read_immediate(<span class="kw-2">&amp;</span>this.project_index(<span class="kw-2">&amp;</span>op, i)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                     res = <span class="kw">match </span>which {
                         Op::MirOp(mir_op) =&gt; {
-                            this.binary_op(mir_op, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?
+                            this.wrapping_binary_op(mir_op, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?
                         </span>}
                         Op::MirOpBool(mir_op) =&gt; {
                             <span class="kw">let </span>op = imm_from_bool(simd_element_to_bool(op)<span class="question-mark">?</span>);
-                            this.binary_op(mir_op, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?
+                            this.wrapping_binary_op(mir_op, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?
                         </span>}
                         Op::Max =&gt; {
                             <span class="kw">if </span><span class="macro">matches!</span>(res.layout.ty.kind(), ty::Float(<span class="kw">_</span>)) {
                                 ImmTy::from_scalar(fmax_op(<span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>, res.layout)
                             } <span class="kw">else </span>{
                                 <span class="comment">// Just boring integers, so NaNs to worry about
-                                </span><span class="kw">if </span>this.binary_op(BinOp::Ge, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>.to_scalar().to_bool()<span class="question-mark">? </span>{
+                                </span><span class="kw">if </span>this.wrapping_binary_op(BinOp::Ge, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>.to_scalar().to_bool()<span class="question-mark">? </span>{
                                     res
                                 } <span class="kw">else </span>{
                                     op
@@ -992,7 +1015,7 @@
                                 ImmTy::from_scalar(fmin_op(<span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>, res.layout)
                             } <span class="kw">else </span>{
                                 <span class="comment">// Just boring integers, so NaNs to worry about
-                                </span><span class="kw">if </span>this.binary_op(BinOp::Le, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>.to_scalar().to_bool()<span class="question-mark">? </span>{
+                                </span><span class="kw">if </span>this.wrapping_binary_op(BinOp::Le, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>.to_scalar().to_bool()<span class="question-mark">? </span>{
                                     res
                                 } <span class="kw">else </span>{
                                     op
@@ -1018,10 +1041,10 @@
                     <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                 };
 
-                <span class="kw">let </span><span class="kw-2">mut </span>res = <a href="#348">init</a>;
+                <span class="kw">let </span><span class="kw-2">mut </span>res = <a href="#349">init</a>;
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..op_len {
                     <span class="kw">let </span>op = this.read_immediate(<span class="kw-2">&amp;</span>this.project_index(<span class="kw-2">&amp;</span>op, i)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-                    res = this.binary_op(mir_op, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>;
+                    res = this.wrapping_binary_op(mir_op, <span class="kw-2">&amp;</span>res, <span class="kw-2">&amp;</span>op)<span class="question-mark">?</span>;
                 }
                 this.write_immediate(<span class="kw-2">*</span>res, dest)<span class="question-mark">?</span>;
             }
@@ -1051,15 +1074,15 @@
                 <span class="kw">let </span>(yes, yes_len) = this.operand_to_simd(yes)<span class="question-mark">?</span>;
                 <span class="kw">let </span>(no, no_len) = this.operand_to_simd(no)<span class="question-mark">?</span>;
                 <span class="kw">let </span>(dest, dest_len) = this.place_to_simd(dest)<span class="question-mark">?</span>;
-                <span class="kw">let </span>bitmask_len = <a href="#388">dest_len</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<span class="number">8</span>);
+                <span class="kw">let </span>bitmask_len = <a href="#389">dest_len</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<span class="number">8</span>);
 
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(mask.layout.ty.is_integral());
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(bitmask_len &lt;= <span class="number">64</span>);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(bitmask_len, mask.layout.size.bits());
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(dest_len, yes_len);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(dest_len, no_len);
-                <span class="kw">let </span>dest_len = u32::try_from(<a href="#388">dest_len</a>).unwrap();
-                <span class="kw">let </span>bitmask_len = u32::try_from(<a href="#389">bitmask_len</a>).unwrap();
+                <span class="kw">let </span>dest_len = u32::try_from(<a href="#389">dest_len</a>).unwrap();
+                <span class="kw">let </span>bitmask_len = u32::try_from(<a href="#390">bitmask_len</a>).unwrap();
 
                 <span class="kw">let </span>mask: <a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a> =
                     this.read_scalar(mask)<span class="question-mark">?</span>.to_bits(mask.layout.size)<span class="question-mark">?</span>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>().unwrap();
@@ -1106,44 +1129,42 @@
                         <span class="comment">// Int-to-(int|float): always safe
                         </span>(ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>), ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) | ty::Float(<span class="kw">_</span>))
                             <span class="kw">if </span>safe_cast || unsafe_cast =&gt;
-                            this.int_to_int_or_float(<span class="kw-2">&amp;</span>op, dest.layout.ty)<span class="question-mark">?</span>,
+                            this.int_to_int_or_float(<span class="kw-2">&amp;</span>op, dest.layout)<span class="question-mark">?</span>,
                         <span class="comment">// Float-to-float: always safe
                         </span>(ty::Float(<span class="kw">_</span>), ty::Float(<span class="kw">_</span>)) <span class="kw">if </span>safe_cast || unsafe_cast =&gt;
-                            this.float_to_float_or_int(<span class="kw-2">&amp;</span>op, dest.layout.ty)<span class="question-mark">?</span>,
+                            this.float_to_float_or_int(<span class="kw-2">&amp;</span>op, dest.layout)<span class="question-mark">?</span>,
                         <span class="comment">// Float-to-int in safe mode
                         </span>(ty::Float(<span class="kw">_</span>), ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>)) <span class="kw">if </span>safe_cast =&gt;
-                            this.float_to_float_or_int(<span class="kw-2">&amp;</span>op, dest.layout.ty)<span class="question-mark">?</span>,
+                            this.float_to_float_or_int(<span class="kw-2">&amp;</span>op, dest.layout)<span class="question-mark">?</span>,
                         <span class="comment">// Float-to-int in unchecked mode
                         </span>(ty::Float(FloatTy::F32), ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>)) <span class="kw">if </span>unsafe_cast =&gt; {
                             <span class="kw">let </span>f = op.to_scalar().to_f32()<span class="question-mark">?</span>;
-                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            this.float_to_int_checked(f, dest.layout, Round::TowardZero)
                                 .ok_or_else(|| {
                                     <span class="macro">err_ub_format!</span>(
                                         <span class="string">&quot;`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`&quot;</span>,
                                         dest.layout.ty
                                     )
                                 })<span class="question-mark">?
-                                </span>.into()
-                        }
+                        </span>}
                         (ty::Float(FloatTy::F64), ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>)) <span class="kw">if </span>unsafe_cast =&gt; {
                             <span class="kw">let </span>f = op.to_scalar().to_f64()<span class="question-mark">?</span>;
-                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                            this.float_to_int_checked(f, dest.layout, Round::TowardZero)
                                 .ok_or_else(|| {
                                     <span class="macro">err_ub_format!</span>(
                                         <span class="string">&quot;`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`&quot;</span>,
                                         dest.layout.ty
                                     )
                                 })<span class="question-mark">?
-                                </span>.into()
-                        }
+                        </span>}
                         <span class="comment">// Ptr-to-ptr cast
                         </span>(ty::RawPtr(..), ty::RawPtr(..)) <span class="kw">if </span>ptr_cast =&gt;
-                            this.ptr_to_ptr(<span class="kw-2">&amp;</span>op, dest.layout.ty)<span class="question-mark">?</span>,
+                            this.ptr_to_ptr(<span class="kw-2">&amp;</span>op, dest.layout)<span class="question-mark">?</span>,
                         <span class="comment">// Ptr/Int casts
                         </span>(ty::RawPtr(..), ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>)) <span class="kw">if </span>expose_cast =&gt;
-                            this.pointer_expose_address_cast(<span class="kw-2">&amp;</span>op, dest.layout.ty)<span class="question-mark">?</span>,
+                            this.pointer_expose_address_cast(<span class="kw-2">&amp;</span>op, dest.layout)<span class="question-mark">?</span>,
                         (ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>), ty::RawPtr(..)) <span class="kw">if </span>from_exposed_cast =&gt;
-                            this.pointer_from_exposed_address_cast(<span class="kw-2">&amp;</span>op, dest.layout.ty)<span class="question-mark">?</span>,
+                            this.pointer_from_exposed_address_cast(<span class="kw-2">&amp;</span>op, dest.layout)<span class="question-mark">?</span>,
                         <span class="comment">// Error otherwise
                         </span><span class="kw">_ </span>=&gt;
                             <span class="macro">throw_unsup_format!</span>(
@@ -1152,7 +1173,45 @@
                                 to_ty = dest.layout.ty,
                             ),
                     };
-                    this.write_immediate(val, <span class="kw-2">&amp;</span>dest)<span class="question-mark">?</span>;
+                    this.write_immediate(<span class="kw-2">*</span>val, <span class="kw-2">&amp;</span>dest)<span class="question-mark">?</span>;
+                }
+            }
+            <span class="string">&quot;shuffle_generic&quot; </span>=&gt; {
+                <span class="kw">let </span>[left, right] = check_arg_count(args)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(left, left_len) = this.operand_to_simd(left)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(right, right_len) = this.operand_to_simd(right)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(dest, dest_len) = this.place_to_simd(dest)<span class="question-mark">?</span>;
+
+                <span class="kw">let </span>index = <a href="#15">generic_args</a>[<span class="number">2</span>]
+                    .expect_const()
+                    .eval(<span class="kw-2">*</span><a href="#19">this</a>.tcx, <a href="#19">this</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>(), <span class="prelude-val">Some</span>(<a href="#19">this</a>.tcx.span))
+                    .unwrap()
+                    .unwrap_branch();
+                <span class="kw">let </span>index_len = <a href="#498">index</a>.len();
+
+                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(left_len, right_len);
+                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(index_len <span class="kw">as </span>u64, dest_len);
+
+                <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..dest_len {
+                    <span class="kw">let </span>src_index: u64 = index[usize::try_from(i).unwrap()]
+                        .unwrap_leaf()
+                        .try_to_u32()
+                        .unwrap()
+                        .into();
+                    <span class="kw">let </span>dest = this.project_index(<span class="kw-2">&amp;</span>dest, i)<span class="question-mark">?</span>;
+
+                    <span class="kw">let </span>val = <span class="kw">if </span>src_index &lt; left_len {
+                        this.read_immediate(<span class="kw-2">&amp;</span>this.project_index(<span class="kw-2">&amp;</span>left, src_index)<span class="question-mark">?</span>)<span class="question-mark">?
+                    </span>} <span class="kw">else if </span>src_index &lt; left_len.checked_add(right_len).unwrap() {
+                        <span class="kw">let </span>right_idx = src_index.checked_sub(left_len).unwrap();
+                        this.read_immediate(<span class="kw-2">&amp;</span>this.project_index(<span class="kw-2">&amp;</span>right, right_idx)<span class="question-mark">?</span>)<span class="question-mark">?
+                    </span>} <span class="kw">else </span>{
+                        <span class="macro">span_bug!</span>(
+                            this.cur_span(),
+                            <span class="string">&quot;simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}&quot;</span>,
+                        );
+                    };
+                    this.write_immediate(<span class="kw-2">*</span>val, <span class="kw-2">&amp;</span>dest)<span class="question-mark">?</span>;
                 }
             }
             <span class="string">&quot;shuffle&quot; </span>=&gt; {
@@ -1162,14 +1221,14 @@
                 <span class="kw">let </span>(dest, dest_len) = this.place_to_simd(dest)<span class="question-mark">?</span>;
 
                 <span class="comment">// `index` is an array, not a SIMD type
-                </span><span class="kw">let </span>ty::Array(<span class="kw">_</span>, index_len) = <a href="#494">index</a>.layout.ty.kind() <span class="kw">else </span>{
+                </span><span class="kw">let </span>ty::Array(<span class="kw">_</span>, index_len) = <a href="#531">index</a>.layout.ty.kind() <span class="kw">else </span>{
                     <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                         this.cur_span(),
                         <span class="string">&quot;simd_shuffle index argument has non-array type {}&quot;</span>,
                         index.layout.ty
                     )
                 };
-                <span class="kw">let </span>index_len = <a href="#500">index_len</a>.eval_target_usize(<span class="kw-2">*</span><a href="#18">this</a>.tcx, <a href="#18">this</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
+                <span class="kw">let </span>index_len = <a href="#537">index_len</a>.eval_target_usize(<span class="kw-2">*</span><a href="#19">this</a>.tcx, <a href="#19">this</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
 
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(left_len, right_len);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(index_len, dest_len);
@@ -1245,7 +1304,7 @@
             <span class="string">&quot;bitmask&quot; </span>=&gt; {
                 <span class="kw">let </span>[op] = check_arg_count(args)<span class="question-mark">?</span>;
                 <span class="kw">let </span>(op, op_len) = this.operand_to_simd(op)<span class="question-mark">?</span>;
-                <span class="kw">let </span>bitmask_len = <a href="#582">op_len</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<span class="number">8</span>);
+                <span class="kw">let </span>bitmask_len = <a href="#619">op_len</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<span class="number">8</span>);
 
                 <span class="comment">// Returns either an unsigned integer or array of `u8`.
                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(
@@ -1254,7 +1313,7 @@
                 );
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(bitmask_len &lt;= <span class="number">64</span>);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(bitmask_len, dest.layout.size.bits());
-                <span class="kw">let </span>op_len = u32::try_from(<a href="#582">op_len</a>).unwrap();
+                <span class="kw">let </span>op_len = u32::try_from(<a href="#619">op_len</a>).unwrap();
 
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="number">0u64</span>;
                 <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..op_len {
@@ -1267,7 +1326,7 @@
                 }
                 <span class="comment">// We have to force the place type to be an int so that we can write `res` into it.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>dest = this.force_allocation(dest)<span class="question-mark">?</span>;
-                <a href="#604">dest</a>.layout = <a href="#18">this</a>.machine.layouts.<a href="../../machine.rs.html#354-363">uint</a>(<a href="#604">dest</a>.layout.size).unwrap();
+                <a href="#641">dest</a>.layout = <a href="#19">this</a>.machine.layouts.<a href="../../machine.rs.html#354-363">uint</a>(<a href="#641">dest</a>.layout.size).unwrap();
                 this.write_int(res, <span class="kw-2">&amp;</span>dest)<span class="question-mark">?</span>;
             }
 
@@ -1277,27 +1336,12 @@
     }
 }
 
-<span class="kw">fn </span><a href="../../../../miri/shims/intrinsics/simd/fn.bool_to_simd_element.html">bool_to_simd_element</a>(b: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, size: <a href="../../../../rustc_abi/struct.Size.html">Size</a>) -&gt; Scalar&lt;<a href="../../machine.rs.html#171-178">Provenance</a>&gt; {
-    <span class="comment">// SIMD uses all-1 as pattern for &quot;true&quot;
-    </span><span class="kw">let </span>val = <span class="kw">if </span>b { -<span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
-    Scalar::from_int(<a href="#617">val</a>, <a href="#615">size</a>)
-}
-
-<span class="kw">fn </span><a href="../../../../miri/shims/intrinsics/simd/fn.simd_element_to_bool.html">simd_element_to_bool</a>(elem: ImmTy&lt;<span class="lifetime">&#39;_</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;_</span>, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt; {
-    <span class="kw">let </span>val = elem.to_scalar().to_int(elem.layout.size)<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#622">val</a> {
-        <span class="number">0 </span>=&gt; <span class="bool-val">false</span>,
-        -<span class="number">1 </span>=&gt; <span class="bool-val">true</span>,
-        <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.throw_ub_format.html">throw_ub_format!</a>(<span class="string">&quot;each element of a SIMD mask must be all-0-bits or all-1-bits&quot;</span>),
-    })
-}
-
 <span class="kw">fn </span><a href="../../../../miri/shims/intrinsics/simd/fn.simd_bitmask_index.html">simd_bitmask_index</a>(idx: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, vec_len: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, endianness: <a href="../../../../rustc_abi/enum.Endian.html">Endian</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(idx &lt; vec_len);
-    <span class="kw">match </span><a href="#630">endianness</a> {
-        Endian::Little =&gt; <a href="#630">idx</a>,
+    <span class="kw">match </span><a href="#652">endianness</a> {
+        Endian::Little =&gt; <a href="#652">idx</a>,
         <span class="attr">#[allow(clippy::arithmetic_side_effects)] </span><span class="comment">// idx &lt; vec_len
-        </span>Endian::Big =&gt; <a href="#630">vec_len</a> - <span class="number">1 </span>- <a href="#630">idx</a>, <span class="comment">// reverse order of bits
+        </span>Endian::Big =&gt; <a href="#652">vec_len</a> - <span class="number">1 </span>- <a href="#652">idx</a>, <span class="comment">// reverse order of bits
     </span>}
 }
 
@@ -1306,10 +1350,10 @@
     right: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
 ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Scalar&lt;<a href="../../machine.rs.html#171-178">Provenance</a>&gt;&gt; {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(left.layout.ty, right.layout.ty);
-    <span class="kw">let </span>ty::Float(float_ty) = <a href="#640">left</a>.layout.ty.kind() <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;fmax operand is not a float&quot;</span>) };
-    <span class="kw">let </span>left = <a href="#640">left</a>.to_scalar();
-    <span class="kw">let </span>right = <a href="#641">right</a>.to_scalar();
-    <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#644">float_ty</a> {
+    <span class="kw">let </span>ty::Float(float_ty) = <a href="#662">left</a>.layout.ty.kind() <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;fmax operand is not a float&quot;</span>) };
+    <span class="kw">let </span>left = <a href="#662">left</a>.to_scalar();
+    <span class="kw">let </span>right = <a href="#663">right</a>.to_scalar();
+    <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#666">float_ty</a> {
         FloatTy::F32 =&gt; Scalar::from_f32(left.to_f32()<span class="question-mark">?</span>.max(right.to_f32()<span class="question-mark">?</span>)),
         FloatTy::F64 =&gt; Scalar::from_f64(left.to_f64()<span class="question-mark">?</span>.max(right.to_f64()<span class="question-mark">?</span>)),
     })
@@ -1320,10 +1364,10 @@
     right: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
 ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Scalar&lt;<a href="../../machine.rs.html#171-178">Provenance</a>&gt;&gt; {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(left.layout.ty, right.layout.ty);
-    <span class="kw">let </span>ty::Float(float_ty) = <a href="#654">left</a>.layout.ty.kind() <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;fmin operand is not a float&quot;</span>) };
-    <span class="kw">let </span>left = <a href="#654">left</a>.to_scalar();
-    <span class="kw">let </span>right = <a href="#655">right</a>.to_scalar();
-    <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#658">float_ty</a> {
+    <span class="kw">let </span>ty::Float(float_ty) = <a href="#676">left</a>.layout.ty.kind() <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;fmin operand is not a float&quot;</span>) };
+    <span class="kw">let </span>left = <a href="#676">left</a>.to_scalar();
+    <span class="kw">let </span>right = <a href="#677">right</a>.to_scalar();
+    <span class="prelude-val">Ok</span>(<span class="kw">match </span><a href="#680">float_ty</a> {
         FloatTy::F32 =&gt; Scalar::from_f32(left.to_f32()<span class="question-mark">?</span>.min(right.to_f32()<span class="question-mark">?</span>)),
         FloatTy::F64 =&gt; Scalar::from_f64(left.to_f64()<span class="question-mark">?</span>.min(right.to_f64()<span class="question-mark">?</span>)),
     })

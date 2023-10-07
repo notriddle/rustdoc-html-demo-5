@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_monomorphize/src/collector.rs`."><title>collector.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_monomorphize" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_monomorphize/src/collector.rs`."><title>collector.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_monomorphize" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1456,6 +1456,9 @@
 <a href="#1456" id="1456">1456</a>
 <a href="#1457" id="1457">1457</a>
 <a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Mono Item Collection
 //! ====================
 //!
@@ -1628,8 +1631,7 @@
 <span class="kw">use </span><a href="../../rustc_hir/def/enum.DefKind.html">rustc_hir::def::DefKind</a>;
 <span class="kw">use </span>rustc_hir::def_id::{<a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>, <a href="../../rustc_span/def_id/type.DefIdMap.html">DefIdMap</a>, <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>};
 <span class="kw">use </span><a href="../../rustc_hir/lang_items/enum.LangItem.html">rustc_hir::lang_items::LangItem</a>;
-<span class="kw">use </span>rustc_middle::mir::interpret::{AllocId, <a href="../../rustc_middle/mir/interpret/value/enum.ConstValue.html">ConstValue</a>};
-<span class="kw">use </span>rustc_middle::mir::interpret::{<a href="../../rustc_middle/mir/interpret/error/enum.ErrorHandled.html">ErrorHandled</a>, <a href="../../rustc_middle/mir/interpret/enum.GlobalAlloc.html">GlobalAlloc</a>, <a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>};
+<span class="kw">use </span>rustc_middle::mir::interpret::{AllocId, <a href="../../rustc_middle/mir/interpret/error/enum.ErrorHandled.html">ErrorHandled</a>, <a href="../../rustc_middle/mir/interpret/enum.GlobalAlloc.html">GlobalAlloc</a>, <a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>};
 <span class="kw">use </span>rustc_middle::mir::mono::{<a href="../../rustc_middle/mir/mono/enum.InstantiationMode.html">InstantiationMode</a>, <a href="../../rustc_middle/mir/mono/enum.MonoItem.html">MonoItem</a>};
 <span class="kw">use </span><a href="../../rustc_middle/mir/visit/trait.Visitor.html">rustc_middle::mir::visit::Visitor</a> <span class="kw">as </span>MirVisitor;
 <span class="kw">use </span>rustc_middle::mir::{<a class="self" href="../../rustc_middle/mir/index.html">self</a>, <a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <a href="../../rustc_middle/mir/struct.Location.html">Location</a>};
@@ -1673,7 +1675,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; UsageMap&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>new() -&gt; UsageMap&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#206-212">UsageMap</a> { used_map: FxHashMap::default(), user_map: FxHashMap::default() }
+        <a href="#205-211">UsageMap</a> { used_map: FxHashMap::default(), user_map: FxHashMap::default() }
     }
 
     <span class="kw">fn </span>record_used&lt;<span class="lifetime">&#39;a</span>&gt;(
@@ -1683,7 +1685,7 @@
     ) <span class="kw">where
         </span><span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;a</span>,
     {
-        <span class="kw">let </span>used_items: Vec&lt;<span class="kw">_</span>&gt; = <a href="#224">used_items</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|item| <a href="#228">item</a>.node).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        <span class="kw">let </span>used_items: Vec&lt;<span class="kw">_</span>&gt; = <a href="#223">used_items</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|item| <a href="#227">item</a>.node).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
         <span class="kw">for </span><span class="kw-2">&amp;</span>used_item <span class="kw">in </span>used_items.iter() {
             <span class="self">self</span>.user_map.entry(used_item).or_default().push(user_item);
         }
@@ -1692,7 +1694,7 @@
     }
 
     <span class="kw">pub fn </span>get_user_items(<span class="kw-2">&amp;</span><span class="self">self</span>, item: MonoItem&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="kw-2">&amp;</span>[MonoItem&lt;<span class="lifetime">&#39;tcx</span>&gt;] {
-        <a class="self" href="#236">self</a>.user_map.get(<span class="kw-2">&amp;</span><a href="#236">item</a>).map(|items| <a href="#237">items</a>.as_slice()).unwrap_or(<span class="kw-2">&amp;</span>[])
+        <a class="self" href="#235">self</a>.user_map.get(<span class="kw-2">&amp;</span><a href="#235">item</a>).map(|items| <a href="#236">items</a>.as_slice()).unwrap_or(<span class="kw-2">&amp;</span>[])
     }
 
     <span class="doccomment">/// Internally iterate over all inlined items used by `item`.
@@ -1700,7 +1702,7 @@
     <span class="kw">where
         </span>F: FnMut(MonoItem&lt;<span class="lifetime">&#39;tcx</span>&gt;),
     {
-        <span class="kw">let </span>used_items = <a class="self" href="#241">self</a>.used_map.get(<span class="kw-2">&amp;</span><a href="#241">item</a>).unwrap();
+        <span class="kw">let </span>used_items = <a class="self" href="#240">self</a>.used_map.get(<span class="kw-2">&amp;</span><a href="#240">item</a>).unwrap();
         <span class="kw">for </span>used_item <span class="kw">in </span>used_items.iter() {
             <span class="kw">let </span>is_inlined = used_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
             <span class="kw">if </span>is_inlined {
@@ -1713,7 +1715,7 @@
 <span class="attr">#[instrument(skip(tcx, mode), level = <span class="string">&quot;debug&quot;</span>)]
 </span><span class="kw">pub fn </span><a href="../../rustc_monomorphize/collector/fn.collect_crate_mono_items.html">collect_crate_mono_items</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-    mode: <a href="#201-204">MonoItemCollectionMode</a>,
+    mode: <a href="#200-203">MonoItemCollectionMode</a>,
 ) -&gt; (FxHashSet&lt;MonoItem&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, UsageMap&lt;<span class="lifetime">&#39;_</span>&gt;) {
     <span class="kw">let </span>_prof_timer = tcx.prof.generic_activity(<span class="string">&quot;monomorphization_collector&quot;</span>);
 
@@ -1751,7 +1753,7 @@
 <span class="comment">// Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 </span><span class="attr">#[instrument(skip(tcx, mode), level = <span class="string">&quot;debug&quot;</span>)]
-</span><span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.collect_roots.html">collect_roots</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, mode: <a href="#201-204">MonoItemCollectionMode</a>) -&gt; Vec&lt;MonoItem&lt;<span class="lifetime">&#39;_</span>&gt;&gt; {
+</span><span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.collect_roots.html">collect_roots</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, mode: <a href="#200-203">MonoItemCollectionMode</a>) -&gt; Vec&lt;MonoItem&lt;<span class="lifetime">&#39;_</span>&gt;&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;collecting roots&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>roots = Vec::new();
 
@@ -1946,22 +1948,22 @@
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     instance: <span class="kw-2">&amp;</span>Instance&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; (<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/path/struct.PathBuf.html">PathBuf</a>&gt;) {
-    <span class="kw">let </span>s = <a href="#489">instance</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
+    <span class="kw">let </span>s = <a href="#488">instance</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
 
     <span class="comment">// Only use the shrunk version if it&#39;s really shorter.
     // This also avoids the case where before and after slices overlap.
     </span><span class="kw">if </span>s.chars().nth(<span class="number">33</span>).is_some() {
         <span class="kw">let </span>shrunk = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{}&quot;</span>, ty::ShortInstance(instance, <span class="number">4</span>));
         <span class="kw">if </span>shrunk == s {
-            <span class="kw">return </span>(<a href="#491">s</a>, <span class="prelude-val">None</span>);
+            <span class="kw">return </span>(<a href="#490">s</a>, <span class="prelude-val">None</span>);
         }
 
-        <span class="kw">let </span>path = <a href="#488">tcx</a>.output_filenames(()).temp_path_ext(<span class="string">&quot;long-type.txt&quot;</span>, <span class="prelude-val">None</span>);
-        <span class="kw">let </span>written_to_path = std::fs::write(<span class="kw-2">&amp;</span><a href="#501">path</a>, <a href="#491">s</a>).ok().map(|<span class="kw">_</span>| <a href="#501">path</a>);
+        <span class="kw">let </span>path = <a href="#487">tcx</a>.output_filenames(()).temp_path_ext(<span class="string">&quot;long-type.txt&quot;</span>, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>written_to_path = std::fs::write(<span class="kw-2">&amp;</span><a href="#500">path</a>, <a href="#490">s</a>).ok().map(|<span class="kw">_</span>| <a href="#500">path</a>);
 
-        (<a href="#496">shrunk</a>, <a href="#502">written_to_path</a>)
+        (<a href="#495">shrunk</a>, <a href="#501">written_to_path</a>)
     } <span class="kw">else </span>{
-        (<a href="#491">s</a>, <span class="prelude-val">None</span>)
+        (<a href="#490">s</a>, <span class="prelude-val">None</span>)
     }
 }
 
@@ -1972,53 +1974,53 @@
     recursion_depths: <span class="kw-2">&amp;mut </span>DefIdMap&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;,
     recursion_limit: <a href="../../rustc_session/session/struct.Limit.html">Limit</a>,
 ) -&gt; (<a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) {
-    <span class="kw">let </span>def_id = <a href="#512">instance</a>.def_id();
-    <span class="kw">let </span>recursion_depth = <a href="#514">recursion_depths</a>.get(<span class="kw-2">&amp;</span><a href="#517">def_id</a>).cloned().unwrap_or(<span class="number">0</span>);
+    <span class="kw">let </span>def_id = <a href="#511">instance</a>.def_id();
+    <span class="kw">let </span>recursion_depth = <a href="#513">recursion_depths</a>.get(<span class="kw-2">&amp;</span><a href="#516">def_id</a>).cloned().unwrap_or(<span class="number">0</span>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot; =&gt; recursion depth={}&quot;</span>, recursion_depth);
 
     <span class="kw">let </span>adjusted_recursion_depth = <span class="kw">if </span><span class="prelude-val">Some</span>(def_id) == tcx.lang_items().drop_in_place_fn() {
         <span class="comment">// HACK: drop_in_place creates tight monomorphization loops. Give
         // it more margin.
-        </span><a href="#518">recursion_depth</a> / <span class="number">4
+        </span><a href="#517">recursion_depth</a> / <span class="number">4
     </span>} <span class="kw">else </span>{
-        <a href="#518">recursion_depth</a>
+        <a href="#517">recursion_depth</a>
     };
 
     <span class="comment">// Code that needs to instantiate the same function recursively
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
     </span><span class="kw">if </span>!recursion_limit.value_within_limit(adjusted_recursion_depth) {
-        <span class="kw">let </span>def_span = <a href="#511">tcx</a>.def_span(<a href="#517">def_id</a>);
-        <span class="kw">let </span>def_path_str = <a href="#511">tcx</a>.def_path_str(<a href="#517">def_id</a>);
-        <span class="kw">let </span>(shrunk, written_to_path) = <a href="#487-508">shrunk_instance_name</a>(<a href="#511">tcx</a>, <span class="kw-2">&amp;</span><a href="#512">instance</a>);
+        <span class="kw">let </span>def_span = <a href="#510">tcx</a>.def_span(<a href="#516">def_id</a>);
+        <span class="kw">let </span>def_path_str = <a href="#510">tcx</a>.def_path_str(<a href="#516">def_id</a>);
+        <span class="kw">let </span>(shrunk, written_to_path) = <a href="#486-507">shrunk_instance_name</a>(<a href="#510">tcx</a>, <span class="kw-2">&amp;</span><a href="#511">instance</a>);
         <span class="kw">let </span><span class="kw-2">mut </span>path = PathBuf::new();
-        <span class="kw">let </span>was_written = <span class="kw">if let </span><span class="prelude-val">Some</span>(written_to_path) = <a href="#535">written_to_path</a> {
-            <a href="#536">path</a> = <a href="#537">written_to_path</a>;
+        <span class="kw">let </span>was_written = <span class="kw">if let </span><span class="prelude-val">Some</span>(written_to_path) = <a href="#534">written_to_path</a> {
+            <a href="#535">path</a> = <a href="#536">written_to_path</a>;
             <span class="prelude-val">Some</span>(())
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
-        <a href="#511">tcx</a>.sess.emit_fatal(<a href="errors.rs.html#11-21">RecursionLimit</a> {
-            <a href="#513">span</a>,
-            <a href="#535">shrunk</a>,
-            <a href="#533">def_span</a>,
-            <a href="#534">def_path_str</a>,
-            <a href="#537">was_written</a>,
-            <a href="#536">path</a>,
+        <a href="#510">tcx</a>.sess.emit_fatal(<a href="errors.rs.html#11-21">RecursionLimit</a> {
+            <a href="#512">span</a>,
+            <a href="#534">shrunk</a>,
+            <a href="#532">def_span</a>,
+            <a href="#533">def_path_str</a>,
+            <a href="#536">was_written</a>,
+            <a href="#535">path</a>,
         });
     }
 
-    <a href="#514">recursion_depths</a>.insert(<a href="#517">def_id</a>, <a href="#518">recursion_depth</a> + <span class="number">1</span>);
+    <a href="#513">recursion_depths</a>.insert(<a href="#516">def_id</a>, <a href="#517">recursion_depth</a> + <span class="number">1</span>);
 
-    (<a href="#517">def_id</a>, <a href="#518">recursion_depth</a>)
+    (<a href="#516">def_id</a>, <a href="#517">recursion_depth</a>)
 }
 
 <span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.check_type_length_limit.html">check_type_length_limit</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, instance: Instance&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-    <span class="kw">let </span>type_length = <a href="#558">instance</a>
+    <span class="kw">let </span>type_length = <a href="#557">instance</a>
         .args
         .iter()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|arg| <a href="#562">arg</a>.walk())
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|arg| <span class="kw">match </span><a href="#563">arg</a>.unpack() {
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|arg| <a href="#561">arg</a>.walk())
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|arg| <span class="kw">match </span><a href="#562">arg</a>.unpack() {
             GenericArgKind::Type(<span class="kw">_</span>) | GenericArgKind::Const(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             GenericArgKind::Lifetime(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         })
@@ -2032,16 +2034,16 @@
     //
     // Bail out in these cases to avoid that bad user experience.
     </span><span class="kw">if </span>!tcx.type_length_limit().value_within_limit(type_length) {
-        <span class="kw">let </span>(shrunk, written_to_path) = <a href="#487-508">shrunk_instance_name</a>(<a href="#558">tcx</a>, <span class="kw-2">&amp;</span><a href="#558">instance</a>);
-        <span class="kw">let </span>span = <a href="#558">tcx</a>.def_span(<a href="#558">instance</a>.def_id());
+        <span class="kw">let </span>(shrunk, written_to_path) = <a href="#486-507">shrunk_instance_name</a>(<a href="#557">tcx</a>, <span class="kw-2">&amp;</span><a href="#557">instance</a>);
+        <span class="kw">let </span>span = <a href="#557">tcx</a>.def_span(<a href="#557">instance</a>.def_id());
         <span class="kw">let </span><span class="kw-2">mut </span>path = PathBuf::new();
-        <span class="kw">let </span>was_written = <span class="kw">if let </span><span class="prelude-val">Some</span>(path2) = <a href="#577">written_to_path</a> {
-            <a href="#579">path</a> = <a href="#580">path2</a>;
+        <span class="kw">let </span>was_written = <span class="kw">if let </span><span class="prelude-val">Some</span>(path2) = <a href="#576">written_to_path</a> {
+            <a href="#578">path</a> = <a href="#579">path2</a>;
             <span class="prelude-val">Some</span>(())
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
-        <a href="#558">tcx</a>.sess.emit_fatal(<a href="errors.rs.html#26-34">TypeLengthLimit</a> { <a href="#578">span</a>, <a href="#577">shrunk</a>, <a href="#580">was_written</a>, <a href="#579">path</a>, <a href="#559">type_length</a> });
+        <a href="#557">tcx</a>.sess.emit_fatal(<a href="errors.rs.html#26-34">TypeLengthLimit</a> { <a href="#577">span</a>, <a href="#576">shrunk</a>, <a href="#579">was_written</a>, <a href="#578">path</a>, <a href="#558">type_length</a> });
     }
 }
 
@@ -2065,32 +2067,32 @@
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;monomorphize: self.instance={:?}&quot;</span>, <span class="self">self</span>.instance);
-        <a class="self" href="#605">self</a>.instance.subst_mir_and_normalize_erasing_regions(
-            <a class="self" href="#605">self</a>.tcx,
+        <a class="self" href="#604">self</a>.instance.instantiate_mir_and_normalize_erasing_regions(
+            <a class="self" href="#604">self</a>.tcx,
             ty::ParamEnv::reveal_all(),
-            ty::EarlyBinder::bind(<a href="#605">value</a>),
+            ty::EarlyBinder::bind(<a href="#604">value</a>),
         )
     }
 
     <span class="kw">fn </span>check_move_size(<span class="kw-2">&amp;mut </span><span class="self">self</span>, limit: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, operand: <span class="kw-2">&amp;</span>mir::Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">let </span>limit = Size::from_bytes(<a href="#617">limit</a>);
-        <span class="kw">let </span>ty = <a href="#617">operand</a>.ty(<a class="self" href="#617">self</a>.body, <a class="self" href="#617">self</a>.tcx);
-        <span class="kw">let </span>ty = <a class="self" href="#617">self</a>.<a href="#605-615">monomorphize</a>(<a href="#619">ty</a>);
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(layout) = <a class="self" href="#617">self</a>.tcx.layout_of(ty::ParamEnv::reveal_all().and(<a href="#620">ty</a>)) <span class="kw">else </span>{ <span class="kw">return </span>};
+        <span class="kw">let </span>limit = Size::from_bytes(<a href="#616">limit</a>);
+        <span class="kw">let </span>ty = <a href="#616">operand</a>.ty(<a class="self" href="#616">self</a>.body, <a class="self" href="#616">self</a>.tcx);
+        <span class="kw">let </span>ty = <a class="self" href="#616">self</a>.<a href="#604-614">monomorphize</a>(<a href="#618">ty</a>);
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(layout) = <a class="self" href="#616">self</a>.tcx.layout_of(ty::ParamEnv::reveal_all().and(<a href="#619">ty</a>)) <span class="kw">else </span>{ <span class="kw">return </span>};
         <span class="kw">if </span>layout.size &lt;= limit {
             <span class="kw">return</span>;
         }
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>layout);
-        <span class="kw">let </span>source_info = <a class="self" href="#617">self</a>.body.source_info(<a href="#617">location</a>);
+        <span class="kw">let </span>source_info = <a class="self" href="#616">self</a>.body.source_info(<a href="#616">location</a>);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>source_info);
         <span class="kw">for </span>span <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.move_size_spans {
             <span class="kw">if </span>span.overlaps(source_info.span) {
                 <span class="kw">return</span>;
             }
         }
-        <span class="kw">let </span>lint_root = <a href="#626">source_info</a>.scope.lint_root(<span class="kw-2">&amp;</span><a class="self" href="#617">self</a>.body.source_scopes);
+        <span class="kw">let </span>lint_root = <a href="#625">source_info</a>.scope.lint_root(<span class="kw-2">&amp;</span><a class="self" href="#616">self</a>.body.source_scopes);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>lint_root);
-        <span class="kw">let </span><span class="prelude-val">Some</span>(lint_root) = <a href="#633">lint_root</a> <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(lint_root) = <a href="#632">lint_root</a> <span class="kw">else </span>{
             <span class="comment">// This happens when the issue is in a function from a foreign crate that
             // we monomorphized in the current crate. We can&#39;t get a `HirId` for things
             // in other crates.
@@ -2098,17 +2100,17 @@
             // but correct span? This would make the lint at least accept crate-level lint attributes.
             </span><span class="kw">return</span>;
         };
-        <a class="self" href="#617">self</a>.tcx.emit_spanned_lint(
+        <a class="self" href="#616">self</a>.tcx.emit_spanned_lint(
             <a href="../../rustc_lint_defs/builtin/static.LARGE_ASSIGNMENTS.html">LARGE_ASSIGNMENTS</a>,
-            <a href="#635">lint_root</a>,
-            <a href="#626">source_info</a>.span,
+            <a href="#634">lint_root</a>,
+            <a href="#625">source_info</a>.span,
             <a href="errors.rs.html#71-76">LargeAssignmentsLint</a> {
-                span: <a href="#626">source_info</a>.span,
-                size: <a href="#621">layout</a>.size.bytes(),
-                limit: <a href="#618">limit</a>.bytes(),
+                span: <a href="#625">source_info</a>.span,
+                size: <a href="#620">layout</a>.size.bytes(),
+                limit: <a href="#617">limit</a>.bytes(),
             },
         );
-        <a class="self" href="#617">self</a>.move_size_spans.push(<a href="#626">source_info</a>.span);
+        <a class="self" href="#616">self</a>.move_size_spans.push(<a href="#625">source_info</a>.span);
     }
 }
 
@@ -2116,9 +2118,9 @@
     <span class="kw">fn </span>visit_rvalue(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rvalue: <span class="kw-2">&amp;</span>mir::Rvalue&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;visiting rvalue {:?}&quot;</span>, <span class="kw-2">*</span>rvalue);
 
-        <span class="kw">let </span>span = <a class="self" href="#658">self</a>.body.source_info(<a href="#658">location</a>).span;
+        <span class="kw">let </span>span = <a class="self" href="#657">self</a>.body.source_info(<a href="#657">location</a>).span;
 
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#658">rvalue</a> {
+        <span class="kw">match </span><span class="kw-2">*</span><a href="#657">rvalue</a> {
             <span class="comment">// When doing an cast from a regular pointer to a fat pointer, we
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
@@ -2128,23 +2130,23 @@
                 target_ty,
             )
             | mir::Rvalue::Cast(mir::CastKind::DynStar, <span class="kw-2">ref </span>operand, target_ty) =&gt; {
-                <span class="kw">let </span>target_ty = <a class="self" href="#658">self</a>.<a href="#605-615">monomorphize</a>(<a href="#670">target_ty</a>);
-                <span class="kw">let </span>source_ty = <a href="#669">operand</a>.ty(<a class="self" href="#658">self</a>.body, <a class="self" href="#658">self</a>.tcx);
-                <span class="kw">let </span>source_ty = <a class="self" href="#658">self</a>.<a href="#605-615">monomorphize</a>(<a href="#674">source_ty</a>);
+                <span class="kw">let </span>target_ty = <a class="self" href="#657">self</a>.<a href="#604-614">monomorphize</a>(<a href="#669">target_ty</a>);
+                <span class="kw">let </span>source_ty = <a href="#668">operand</a>.ty(<a class="self" href="#657">self</a>.body, <a class="self" href="#657">self</a>.tcx);
+                <span class="kw">let </span>source_ty = <a class="self" href="#657">self</a>.<a href="#604-614">monomorphize</a>(<a href="#673">source_ty</a>);
                 <span class="kw">let </span>(source_ty, target_ty) =
-                    <a href="#1015-1078">find_vtable_types_for_unsizing</a>(<a class="self" href="#658">self</a>.tcx.at(<a href="#661">span</a>), <a href="#675">source_ty</a>, <a href="#673">target_ty</a>);
+                    <a href="#1014-1077">find_vtable_types_for_unsizing</a>(<a class="self" href="#657">self</a>.tcx.at(<a href="#660">span</a>), <a href="#674">source_ty</a>, <a href="#672">target_ty</a>);
                 <span class="comment">// This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
                 </span><span class="kw">if </span>(target_ty.is_trait() &amp;&amp; !source_ty.is_trait())
                     || (target_ty.is_dyn_star() &amp;&amp; !source_ty.is_dyn_star())
                 {
-                    <a href="#1096-1134">create_mono_items_for_vtable_methods</a>(
-                        <a class="self" href="#658">self</a>.tcx,
-                        <a href="#676">target_ty</a>,
-                        <a href="#676">source_ty</a>,
-                        <a href="#661">span</a>,
-                        <a class="self" href="#658">self</a>.output,
+                    <a href="#1095-1133">create_mono_items_for_vtable_methods</a>(
+                        <a class="self" href="#657">self</a>.tcx,
+                        <a href="#675">target_ty</a>,
+                        <a href="#675">source_ty</a>,
+                        <a href="#660">span</a>,
+                        <a class="self" href="#657">self</a>.output,
                     );
                 }
             }
@@ -2153,15 +2155,15 @@
                 <span class="kw-2">ref </span>operand,
                 <span class="kw">_</span>,
             ) =&gt; {
-                <span class="kw">let </span>fn_ty = <a href="#695">operand</a>.ty(<a class="self" href="#658">self</a>.body, <a class="self" href="#658">self</a>.tcx);
-                <span class="kw">let </span>fn_ty = <a class="self" href="#658">self</a>.<a href="#605-615">monomorphize</a>(<a href="#698">fn_ty</a>);
-                <a href="#871-893">visit_fn_use</a>(
-                    <a class="self" href="#658">self</a>.tcx,
-                    <a href="#699">fn_ty</a>,
+                <span class="kw">let </span>fn_ty = <a href="#694">operand</a>.ty(<a class="self" href="#657">self</a>.body, <a class="self" href="#657">self</a>.tcx);
+                <span class="kw">let </span>fn_ty = <a class="self" href="#657">self</a>.<a href="#604-614">monomorphize</a>(<a href="#697">fn_ty</a>);
+                <a href="#870-892">visit_fn_use</a>(
+                    <a class="self" href="#657">self</a>.tcx,
+                    <a href="#698">fn_ty</a>,
                     <span class="bool-val">false</span>,
-                    <a href="#661">span</a>,
-                    <span class="kw-2">&amp;mut </span><a class="self" href="#658">self</a>.output,
-                    <span class="kw-2">&amp;</span><a class="self" href="#658">self</a>.skip_move_check_fns,
+                    <a href="#660">span</a>,
+                    <span class="kw-2">&amp;mut </span><a class="self" href="#657">self</a>.output,
+                    <span class="kw-2">&amp;</span><a class="self" href="#657">self</a>.skip_move_check_fns,
                 );
             }
             mir::Rvalue::Cast(
@@ -2169,19 +2171,19 @@
                 <span class="kw-2">ref </span>operand,
                 <span class="kw">_</span>,
             ) =&gt; {
-                <span class="kw">let </span>source_ty = <a href="#711">operand</a>.ty(<a class="self" href="#658">self</a>.body, <a class="self" href="#658">self</a>.tcx);
-                <span class="kw">let </span>source_ty = <a class="self" href="#658">self</a>.<a href="#605-615">monomorphize</a>(<a href="#714">source_ty</a>);
-                <span class="kw">match </span><span class="kw-2">*</span><a href="#715">source_ty</a>.kind() {
+                <span class="kw">let </span>source_ty = <a href="#710">operand</a>.ty(<a class="self" href="#657">self</a>.body, <a class="self" href="#657">self</a>.tcx);
+                <span class="kw">let </span>source_ty = <a class="self" href="#657">self</a>.<a href="#604-614">monomorphize</a>(<a href="#713">source_ty</a>);
+                <span class="kw">match </span><span class="kw-2">*</span><a href="#714">source_ty</a>.kind() {
                     ty::Closure(def_id, args) =&gt; {
                         <span class="kw">let </span>instance = Instance::resolve_closure(
-                            <a class="self" href="#658">self</a>.tcx,
-                            <a href="#717">def_id</a>,
-                            <a href="#717">args</a>,
+                            <a class="self" href="#657">self</a>.tcx,
+                            <a href="#716">def_id</a>,
+                            <a href="#716">args</a>,
                             ty::ClosureKind::FnOnce,
                         )
                         .expect(<span class="string">&quot;failed to normalize and resolve closure during codegen&quot;</span>);
                         <span class="kw">if </span>should_codegen_locally(<span class="self">self</span>.tcx, <span class="kw-2">&amp;</span>instance) {
-                            <a class="self" href="#658">self</a>.output.push(<a href="#1080">create_fn_mono_item</a>(<a class="self" href="#658">self</a>.tcx, <a href="#718">instance</a>, <a href="#661">span</a>));
+                            <a class="self" href="#657">self</a>.output.push(<a href="#1079">create_fn_mono_item</a>(<a class="self" href="#657">self</a>.tcx, <a href="#717">instance</a>, <a href="#660">span</a>));
                         }
                     }
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
@@ -2189,73 +2191,73 @@
             }
             mir::Rvalue::ThreadLocalRef(def_id) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.tcx.is_thread_local_static(def_id));
-                <span class="kw">let </span>instance = Instance::mono(<a class="self" href="#658">self</a>.tcx, <a href="#732">def_id</a>);
+                <span class="kw">let </span>instance = Instance::mono(<a class="self" href="#657">self</a>.tcx, <a href="#731">def_id</a>);
                 <span class="kw">if </span>should_codegen_locally(<span class="self">self</span>.tcx, <span class="kw-2">&amp;</span>instance) {
                     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;collecting thread-local static {:?}&quot;</span>, def_id);
-                    <a class="self" href="#658">self</a>.output.push(<a href="../../rustc_span/source_map/fn.respan.html">respan</a>(<a href="#661">span</a>, MonoItem::Static(<a href="#732">def_id</a>)));
+                    <a class="self" href="#657">self</a>.output.push(<a href="../../rustc_span/source_map/fn.respan.html">respan</a>(<a href="#660">span</a>, MonoItem::Static(<a href="#731">def_id</a>)));
                 }
             }
             <span class="kw">_ </span>=&gt; { <span class="comment">/* not interesting */ </span>}
         }
 
-        <a class="self" href="#658">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_rvalue</a>(<a href="#658">rvalue</a>, <a href="#658">location</a>);
+        <a class="self" href="#657">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_rvalue</a>(<a href="#657">rvalue</a>, <a href="#657">location</a>);
     }
 
     <span class="doccomment">/// This does not walk the constant, as it has been handled entirely here and trying
     /// to walk it would attempt to evaluate the `ty::Const` inside, which doesn&#39;t necessarily
     /// work, as some constants cannot be represented in the type system.
     </span><span class="attr">#[instrument(skip(<span class="self">self</span>), level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="kw-2">&amp;</span>mir::Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">let </span>literal = <span class="self">self</span>.monomorphize(constant.literal);
+    </span><span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="kw-2">&amp;</span>mir::ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
+        <span class="kw">let </span>const_ = <span class="self">self</span>.monomorphize(constant.const_);
         <span class="kw">let </span>param_env = ty::ParamEnv::reveal_all();
-        <span class="kw">let </span>val = <span class="kw">match </span>literal.eval(<span class="self">self</span>.tcx, param_env, <span class="prelude-val">None</span>) {
+        <span class="kw">let </span>val = <span class="kw">match </span>const_.eval(<span class="self">self</span>.tcx, param_env, <span class="prelude-val">None</span>) {
             <span class="prelude-val">Ok</span>(v) =&gt; v,
             <span class="prelude-val">Err</span>(ErrorHandled::Reported(..)) =&gt; <span class="kw">return</span>,
             <span class="prelude-val">Err</span>(ErrorHandled::TooGeneric(..)) =&gt; <span class="macro">span_bug!</span>(
                 <span class="self">self</span>.body.source_info(location).span,
                 <span class="string">&quot;collection encountered polymorphic constant: {:?}&quot;</span>,
-                literal
+                const_
             ),
         };
         collect_const_value(<span class="self">self</span>.tcx, val, <span class="self">self</span>.output);
-        MirVisitor::visit_ty(<span class="self">self</span>, literal.ty(), TyContext::Location(location));
+        MirVisitor::visit_ty(<span class="self">self</span>, const_.ty(), TyContext::Location(location));
     }
 
     <span class="kw">fn </span>visit_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, terminator: <span class="kw-2">&amp;</span>mir::Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;visiting terminator {:?} @ {:?}&quot;</span>, terminator, location);
-        <span class="kw">let </span>source = <a class="self" href="#766">self</a>.body.source_info(<a href="#766">location</a>).span;
+        <span class="kw">let </span>source = <a class="self" href="#765">self</a>.body.source_info(<a href="#765">location</a>).span;
 
-        <span class="kw">let </span>tcx = <a class="self" href="#766">self</a>.tcx;
+        <span class="kw">let </span>tcx = <a class="self" href="#765">self</a>.tcx;
         <span class="kw">let </span>push_mono_lang_item = |this: <span class="kw-2">&amp;mut </span><span class="self">Self</span>, lang_item: <a href="../../rustc_hir/lang_items/enum.LangItem.html">LangItem</a>| {
-            <span class="kw">let </span>instance = Instance::mono(<a href="#770">tcx</a>, <a href="#770">tcx</a>.require_lang_item(<a href="#771">lang_item</a>, <span class="prelude-val">Some</span>(<a href="#768">source</a>)));
+            <span class="kw">let </span>instance = Instance::mono(<a href="#769">tcx</a>, <a href="#769">tcx</a>.require_lang_item(<a href="#770">lang_item</a>, <span class="prelude-val">Some</span>(<a href="#767">source</a>)));
             <span class="kw">if </span>should_codegen_locally(tcx, <span class="kw-2">&amp;</span>instance) {
-                <a href="#771">this</a>.output.push(<a href="#1080">create_fn_mono_item</a>(<a href="#770">tcx</a>, <a href="#772">instance</a>, <a href="#768">source</a>));
+                <a href="#770">this</a>.output.push(<a href="#1079">create_fn_mono_item</a>(<a href="#769">tcx</a>, <a href="#771">instance</a>, <a href="#767">source</a>));
             }
         };
 
-        <span class="kw">match </span><a href="#766">terminator</a>.kind {
+        <span class="kw">match </span><a href="#765">terminator</a>.kind {
             <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Call</a> { <span class="kw-2">ref </span>func, .. } =&gt; {
-                <span class="kw">let </span>callee_ty = <a href="#779">func</a>.ty(<a class="self" href="#766">self</a>.body, <a href="#770">tcx</a>);
-                <span class="kw">let </span>callee_ty = <a class="self" href="#766">self</a>.<a href="#605-615">monomorphize</a>(<a href="#780">callee_ty</a>);
-                <a class="self" href="#766">self</a>.skip_move_size_check = <a href="#871-893">visit_fn_use</a>(
-                    <a class="self" href="#766">self</a>.tcx,
-                    <a href="#781">callee_ty</a>,
+                <span class="kw">let </span>callee_ty = <a href="#778">func</a>.ty(<a class="self" href="#765">self</a>.body, <a href="#769">tcx</a>);
+                <span class="kw">let </span>callee_ty = <a class="self" href="#765">self</a>.<a href="#604-614">monomorphize</a>(<a href="#779">callee_ty</a>);
+                <a class="self" href="#765">self</a>.skip_move_size_check = <a href="#870-892">visit_fn_use</a>(
+                    <a class="self" href="#765">self</a>.tcx,
+                    <a href="#780">callee_ty</a>,
                     <span class="bool-val">true</span>,
-                    <a href="#768">source</a>,
-                    <span class="kw-2">&amp;mut </span><a class="self" href="#766">self</a>.output,
-                    <span class="kw-2">&amp;</span><a class="self" href="#766">self</a>.skip_move_check_fns,
+                    <a href="#767">source</a>,
+                    <span class="kw-2">&amp;mut </span><a class="self" href="#765">self</a>.output,
+                    <span class="kw-2">&amp;</span><a class="self" href="#765">self</a>.skip_move_check_fns,
                 )
             }
             <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Drop</a> { <span class="kw-2">ref </span>place, .. } =&gt; {
-                <span class="kw">let </span>ty = <a href="#791">place</a>.ty(<a class="self" href="#766">self</a>.body, <a class="self" href="#766">self</a>.tcx).ty;
-                <span class="kw">let </span>ty = <a class="self" href="#766">self</a>.<a href="#605-615">monomorphize</a>(<a href="#792">ty</a>);
-                <a href="#860-869">visit_drop_use</a>(<a class="self" href="#766">self</a>.tcx, <a href="#793">ty</a>, <span class="bool-val">true</span>, <a href="#768">source</a>, <a class="self" href="#766">self</a>.output);
+                <span class="kw">let </span>ty = <a href="#790">place</a>.ty(<a class="self" href="#765">self</a>.body, <a class="self" href="#765">self</a>.tcx).ty;
+                <span class="kw">let </span>ty = <a class="self" href="#765">self</a>.<a href="#604-614">monomorphize</a>(<a href="#791">ty</a>);
+                <a href="#859-868">visit_drop_use</a>(<a class="self" href="#765">self</a>.tcx, <a href="#792">ty</a>, <span class="bool-val">true</span>, <a href="#767">source</a>, <a class="self" href="#765">self</a>.output);
             }
             <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::InlineAsm</a> { <span class="kw-2">ref </span>operands, .. } =&gt; {
                 <span class="kw">for </span>op <span class="kw">in </span>operands {
                     <span class="kw">match </span><span class="kw-2">*</span>op {
                         mir::InlineAsmOperand::SymFn { <span class="kw-2">ref </span>value } =&gt; {
-                            <span class="kw">let </span>fn_ty = <span class="self">self</span>.monomorphize(value.literal.ty());
+                            <span class="kw">let </span>fn_ty = <span class="self">self</span>.monomorphize(value.const_.ty());
                             visit_fn_use(<span class="self">self</span>.tcx, fn_ty, <span class="bool-val">false</span>, source, <span class="kw-2">&amp;mut </span><span class="self">self</span>.output, <span class="kw-2">&amp;</span>[]);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } =&gt; {
@@ -2270,14 +2272,14 @@
                 }
             }
             <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Assert</a> { <span class="kw-2">ref </span>msg, .. } =&gt; {
-                <span class="kw">let </span>lang_item = <span class="kw">match </span><span class="kw-2">&amp;**</span><a href="#814">msg</a> {
+                <span class="kw">let </span>lang_item = <span class="kw">match </span><span class="kw-2">&amp;**</span><a href="#813">msg</a> {
                     <a href="../../rustc_middle/mir/syntax/enum.AssertKind.html">mir::AssertKind::BoundsCheck</a> { .. } =&gt; LangItem::PanicBoundsCheck,
                     <span class="kw">_ </span>=&gt; LangItem::Panic,
                 };
-                <a href="#771">push_mono_lang_item</a>(<a class="self" href="#766">self</a>, <a href="#815">lang_item</a>);
+                <a href="#770">push_mono_lang_item</a>(<a class="self" href="#765">self</a>, <a href="#814">lang_item</a>);
             }
             mir::TerminatorKind::UnwindTerminate(reason) =&gt; {
-                <a href="#771">push_mono_lang_item</a>(<a class="self" href="#766">self</a>, <a href="#821">reason</a>.lang_item());
+                <a href="#770">push_mono_lang_item</a>(<a class="self" href="#765">self</a>, <a href="#820">reason</a>.lang_item());
             }
             <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::Goto</a> { .. }
             | <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::SwitchInt</a> { .. }
@@ -2290,19 +2292,19 @@
             | <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">mir::TerminatorKind::FalseUnwind</a> { .. } =&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(mir::UnwindAction::Terminate(reason)) = <a href="#766">terminator</a>.unwind() {
-            <a href="#771">push_mono_lang_item</a>(<a class="self" href="#766">self</a>, <a href="#835">reason</a>.lang_item());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(mir::UnwindAction::Terminate(reason)) = <a href="#765">terminator</a>.unwind() {
+            <a href="#770">push_mono_lang_item</a>(<a class="self" href="#765">self</a>, <a href="#834">reason</a>.lang_item());
         }
 
-        <a class="self" href="#766">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_terminator</a>(<a href="#766">terminator</a>, <a href="#766">location</a>);
-        <a class="self" href="#766">self</a>.skip_move_size_check = <span class="bool-val">false</span>;
+        <a class="self" href="#765">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_terminator</a>(<a href="#765">terminator</a>, <a href="#765">location</a>);
+        <a class="self" href="#765">self</a>.skip_move_size_check = <span class="bool-val">false</span>;
     }
 
     <span class="kw">fn </span>visit_operand(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operand: <span class="kw-2">&amp;</span>mir::Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <a class="self" href="#843">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#843">operand</a>, <a href="#843">location</a>);
-        <span class="kw">let </span>move_size_limit = <a class="self" href="#843">self</a>.tcx.move_size_limit().<span class="number">0</span>;
+        <a class="self" href="#842">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#842">operand</a>, <a href="#842">location</a>);
+        <span class="kw">let </span>move_size_limit = <a class="self" href="#842">self</a>.tcx.move_size_limit().<span class="number">0</span>;
         <span class="kw">if </span>move_size_limit &gt; <span class="number">0 </span>&amp;&amp; !<span class="self">self</span>.skip_move_size_check {
-            <a class="self" href="#843">self</a>.<a href="#617-654">check_move_size</a>(<a href="#845">move_size_limit</a>, <a href="#843">operand</a>, <a href="#843">location</a>);
+            <a class="self" href="#842">self</a>.<a href="#616-653">check_move_size</a>(<a href="#844">move_size_limit</a>, <a href="#842">operand</a>, <a href="#842">location</a>);
         }
     }
 
@@ -2322,8 +2324,8 @@
     source: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     output: <span class="kw-2">&amp;mut </span>MonoItems&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) {
-    <span class="kw">let </span>instance = Instance::resolve_drop_in_place(<a href="#861">tcx</a>, <a href="#862">ty</a>);
-    <a href="#895-933">visit_instance_use</a>(<a href="#861">tcx</a>, <a href="#867">instance</a>, <a href="#863">is_direct_call</a>, <a href="#864">source</a>, <a href="#865">output</a>);
+    <span class="kw">let </span>instance = Instance::resolve_drop_in_place(<a href="#860">tcx</a>, <a href="#861">ty</a>);
+    <a href="#894-932">visit_instance_use</a>(<a href="#860">tcx</a>, <a href="#866">instance</a>, <a href="#862">is_direct_call</a>, <a href="#863">source</a>, <a href="#864">output</a>);
 }
 
 <span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.visit_fn_use.html">visit_fn_use</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
@@ -2335,19 +2337,19 @@
     skip_move_check_fns: <span class="kw-2">&amp;</span>[<a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>],
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
     <span class="kw">let </span><span class="kw-2">mut </span>skip_move_size_check = <span class="bool-val">false</span>;
-    <span class="kw">if let </span>ty::FnDef(def_id, args) = <span class="kw-2">*</span><a href="#873">ty</a>.kind() {
-        <a href="#879">skip_move_size_check</a> = <a href="#877">skip_move_check_fns</a>.contains(<span class="kw-2">&amp;</span><a href="#880">def_id</a>);
+    <span class="kw">if let </span>ty::FnDef(def_id, args) = <span class="kw-2">*</span><a href="#872">ty</a>.kind() {
+        <a href="#878">skip_move_size_check</a> = <a href="#876">skip_move_check_fns</a>.contains(<span class="kw-2">&amp;</span><a href="#879">def_id</a>);
         <span class="kw">let </span>instance = <span class="kw">if </span>is_direct_call {
-            ty::Instance::expect_resolve(<a href="#872">tcx</a>, ty::ParamEnv::reveal_all(), <a href="#880">def_id</a>, <a href="#880">args</a>)
+            ty::Instance::expect_resolve(<a href="#871">tcx</a>, ty::ParamEnv::reveal_all(), <a href="#879">def_id</a>, <a href="#879">args</a>)
         } <span class="kw">else </span>{
-            <span class="kw">match </span>ty::Instance::resolve_for_fn_ptr(<a href="#872">tcx</a>, ty::ParamEnv::reveal_all(), <a href="#880">def_id</a>, <a href="#880">args</a>) {
-                <span class="prelude-val">Some</span>(instance) =&gt; <a href="#886">instance</a>,
+            <span class="kw">match </span>ty::Instance::resolve_for_fn_ptr(<a href="#871">tcx</a>, ty::ParamEnv::reveal_all(), <a href="#879">def_id</a>, <a href="#879">args</a>) {
+                <span class="prelude-val">Some</span>(instance) =&gt; <a href="#885">instance</a>,
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;failed to resolve instance for {ty}&quot;</span>),
             }
         };
-        <a href="#895-933">visit_instance_use</a>(<a href="#872">tcx</a>, <a href="#882">instance</a>, <a href="#874">is_direct_call</a>, <a href="#875">source</a>, <a href="#876">output</a>);
+        <a href="#894-932">visit_instance_use</a>(<a href="#871">tcx</a>, <a href="#881">instance</a>, <a href="#873">is_direct_call</a>, <a href="#874">source</a>, <a href="#875">output</a>);
     }
-    <a href="#879">skip_move_size_check</a>
+    <a href="#878">skip_move_size_check</a>
 }
 
 <span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.visit_instance_use.html">visit_instance_use</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
@@ -2362,7 +2364,7 @@
         <span class="kw">return</span>;
     }
 
-    <span class="kw">match </span><a href="#897">instance</a>.def {
+    <span class="kw">match </span><a href="#896">instance</a>.def {
         ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(<span class="kw">_</span>) =&gt; {
             <span class="kw">if </span>!is_direct_call {
                 <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;{:?} being reified&quot;</span>, instance);
@@ -2374,7 +2376,7 @@
         ty::InstanceDef::DropGlue(<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; {
             <span class="comment">// Don&#39;t need to emit noop drop glue if we are calling directly.
             </span><span class="kw">if </span>!is_direct_call {
-                <a href="#900">output</a>.push(<a href="#1080">create_fn_mono_item</a>(<a href="#896">tcx</a>, <a href="#897">instance</a>, <a href="#899">source</a>));
+                <a href="#899">output</a>.push(<a href="#1079">create_fn_mono_item</a>(<a href="#895">tcx</a>, <a href="#896">instance</a>, <a href="#898">source</a>));
             }
         }
         ty::InstanceDef::DropGlue(<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>))
@@ -2385,7 +2387,7 @@
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::CloneShim(..)
         | ty::InstanceDef::FnPtrAddrShim(..) =&gt; {
-            <a href="#900">output</a>.push(<a href="#1080">create_fn_mono_item</a>(<a href="#896">tcx</a>, <a href="#897">instance</a>, <a href="#899">source</a>));
+            <a href="#899">output</a>.push(<a href="#1079">create_fn_mono_item</a>(<a href="#895">tcx</a>, <a href="#896">instance</a>, <a href="#898">source</a>));
         }
     }
 }
@@ -2393,7 +2395,7 @@
 <span class="doccomment">/// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
 /// can just link to the upstream crate and therefore don&#39;t need a mono item.
 </span><span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.should_codegen_locally.html">should_codegen_locally</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, instance: <span class="kw-2">&amp;</span>Instance&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(def_id) = <a href="#937">instance</a>.def.def_id_if_not_guaranteed_local_codegen() <span class="kw">else </span>{
+    <span class="kw">let </span><span class="prelude-val">Some</span>(def_id) = <a href="#936">instance</a>.def.def_id_if_not_guaranteed_local_codegen() <span class="kw">else </span>{
         <span class="kw">return </span><span class="bool-val">true</span>;
     };
 
@@ -2414,15 +2416,15 @@
         </span><span class="kw">return </span><span class="bool-val">false</span>;
     }
 
-    <span class="kw">if let </span>DefKind::Static(<span class="kw">_</span>) = <a href="#937">tcx</a>.def_kind(<a href="#938">def_id</a>) {
+    <span class="kw">if let </span>DefKind::Static(<span class="kw">_</span>) = <a href="#936">tcx</a>.def_kind(<a href="#937">def_id</a>) {
         <span class="comment">// We cannot monomorphize statics from upstream crates.
         </span><span class="kw">return </span><span class="bool-val">false</span>;
     }
 
     <span class="kw">if </span>!tcx.is_mir_available(def_id) {
-        <a href="#937">tcx</a>.sess.emit_fatal(<a href="errors.rs.html#38-42">NoOptimizedMir</a> {
-            span: <a href="#937">tcx</a>.def_span(<a href="#938">def_id</a>),
-            crate_name: <a href="#937">tcx</a>.crate_name(<a href="#938">def_id</a>.krate),
+        <a href="#936">tcx</a>.sess.emit_fatal(<a href="errors.rs.html#38-42">NoOptimizedMir</a> {
+            span: <a href="#936">tcx</a>.def_span(<a href="#937">def_id</a>),
+            crate_name: <a href="#936">tcx</a>.crate_name(<a href="#937">def_id</a>.krate),
         });
     }
 
@@ -2481,50 +2483,50 @@
             <span class="kw">if </span>ty.is_sized(tcx.tcx, param_env) {
                 <span class="kw">return </span><span class="bool-val">false</span>;
             }
-            <span class="kw">let </span>tail = <a href="#1016">tcx</a>.struct_tail_erasing_lifetimes(<a href="#1022">ty</a>, <a href="#1021">param_env</a>);
-            <span class="kw">match </span><a href="#1026">tail</a>.kind() {
+            <span class="kw">let </span>tail = <a href="#1015">tcx</a>.struct_tail_erasing_lifetimes(<a href="#1021">ty</a>, <a href="#1020">param_env</a>);
+            <span class="kw">match </span><a href="#1025">tail</a>.kind() {
                 ty::Foreign(..) =&gt; <span class="bool-val">false</span>,
                 ty::Str | ty::Slice(..) | ty::Dynamic(..) =&gt; <span class="bool-val">true</span>,
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unexpected unsized tail: {:?}&quot;</span>, tail),
             }
         };
         <span class="kw">if </span>type_has_metadata(inner_source) {
-            (<a href="#1020">inner_source</a>, <a href="#1020">inner_target</a>)
+            (<a href="#1019">inner_source</a>, <a href="#1019">inner_target</a>)
         } <span class="kw">else </span>{
-            <a href="#1016">tcx</a>.struct_lockstep_tails_erasing_lifetimes(<a href="#1020">inner_source</a>, <a href="#1020">inner_target</a>, <a href="#1021">param_env</a>)
+            <a href="#1015">tcx</a>.struct_lockstep_tails_erasing_lifetimes(<a href="#1019">inner_source</a>, <a href="#1019">inner_target</a>, <a href="#1020">param_env</a>)
         }
     };
 
-    <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#1017">source_ty</a>.kind(), <span class="kw-2">&amp;</span><a href="#1018">target_ty</a>.kind()) {
+    <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#1016">source_ty</a>.kind(), <span class="kw-2">&amp;</span><a href="#1017">target_ty</a>.kind()) {
         (<span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, a, <span class="kw">_</span>), <span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, b, <span class="kw">_</span>) | <span class="kw-2">&amp;</span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: b, .. }))
         | (<span class="kw-2">&amp;</span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: a, .. }), <span class="kw-2">&amp;</span>ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: b, .. })) =&gt; {
-            <a href="#1020">ptr_vtable</a>(<span class="kw-2">*</span><a href="#1041">a</a>, <span class="kw-2">*</span><a href="#1041">b</a>)
+            <a href="#1019">ptr_vtable</a>(<span class="kw-2">*</span><a href="#1040">a</a>, <span class="kw-2">*</span><a href="#1040">b</a>)
         }
-        (<span class="kw-2">&amp;</span>ty::Adt(def_a, <span class="kw">_</span>), <span class="kw-2">&amp;</span>ty::Adt(def_b, <span class="kw">_</span>)) <span class="kw">if </span><a href="#1045">def_a</a>.is_box() &amp;&amp; <a href="#1045">def_b</a>.is_box() =&gt; {
-            <a href="#1020">ptr_vtable</a>(<a href="#1017">source_ty</a>.boxed_ty(), <a href="#1018">target_ty</a>.boxed_ty())
+        (<span class="kw-2">&amp;</span>ty::Adt(def_a, <span class="kw">_</span>), <span class="kw-2">&amp;</span>ty::Adt(def_b, <span class="kw">_</span>)) <span class="kw">if </span><a href="#1044">def_a</a>.is_box() &amp;&amp; <a href="#1044">def_b</a>.is_box() =&gt; {
+            <a href="#1019">ptr_vtable</a>(<a href="#1016">source_ty</a>.boxed_ty(), <a href="#1017">target_ty</a>.boxed_ty())
         }
 
         <span class="comment">// T as dyn* Trait
-        </span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span>ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::DynStar)) =&gt; <a href="#1020">ptr_vtable</a>(<a href="#1017">source_ty</a>, <a href="#1018">target_ty</a>),
+        </span>(<span class="kw">_</span>, <span class="kw-2">&amp;</span>ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::DynStar)) =&gt; <a href="#1019">ptr_vtable</a>(<a href="#1016">source_ty</a>, <a href="#1017">target_ty</a>),
 
         (<span class="kw-2">&amp;</span>ty::Adt(source_adt_def, source_args), <span class="kw-2">&amp;</span>ty::Adt(target_adt_def, target_args)) =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(source_adt_def, target_adt_def);
 
             <span class="kw">let </span>CustomCoerceUnsized::Struct(coerce_index) =
-                <a href="lib.rs.html#29-50"><span class="kw">crate</span>::custom_coerce_unsize_info</a>(<a href="#1016">tcx</a>, <a href="#1017">source_ty</a>, <a href="#1018">target_ty</a>);
+                <a href="lib.rs.html#29-50"><span class="kw">crate</span>::custom_coerce_unsize_info</a>(<a href="#1015">tcx</a>, <a href="#1016">source_ty</a>, <a href="#1017">target_ty</a>);
 
-            <span class="kw">let </span>source_fields = <span class="kw-2">&amp;</span><a href="#1052">source_adt_def</a>.non_enum_variant().fields;
-            <span class="kw">let </span>target_fields = <span class="kw-2">&amp;</span><a href="#1052">target_adt_def</a>.non_enum_variant().fields;
+            <span class="kw">let </span>source_fields = <span class="kw-2">&amp;</span><a href="#1051">source_adt_def</a>.non_enum_variant().fields;
+            <span class="kw">let </span>target_fields = <span class="kw-2">&amp;</span><a href="#1051">target_adt_def</a>.non_enum_variant().fields;
 
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(
                 coerce_index.index() &lt; source_fields.len()
                     &amp;&amp; source_fields.len() == target_fields.len()
             );
 
-            <a href="#1015-1078">find_vtable_types_for_unsizing</a>(
-                <a href="#1016">tcx</a>,
-                <a href="#1058">source_fields</a>[<a href="#1055">coerce_index</a>].ty(<span class="kw-2">*</span><a href="#1016">tcx</a>, <a href="#1052">source_args</a>),
-                <a href="#1059">target_fields</a>[<a href="#1055">coerce_index</a>].ty(<span class="kw-2">*</span><a href="#1016">tcx</a>, <a href="#1052">target_args</a>),
+            <a href="#1014-1077">find_vtable_types_for_unsizing</a>(
+                <a href="#1015">tcx</a>,
+                <a href="#1057">source_fields</a>[<a href="#1054">coerce_index</a>].ty(<span class="kw-2">*</span><a href="#1015">tcx</a>, <a href="#1051">source_args</a>),
+                <a href="#1058">target_fields</a>[<a href="#1054">coerce_index</a>].ty(<span class="kw-2">*</span><a href="#1015">tcx</a>, <a href="#1051">target_args</a>),
             )
         }
         <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(
@@ -2560,16 +2562,16 @@
 ) {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!trait_ty.has_escaping_bound_vars() &amp;&amp; !impl_ty.has_escaping_bound_vars());
 
-    <span class="kw">if let </span>ty::Dynamic(<span class="kw-2">ref </span>trait_ty, ..) = <a href="#1098">trait_ty</a>.kind() {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(principal) = <a href="#1105">trait_ty</a>.principal() {
-            <span class="kw">let </span>poly_trait_ref = <a href="#1106">principal</a>.with_self_ty(<a href="#1097">tcx</a>, <a href="#1099">impl_ty</a>);
+    <span class="kw">if let </span>ty::Dynamic(<span class="kw-2">ref </span>trait_ty, ..) = <a href="#1097">trait_ty</a>.kind() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(principal) = <a href="#1104">trait_ty</a>.principal() {
+            <span class="kw">let </span>poly_trait_ref = <a href="#1105">principal</a>.with_self_ty(<a href="#1096">tcx</a>, <a href="#1098">impl_ty</a>);
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!poly_trait_ref.has_escaping_bound_vars());
 
             <span class="comment">// Walk all methods of the trait, including those of its supertraits
-            </span><span class="kw">let </span>entries = <a href="#1097">tcx</a>.vtable_entries(<a href="#1107">poly_trait_ref</a>);
-            <span class="kw">let </span>methods = <a href="#1111">entries</a>
+            </span><span class="kw">let </span>entries = <a href="#1096">tcx</a>.vtable_entries(<a href="#1106">poly_trait_ref</a>);
+            <span class="kw">let </span>methods = <a href="#1110">entries</a>
                 .iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|entry| <span class="kw">match </span><a href="#1114">entry</a> {
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|entry| <span class="kw">match </span><a href="#1113">entry</a> {
                     VtblEntry::MetadataDropInPlace
                     | VtblEntry::MetadataSize
                     | VtblEntry::MetadataAlign
@@ -2579,15 +2581,15 @@
                         </span><span class="prelude-val">None
                     </span>}
                     VtblEntry::Method(instance) =&gt; {
-                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span><a href="#1123">instance</a>).filter(|instance| <a href="#937-972">should_codegen_locally</a>(<a href="#1097">tcx</a>, <a href="#1124">instance</a>))
+                        <span class="prelude-val">Some</span>(<span class="kw-2">*</span><a href="#1122">instance</a>).filter(|instance| <a href="#936-971">should_codegen_locally</a>(<a href="#1096">tcx</a>, <a href="#1123">instance</a>))
                     }
                 })
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|item| <a href="#1080">create_fn_mono_item</a>(<a href="#1097">tcx</a>, <a href="#1127">item</a>, <a href="#1100">source</a>));
-            <a href="#1101">output</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1112">methods</a>);
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|item| <a href="#1079">create_fn_mono_item</a>(<a href="#1096">tcx</a>, <a href="#1126">item</a>, <a href="#1099">source</a>));
+            <a href="#1100">output</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1111">methods</a>);
         }
 
         <span class="comment">// Also add the destructor.
-        </span><a href="#860-869">visit_drop_use</a>(<a href="#1097">tcx</a>, <a href="#1099">impl_ty</a>, <span class="bool-val">false</span>, <a href="#1100">source</a>, <a href="#1101">output</a>);
+        </span><a href="#859-868">visit_drop_use</a>(<a href="#1096">tcx</a>, <a href="#1098">impl_ty</a>, <span class="bool-val">false</span>, <a href="#1099">source</a>, <a href="#1100">output</a>);
     }
 }
 
@@ -2597,22 +2599,22 @@
 
 </span><span class="kw">struct </span><a href="../../rustc_monomorphize/collector/struct.RootCollector.html">RootCollector</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    mode: <a href="#201-204">MonoItemCollectionMode</a>,
+    mode: <a href="#200-203">MonoItemCollectionMode</a>,
     output: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>MonoItems&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     entry_fn: <span class="prelude-ty">Option</span>&lt;(<a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>, <a href="../../rustc_session/config/enum.EntryFnType.html">EntryFnType</a>)&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;v</span>&gt; RootCollector&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;v</span>&gt; {
     <span class="kw">fn </span>process_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../rustc_hir/hir/struct.ItemId.html">hir::ItemId</a>) {
-        <span class="kw">match </span><a class="self" href="#1148">self</a>.tcx.def_kind(<a href="#1148">id</a>.owner_id) {
+        <span class="kw">match </span><a class="self" href="#1147">self</a>.tcx.def_kind(<a href="#1147">id</a>.owner_id) {
             DefKind::Enum | DefKind::Struct | DefKind::Union =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mode == MonoItemCollectionMode::Eager
                     &amp;&amp; <span class="self">self</span>.tcx.generics_of(id.owner_id).count() == <span class="number">0
                 </span>{
                     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;RootCollector: ADT drop-glue for `{id:?}`&quot;</span>,);
 
-                    <span class="kw">let </span>ty = <a class="self" href="#1148">self</a>.tcx.type_of(<a href="#1148">id</a>.owner_id.to_def_id()).no_bound_vars().unwrap();
-                    <a href="#860-869">visit_drop_use</a>(<a class="self" href="#1148">self</a>.tcx, <a href="#1156">ty</a>, <span class="bool-val">true</span>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a class="self" href="#1148">self</a>.output);
+                    <span class="kw">let </span>ty = <a class="self" href="#1147">self</a>.tcx.type_of(<a href="#1147">id</a>.owner_id.to_def_id()).no_bound_vars().unwrap();
+                    <a href="#859-868">visit_drop_use</a>(<a class="self" href="#1147">self</a>.tcx, <a href="#1155">ty</a>, <span class="bool-val">true</span>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a class="self" href="#1147">self</a>.output);
                 }
             }
             DefKind::GlobalAsm =&gt; {
@@ -2620,29 +2622,29 @@
                     <span class="string">&quot;RootCollector: ItemKind::GlobalAsm({})&quot;</span>,
                     <span class="self">self</span>.tcx.def_path_str(id.owner_id)
                 );
-                <a class="self" href="#1148">self</a>.output.push(<a href="../../rustc_span/source_map/fn.dummy_spanned.html">dummy_spanned</a>(MonoItem::GlobalAsm(<a href="#1148">id</a>)));
+                <a class="self" href="#1147">self</a>.output.push(<a href="../../rustc_span/source_map/fn.dummy_spanned.html">dummy_spanned</a>(MonoItem::GlobalAsm(<a href="#1147">id</a>)));
             }
             DefKind::Static(..) =&gt; {
-                <span class="kw">let </span>def_id = <a href="#1148">id</a>.owner_id.to_def_id();
+                <span class="kw">let </span>def_id = <a href="#1147">id</a>.owner_id.to_def_id();
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;RootCollector: ItemKind::Static({})&quot;</span>, <span class="self">self</span>.tcx.def_path_str(def_id));
-                <a class="self" href="#1148">self</a>.output.push(<a href="../../rustc_span/source_map/fn.dummy_spanned.html">dummy_spanned</a>(MonoItem::Static(<a href="#1168">def_id</a>)));
+                <a class="self" href="#1147">self</a>.output.push(<a href="../../rustc_span/source_map/fn.dummy_spanned.html">dummy_spanned</a>(MonoItem::Static(<a href="#1167">def_id</a>)));
             }
             DefKind::Const =&gt; {
                 <span class="comment">// const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
 
                 // but even just declaring them must collect the items they refer to
-                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(val) = <a class="self" href="#1148">self</a>.tcx.const_eval_poly(<a href="#1148">id</a>.owner_id.to_def_id()) {
-                    <a href="#1442">collect_const_value</a>(<a class="self" href="#1148">self</a>.tcx, <a href="#1177">val</a>, <span class="kw-2">&amp;mut </span><a class="self" href="#1148">self</a>.output);
+                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(val) = <a class="self" href="#1147">self</a>.tcx.const_eval_poly(<a href="#1147">id</a>.owner_id.to_def_id()) {
+                    <a href="#1443">collect_const_value</a>(<a class="self" href="#1147">self</a>.tcx, <a href="#1176">val</a>, <span class="kw-2">&amp;mut </span><a class="self" href="#1147">self</a>.output);
                 }
             }
             <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { .. } =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mode == MonoItemCollectionMode::Eager {
-                    <a href="#1268">create_mono_items_for_default_impls</a>(<a class="self" href="#1148">self</a>.tcx, <a href="#1148">id</a>, <a class="self" href="#1148">self</a>.output);
+                    <a href="#1267">create_mono_items_for_default_impls</a>(<a class="self" href="#1147">self</a>.tcx, <a href="#1147">id</a>, <a class="self" href="#1147">self</a>.output);
                 }
             }
             DefKind::Fn =&gt; {
-                <a class="self" href="#1148">self</a>.<a href="#1217">push_if_root</a>(<a href="#1148">id</a>.owner_id.def_id);
+                <a class="self" href="#1147">self</a>.<a href="#1216">push_if_root</a>(<a href="#1147">id</a>.owner_id.def_id);
             }
             <span class="kw">_ </span>=&gt; {}
         }
@@ -2650,20 +2652,20 @@
 
     <span class="kw">fn </span>process_impl_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../rustc_hir/hir/struct.ImplItemId.html">hir::ImplItemId</a>) {
         <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(<span class="self">self</span>.tcx.def_kind(id.owner_id), DefKind::AssocFn) {
-            <a class="self" href="#1193">self</a>.<a href="#1217">push_if_root</a>(<a href="#1193">id</a>.owner_id.def_id);
+            <a class="self" href="#1192">self</a>.<a href="#1216">push_if_root</a>(<a href="#1192">id</a>.owner_id.def_id);
         }
     }
 
     <span class="kw">fn </span>is_root(<span class="kw-2">&amp;</span><span class="self">self</span>, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        !<a href="#1263-1266">item_requires_monomorphization</a>(<a class="self" href="#1199">self</a>.tcx, <a href="#1199">def_id</a>)
-            &amp;&amp; <span class="kw">match </span><a class="self" href="#1199">self</a>.mode {
-                <a href="#202">MonoItemCollectionMode::Eager</a> =&gt; <span class="bool-val">true</span>,
-                <a href="#203">MonoItemCollectionMode::Lazy</a> =&gt; {
-                    <a class="self" href="#1199">self</a>.entry_fn.and_then(|(id, <span class="kw">_</span>)| <a href="#1204">id</a>.as_local()) == <span class="prelude-val">Some</span>(<a href="#1199">def_id</a>)
-                        || <a class="self" href="#1199">self</a>.tcx.is_reachable_non_generic(<a href="#1199">def_id</a>)
-                        || <span class="self"><a href="#1199">self</a>
+        !<a href="#1262-1265">item_requires_monomorphization</a>(<a class="self" href="#1198">self</a>.tcx, <a href="#1198">def_id</a>)
+            &amp;&amp; <span class="kw">match </span><a class="self" href="#1198">self</a>.mode {
+                <a href="#201">MonoItemCollectionMode::Eager</a> =&gt; <span class="bool-val">true</span>,
+                <a href="#202">MonoItemCollectionMode::Lazy</a> =&gt; {
+                    <a class="self" href="#1198">self</a>.entry_fn.and_then(|(id, <span class="kw">_</span>)| <a href="#1203">id</a>.as_local()) == <span class="prelude-val">Some</span>(<a href="#1198">def_id</a>)
+                        || <a class="self" href="#1198">self</a>.tcx.is_reachable_non_generic(<a href="#1198">def_id</a>)
+                        || <span class="self"><a href="#1198">self</a>
                             </span>.tcx
-                            .codegen_fn_attrs(<a href="#1199">def_id</a>)
+                            .codegen_fn_attrs(<a href="#1198">def_id</a>)
                             .flags
                             .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
                 }
@@ -2688,39 +2690,39 @@
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
     </span><span class="kw">fn </span>push_extra_entry_roots(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="prelude-val">Some</span>((main_def_id, <a href="../../rustc_session/config/enum.EntryFnType.html">EntryFnType::Main</a> { .. })) = <a class="self" href="#1232">self</a>.entry_fn <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>((main_def_id, <a href="../../rustc_session/config/enum.EntryFnType.html">EntryFnType::Main</a> { .. })) = <a class="self" href="#1231">self</a>.entry_fn <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
 
-        <span class="kw">let </span>start_def_id = <a class="self" href="#1232">self</a>.tcx.require_lang_item(LangItem::Start, <span class="prelude-val">None</span>);
-        <span class="kw">let </span>main_ret_ty = <a class="self" href="#1232">self</a>.tcx.fn_sig(<a href="#1233">main_def_id</a>).no_bound_vars().unwrap().output();
+        <span class="kw">let </span>start_def_id = <a class="self" href="#1231">self</a>.tcx.require_lang_item(LangItem::Start, <span class="prelude-val">None</span>);
+        <span class="kw">let </span>main_ret_ty = <a class="self" href="#1231">self</a>.tcx.fn_sig(<a href="#1232">main_def_id</a>).no_bound_vars().unwrap().output();
 
         <span class="comment">// Given that `main()` has no arguments,
         // then its return type cannot have
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        </span><span class="kw">let </span>main_ret_ty = <a class="self" href="#1232">self</a>.tcx.normalize_erasing_regions(
+        </span><span class="kw">let </span>main_ret_ty = <a class="self" href="#1231">self</a>.tcx.normalize_erasing_regions(
             ty::ParamEnv::reveal_all(),
-            <a href="#1238">main_ret_ty</a>.no_bound_vars().unwrap(),
+            <a href="#1237">main_ret_ty</a>.no_bound_vars().unwrap(),
         );
 
         <span class="kw">let </span>start_instance = Instance::resolve(
-            <a class="self" href="#1232">self</a>.tcx,
+            <a class="self" href="#1231">self</a>.tcx,
             ty::ParamEnv::reveal_all(),
-            <a href="#1237">start_def_id</a>,
-            <a class="self" href="#1232">self</a>.tcx.mk_args(<span class="kw-2">&amp;</span>[<a href="#1245">main_ret_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()]),
+            <a href="#1236">start_def_id</a>,
+            <a class="self" href="#1231">self</a>.tcx.mk_args(<span class="kw-2">&amp;</span>[<a href="#1244">main_ret_ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()]),
         )
         .unwrap()
         .unwrap();
 
-        <a class="self" href="#1232">self</a>.output.push(<a href="#1080">create_fn_mono_item</a>(<a class="self" href="#1232">self</a>.tcx, <a href="#1250">start_instance</a>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>));
+        <a class="self" href="#1231">self</a>.output.push(<a href="#1079">create_fn_mono_item</a>(<a class="self" href="#1231">self</a>.tcx, <a href="#1249">start_instance</a>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>));
     }
 }
 
 <span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.item_requires_monomorphization.html">item_requires_monomorphization</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">let </span>generics = <a href="#1263">tcx</a>.generics_of(<a href="#1263">def_id</a>);
-    <a href="#1264">generics</a>.requires_monomorphization(<a href="#1263">tcx</a>)
+    <span class="kw">let </span>generics = <a href="#1262">tcx</a>.generics_of(<a href="#1262">def_id</a>);
+    <a href="#1263">generics</a>.requires_monomorphization(<a href="#1262">tcx</a>)
 }
 
 <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(tcx, output))]
@@ -2799,13 +2801,13 @@
 
 <span class="doccomment">/// Scans the CTFE alloc in order to find function calls, closures, and drop-glue.
 </span><span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.collect_alloc.html">collect_alloc</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, alloc_id: <a href="../../rustc_middle/mir/interpret/struct.AllocId.html">AllocId</a>, output: <span class="kw-2">&amp;mut </span>MonoItems&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-    <span class="kw">match </span><a href="#1343">tcx</a>.global_alloc(<a href="#1343">alloc_id</a>) {
+    <span class="kw">match </span><a href="#1342">tcx</a>.global_alloc(<a href="#1342">alloc_id</a>) {
         GlobalAlloc::Static(def_id) =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!tcx.is_thread_local_static(def_id));
-            <span class="kw">let </span>instance = Instance::mono(<a href="#1343">tcx</a>, <a href="#1345">def_id</a>);
+            <span class="kw">let </span>instance = Instance::mono(<a href="#1342">tcx</a>, <a href="#1344">def_id</a>);
             <span class="kw">if </span>should_codegen_locally(tcx, <span class="kw-2">&amp;</span>instance) {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;collecting static {:?}&quot;</span>, def_id);
-                <a href="#1343">output</a>.push(<a href="../../rustc_span/source_map/fn.dummy_spanned.html">dummy_spanned</a>(MonoItem::Static(<a href="#1345">def_id</a>)));
+                <a href="#1342">output</a>.push(<a href="../../rustc_span/source_map/fn.dummy_spanned.html">dummy_spanned</a>(MonoItem::Static(<a href="#1344">def_id</a>)));
             }
         }
         GlobalAlloc::Memory(alloc) =&gt; {
@@ -2819,12 +2821,12 @@
         GlobalAlloc::Function(fn_instance) =&gt; {
             <span class="kw">if </span>should_codegen_locally(tcx, <span class="kw-2">&amp;</span>fn_instance) {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;collecting {:?} with {:#?}&quot;</span>, alloc_id, fn_instance);
-                <a href="#1343">output</a>.push(<a href="#1080">create_fn_mono_item</a>(<a href="#1343">tcx</a>, <a href="#1361">fn_instance</a>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>));
+                <a href="#1342">output</a>.push(<a href="#1079">create_fn_mono_item</a>(<a href="#1342">tcx</a>, <a href="#1360">fn_instance</a>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>));
             }
         }
         GlobalAlloc::VTable(ty, trait_ref) =&gt; {
-            <span class="kw">let </span>alloc_id = <a href="#1343">tcx</a>.vtable_allocation((<a href="#1367">ty</a>, <a href="#1367">trait_ref</a>));
-            <a href="#1343-1372">collect_alloc</a>(<a href="#1343">tcx</a>, <a href="#1368">alloc_id</a>, <a href="#1343">output</a>)
+            <span class="kw">let </span>alloc_id = <a href="#1342">tcx</a>.vtable_allocation((<a href="#1366">ty</a>, <a href="#1366">trait_ref</a>));
+            <a href="#1342-1371">collect_alloc</a>(<a href="#1342">tcx</a>, <a href="#1367">alloc_id</a>, <a href="#1342">output</a>)
         }
     }
 }
@@ -2835,8 +2837,8 @@
     fn_ident: <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>,
     skip_move_check_fns: <span class="kw-2">&amp;mut </span>Vec&lt;<a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt;,
 ) {
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#1376">def_id</a>.and_then(|def_id| <a href="#1385-1397">assoc_fn_of_type</a>(<a href="#1375">tcx</a>, <a href="#1380">def_id</a>, <a href="#1377">fn_ident</a>)) {
-        <a href="#1378">skip_move_check_fns</a>.push(<a href="#1380">def_id</a>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#1375">def_id</a>.and_then(|def_id| <a href="#1384-1396">assoc_fn_of_type</a>(<a href="#1374">tcx</a>, <a href="#1379">def_id</a>, <a href="#1376">fn_ident</a>)) {
+        <a href="#1377">skip_move_check_fns</a>.push(<a href="#1379">def_id</a>);
     }
 }
 
@@ -2885,7 +2887,9 @@
         );
     }
 
-    MirUsedCollector {
+    <span class="comment">// Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
+    // and abort compilation if any of them errors.
+    </span>MirUsedCollector {
         tcx,
         body: <span class="kw-2">&amp;</span>body,
         output,
@@ -2900,13 +2904,15 @@
 <span class="attr">#[instrument(skip(tcx, output), level = <span class="string">&quot;debug&quot;</span>)]
 </span><span class="kw">fn </span><a href="../../rustc_monomorphize/collector/fn.collect_const_value.html">collect_const_value</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    value: ConstValue&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    value: mir::ConstValue&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     output: <span class="kw-2">&amp;mut </span>MonoItems&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) {
     <span class="kw">match </span>value {
-        ConstValue::Scalar(Scalar::Ptr(ptr, _size)) =&gt; collect_alloc(tcx, ptr.provenance, output),
-        ConstValue::Indirect { alloc_id, .. } =&gt; collect_alloc(tcx, alloc_id, output),
-        ConstValue::Slice { data, start: <span class="kw">_</span>, end: <span class="kw">_ </span>} =&gt; {
+        mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) =&gt; {
+            collect_alloc(tcx, ptr.provenance, output)
+        }
+        mir::ConstValue::Indirect { alloc_id, .. } =&gt; collect_alloc(tcx, alloc_id, output),
+        mir::ConstValue::Slice { data, meta: <span class="kw">_ </span>} =&gt; {
             <span class="kw">for </span><span class="kw-2">&amp;</span>id <span class="kw">in </span>data.inner().provenance().ptrs().values() {
                 collect_alloc(tcx, id, output);
             }

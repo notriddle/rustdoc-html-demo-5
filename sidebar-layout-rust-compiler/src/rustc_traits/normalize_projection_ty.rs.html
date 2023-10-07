@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_traits/src/normalize_projection_ty.rs`."><title>normalize_projection_ty.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_traits" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_traits/src/normalize_projection_ty.rs`."><title>normalize_projection_ty.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_traits" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -101,23 +101,50 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>rustc_infer::infer::canonical::{<a href="../../rustc_middle/infer/canonical/struct.Canonical.html">Canonical</a>, <a href="../../rustc_middle/infer/canonical/struct.QueryResponse.html">QueryResponse</a>};
 <span class="kw">use </span><a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">rustc_infer::infer::TyCtxtInferExt</a>;
 <span class="kw">use </span><a href="../../rustc_middle/query/struct.Providers.html">rustc_middle::query::Providers</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a href="../../rustc_middle/ty/struct.ParamEnvAnd.html">ParamEnvAnd</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">rustc_trait_selection::infer::InferCtxtBuilderExt</a>;
+<span class="kw">use </span><a href="../../rustc_trait_selection/traits/error_reporting/type_err_ctxt_ext/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a>;
 <span class="kw">use </span>rustc_trait_selection::traits::query::{
     <a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">normalize::NormalizationResult</a>, <a href="../../rustc_middle/traits/query/type.CanonicalProjectionGoal.html">CanonicalProjectionGoal</a>, NoSolution,
 };
-<span class="kw">use </span>rustc_trait_selection::traits::{<a class="self" href="../../rustc_trait_selection/traits/index.html">self</a>, <a href="../../rustc_middle/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="../../rustc_trait_selection/traits/select/struct.SelectionContext.html">SelectionContext</a>};
+<span class="kw">use </span>rustc_trait_selection::traits::{
+    <a class="self" href="../../rustc_trait_selection/traits/index.html">self</a>, <a href="../../rustc_infer/traits/enum.FulfillmentErrorCode.html">FulfillmentErrorCode</a>, <a href="../../rustc_middle/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="../../rustc_trait_selection/traits/select/struct.SelectionContext.html">SelectionContext</a>,
+};
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/sync/atomic/enum.Ordering.html">std::sync::atomic::Ordering</a>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span><a href="../../rustc_traits/normalize_projection_ty/fn.provide.html">provide</a>(p: <span class="kw-2">&amp;mut </span><a href="../../rustc_middle/query/struct.Providers.html">Providers</a>) {
-    <span class="kw-2">*</span><a href="#12">p</a> = <a href="../../rustc_middle/query/struct.Providers.html">Providers</a> {
-        <a href="#21-49">normalize_projection_ty</a>,
-        <a href="#51-76">normalize_weak_ty</a>,
-        <a href="#78-103">normalize_inherent_projection_ty</a>,
-        ..<span class="kw-2">*</span><a href="#12">p</a>
+    <span class="kw-2">*</span><a href="#15">p</a> = <a href="../../rustc_middle/query/struct.Providers.html">Providers</a> {
+        <a href="#24-73">normalize_projection_ty</a>,
+        <a href="#75-100">normalize_weak_ty</a>,
+        <a href="#102-127">normalize_inherent_projection_ty</a>,
+        ..<span class="kw-2">*</span><a href="#15">p</a>
     };
 }
 
@@ -127,26 +154,47 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Canonical&lt;<span class="lifetime">&#39;tcx</span>, QueryResponse&lt;<span class="lifetime">&#39;tcx</span>, NormalizationResult&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;, <a href="../../rustc_middle/traits/query/struct.NoSolution.html">NoSolution</a>&gt; {
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;normalize_provider(goal={:#?})&quot;</span>, goal);
 
-    <a href="#22">tcx</a>.sess.perf_stats.normalize_projection_ty.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
-    <a href="#22">tcx</a>.<a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().<a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">enter_canonical_trait_query</a>(
-        <span class="kw-2">&amp;</span><a href="#23">goal</a>,
+    <a href="#25">tcx</a>.sess.perf_stats.normalize_projection_ty.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
+    <a href="#25">tcx</a>.<a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().<a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">enter_canonical_trait_query</a>(
+        <span class="kw-2">&amp;</span><a href="#26">goal</a>,
         |ocx, <a href="../../rustc_middle/ty/struct.ParamEnvAnd.html">ParamEnvAnd</a> { param_env, value: goal }| {
-            <span class="kw">let </span>selcx = <span class="kw-2">&amp;mut </span>SelectionContext::new(<a href="#30">ocx</a>.infcx);
+            <span class="kw">let </span>selcx = <span class="kw-2">&amp;mut </span>SelectionContext::new(<a href="#33">ocx</a>.infcx);
             <span class="kw">let </span>cause = ObligationCause::dummy();
             <span class="kw">let </span><span class="kw-2">mut </span>obligations = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
             <span class="kw">let </span>answer = traits::normalize_projection_type(
-                <a href="#31">selcx</a>,
-                <a href="#30">param_env</a>,
-                <a href="#30">goal</a>,
-                <a href="#32">cause</a>,
+                <a href="#34">selcx</a>,
+                <a href="#33">param_env</a>,
+                <a href="#33">goal</a>,
+                <a href="#35">cause</a>,
                 <span class="number">0</span>,
-                <span class="kw-2">&amp;mut </span><a href="#33">obligations</a>,
+                <span class="kw-2">&amp;mut </span><a href="#36">obligations</a>,
             );
-            <a href="#30">ocx</a>.register_obligations(<a href="#33">obligations</a>);
+            <a href="#33">ocx</a>.register_obligations(<a href="#36">obligations</a>);
+            <span class="comment">// #112047: With projections and opaques, we are able to create opaques that
+            // are recursive (given some substitution of the opaque&#39;s type variables).
+            // In that case, we may only realize a cycle error when calling
+            // `normalize_erasing_regions` in mono.
+            </span><span class="kw">if </span>!ocx.infcx.next_trait_solver() {
+                <span class="kw">let </span>errors = <a href="#33">ocx</a>.select_where_possible();
+                <span class="kw">if </span>!errors.is_empty() {
+                    <span class="comment">// Rustdoc may attempt to normalize type alias types which are not
+                    // well-formed. Rustdoc also normalizes types that are just not
+                    // well-formed, since we don&#39;t do as much HIR analysis (checking
+                    // that impl vars are constrained by the signature, for example).
+                    </span><span class="kw">if </span>!tcx.sess.opts.actually_rustdoc {
+                        <span class="kw">for </span>error <span class="kw">in </span><span class="kw-2">&amp;</span>errors {
+                            <span class="kw">if let </span>FulfillmentErrorCode::CodeCycle(cycle) = <span class="kw-2">&amp;</span>error.code {
+                                ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
+                            }
+                        }
+                    }
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
+                }
+            }
             <span class="comment">// FIXME(associated_const_equality): All users of normalize_projection_ty expected
             // a type, but there is the possibility it could&#39;ve been a const now. Maybe change
             // it to a Term later?
-            </span><span class="prelude-val">Ok</span>(<a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">NormalizationResult</a> { normalized_ty: <a href="#34">answer</a>.ty().unwrap() })
+            </span><span class="prelude-val">Ok</span>(<a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">NormalizationResult</a> { normalized_ty: <a href="#37">answer</a>.ty().unwrap() })
         },
     )
 }
@@ -157,23 +205,23 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Canonical&lt;<span class="lifetime">&#39;tcx</span>, QueryResponse&lt;<span class="lifetime">&#39;tcx</span>, NormalizationResult&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;, <a href="../../rustc_middle/traits/query/struct.NoSolution.html">NoSolution</a>&gt; {
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;normalize_provider(goal={:#?})&quot;</span>, goal);
 
-    <a href="#52">tcx</a>.sess.perf_stats.normalize_projection_ty.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
-    <a href="#52">tcx</a>.<a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().<a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">enter_canonical_trait_query</a>(
-        <span class="kw-2">&amp;</span><a href="#53">goal</a>,
+    <a href="#76">tcx</a>.sess.perf_stats.normalize_projection_ty.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
+    <a href="#76">tcx</a>.<a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().<a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">enter_canonical_trait_query</a>(
+        <span class="kw-2">&amp;</span><a href="#77">goal</a>,
         |ocx, <a href="../../rustc_middle/ty/struct.ParamEnvAnd.html">ParamEnvAnd</a> { param_env, value: goal }| {
-            <span class="kw">let </span>obligations = <a href="#52">tcx</a>.predicates_of(<a href="#60">goal</a>.def_id).instantiate_own(<a href="#52">tcx</a>, <a href="#60">goal</a>.args).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(
+            <span class="kw">let </span>obligations = <a href="#76">tcx</a>.predicates_of(<a href="#84">goal</a>.def_id).instantiate_own(<a href="#76">tcx</a>, <a href="#84">goal</a>.args).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(
                 |(predicate, span)| {
                     traits::Obligation::new(
-                        <a href="#52">tcx</a>,
-                        ObligationCause::dummy_with_span(<a href="#62">span</a>),
-                        <a href="#60">param_env</a>,
-                        <a href="#62">predicate</a>,
+                        <a href="#76">tcx</a>,
+                        ObligationCause::dummy_with_span(<a href="#86">span</a>),
+                        <a href="#84">param_env</a>,
+                        <a href="#86">predicate</a>,
                     )
                 },
             );
-            <a href="#60">ocx</a>.register_obligations(<a href="#61">obligations</a>);
-            <span class="kw">let </span>normalized_ty = <a href="#52">tcx</a>.type_of(<a href="#60">goal</a>.def_id).instantiate(<a href="#52">tcx</a>, <a href="#60">goal</a>.args);
-            <span class="prelude-val">Ok</span>(<a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">NormalizationResult</a> { <a href="#72">normalized_ty</a> })
+            <a href="#84">ocx</a>.register_obligations(<a href="#85">obligations</a>);
+            <span class="kw">let </span>normalized_ty = <a href="#76">tcx</a>.type_of(<a href="#84">goal</a>.def_id).instantiate(<a href="#76">tcx</a>, <a href="#84">goal</a>.args);
+            <span class="prelude-val">Ok</span>(<a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">NormalizationResult</a> { <a href="#96">normalized_ty</a> })
         },
     )
 }
@@ -184,23 +232,23 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Canonical&lt;<span class="lifetime">&#39;tcx</span>, QueryResponse&lt;<span class="lifetime">&#39;tcx</span>, NormalizationResult&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;, <a href="../../rustc_middle/traits/query/struct.NoSolution.html">NoSolution</a>&gt; {
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;normalize_provider(goal={:#?})&quot;</span>, goal);
 
-    <a href="#79">tcx</a>.<a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().<a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">enter_canonical_trait_query</a>(
-        <span class="kw-2">&amp;</span><a href="#80">goal</a>,
+    <a href="#103">tcx</a>.<a href="../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().<a href="../../rustc_trait_selection/infer/trait.InferCtxtBuilderExt.html">enter_canonical_trait_query</a>(
+        <span class="kw-2">&amp;</span><a href="#104">goal</a>,
         |ocx, <a href="../../rustc_middle/ty/struct.ParamEnvAnd.html">ParamEnvAnd</a> { param_env, value: goal }| {
-            <span class="kw">let </span>selcx = <span class="kw-2">&amp;mut </span>SelectionContext::new(<a href="#86">ocx</a>.infcx);
+            <span class="kw">let </span>selcx = <span class="kw-2">&amp;mut </span>SelectionContext::new(<a href="#110">ocx</a>.infcx);
             <span class="kw">let </span>cause = ObligationCause::dummy();
             <span class="kw">let </span><span class="kw-2">mut </span>obligations = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
             <span class="kw">let </span>answer = traits::normalize_inherent_projection(
-                <a href="#87">selcx</a>,
-                <a href="#86">param_env</a>,
-                <a href="#86">goal</a>,
-                <a href="#88">cause</a>,
+                <a href="#111">selcx</a>,
+                <a href="#110">param_env</a>,
+                <a href="#110">goal</a>,
+                <a href="#112">cause</a>,
                 <span class="number">0</span>,
-                <span class="kw-2">&amp;mut </span><a href="#89">obligations</a>,
+                <span class="kw-2">&amp;mut </span><a href="#113">obligations</a>,
             );
-            <a href="#86">ocx</a>.register_obligations(<a href="#89">obligations</a>);
+            <a href="#110">ocx</a>.register_obligations(<a href="#113">obligations</a>);
 
-            <span class="prelude-val">Ok</span>(<a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">NormalizationResult</a> { normalized_ty: <a href="#90">answer</a> })
+            <span class="prelude-val">Ok</span>(<a href="../../rustc_middle/traits/query/struct.NormalizationResult.html">NormalizationResult</a> { normalized_ty: <a href="#114">answer</a> })
         },
     )
 }

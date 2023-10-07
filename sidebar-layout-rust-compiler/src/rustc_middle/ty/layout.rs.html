@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/layout.rs`."><title>layout.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/layout.rs`."><title>layout.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1366,11 +1366,14 @@
 <a href="#1366" id="1366">1366</a>
 <a href="#1367" id="1367">1367</a>
 <a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../error.rs.html#142-145"><span class="kw">crate</span>::error::UnsupportedFnAbi</a>;
 <span class="kw">use </span><a href="../middle/codegen_fn_attrs.rs.html#48-106"><span class="kw">crate</span>::middle::codegen_fn_attrs::CodegenFnAttrFlags</a>;
 <span class="kw">use </span><a href="../query/plumbing.rs.html#90-93"><span class="kw">crate</span>::query::TyCtxtAt</a>;
 <span class="kw">use </span><a href="normalize_erasing_regions.rs.html#15-18"><span class="kw">crate</span>::ty::normalize_erasing_regions::NormalizationError</a>;
-<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="sty.rs.html#50">ConstKind</a>, <a href="../../../rustc_middle/ty/struct.ReprOptions.html">ReprOptions</a>, <a href="mod.rs.html#451">Ty</a>, <a href="context.rs.html#510-512">TyCtxt</a>, <a href="visit.rs.html#10-132">TypeVisitableExt</a>};
+<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="sty.rs.html#50">ConstKind</a>, <a href="../../../rustc_middle/ty/struct.ReprOptions.html">ReprOptions</a>, <a href="mod.rs.html#463">Ty</a>, <a href="context.rs.html#510-512">TyCtxt</a>, <a href="visit.rs.html#10-132">TypeVisitableExt</a>};
 <span class="kw">use </span><a href="../../../rustc_error_messages/enum.DiagnosticMessage.html">rustc_error_messages::DiagnosticMessage</a>;
 <span class="kw">use </span>rustc_errors::{
     <a href="../../../rustc_errors/diagnostic/enum.DiagnosticArgValue.html">DiagnosticArgValue</a>, <a href="../../../rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html">DiagnosticBuilder</a>, <a href="../../../rustc_errors/struct.Handler.html">Handler</a>, <a href="../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">IntoDiagnostic</a>, <a href="../../../rustc_errors/diagnostic/trait.IntoDiagnosticArg.html">IntoDiagnosticArg</a>,
@@ -1588,14 +1591,14 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; LayoutError&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>diagnostic_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../../rustc_error_messages/enum.DiagnosticMessage.html">DiagnosticMessage</a> {
-        <span class="kw">use </span><a href="../lib.rs.html#113"><span class="kw">crate</span>::fluent_generated</a>::<span class="kw-2">*</span>;
+        <span class="kw">use </span><a href="../lib.rs.html#114"><span class="kw">crate</span>::fluent_generated</a>::<span class="kw-2">*</span>;
         <span class="kw">use </span><a href="#213-219">LayoutError</a>::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self"><a href="#222">self</a> </span>{
-            <a href="#214">Unknown</a>(<span class="kw">_</span>) =&gt; <a href="../lib.rs.html#113">middle_unknown_layout</a>,
-            <a href="#215">SizeOverflow</a>(<span class="kw">_</span>) =&gt; <a href="../lib.rs.html#113">middle_values_too_big</a>,
-            <a href="#216">NormalizationFailure</a>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <a href="../lib.rs.html#113">middle_cannot_be_normalized</a>,
-            <a href="#218">Cycle</a> =&gt; <a href="../lib.rs.html#113">middle_cycle</a>,
-            <a href="#217">ReferencesError</a>(<span class="kw">_</span>) =&gt; <a href="../lib.rs.html#113">middle_layout_references_error</a>,
+            <a href="#214">Unknown</a>(<span class="kw">_</span>) =&gt; <a href="../lib.rs.html#114">middle_unknown_layout</a>,
+            <a href="#215">SizeOverflow</a>(<span class="kw">_</span>) =&gt; <a href="../lib.rs.html#114">middle_values_too_big</a>,
+            <a href="#216">NormalizationFailure</a>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <a href="../lib.rs.html#114">middle_cannot_be_normalized</a>,
+            <a href="#218">Cycle</a> =&gt; <a href="../lib.rs.html#114">middle_cycle</a>,
+            <a href="#217">ReferencesError</a>(<span class="kw">_</span>) =&gt; <a href="../lib.rs.html#114">middle_layout_references_error</a>,
         }
     }
 
@@ -1694,7 +1697,7 @@
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(!ty.has_non_region_infer());
 
         <span class="comment">// First try computing a static layout.
-        </span><span class="kw">let </span>err = <span class="kw">match </span><a href="#323">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(<a href="#324">param_env</a>.<a href="mod.rs.html#1780-1792">and</a>(<a href="#322">ty</a>)) {
+        </span><span class="kw">let </span>err = <span class="kw">match </span><a href="#323">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(<a href="#324">param_env</a>.<a href="mod.rs.html#1756-1758">and</a>(<a href="#322">ty</a>)) {
             <span class="prelude-val">Ok</span>(layout) =&gt; {
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#301">SizeSkeleton::Known</a>(<a href="#330">layout</a>.size));
             }
@@ -1708,11 +1711,11 @@
             ) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#336">e</a>),
         };
 
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#322">ty</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+        <span class="kw">match </span><span class="kw-2">*</span><a href="#322">ty</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
             ty::Ref(<span class="kw">_</span>, pointee, <span class="kw">_</span>) | ty::RawPtr(<a href="sty.rs.html#54-57">ty::TypeAndMut</a> { ty: pointee, .. }) =&gt; {
-                <span class="kw">let </span>non_zero = !<a href="#322">ty</a>.<a href="sty.rs.html#2413-2415">is_unsafe_ptr</a>();
+                <span class="kw">let </span>non_zero = !<a href="#322">ty</a>.<a href="sty.rs.html#2405-2407">is_unsafe_ptr</a>();
                 <span class="kw">let </span>tail = <a href="#323">tcx</a>.<a href="util.rs.html#189-196">struct_tail_erasing_lifetimes</a>(<a href="#344">pointee</a>, <a href="#324">param_env</a>);
-                <span class="kw">match </span><a href="#346">tail</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+                <span class="kw">match </span><a href="#346">tail</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
                     ty::Param(<span class="kw">_</span>) | ty::Alias(ty::Projection | ty::Inherent, <span class="kw">_</span>) =&gt; {
                         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(tail.has_non_region_param());
                         <span class="prelude-val">Ok</span>(<a href="#310-317">SizeSkeleton::Pointer</a> { <a href="#345">non_zero</a>, tail: <a href="#323">tcx</a>.<a href="erase_regions.rs.html#19-31">erase_regions</a>(<a href="#346">tail</a>) })
@@ -1724,13 +1727,13 @@
                 }
             }
             ty::Array(inner, len)
-                <span class="kw">if </span><a href="#358">len</a>.<a href="consts.rs.html#40-42">ty</a>() == <a href="#323">tcx</a>.types.usize &amp;&amp; <a href="#323">tcx</a>.<a href="context.rs.html#776-778">features</a>().transmute_generic_consts =&gt;
+                <span class="kw">if </span><a href="#358">len</a>.<a href="consts.rs.html#40-42">ty</a>() == <a href="#323">tcx</a>.types.usize &amp;&amp; <a href="#323">tcx</a>.<a href="context.rs.html#782-784">features</a>().transmute_generic_consts =&gt;
             {
                 <span class="kw">match </span>SizeSkeleton::compute(inner, tcx, param_env)<span class="question-mark">? </span>{
                     <span class="comment">// This may succeed because the multiplication of two types may overflow
                     // but a single size of a nested array will not.
                     </span><a href="#301">SizeSkeleton::Known</a>(s) =&gt; {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <a href="#358">len</a>.<a href="consts.rs.html#363-369">try_eval_target_usize</a>(<a href="#323">tcx</a>, <a href="#324">param_env</a>) {
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <a href="#358">len</a>.<a href="consts.rs.html#358-364">try_eval_target_usize</a>(<a href="#323">tcx</a>, <a href="#324">param_env</a>) {
                             <span class="kw">let </span>size = s
                                 .bytes()
                                 .checked_mul(c)
@@ -1766,7 +1769,7 @@
                     <span class="kw">let </span>i = VariantIdx::from_usize(<a href="#397">i</a>);
                     <span class="kw">let </span>fields =
                         <a href="#390">def</a>.<a href="adt.rs.html#194-196">variant</a>(<a href="#398">i</a>).fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|field| {
-                            SizeSkeleton::compute(<a href="#400">field</a>.<a href="mod.rs.html#2060-2062">ty</a>(<a href="#323">tcx</a>, <a href="#390">args</a>), <a href="#323">tcx</a>, <a href="#324">param_env</a>)
+                            SizeSkeleton::compute(<a href="#400">field</a>.<a href="mod.rs.html#2026-2028">ty</a>(<a href="#323">tcx</a>, <a href="#390">args</a>), <a href="#323">tcx</a>, <a href="#324">param_env</a>)
                         });
                     <span class="kw">let </span><span class="kw-2">mut </span>ptr = <span class="prelude-val">None</span>;
                     <span class="kw">for </span>field <span class="kw">in </span>fields {
@@ -1797,7 +1800,7 @@
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(<a href="#310-317">SizeSkeleton::Pointer</a> { non_zero, tail }) = <a href="#426">v0</a> {
                         <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#310-317">SizeSkeleton::Pointer</a> {
                             non_zero: <a href="#429">non_zero</a>
-                                || <span class="kw">match </span><a href="#323">tcx</a>.<a href="context.rs.html#657-683">layout_scalar_valid_range</a>(<a href="#390">def</a>.<a href="adt.rs.html#184-186">did</a>()) {
+                                || <span class="kw">match </span><a href="#323">tcx</a>.<a href="context.rs.html#661-687">layout_scalar_valid_range</a>(<a href="#390">def</a>.<a href="adt.rs.html#184-186">did</a>()) {
                                     (Bound::Included(start), Bound::Unbounded) =&gt; <a href="#433">start</a> &gt; <span class="number">0</span>,
                                     (Bound::Included(start), Bound::Included(end)) =&gt; {
                                         <span class="number">0 </span>&lt; <a href="#434">start</a> &amp;&amp; <a href="#434">start</a> &lt; <a href="#434">end</a>
@@ -1860,7 +1863,7 @@
     a: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     b: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <span class="prelude-ty">Option</span>&lt;ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-    <span class="kw">use </span><a href="../mir/syntax.rs.html#1341"><span class="kw">crate</span>::mir::BinOp::Mul</a>;
+    <span class="kw">use </span><a href="../mir/syntax.rs.html#1380"><span class="kw">crate</span>::mir::BinOp::Mul</a>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>work = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[a, b];
     <span class="kw">let </span><span class="kw-2">mut </span>done = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
@@ -1875,7 +1878,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>k = <span class="number">1</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>overflow = <span class="bool-val">false</span>;
     <a href="#498">done</a>.retain(|c| {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(c) = <a href="#509">c</a>.<a href="consts.rs.html#363-369">try_eval_target_usize</a>(<a href="#490">tcx</a>, <a href="#491">param_env</a>) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(c) = <a href="#509">c</a>.<a href="consts.rs.html#358-364">try_eval_target_usize</a>(<a href="#490">tcx</a>, <a href="#491">param_env</a>) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">true</span>;
         };
         <span class="kw">let </span><span class="prelude-val">Some</span>(next) = <a href="#510">c</a>.checked_mul(<a href="#507">k</a>) <span class="kw">else </span>{
@@ -1896,7 +1899,7 @@
     <a href="#498">done</a>.sort_unstable();
 
     <span class="comment">// create a single tree from the buffer
-    </span><a href="#498">done</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">reduce</a>(|acc, n| ty::Const::new_expr(<a href="#490">tcx</a>, <a href="consts/kind.rs.html#69">ty::Expr::Binop</a>(<a href="../mir/syntax.rs.html#1341">Mul</a>, <a href="#531">n</a>, <a href="#531">acc</a>), <a href="#531">n</a>.<a href="consts.rs.html#40-42">ty</a>()))
+    </span><a href="#498">done</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">reduce</a>(|acc, n| ty::Const::new_expr(<a href="#490">tcx</a>, <a href="consts/kind.rs.html#69">ty::Expr::Binop</a>(<a href="../mir/syntax.rs.html#1380">Mul</a>, <a href="#531">n</a>, <a href="#531">acc</a>), <a href="#531">n</a>.<a href="consts.rs.html#40-42">ty</a>()))
 }
 
 <span class="kw">pub trait </span><a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">HasTyCtxt</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;: <a href="../../../rustc_abi/trait.HasDataLayout.html">HasDataLayout</a> {
@@ -2050,7 +2053,7 @@
         <span class="kw">let </span>tcx = <a class="self" href="#680">self</a>.<a href="#535">tcx</a>().<a href="../query/plumbing.rs.html#133-135">at</a>(<a href="#681">span</a>);
 
         <a href="#609">MaybeResult::from</a>(
-            <a href="#682">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(<a class="self" href="#680">self</a>.<a href="#539">param_env</a>().<a href="mod.rs.html#1780-1792">and</a>(<a href="#680">ty</a>))
+            <a href="#682">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(<a class="self" href="#680">self</a>.<a href="#539">param_env</a>().<a href="mod.rs.html#1756-1758">and</a>(<a href="#680">ty</a>))
                 .map_err(|err| <a class="self" href="#680">self</a>.<a href="#658-663">handle_layout_err</a>(<span class="kw-2">*</span><a href="#686">err</a>, <a href="#681">span</a>, <a href="#680">ty</a>)),
         )
     }
@@ -2098,7 +2101,7 @@
     <span class="kw">fn </span>ty_and_layout_for_variant(
         this: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         cx: <span class="kw-2">&amp;</span>C,
-        variant_index: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
     ) -&gt; TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>layout = <span class="kw">match </span><a href="#731">this</a>.variants {
             <a href="../../../rustc_abi/enum.Variants.html">Variants::Single</a> { index }
@@ -2116,17 +2119,17 @@
                 <span class="kw">let </span>param_env = <a href="#732">cx</a>.<a href="#539">param_env</a>();
 
                 <span class="comment">// Deny calling for_variant more than once for non-Single enums.
-                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(original_layout) = <a href="#747">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(<a href="#748">param_env</a>.<a href="mod.rs.html#1780-1792">and</a>(<a href="#731">this</a>.ty)) {
+                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(original_layout) = <a href="#747">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(<a href="#748">param_env</a>.<a href="mod.rs.html#1756-1758">and</a>(<a href="#731">this</a>.ty)) {
                     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(original_layout.variants, Variants::Single { index });
                 }
 
-                <span class="kw">let </span>fields = <span class="kw">match </span><a href="#731">this</a>.ty.<a href="sty.rs.html#2254-2256">kind</a>() {
+                <span class="kw">let </span>fields = <span class="kw">match </span><a href="#731">this</a>.ty.<a href="sty.rs.html#2246-2248">kind</a>() {
                     ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#756">def</a>.<a href="adt.rs.html#189-191">variants</a>().is_empty() =&gt;
                         <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;for_variant called on zero-variant enum {}&quot;</span>, this.ty),
                     ty::Adt(def, <span class="kw">_</span>) =&gt; <a href="#758">def</a>.<a href="adt.rs.html#194-196">variant</a>(<a href="#733">variant_index</a>).fields.len(),
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;`ty_and_layout_for_variant` on unexpected type {}&quot;</span>, this.ty),
                 };
-                <a href="#747">tcx</a>.<a href="context.rs.html#1515-1525">mk_layout</a>(<a href="../../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
+                <a href="#747">tcx</a>.<a href="context.rs.html#1520-1530">mk_layout</a>(<a href="../../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
                     variants: <a href="../../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="#733">variant_index</a> },
                     fields: <span class="kw">match </span>NonZeroUsize::new(<a href="#755">fields</a>) {
                         <span class="prelude-val">Some</span>(fields) =&gt; FieldsShape::Union(<a href="#764">fields</a>),
@@ -2141,7 +2144,7 @@
                 })
             }
 
-            <a href="../../../rustc_abi/enum.Variants.html">Variants::Multiple</a> { <span class="kw-2">ref </span>variants, .. } =&gt; <a href="#732">cx</a>.<a href="#535">tcx</a>().<a href="context.rs.html#1515-1525">mk_layout</a>(<a href="#776">variants</a>[<a href="#733">variant_index</a>].<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
+            <a href="../../../rustc_abi/enum.Variants.html">Variants::Multiple</a> { <span class="kw-2">ref </span>variants, .. } =&gt; <a href="#732">cx</a>.<a href="#535">tcx</a>().<a href="context.rs.html#1520-1530">mk_layout</a>(<a href="#776">variants</a>[<a href="#733">variant_index</a>].<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
         };
 
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="kw-2">*</span>layout.variants(), Variants::Single { index: variant_index });
@@ -2163,12 +2166,12 @@
             <span class="kw">let </span>tcx = <a href="#792">cx</a>.<a href="#535">tcx</a>();
             <span class="kw">let </span>tag_layout = |tag: <a href="../../../rustc_abi/enum.Scalar.html">Scalar</a>| -&gt; TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt; {
                 <a href="#635">TyAndLayout</a> {
-                    layout: <a href="#795">tcx</a>.<a href="context.rs.html#1515-1525">mk_layout</a>(LayoutS::scalar(<a href="#792">cx</a>, <a href="#796">tag</a>)),
+                    layout: <a href="#795">tcx</a>.<a href="context.rs.html#1520-1530">mk_layout</a>(LayoutS::scalar(<a href="#792">cx</a>, <a href="#796">tag</a>)),
                     ty: <a href="#796">tag</a>.primitive().<a href="#126">to_ty</a>(<a href="#795">tcx</a>),
                 }
             };
 
-            <span class="kw">match </span><span class="kw-2">*</span><a href="#791">this</a>.ty.<a href="sty.rs.html#2254-2256">kind</a>() {
+            <span class="kw">match </span><span class="kw-2">*</span><a href="#791">this</a>.ty.<a href="sty.rs.html#2246-2248">kind</a>() {
                 ty::Bool
                 | ty::Char
                 | ty::Int(<span class="kw">_</span>)
@@ -2178,7 +2181,6 @@
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Foreign(..)
                 | ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::Dyn) =&gt; {
                     <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;TyAndLayout::field({:?}): not applicable&quot;</span>, this)
@@ -2195,9 +2197,9 @@
                     </span><span class="kw">if </span>i == <span class="number">0 </span>{
                         <span class="kw">let </span>nil = Ty::new_unit(<a href="#795">tcx</a>);
                         <span class="kw">let </span>unit_ptr_ty = <span class="kw">if </span>this.ty.is_unsafe_ptr() {
-                            Ty::new_mut_ptr(<a href="#795">tcx</a>, <a href="#828">nil</a>)
+                            Ty::new_mut_ptr(<a href="#795">tcx</a>, <a href="#827">nil</a>)
                         } <span class="kw">else </span>{
-                            Ty::new_mut_ref(<a href="#795">tcx</a>, <a href="#795">tcx</a>.lifetimes.re_static, <a href="#828">nil</a>)
+                            Ty::new_mut_ref(<a href="#795">tcx</a>, <a href="#795">tcx</a>.lifetimes.re_static, <a href="#827">nil</a>)
                         };
 
                         <span class="comment">// NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing
@@ -2205,7 +2207,7 @@
                         // always either `*mut ()` or `&amp;&#39;static mut ()`.
                         </span><span class="kw">return </span><a href="#787">TyMaybeWithLayout::TyAndLayout</a>(<a href="#635">TyAndLayout</a> {
                             ty: <a href="#791">this</a>.ty,
-                            ..<a href="#795">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(ty::ParamEnv::reveal_all().<a href="mod.rs.html#1780-1792">and</a>(<a href="#829">unit_ptr_ty</a>)).unwrap()
+                            ..<a href="#795">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(ty::ParamEnv::reveal_all().<a href="mod.rs.html#1756-1758">and</a>(<a href="#828">unit_ptr_ty</a>)).unwrap()
                         });
                     }
 
@@ -2230,81 +2232,81 @@
                         */
                     </span>};
 
-                    <span class="kw">let </span>metadata = <span class="kw">if let </span><span class="prelude-val">Some</span>(metadata_def_id) = <a href="#795">tcx</a>.<a href="context.rs.html#747-749">lang_items</a>().metadata_type()
+                    <span class="kw">let </span>metadata = <span class="kw">if let </span><span class="prelude-val">Some</span>(metadata_def_id) = <a href="#795">tcx</a>.<a href="context.rs.html#753-755">lang_items</a>().metadata_type()
                         <span class="comment">// Projection eagerly bails out when the pointee references errors,
                         // fall back to structurally deducing metadata.
                         </span>&amp;&amp; !pointee.references_error()
                     {
                         <span class="kw">let </span>metadata = <a href="#795">tcx</a>.<a href="normalize_erasing_regions.rs.html#35">normalize_erasing_regions</a>(
                             <a href="#792">cx</a>.<a href="#539">param_env</a>(),
-                            Ty::new_projection(<a href="#795">tcx</a>,<a href="#865">metadata_def_id</a>, [<a href="#820">pointee</a>]),
+                            Ty::new_projection(<a href="#795">tcx</a>,<a href="#864">metadata_def_id</a>, [<a href="#819">pointee</a>]),
                         );
 
                         <span class="comment">// Map `Metadata = DynMetadata&lt;dyn Trait&gt;` back to a vtable, since it
                         // offers better information than `std::ptr::metadata::VTable`,
                         // and we rely on this layout information to trigger a panic in
                         // `std::mem::uninitialized::&lt;&amp;dyn Trait&gt;()`, for example.
-                        </span><span class="kw">if let </span>ty::Adt(def, args) = <a href="#870">metadata</a>.<a href="sty.rs.html#2254-2256">kind</a>()
+                        </span><span class="kw">if let </span>ty::Adt(def, args) = <a href="#869">metadata</a>.<a href="sty.rs.html#2246-2248">kind</a>()
                             &amp;&amp; <span class="prelude-val">Some</span>(def.did()) == tcx.lang_items().dyn_metadata()
                             &amp;&amp; args.type_at(<span class="number">0</span>).is_trait()
                         {
-                            <a href="#844">mk_dyn_vtable</a>()
+                            <a href="#843">mk_dyn_vtable</a>()
                         } <span class="kw">else </span>{
-                            <a href="#870">metadata</a>
+                            <a href="#869">metadata</a>
                         }
                     } <span class="kw">else </span>{
-                        <span class="kw">match </span><a href="#795">tcx</a>.<a href="util.rs.html#189-196">struct_tail_erasing_lifetimes</a>(<a href="#820">pointee</a>, <a href="#792">cx</a>.<a href="#539">param_env</a>()).<a href="sty.rs.html#2254-2256">kind</a>() {
+                        <span class="kw">match </span><a href="#795">tcx</a>.<a href="util.rs.html#189-196">struct_tail_erasing_lifetimes</a>(<a href="#819">pointee</a>, <a href="#792">cx</a>.<a href="#539">param_env</a>()).<a href="sty.rs.html#2246-2248">kind</a>() {
                             ty::Slice(<span class="kw">_</span>) | ty::Str =&gt; <a href="#795">tcx</a>.types.usize,
-                            ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::Dyn) =&gt; <a href="#844">mk_dyn_vtable</a>(),
+                            ty::Dynamic(<span class="kw">_</span>, <span class="kw">_</span>, ty::Dyn) =&gt; <a href="#843">mk_dyn_vtable</a>(),
                             <span class="kw">_ </span>=&gt; <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;TyAndLayout::field({:?}): not applicable&quot;</span>, this),
                         }
                     };
 
-                    <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#865">metadata</a>)
+                    <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#864">metadata</a>)
                 }
 
                 <span class="comment">// Arrays and slices.
-                </span>ty::Array(element, <span class="kw">_</span>) | ty::Slice(element) =&gt; <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#899">element</a>),
+                </span>ty::Array(element, <span class="kw">_</span>) | ty::Slice(element) =&gt; <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#898">element</a>),
                 ty::Str =&gt; <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#795">tcx</a>.types.u8),
 
                 <span class="comment">// Tuples, generators and closures.
-                </span>ty::Closure(<span class="kw">_</span>, <span class="kw-2">ref </span>args) =&gt; <a href="#790-966">field_ty_or_layout</a>(
-                    <a href="#635">TyAndLayout</a> { ty: <a href="#903">args</a>.<a href="generic_args.rs.html#266-268">as_closure</a>().<a href="sty.rs.html#310-312">tupled_upvars_ty</a>(), ..<a href="#791">this</a> },
+                </span>ty::Closure(<span class="kw">_</span>, <span class="kw-2">ref </span>args) =&gt; <a href="#790-965">field_ty_or_layout</a>(
+                    <a href="#635">TyAndLayout</a> { ty: <a href="#902">args</a>.<a href="generic_args.rs.html#266-268">as_closure</a>().<a href="sty.rs.html#310-312">tupled_upvars_ty</a>(), ..<a href="#791">this</a> },
                     <a href="#792">cx</a>,
                     <a href="#793">i</a>,
                 ),
 
                 ty::Generator(def_id, <span class="kw-2">ref </span>args, <span class="kw">_</span>) =&gt; <span class="kw">match </span><a href="#791">this</a>.variants {
                     <a href="../../../rustc_abi/enum.Variants.html">Variants::Single</a> { index } =&gt; <a href="#786">TyMaybeWithLayout::Ty</a>(
-                        <a href="#909">args</a>.<a href="generic_args.rs.html#274-276">as_generator</a>()
-                            .<a href="sty.rs.html#559-570">state_tys</a>(<a href="#909">def_id</a>, <a href="#795">tcx</a>)
-                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">nth</a>(<a href="#910">index</a>.as_usize())
+                        <a href="#908">args</a>.<a href="generic_args.rs.html#274-276">as_generator</a>()
+                            .<a href="sty.rs.html#559-570">state_tys</a>(<a href="#908">def_id</a>, <a href="#795">tcx</a>)
+                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">nth</a>(<a href="#909">index</a>.as_usize())
                             .unwrap()
                             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">nth</a>(<a href="#793">i</a>)
                             .unwrap(),
                     ),
                     <a href="../../../rustc_abi/enum.Variants.html">Variants::Multiple</a> { tag, tag_field, .. } =&gt; {
                         <span class="kw">if </span>i == tag_field {
-                            <span class="kw">return </span><a href="#787">TyMaybeWithLayout::TyAndLayout</a>(<a href="#796">tag_layout</a>(<a href="#918">tag</a>));
+                            <span class="kw">return </span><a href="#787">TyMaybeWithLayout::TyAndLayout</a>(<a href="#796">tag_layout</a>(<a href="#917">tag</a>));
                         }
-                        <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#909">args</a>.<a href="generic_args.rs.html#274-276">as_generator</a>().<a href="sty.rs.html#575-577">prefix_tys</a>()[<a href="#793">i</a>])
+                        <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#908">args</a>.<a href="generic_args.rs.html#274-276">as_generator</a>().<a href="sty.rs.html#575-577">prefix_tys</a>()[<a href="#793">i</a>])
                     }
                 },
 
-                ty::Tuple(tys) =&gt; <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#926">tys</a>[<a href="#793">i</a>]),
+                ty::Tuple(tys) =&gt; <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#925">tys</a>[<a href="#793">i</a>]),
 
                 <span class="comment">// ADTs.
                 </span>ty::Adt(def, args) =&gt; {
                     <span class="kw">match </span><a href="#791">this</a>.variants {
                         <a href="../../../rustc_abi/enum.Variants.html">Variants::Single</a> { index } =&gt; {
-                            <span class="kw">let </span>field = <span class="kw-2">&amp;</span><a href="#929">def</a>.<a href="adt.rs.html#194-196">variant</a>(<a href="#931">index</a>).fields[FieldIdx::from_usize(<a href="#793">i</a>)];
-                            <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#932">field</a>.<a href="mod.rs.html#2060-2062">ty</a>(<a href="#795">tcx</a>, <a href="#929">args</a>))
+                            <span class="kw">let </span>field = <span class="kw-2">&amp;</span><a href="#928">def</a>.<a href="adt.rs.html#194-196">variant</a>(<a href="#930">index</a>).fields[FieldIdx::from_usize(<a href="#793">i</a>)];
+                            <a href="#786">TyMaybeWithLayout::Ty</a>(<a href="#931">field</a>.<a href="mod.rs.html#2026-2028">ty</a>(<a href="#795">tcx</a>, <a href="#928">args</a>))
                         }
 
                         <span class="comment">// Discriminant field for enums (where applicable).
                         </span><a href="../../../rustc_abi/enum.Variants.html">Variants::Multiple</a> { tag, .. } =&gt; {
                             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(i, <span class="number">0</span>);
-                            <span class="kw">return </span><a href="#787">TyMaybeWithLayout::TyAndLayout</a>(<a href="#796">tag_layout</a>(<a href="#937">tag</a>));
+                            <span class="kw">return </span><a href="#787">TyMaybeWithLayout::TyAndLayout</a>(<a href="#796">tag_layout</a>(<a href="#936">tag</a>));
                         }
                     }
                 }
@@ -2333,16 +2335,16 @@
             }
         }
 
-        <span class="kw">match </span><a href="#790-966">field_ty_or_layout</a>(<a href="#784">this</a>, <a href="#784">cx</a>, <a href="#784">i</a>) {
+        <span class="kw">match </span><a href="#790-965">field_ty_or_layout</a>(<a href="#784">this</a>, <a href="#784">cx</a>, <a href="#784">i</a>) {
             <a href="#786">TyMaybeWithLayout::Ty</a>(field_ty) =&gt; {
-                <a href="#784">cx</a>.<a href="#535">tcx</a>().<a href="../query/mod.rs.html#2217">layout_of</a>(<a href="#784">cx</a>.<a href="#539">param_env</a>().<a href="mod.rs.html#1780-1792">and</a>(<a href="#969">field_ty</a>)).unwrap_or_else(|e| {
+                <a href="#784">cx</a>.<a href="#535">tcx</a>().<a href="../query/mod.rs.html#2207">layout_of</a>(<a href="#784">cx</a>.<a href="#539">param_env</a>().<a href="mod.rs.html#1756-1758">and</a>(<a href="#968">field_ty</a>)).unwrap_or_else(|e| {
                     <a class="macro" href="../macros.rs.html#12-19">bug!</a>(
                         <span class="string">&quot;failed to get layout for `{field_ty}`: {e:?},\n\
                          despite it being a field (#{i}) of an existing layout: {this:#?}&quot;</span>,
                     )
                 })
             }
-            <a href="#787">TyMaybeWithLayout::TyAndLayout</a>(field_layout) =&gt; <a href="#977">field_layout</a>,
+            <a href="#787">TyMaybeWithLayout::TyAndLayout</a>(field_layout) =&gt; <a href="#976">field_layout</a>,
         }
     }
 
@@ -2351,45 +2353,45 @@
         cx: <span class="kw-2">&amp;</span>C,
         offset: <a href="../../../rustc_abi/struct.Size.html">Size</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a>&gt; {
-        <span class="kw">let </span>tcx = <a href="#983">cx</a>.<a href="#535">tcx</a>();
-        <span class="kw">let </span>param_env = <a href="#983">cx</a>.<a href="#539">param_env</a>();
+        <span class="kw">let </span>tcx = <a href="#982">cx</a>.<a href="#535">tcx</a>();
+        <span class="kw">let </span>param_env = <a href="#982">cx</a>.<a href="#539">param_env</a>();
 
-        <span class="kw">let </span>pointee_info = <span class="kw">match </span><span class="kw-2">*</span><a href="#982">this</a>.ty.<a href="sty.rs.html#2254-2256">kind</a>() {
-            ty::RawPtr(mt) <span class="kw">if </span><a href="#984">offset</a>.bytes() == <span class="number">0 </span>=&gt; {
-                <a href="#986">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(<a href="#987">param_env</a>.<a href="mod.rs.html#1780-1792">and</a>(<a href="#990">mt</a>.ty)).ok().map(|layout| <a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a> {
-                    size: <a href="#991">layout</a>.size,
-                    align: <a href="#991">layout</a>.align.abi,
+        <span class="kw">let </span>pointee_info = <span class="kw">match </span><span class="kw-2">*</span><a href="#981">this</a>.ty.<a href="sty.rs.html#2246-2248">kind</a>() {
+            ty::RawPtr(mt) <span class="kw">if </span><a href="#983">offset</a>.bytes() == <span class="number">0 </span>=&gt; {
+                <a href="#985">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(<a href="#986">param_env</a>.<a href="mod.rs.html#1756-1758">and</a>(<a href="#989">mt</a>.ty)).ok().map(|layout| <a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a> {
+                    size: <a href="#990">layout</a>.size,
+                    align: <a href="#990">layout</a>.align.abi,
                     safe: <span class="prelude-val">None</span>,
                 })
             }
-            ty::FnPtr(fn_sig) <span class="kw">if </span><a href="#984">offset</a>.bytes() == <span class="number">0 </span>=&gt; {
-                <a href="#986">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(<a href="#987">param_env</a>.<a href="mod.rs.html#1780-1792">and</a>(Ty::new_fn_ptr(<a href="#986">tcx</a>, <a href="#997">fn_sig</a>))).ok().map(|layout| {
-                    <a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a> { size: <a href="#998">layout</a>.size, align: <a href="#998">layout</a>.align.abi, safe: <span class="prelude-val">None </span>}
+            ty::FnPtr(fn_sig) <span class="kw">if </span><a href="#983">offset</a>.bytes() == <span class="number">0 </span>=&gt; {
+                <a href="#985">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(<a href="#986">param_env</a>.<a href="mod.rs.html#1756-1758">and</a>(Ty::new_fn_ptr(<a href="#985">tcx</a>, <a href="#996">fn_sig</a>))).ok().map(|layout| {
+                    <a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a> { size: <a href="#997">layout</a>.size, align: <a href="#997">layout</a>.align.abi, safe: <span class="prelude-val">None </span>}
                 })
             }
-            ty::Ref(<span class="kw">_</span>, ty, mt) <span class="kw">if </span><a href="#984">offset</a>.bytes() == <span class="number">0 </span>=&gt; {
+            ty::Ref(<span class="kw">_</span>, ty, mt) <span class="kw">if </span><a href="#983">offset</a>.bytes() == <span class="number">0 </span>=&gt; {
                 <span class="comment">// Use conservative pointer kind if not optimizing. This saves us the
                 // Freeze/Unpin queries, and can save time in the codegen backend (noalias
                 // attributes in LLVM have compile-time cost even in unoptimized builds).
-                </span><span class="kw">let </span>optimize = <a href="#986">tcx</a>.sess.opts.optimize != OptLevel::No;
-                <span class="kw">let </span>kind = <span class="kw">match </span><a href="#1002">mt</a> {
+                </span><span class="kw">let </span>optimize = <a href="#985">tcx</a>.sess.opts.optimize != OptLevel::No;
+                <span class="kw">let </span>kind = <span class="kw">match </span><a href="#1001">mt</a> {
                     hir::Mutability::Not =&gt; <a href="../../../rustc_abi/enum.PointerKind.html">PointerKind::SharedRef</a> {
-                        frozen: <a href="#1006">optimize</a> &amp;&amp; <a href="#1002">ty</a>.<a href="util.rs.html#998-1000">is_freeze</a>(<a href="#986">tcx</a>, <a href="#983">cx</a>.<a href="#539">param_env</a>()),
+                        frozen: <a href="#1005">optimize</a> &amp;&amp; <a href="#1001">ty</a>.<a href="util.rs.html#998-1000">is_freeze</a>(<a href="#985">tcx</a>, <a href="#982">cx</a>.<a href="#539">param_env</a>()),
                     },
                     hir::Mutability::Mut =&gt; <a href="../../../rustc_abi/enum.PointerKind.html">PointerKind::MutableRef</a> {
-                        unpin: <a href="#1006">optimize</a> &amp;&amp; <a href="#1002">ty</a>.<a href="util.rs.html#1038-1040">is_unpin</a>(<a href="#986">tcx</a>, <a href="#983">cx</a>.<a href="#539">param_env</a>()),
+                        unpin: <a href="#1005">optimize</a> &amp;&amp; <a href="#1001">ty</a>.<a href="util.rs.html#1037-1039">is_unpin</a>(<a href="#985">tcx</a>, <a href="#982">cx</a>.<a href="#539">param_env</a>()),
                     },
                 };
 
-                <a href="#986">tcx</a>.<a href="../query/mod.rs.html#2217">layout_of</a>(<a href="#987">param_env</a>.<a href="mod.rs.html#1780-1792">and</a>(<a href="#1002">ty</a>)).ok().map(|layout| <a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a> {
-                    size: <a href="#1016">layout</a>.size,
-                    align: <a href="#1016">layout</a>.align.abi,
-                    safe: <span class="prelude-val">Some</span>(<a href="#1007">kind</a>),
+                <a href="#985">tcx</a>.<a href="../query/mod.rs.html#2207">layout_of</a>(<a href="#986">param_env</a>.<a href="mod.rs.html#1756-1758">and</a>(<a href="#1001">ty</a>)).ok().map(|layout| <a href="../../../rustc_abi/struct.PointeeInfo.html">PointeeInfo</a> {
+                    size: <a href="#1015">layout</a>.size,
+                    align: <a href="#1015">layout</a>.align.abi,
+                    safe: <span class="prelude-val">Some</span>(<a href="#1006">kind</a>),
                 })
             }
 
             <span class="kw">_ </span>=&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>data_variant = <span class="kw">match </span><a href="#982">this</a>.variants {
+                <span class="kw">let </span><span class="kw-2">mut </span>data_variant = <span class="kw">match </span><a href="#981">this</a>.variants {
                     <span class="comment">// Within the discriminant field, only the niche itself is
                     // always initialized, so we only check for a pointer at its
                     // offset.
@@ -2405,25 +2407,25 @@
                         tag_encoding: <a href="../../../rustc_abi/enum.TagEncoding.html">TagEncoding::Niche</a> { untagged_variant, .. },
                         tag_field,
                         ..
-                    } <span class="kw">if </span><a href="#982">this</a>.fields.offset(<a href="#1038">tag_field</a>) == <a href="#984">offset</a> =&gt; {
-                        <span class="prelude-val">Some</span>(<a href="#982">this</a>.for_variant(<a href="#983">cx</a>, <a href="#1037">untagged_variant</a>))
+                    } <span class="kw">if </span><a href="#981">this</a>.fields.offset(<a href="#1037">tag_field</a>) == <a href="#983">offset</a> =&gt; {
+                        <span class="prelude-val">Some</span>(<a href="#981">this</a>.for_variant(<a href="#982">cx</a>, <a href="#1036">untagged_variant</a>))
                     }
-                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(<a href="#982">this</a>),
+                    <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(<a href="#981">this</a>),
                 };
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(variant) = <a href="#1024">data_variant</a> {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(variant) = <a href="#1023">data_variant</a> {
                     <span class="comment">// We&#39;re not interested in any unions.
-                    </span><span class="kw">if let </span>FieldsShape::Union(<span class="kw">_</span>) = <a href="#1046">variant</a>.fields {
-                        <a href="#1024">data_variant</a> = <span class="prelude-val">None</span>;
+                    </span><span class="kw">if let </span>FieldsShape::Union(<span class="kw">_</span>) = <a href="#1045">variant</a>.fields {
+                        <a href="#1023">data_variant</a> = <span class="prelude-val">None</span>;
                     }
                 }
 
                 <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="prelude-val">None</span>;
 
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(variant) = <a href="#1024">data_variant</a> {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(variant) = <a href="#1023">data_variant</a> {
                     <span class="comment">// FIXME(erikdesjardins): handle non-default addrspace ptr sizes
                     // (requires passing in the expected address space from the caller)
-                    </span><span class="kw">let </span>ptr_end = <a href="#984">offset</a> + Pointer(AddressSpace::DATA).size(<a href="#983">cx</a>);
+                    </span><span class="kw">let </span>ptr_end = <a href="#983">offset</a> + Pointer(AddressSpace::DATA).size(<a href="#982">cx</a>);
                     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..variant.fields.count() {
                         <span class="kw">let </span>field_start = variant.fields.offset(i);
                         <span class="kw">if </span>field_start &lt;= offset {
@@ -2446,18 +2448,18 @@
                 }
 
                 <span class="comment">// FIXME(eddyb) This should be for `ptr::Unique&lt;T&gt;`, not `Box&lt;T&gt;`.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>pointee) = <a href="#1053">result</a> {
-                    <span class="kw">if let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#982">this</a>.ty.<a href="sty.rs.html#2254-2256">kind</a>() {
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref mut </span>pointee) = <a href="#1052">result</a> {
+                    <span class="kw">if let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#981">this</a>.ty.<a href="sty.rs.html#2246-2248">kind</a>() {
                         <span class="kw">if </span>def.is_box() &amp;&amp; offset.bytes() == <span class="number">0 </span>{
-                            <span class="kw">let </span>optimize = <a href="#986">tcx</a>.sess.opts.optimize != OptLevel::No;
-                            <a href="#1081">pointee</a>.safe = <span class="prelude-val">Some</span>(<a href="../../../rustc_abi/enum.PointerKind.html">PointerKind::Box</a> {
-                                unpin: <a href="#1084">optimize</a> &amp;&amp; <a href="#982">this</a>.ty.<a href="sty.rs.html#2432-2437">boxed_ty</a>().<a href="util.rs.html#1038-1040">is_unpin</a>(<a href="#986">tcx</a>, <a href="#983">cx</a>.<a href="#539">param_env</a>()),
+                            <span class="kw">let </span>optimize = <a href="#985">tcx</a>.sess.opts.optimize != OptLevel::No;
+                            <a href="#1080">pointee</a>.safe = <span class="prelude-val">Some</span>(<a href="../../../rustc_abi/enum.PointerKind.html">PointerKind::Box</a> {
+                                unpin: <a href="#1083">optimize</a> &amp;&amp; <a href="#981">this</a>.ty.<a href="sty.rs.html#2424-2429">boxed_ty</a>().<a href="util.rs.html#1037-1039">is_unpin</a>(<a href="#985">tcx</a>, <a href="#982">cx</a>.<a href="#539">param_env</a>()),
                             });
                         }
                     }
                 }
 
-                <a href="#1053">result</a>
+                <a href="#1052">result</a>
             }
         };
 
@@ -2468,7 +2470,7 @@
             pointee_info
         );
 
-        <a href="#989">pointee_info</a>
+        <a href="#988">pointee_info</a>
     }
 
     <span class="kw">fn </span>is_adt(this: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
@@ -2476,7 +2478,7 @@
     }
 
     <span class="kw">fn </span>is_never(this: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#1110">this</a>.ty.<a href="sty.rs.html#2254-2256">kind</a>() == <span class="kw-2">&amp;</span>ty::Never
+        <a href="#1109">this</a>.ty.<a href="sty.rs.html#2246-2248">kind</a>() == <span class="kw-2">&amp;</span>ty::Never
     }
 
     <span class="kw">fn </span>is_tuple(this: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
@@ -2485,6 +2487,10 @@
 
     <span class="kw">fn </span>is_unit(this: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(this.ty.kind(), ty::Tuple(list) <span class="kw">if </span>list.len() == <span class="number">0</span>)
+    }
+
+    <span class="kw">fn </span>is_transparent(this: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(this.ty.kind(), ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span>def.repr().transparent())
     }
 }
 
@@ -2639,12 +2645,12 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>&gt; IntoDiagnostic&lt;<span class="lifetime">&#39;a</span>, !&gt; <span class="kw">for </span>FnAbiError&lt;<span class="lifetime">&#39;b</span>&gt; {
     <span class="kw">fn </span>into_diagnostic(<span class="self">self</span>, handler: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../../rustc_errors/struct.Handler.html">Handler</a>) -&gt; DiagnosticBuilder&lt;<span class="lifetime">&#39;a</span>, !&gt; {
-        <span class="kw">match </span><span class="self"><a href="#1273">self</a> </span>{
-            <span class="self">Self</span>::Layout(e) =&gt; <a href="#1275">e</a>.<a href="#234-246">into_diagnostic</a>().<a href="../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<a href="#1273">handler</a>),
+        <span class="kw">match </span><span class="self"><a href="#1276">self</a> </span>{
+            <span class="self">Self</span>::Layout(e) =&gt; <a href="#1278">e</a>.<a href="#234-246">into_diagnostic</a>().<a href="../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<a href="#1276">handler</a>),
             <span class="self">Self</span>::AdjustForForeignAbi(<a href="../../../rustc_target/abi/call/enum.AdjustForForeignAbiError.html">call::AdjustForForeignAbiError::Unsupported</a> {
                 arch,
                 abi,
-            }) =&gt; <a href="../error.rs.html#142-145">UnsupportedFnAbi</a> { <a href="#1277">arch</a>, abi: <a href="#1278">abi</a>.name() }.<a href="../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<a href="#1273">handler</a>),
+            }) =&gt; <a href="../error.rs.html#142-145">UnsupportedFnAbi</a> { <a href="#1280">arch</a>, abi: <a href="#1281">abi</a>.name() }.<a href="../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<a href="#1276">handler</a>),
         }
     }
 }
@@ -2692,11 +2698,11 @@
         extra_args: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; <span class="self">Self</span>::FnAbiOfResult {
         <span class="comment">// FIXME(eddyb) get a better `span` here.
-        </span><span class="kw">let </span>span = <a class="self" href="#1322">self</a>.<a href="#647-649">layout_tcx_at_span</a>();
-        <span class="kw">let </span>tcx = <a class="self" href="#1322">self</a>.<a href="#535">tcx</a>().<a href="../query/plumbing.rs.html#133-135">at</a>(<a href="#1327">span</a>);
+        </span><span class="kw">let </span>span = <a class="self" href="#1325">self</a>.<a href="#647-649">layout_tcx_at_span</a>();
+        <span class="kw">let </span>tcx = <a class="self" href="#1325">self</a>.<a href="#535">tcx</a>().<a href="../query/plumbing.rs.html#133-135">at</a>(<a href="#1330">span</a>);
 
-        <a href="#609">MaybeResult::from</a>(<a href="#1328">tcx</a>.<a href="../query/mod.rs.html#2217">fn_abi_of_fn_ptr</a>(<a class="self" href="#1322">self</a>.<a href="#539">param_env</a>().<a href="mod.rs.html#1780-1792">and</a>((<a href="#1323">sig</a>, <a href="#1324">extra_args</a>))).map_err(
-            |err| <a class="self" href="#1322">self</a>.<a href="#1306-1311">handle_fn_abi_err</a>(<span class="kw-2">*</span><a href="#1331">err</a>, <a href="#1327">span</a>, <a href="#1288">FnAbiRequest::OfFnPtr</a> { <a href="#1323">sig</a>, <a href="#1324">extra_args</a> }),
+        <a href="#609">MaybeResult::from</a>(<a href="#1331">tcx</a>.<a href="../query/mod.rs.html#2207">fn_abi_of_fn_ptr</a>(<a class="self" href="#1325">self</a>.<a href="#539">param_env</a>().<a href="mod.rs.html#1756-1758">and</a>((<a href="#1326">sig</a>, <a href="#1327">extra_args</a>))).map_err(
+            |err| <a class="self" href="#1325">self</a>.<a href="#1309-1314">handle_fn_abi_err</a>(<span class="kw-2">*</span><a href="#1334">err</a>, <a href="#1330">span</a>, <a href="#1291">FnAbiRequest::OfFnPtr</a> { <a href="#1326">sig</a>, <a href="#1327">extra_args</a> }),
         ))
     }
 

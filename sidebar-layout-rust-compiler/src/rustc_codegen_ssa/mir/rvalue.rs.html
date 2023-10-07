@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/mir/rvalue.rs`."><title>rvalue.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/mir/rvalue.rs`."><title>rvalue.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1063,7 +1063,7 @@
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/adjustment/enum.PointerCoercion.html">adjustment::PointerCoercion</a>, <a href="../../../rustc_middle/ty/instance/struct.Instance.html">Instance</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="../../../rustc_session/config/enum.OptLevel.html">rustc_session::config::OptLevel</a>;
 <span class="kw">use </span>rustc_span::source_map::{<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>};
-<span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
+<span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Bx: BuilderMethods&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; FunctionCx&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Bx&gt; {
     <span class="attr">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>, bx))]
@@ -1216,7 +1216,7 @@
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(dst.layout.is_sized());
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(val) = <a class="self" href="#160">self</a>.<a href="#194-278">codegen_transmute_operand</a>(<a href="#161">bx</a>, <a href="#162">src</a>, <a href="#163">dst</a>.layout) {
-            <a href="#169">val</a>.<a href="operand.rs.html#376-382">store</a>(<a href="#161">bx</a>, <a href="#163">dst</a>);
+            <a href="#169">val</a>.<a href="operand.rs.html#372-378">store</a>(<a href="#161">bx</a>, <a href="#163">dst</a>);
             <span class="kw">return</span>;
         }
 
@@ -1231,7 +1231,7 @@
             <a href="operand.rs.html#38">OperandValue::Immediate</a>(..) | <a href="operand.rs.html#46">OperandValue::Pair</a>(..) =&gt; {
                 <span class="comment">// When we have immediate(s), the alignment of the source is irrelevant,
                 // so we can store them using the destination&#39;s alignment.
-                </span><a href="#162">src</a>.val.<a href="operand.rs.html#376-382">store</a>(<a href="#161">bx</a>, PlaceRef::new_sized_aligned(<a href="#163">dst</a>.llval, <a href="#162">src</a>.layout, <a href="#163">dst</a>.align));
+                </span><a href="#162">src</a>.val.<a href="operand.rs.html#372-378">store</a>(<a href="#161">bx</a>, PlaceRef::new_sized_aligned(<a href="#163">dst</a>.llval, <a href="#162">src</a>.layout, <a href="#163">dst</a>.align));
             }
         }
     }
@@ -1427,8 +1427,8 @@
 
         <span class="kw">match </span><span class="kw-2">*</span><a href="#372">rvalue</a> {
             mir::Rvalue::Use(<span class="kw-2">ref </span>operand) =&gt; {
-                <span class="kw">let </span>cg_operand = <a class="self" href="#369">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#370">bx</a>, <a href="#380">operand</a>);
-                <a href="#381">cg_operand</a>.val.<a href="operand.rs.html#457-493">store_unsized</a>(<a href="#370">bx</a>, <a href="#371">indirect_dest</a>);
+                <span class="kw">let </span>cg_operand = <a class="self" href="#369">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#370">bx</a>, <a href="#380">operand</a>);
+                <a href="#381">cg_operand</a>.val.<a href="operand.rs.html#453-489">store_unsized</a>(<a href="#370">bx</a>, <a href="#371">indirect_dest</a>);
             }
 
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unsized assignment other than `Rvalue::Use`&quot;</span>),
@@ -1447,14 +1447,14 @@
 
         <span class="kw">match </span><span class="kw-2">*</span><a href="#392">rvalue</a> {
             mir::Rvalue::Cast(<span class="kw-2">ref </span>kind, <span class="kw-2">ref </span>source, mir_cast_ty) =&gt; {
-                <span class="kw">let </span>operand = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#400">source</a>);
+                <span class="kw">let </span>operand = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#400">source</a>);
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;cast operand is {:?}&quot;</span>, operand);
                 <span class="kw">let </span>cast = <a href="#391">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a class="self" href="#390">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#400">mir_cast_ty</a>));
 
                 <span class="kw">let </span>val = <span class="kw">match </span><span class="kw-2">*</span><a href="#400">kind</a> {
                     mir::CastKind::PointerExposeAddress =&gt; {
                         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(bx.cx().is_backend_immediate(cast));
-                        <span class="kw">let </span>llptr = <a href="#401">operand</a>.<a href="operand.rs.html#202-207">immediate</a>();
+                        <span class="kw">let </span>llptr = <a href="#401">operand</a>.<a href="operand.rs.html#198-203">immediate</a>();
                         <span class="kw">let </span>llcast_ty = <a href="#391">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../traits/type_.rs.html#111">immediate_backend_type</a>(<a href="#403">cast</a>);
                         <span class="kw">let </span>lladdr = <a href="#391">bx</a>.<a href="../traits/builder.rs.html#200">ptrtoint</a>(<a href="#408">llptr</a>, <a href="#409">llcast_ty</a>);
                         <a href="operand.rs.html#38">OperandValue::Immediate</a>(<a href="#410">lladdr</a>)
@@ -1568,7 +1568,7 @@
                             CastTy::from_ty(<a href="#401">operand</a>.layout.ty).expect(<span class="string">&quot;bad input type for cast&quot;</span>);
                         <span class="kw">let </span>r_t_out = CastTy::from_ty(<a href="#403">cast</a>.ty).expect(<span class="string">&quot;bad output type for cast&quot;</span>);
                         <span class="kw">let </span>ll_t_in = <a href="#391">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../traits/type_.rs.html#111">immediate_backend_type</a>(<a href="#401">operand</a>.layout);
-                        <span class="kw">let </span>llval = <a href="#401">operand</a>.<a href="operand.rs.html#202-207">immediate</a>();
+                        <span class="kw">let </span>llval = <a href="#401">operand</a>.<a href="operand.rs.html#198-203">immediate</a>();
 
                         <span class="kw">let </span>newval = <span class="kw">match </span>(<a href="#518">r_t_in</a>, <a href="#520">r_t_out</a>) {
                             (CastTy::Int(i), CastTy::Int(<span class="kw">_</span>)) =&gt; {
@@ -1630,7 +1630,7 @@
                 <a class="self" href="#390">self</a>.<a href="#753-771">codegen_place_to_pointer</a>(<a href="#391">bx</a>, <a href="#573">place</a>, <a href="#574">mk_ref</a>)
             }
 
-            mir::Rvalue::CopyForDeref(place) =&gt; <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <span class="kw-2">&amp;</span>Operand::Copy(<a href="#584">place</a>)),
+            mir::Rvalue::CopyForDeref(place) =&gt; <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <span class="kw-2">&amp;</span>Operand::Copy(<a href="#584">place</a>)),
             mir::Rvalue::AddressOf(mutability, place) =&gt; {
                 <span class="kw">let </span>mk_ptr = <span class="kw">move </span>|tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
                     Ty::new_ptr(<a href="#586">tcx</a>, <a href="../../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { <a href="#586">ty</a>, mutbl: <a href="#585">mutability</a> })
@@ -1647,8 +1647,8 @@
             }
 
             mir::Rvalue::BinaryOp(op, <span class="kw">box </span>(<span class="kw-2">ref </span>lhs, <span class="kw-2">ref </span>rhs)) =&gt; {
-                <span class="kw">let </span>lhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#600">lhs</a>);
-                <span class="kw">let </span>rhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#600">rhs</a>);
+                <span class="kw">let </span>lhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#600">lhs</a>);
+                <span class="kw">let </span>rhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#600">rhs</a>);
                 <span class="kw">let </span>llresult = <span class="kw">match </span>(<a href="#601">lhs</a>.val, <a href="#602">rhs</a>.val) {
                     (
                         <a href="operand.rs.html#46">OperandValue::Pair</a>(lhs_addr, lhs_extra),
@@ -1675,13 +1675,13 @@
                 }
             }
             mir::Rvalue::CheckedBinaryOp(op, <span class="kw">box </span>(<span class="kw-2">ref </span>lhs, <span class="kw-2">ref </span>rhs)) =&gt; {
-                <span class="kw">let </span>lhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#628">lhs</a>);
-                <span class="kw">let </span>rhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#628">rhs</a>);
+                <span class="kw">let </span>lhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#628">lhs</a>);
+                <span class="kw">let </span>rhs = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#628">rhs</a>);
                 <span class="kw">let </span>result = <a class="self" href="#390">self</a>.<a href="#929-952">codegen_scalar_checked_binop</a>(
                     <a href="#391">bx</a>,
                     <a href="#628">op</a>,
-                    <a href="#629">lhs</a>.<a href="operand.rs.html#202-207">immediate</a>(),
-                    <a href="#630">rhs</a>.<a href="operand.rs.html#202-207">immediate</a>(),
+                    <a href="#629">lhs</a>.<a href="operand.rs.html#198-203">immediate</a>(),
+                    <a href="#630">rhs</a>.<a href="operand.rs.html#198-203">immediate</a>(),
                     <a href="#629">lhs</a>.layout.ty,
                 );
                 <span class="kw">let </span>val_ty = <a href="#628">op</a>.ty(<a href="#391">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(), <a href="#629">lhs</a>.layout.ty, <a href="#630">rhs</a>.layout.ty);
@@ -1690,8 +1690,8 @@
             }
 
             mir::Rvalue::UnaryOp(op, <span class="kw-2">ref </span>operand) =&gt; {
-                <span class="kw">let </span>operand = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#643">operand</a>);
-                <span class="kw">let </span>lloperand = <a href="#644">operand</a>.<a href="operand.rs.html#202-207">immediate</a>();
+                <span class="kw">let </span>operand = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#643">operand</a>);
+                <span class="kw">let </span>lloperand = <a href="#644">operand</a>.<a href="operand.rs.html#198-203">immediate</a>();
                 <span class="kw">let </span>is_float = <a href="#644">operand</a>.layout.ty.is_floating_point();
                 <span class="kw">let </span>llval = <span class="kw">match </span><a href="#643">op</a> {
                     mir::UnOp::Not =&gt; <a href="#391">bx</a>.<a href="../traits/builder.rs.html#119">not</a>(<a href="#645">lloperand</a>),
@@ -1763,7 +1763,7 @@
                 };
                 <a href="operand.rs.html#67-73">OperandRef</a> { val: <a href="operand.rs.html#38">OperandValue::Immediate</a>(<a href="#697">static_</a>), <a href="#696">layout</a> }
             }
-            mir::Rvalue::Use(<span class="kw-2">ref </span>operand) =&gt; <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#717">operand</a>),
+            mir::Rvalue::Use(<span class="kw-2">ref </span>operand) =&gt; <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#717">operand</a>),
             mir::Rvalue::Repeat(..) | mir::Rvalue::Aggregate(..) =&gt; {
                 <span class="comment">// According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
@@ -1771,8 +1771,8 @@
                 OperandRef::zero_sized(<a class="self" href="#390">self</a>.cx.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a class="self" href="#390">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#721">ty</a>)))
             }
             mir::Rvalue::ShallowInitBox(<span class="kw-2">ref </span>operand, content_ty) =&gt; {
-                <span class="kw">let </span>operand = <a class="self" href="#390">self</a>.<a href="operand.rs.html#566-580">codegen_operand</a>(<a href="#391">bx</a>, <a href="#724">operand</a>);
-                <span class="kw">let </span>val = <a href="#725">operand</a>.<a href="operand.rs.html#202-207">immediate</a>();
+                <span class="kw">let </span>operand = <a class="self" href="#390">self</a>.<a href="operand.rs.html#562-576">codegen_operand</a>(<a href="#391">bx</a>, <a href="#724">operand</a>);
+                <span class="kw">let </span>val = <a href="#725">operand</a>.<a href="operand.rs.html#198-203">immediate</a>();
 
                 <span class="kw">let </span>content_ty = <a class="self" href="#390">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#724">content_ty</a>);
                 <span class="kw">let </span>box_layout = <a href="#391">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(Ty::new_box(<a href="#391">bx</a>.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>(), <a href="#728">content_ty</a>));

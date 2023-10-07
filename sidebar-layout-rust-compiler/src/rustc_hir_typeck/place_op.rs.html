@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/place_op.rs`."><title>place_op.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/place_op.rs`."><title>place_op.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -450,7 +450,7 @@
 <a href="#450" id="450">450</a>
 <a href="#451" id="451">451</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="method/mod.rs.html#36-45"><span class="kw">crate</span>::method::MethodCallee</a>;
-<span class="kw">use crate</span>::{<a href="lib.rs.html#447-450">has_expected_num_generic_args</a>, <a href="fn_ctxt/mod.rs.html#40-114">FnCtxt</a>, <a href="lib.rs.html#336-339">PlaceOp</a>};
+<span class="kw">use crate</span>::{<a href="lib.rs.html#445-448">has_expected_num_generic_args</a>, <a href="fn_ctxt/mod.rs.html#40-114">FnCtxt</a>, <a href="lib.rs.html#334-337">PlaceOp</a>};
 <span class="kw">use </span><a href="../../rustc_ast/index.html">rustc_ast</a> <span class="kw">as </span>ast;
 <span class="kw">use </span><a href="../../rustc_lint_defs/enum.Applicability.html">rustc_errors::Applicability</a>;
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
@@ -488,7 +488,7 @@
         } <span class="kw">else </span>{
             <a class="macro" href="../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(expr.span, <span class="string">&quot;input to deref is not a ref?&quot;</span>);
         }
-        <span class="kw">let </span>ty = <a class="self" href="#18">self</a>.<a href="fn_ctxt/_impl.rs.html#603-612">make_overloaded_place_return_type</a>(<a href="#28">method</a>).ty;
+        <span class="kw">let </span>ty = <a class="self" href="#18">self</a>.<a href="fn_ctxt/_impl.rs.html#588-597">make_overloaded_place_return_type</a>(<a href="#28">method</a>).ty;
         <a class="self" href="#18">self</a>.<a href="fn_ctxt/_impl.rs.html#161">write_method_call</a>(<a href="#19">expr</a>.hir_id, <a href="#28">method</a>);
         <span class="prelude-val">Some</span>(<a href="#40">ty</a>)
     }
@@ -558,7 +558,7 @@
         index_expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="comment">/*index type*/ </span>Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="comment">/*element type*/ </span>Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
         <span class="kw">let </span>adjusted_ty =
-            <a class="self" href="#102">self</a>.<a href="fn_ctxt/_impl.rs.html#1512-1527">structurally_resolve_type</a>(<a href="#105">autoderef</a>.span(), <a href="#105">autoderef</a>.final_ty(<span class="bool-val">false</span>));
+            <a class="self" href="#102">self</a>.<a href="fn_ctxt/_impl.rs.html#1497-1512">structurally_resolve_type</a>(<a href="#105">autoderef</a>.span(), <a href="#105">autoderef</a>.final_ty(<span class="bool-val">false</span>));
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
             <span class="string">&quot;try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
              index_ty={:?})&quot;</span>,
@@ -648,13 +648,13 @@
         span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         base_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         arg_tys: <span class="kw-2">&amp;</span>[Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;],
-        op: <a href="lib.rs.html#336-339">PlaceOp</a>,
+        op: <a href="lib.rs.html#334-337">PlaceOp</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;InferOk&lt;<span class="lifetime">&#39;tcx</span>, MethodCallee&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;try_overloaded_place_op({:?},{:?},{:?})&quot;</span>, span, base_ty, op);
 
         <span class="kw">let </span>(<span class="prelude-val">Some</span>(imm_tr), imm_op) = (<span class="kw">match </span><a href="#200">op</a> {
-            <a href="lib.rs.html#337">PlaceOp::Deref</a> =&gt; (<a class="self" href="#196">self</a>.tcx.lang_items().deref_trait(), sym::deref),
-            <a href="lib.rs.html#338">PlaceOp::Index</a> =&gt; (<a class="self" href="#196">self</a>.tcx.lang_items().index_trait(), sym::index),
+            <a href="lib.rs.html#335">PlaceOp::Deref</a> =&gt; (<a class="self" href="#196">self</a>.tcx.lang_items().deref_trait(), sym::deref),
+            <a href="lib.rs.html#336">PlaceOp::Index</a> =&gt; (<a class="self" href="#196">self</a>.tcx.lang_items().index_trait(), sym::index),
         }) <span class="kw">else </span>{
             <span class="comment">// Bail if `Deref` or `Index` isn&#39;t defined.
             </span><span class="kw">return </span><span class="prelude-val">None</span>;
@@ -688,13 +688,13 @@
         span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         base_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         arg_tys: <span class="kw-2">&amp;</span>[Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;],
-        op: <a href="lib.rs.html#336-339">PlaceOp</a>,
+        op: <a href="lib.rs.html#334-337">PlaceOp</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;InferOk&lt;<span class="lifetime">&#39;tcx</span>, MethodCallee&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;try_mutable_overloaded_place_op({:?},{:?},{:?})&quot;</span>, span, base_ty, op);
 
         <span class="kw">let </span>(<span class="prelude-val">Some</span>(mut_tr), mut_op) = (<span class="kw">match </span><a href="#240">op</a> {
-            <a href="lib.rs.html#337">PlaceOp::Deref</a> =&gt; (<a class="self" href="#236">self</a>.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
-            <a href="lib.rs.html#338">PlaceOp::Index</a> =&gt; (<a class="self" href="#236">self</a>.tcx.lang_items().index_mut_trait(), sym::index_mut),
+            <a href="lib.rs.html#335">PlaceOp::Deref</a> =&gt; (<a class="self" href="#236">self</a>.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
+            <a href="lib.rs.html#336">PlaceOp::Index</a> =&gt; (<a class="self" href="#236">self</a>.tcx.lang_items().index_mut_trait(), sym::index_mut),
         }) <span class="kw">else </span>{
             <span class="comment">// Bail if `DerefMut` or `IndexMut` isn&#39;t defined.
             </span><span class="kw">return </span><span class="prelude-val">None</span>;
@@ -813,7 +813,7 @@
 
     <span class="kw">fn </span>convert_place_op_to_mutable(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        op: <a href="lib.rs.html#336-339">PlaceOp</a>,
+        op: <a href="lib.rs.html#334-337">PlaceOp</a>,
         expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;,
         base_expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;,
     ) {
@@ -833,8 +833,8 @@
             .ty;
 
         <span class="kw">let </span>arg_ty = <span class="kw">match </span><a href="#365">op</a> {
-            <a href="lib.rs.html#337">PlaceOp::Deref</a> =&gt; <span class="prelude-val">None</span>,
-            <a href="lib.rs.html#338">PlaceOp::Index</a> =&gt; {
+            <a href="lib.rs.html#335">PlaceOp::Deref</a> =&gt; <span class="prelude-val">None</span>,
+            <a href="lib.rs.html#336">PlaceOp::Index</a> =&gt; {
                 <span class="comment">// We would need to recover the `T` used when we resolve `&lt;_ as Index&lt;T&gt;&gt;::index`
                 // in try_index_step. This is the subst at index 1.
                 //

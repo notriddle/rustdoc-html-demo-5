@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/coherence.rs`."><title>coherence.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/coherence.rs`."><title>coherence.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -882,6 +882,148 @@
 <a href="#882" id="882">882</a>
 <a href="#883" id="883">883</a>
 <a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
+<a href="#1007" id="1007">1007</a>
+<a href="#1008" id="1008">1008</a>
+<a href="#1009" id="1009">1009</a>
+<a href="#1010" id="1010">1010</a>
+<a href="#1011" id="1011">1011</a>
+<a href="#1012" id="1012">1012</a>
+<a href="#1013" id="1013">1013</a>
+<a href="#1014" id="1014">1014</a>
+<a href="#1015" id="1015">1015</a>
+<a href="#1016" id="1016">1016</a>
+<a href="#1017" id="1017">1017</a>
+<a href="#1018" id="1018">1018</a>
+<a href="#1019" id="1019">1019</a>
+<a href="#1020" id="1020">1020</a>
+<a href="#1021" id="1021">1021</a>
+<a href="#1022" id="1022">1022</a>
+<a href="#1023" id="1023">1023</a>
+<a href="#1024" id="1024">1024</a>
+<a href="#1025" id="1025">1025</a>
+<a href="#1026" id="1026">1026</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! See Rustc Dev Guide chapters on [trait-resolution] and [trait-specialization] for more info on
 //! how this works.
 //!
@@ -890,22 +1032,31 @@
 
 </span><span class="kw">use </span><a href="../../../rustc_trait_selection/infer/outlives/env/struct.OutlivesEnvironment.html"><span class="kw">crate</span>::infer::outlives::env::OutlivesEnvironment</a>;
 <span class="kw">use </span><a href="../../../rustc_trait_selection/infer/struct.InferOk.html"><span class="kw">crate</span>::infer::InferOk</a>;
+<span class="kw">use </span><a href="../solve/mod.rs.html#36"><span class="kw">crate</span>::solve::inspect</a>;
+<span class="kw">use </span><span class="kw">crate</span>::solve::inspect::{<a href="../solve/inspect/analyse.rs.html#22-28">InspectGoal</a>, <a href="../solve/inspect/analyse.rs.html#216-222">ProofTreeInferCtxtExt</a>, <a href="../solve/inspect/analyse.rs.html#210-214">ProofTreeVisitor</a>};
+<span class="kw">use </span><a href="engine.rs.html#30-32"><span class="kw">crate</span>::traits::engine::TraitEngineExt</a>;
 <span class="kw">use </span><a href="outlives_bounds.rs.html#13-27"><span class="kw">crate</span>::traits::outlives_bounds::InferCtxtExt</a> <span class="kw">as _</span>;
-<span class="kw">use </span><span class="kw">crate</span>::traits::select::{<a href="select/mod.rs.html#61-65">IntercrateAmbiguityCause</a>, <a href="select/mod.rs.html#205-214">TreatInductiveCycleAs</a>};
+<span class="kw">use </span><a href="query/evaluate_obligation.rs.html#7-30"><span class="kw">crate</span>::traits::query::evaluate_obligation::InferCtxtExt</a>;
+<span class="kw">use </span><span class="kw">crate</span>::traits::select::{<a href="select/mod.rs.html#63-67">IntercrateAmbiguityCause</a>, <a href="select/mod.rs.html#207-216">TreatInductiveCycleAs</a>};
+<span class="kw">use </span><a href="structural_normalize.rs.html#8-14"><span class="kw">crate</span>::traits::structural_normalize::StructurallyNormalizeExt</a>;
 <span class="kw">use </span><a href="util.rs.html#204-228"><span class="kw">crate</span>::traits::util::impl_subject_and_oblig</a>;
+<span class="kw">use </span><a href="project.rs.html#54-80"><span class="kw">crate</span>::traits::NormalizeExt</a>;
 <span class="kw">use </span><a href="mod.rs.html#84-88"><span class="kw">crate</span>::traits::SkipLeakCheck</a>;
 <span class="kw">use </span><span class="kw">crate</span>::traits::{
-    <a class="self" href="../lib.rs.html#47">self</a>, <a href="../../../rustc_trait_selection/traits/struct.Obligation.html">Obligation</a>, <a href="../../../rustc_trait_selection/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="engine.rs.html#53-56">ObligationCtxt</a>, <a href="../../../rustc_trait_selection/traits/type.PredicateObligation.html">PredicateObligation</a>, <a href="../../../rustc_trait_selection/traits/type.PredicateObligations.html">PredicateObligations</a>,
-    <a href="select/mod.rs.html#100-124">SelectionContext</a>,
+    <a class="self" href="../lib.rs.html#47">self</a>, <a href="../../../rustc_trait_selection/traits/struct.Obligation.html">Obligation</a>, <a href="../../../rustc_trait_selection/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="engine.rs.html#54-57">ObligationCtxt</a>, <a href="../../../rustc_trait_selection/traits/type.PredicateObligation.html">PredicateObligation</a>, <a href="../../../rustc_trait_selection/traits/type.PredicateObligations.html">PredicateObligations</a>,
+    <a href="select/mod.rs.html#102-126">SelectionContext</a>,
 };
 <span class="kw">use </span><a href="../../../rustc_data_structures/fx/type.FxIndexSet.html">rustc_data_structures::fx::FxIndexSet</a>;
 <span class="kw">use </span><a href="../../../rustc_errors/diagnostic/struct.Diagnostic.html">rustc_errors::Diagnostic</a>;
 <span class="kw">use </span>rustc_hir::def_id::{<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>, <a href="../../../rustc_span/def_id/constant.CRATE_DEF_ID.html">CRATE_DEF_ID</a>, <a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a>};
 <span class="kw">use </span>rustc_infer::infer::{<a href="../../../rustc_trait_selection/infer/enum.DefineOpaqueTypes.html">DefineOpaqueTypes</a>, <a href="../../../rustc_trait_selection/infer/struct.InferCtxt.html">InferCtxt</a>, <a href="../../../rustc_trait_selection/infer/trait.TyCtxtInferExt.html">TyCtxtInferExt</a>};
-<span class="kw">use </span><a href="../../../rustc_trait_selection/traits/util/traits/util/index.html">rustc_infer::traits::util</a>;
+<span class="kw">use </span>rustc_infer::traits::{<a href="../../../rustc_trait_selection/traits/util/traits/util/index.html">util</a>, <a href="../../../rustc_trait_selection/traits/trait.TraitEngine.html">TraitEngine</a>};
+<span class="kw">use </span>rustc_middle::traits::query::NoSolution;
+<span class="kw">use </span>rustc_middle::traits::solve::{<a href="../../../rustc_trait_selection/traits/solve/enum.Certainty.html">Certainty</a>, <a href="../../../rustc_trait_selection/traits/solve/struct.Goal.html">Goal</a>};
 <span class="kw">use </span><a href="../../../rustc_trait_selection/traits/specialization_graph/enum.OverlapMode.html">rustc_middle::traits::specialization_graph::OverlapMode</a>;
 <span class="kw">use </span><a href="../../../rustc_trait_selection/traits/enum.DefiningAnchor.html">rustc_middle::traits::DefiningAnchor</a>;
 <span class="kw">use </span>rustc_middle::ty::fast_reject::{<a href="../../../rustc_middle/ty/fast_reject/struct.DeepRejectCtxt.html">DeepRejectCtxt</a>, <a href="../../../rustc_middle/ty/fast_reject/enum.TreatParams.html">TreatParams</a>};
+<span class="kw">use </span><a href="../../../rustc_middle/ty/print/pretty/macro.with_no_trimmed_paths.html">rustc_middle::ty::print::with_no_trimmed_paths</a>;
 <span class="kw">use </span>rustc_middle::ty::visit::{<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">TypeVisitable</a>, <a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>};
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../rustc_type_ir/visit/trait.TypeVisitor.html">TypeVisitor</a>};
 <span class="kw">use </span><a href="../../../rustc_lint_defs/builtin/static.COINDUCTIVE_OVERLAP_IN_COHERENCE.html">rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE</a>;
@@ -914,9 +1065,6 @@
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/fmt/macros/derive.Debug.html">std::fmt::Debug</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/iter/index.html">std::iter</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/ops/control_flow/enum.ControlFlow.html">std::ops::ControlFlow</a>;
-
-<span class="kw">use </span><a href="query/evaluate_obligation.rs.html#7-30"><span class="kw">super</span>::query::evaluate_obligation::InferCtxtExt</a>;
-<span class="kw">use </span><a href="project.rs.html#54-80"><span class="kw">super</span>::NormalizeExt</a>;
 
 <span class="doccomment">/// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -934,7 +1082,7 @@
 
 <span class="kw">pub struct </span><a href="../../../rustc_trait_selection/traits/coherence/struct.OverlapResult.html">OverlapResult</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub </span>impl_header: ty::ImplHeader&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    <span class="kw">pub </span>intercrate_ambiguity_causes: FxIndexSet&lt;<a href="select/mod.rs.html#61-65">IntercrateAmbiguityCause</a>&gt;,
+    <span class="kw">pub </span>intercrate_ambiguity_causes: FxIndexSet&lt;<a href="select/mod.rs.html#63-67">IntercrateAmbiguityCause</a>&gt;,
 
     <span class="doccomment">/// `true` if the overlap might&#39;ve been permitted before the shift
     /// to universes.
@@ -942,7 +1090,7 @@
 }
 
 <span class="kw">pub fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.add_placeholder_note.html">add_placeholder_note</a>(err: <span class="kw-2">&amp;mut </span><a href="../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>) {
-    <a href="#60">err</a>.note(
+    <a href="#66">err</a>.note(
         <span class="string">&quot;this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details&quot;</span>,
     );
@@ -954,11 +1102,11 @@
     No,
 }
 
-<span class="kw">impl </span><a href="#68-71">TrackAmbiguityCauses</a> {
+<span class="kw">impl </span><a href="#74-77">TrackAmbiguityCauses</a> {
     <span class="kw">fn </span>is_yes(<span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><span class="self"><a href="#74">self</a> </span>{
-            <a href="#69">TrackAmbiguityCauses::Yes</a> =&gt; <span class="bool-val">true</span>,
-            <a href="#70">TrackAmbiguityCauses::No</a> =&gt; <span class="bool-val">false</span>,
+        <span class="kw">match </span><span class="self"><a href="#80">self</a> </span>{
+            <a href="#75">TrackAmbiguityCauses::Yes</a> =&gt; <span class="bool-val">true</span>,
+            <a href="#76">TrackAmbiguityCauses::No</a> =&gt; <span class="bool-val">false</span>,
         }
     }
 }
@@ -1025,26 +1173,26 @@
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     impl_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
 ) -&gt; ty::ImplHeader&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">let </span>tcx = <a href="#140">selcx</a>.<a href="select/mod.rs.html#277-279">tcx</a>();
-    <span class="kw">let </span>impl_args = <a href="#140">selcx</a>.infcx.fresh_args_for_item(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#142">impl_def_id</a>);
+    <span class="kw">let </span>tcx = <a href="#146">selcx</a>.<a href="select/mod.rs.html#279-281">tcx</a>();
+    <span class="kw">let </span>impl_args = <a href="#146">selcx</a>.infcx.fresh_args_for_item(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#148">impl_def_id</a>);
 
     <span class="kw">let </span>header = <a href="../../../rustc_middle/ty/struct.ImplHeader.html">ty::ImplHeader</a> {
-        <a href="#142">impl_def_id</a>,
-        self_ty: <a href="#144">tcx</a>.type_of(<a href="#142">impl_def_id</a>).instantiate(<a href="#144">tcx</a>, <a href="#145">impl_args</a>),
-        trait_ref: <a href="#144">tcx</a>.impl_trait_ref(<a href="#142">impl_def_id</a>).map(|i| <a href="#150">i</a>.instantiate(<a href="#144">tcx</a>, <a href="#145">impl_args</a>)),
-        predicates: <a href="#144">tcx</a>
-            .predicates_of(<a href="#142">impl_def_id</a>)
-            .instantiate(<a href="#144">tcx</a>, <a href="#145">impl_args</a>)
+        <a href="#148">impl_def_id</a>,
+        self_ty: <a href="#150">tcx</a>.type_of(<a href="#148">impl_def_id</a>).instantiate(<a href="#150">tcx</a>, <a href="#151">impl_args</a>),
+        trait_ref: <a href="#150">tcx</a>.impl_trait_ref(<a href="#148">impl_def_id</a>).map(|i| <a href="#156">i</a>.instantiate(<a href="#150">tcx</a>, <a href="#151">impl_args</a>)),
+        predicates: <a href="#150">tcx</a>
+            .predicates_of(<a href="#148">impl_def_id</a>)
+            .instantiate(<a href="#150">tcx</a>, <a href="#151">impl_args</a>)
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(c, <span class="kw">_</span>)| <a href="#155">c</a>.as_predicate())
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(c, <span class="kw">_</span>)| <a href="#161">c</a>.as_predicate())
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(),
     };
 
     <span class="kw">let </span><a href="../../../rustc_trait_selection/infer/struct.InferOk.html">InferOk</a> { value: <span class="kw-2">mut </span>header, obligations } =
-        <a href="#140">selcx</a>.infcx.at(<span class="kw-2">&amp;</span>ObligationCause::dummy(), <a href="#141">param_env</a>).<a href="project.rs.html#59">normalize</a>(<a href="#147">header</a>);
+        <a href="#146">selcx</a>.infcx.at(<span class="kw-2">&amp;</span>ObligationCause::dummy(), <a href="#147">param_env</a>).<a href="project.rs.html#59">normalize</a>(<a href="#153">header</a>);
 
-    <a href="#159">header</a>.predicates.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#159">obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|o| <a href="#162">o</a>.predicate));
-    <a href="#159">header</a>
+    <a href="#165">header</a>.predicates.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#165">obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|o| <a href="#168">o</a>.predicate));
+    <a href="#165">header</a>
 }
 
 <span class="doccomment">/// Can both impl `a` and impl `b` be satisfied by a common type (including
@@ -1052,7 +1200,7 @@
 </span><span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(tcx))]
 </span><span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.overlap.html">overlap</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    track_ambiguity_causes: <a href="#68-71">TrackAmbiguityCauses</a>,
+    track_ambiguity_causes: <a href="#74-77">TrackAmbiguityCauses</a>,
     skip_leak_check: <a href="mod.rs.html#84-88">SkipLeakCheck</a>,
     impl1_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     impl2_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
@@ -1089,19 +1237,19 @@
 
     <span class="comment">// Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    </span><span class="kw">let </span>equate_obligations = equate_impl_headers(selcx.infcx, <span class="kw-2">&amp;</span>impl1_header, <span class="kw-2">&amp;</span>impl2_header)<span class="question-mark">?</span>;
+    </span><span class="kw">let </span><span class="kw-2">mut </span>obligations = equate_impl_headers(selcx.infcx, <span class="kw-2">&amp;</span>impl1_header, <span class="kw-2">&amp;</span>impl2_header)<span class="question-mark">?</span>;
     <span class="macro">debug!</span>(<span class="string">&quot;overlap: unification check succeeded&quot;</span>);
+
+    obligations.extend(
+        [<span class="kw-2">&amp;</span>impl1_header.predicates, <span class="kw-2">&amp;</span>impl2_header.predicates].into_iter().flatten().map(
+            |<span class="kw-2">&amp;</span>predicate| Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, predicate),
+        ),
+    );
 
     <span class="kw">if </span>overlap_mode.use_implicit_negative() {
         <span class="kw">for </span>mode <span class="kw">in </span>[TreatInductiveCycleAs::Ambig, TreatInductiveCycleAs::Recur] {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(failing_obligation) = selcx.with_treat_inductive_cycle_as(mode, |selcx| {
-                impl_intersection_has_impossible_obligation(
-                    selcx,
-                    param_env,
-                    <span class="kw-2">&amp;</span>impl1_header,
-                    <span class="kw-2">&amp;</span>impl2_header,
-                    <span class="kw-2">&amp;</span>equate_obligations,
-                )
+                impl_intersection_has_impossible_obligation(selcx, <span class="kw-2">&amp;</span>obligations)
             }) {
                 <span class="kw">if </span><span class="macro">matches!</span>(mode, TreatInductiveCycleAs::Recur) {
                     <span class="kw">let </span>first_local_impl = impl1_header
@@ -1165,7 +1313,14 @@
         <span class="kw">return </span><span class="prelude-val">None</span>;
     }
 
-    <span class="kw">let </span>intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    <span class="kw">let </span>intercrate_ambiguity_causes = <span class="kw">if </span>!overlap_mode.use_implicit_negative() {
+        Default::default()
+    } <span class="kw">else if </span>infcx.next_trait_solver() {
+        compute_intercrate_ambiguity_causes(<span class="kw-2">&amp;</span>infcx, <span class="kw-2">&amp;</span>obligations)
+    } <span class="kw">else </span>{
+        selcx.take_intercrate_ambiguity_causes()
+    };
+
     <span class="macro">debug!</span>(<span class="string">&quot;overlap: intercrate_ambiguity_causes={:#?}&quot;</span>, intercrate_ambiguity_causes);
     <span class="kw">let </span>involves_placeholder = infcx
         .inner
@@ -1219,34 +1374,24 @@
 /// of the two impls above to be empty.
 ///
 /// Importantly, this works even if there isn&#39;t a `impl !Error for MyLocalType`.
-</span><span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.impl_intersection_has_impossible_obligation.html">impl_intersection_has_impossible_obligation</a>&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt;(
+</span><span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.impl_intersection_has_impossible_obligation.html">impl_intersection_has_impossible_obligation</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt;(
     selcx: <span class="kw-2">&amp;mut </span>SelectionContext&lt;<span class="lifetime">&#39;cx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-    param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    impl1_header: <span class="kw-2">&amp;</span>ty::ImplHeader&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    impl2_header: <span class="kw-2">&amp;</span>ty::ImplHeader&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    obligations: <span class="kw-2">&amp;</span>PredicateObligations&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <span class="prelude-ty">Option</span>&lt;PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-    <span class="kw">let </span>infcx = <a href="#339">selcx</a>.infcx;
+    obligations: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;],
+) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
+    <span class="kw">let </span>infcx = <a href="#352">selcx</a>.infcx;
 
-    [<span class="kw-2">&amp;</span><a href="#341">impl1_header</a>.predicates, <span class="kw-2">&amp;</span><a href="#342">impl2_header</a>.predicates]
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flatten</a>()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>predicate| {
-            Obligation::new(<a href="#345">infcx</a>.tcx, ObligationCause::dummy(), <a href="#340">param_env</a>, <a href="#350">predicate</a>)
-        })
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#343">obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>())
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|obligation: <span class="kw-2">&amp;</span>PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
-            <span class="kw">if </span>infcx.next_trait_solver() {
-                <a href="#345">infcx</a>.<a href="query/evaluate_obligation.rs.html#17-20">evaluate_obligation</a>(<a href="#354">obligation</a>).map_or(<span class="bool-val">false</span>, |result| !<a href="#356">result</a>.may_apply())
-            } <span class="kw">else </span>{
-                <span class="comment">// We use `evaluate_root_obligation` to correctly track intercrate
-                // ambiguity clauses. We cannot use this in the new solver.
-                </span><a href="#339">selcx</a>.<a href="select/mod.rs.html#583-602">evaluate_root_obligation</a>(<a href="#354">obligation</a>).map_or(
-                    <span class="bool-val">false</span>, <span class="comment">// Overflow has occurred, and treat the obligation as possibly holding.
-                    </span>|result| !<a href="#362">result</a>.may_apply(),
-                )
-            }
-        })
+    <a href="#353">obligations</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|obligation| {
+        <span class="kw">if </span>infcx.next_trait_solver() {
+            <a href="#355">infcx</a>.<a href="query/evaluate_obligation.rs.html#17-20">evaluate_obligation</a>(<a href="#357">obligation</a>).map_or(<span class="bool-val">false</span>, |result| !<a href="#359">result</a>.may_apply())
+        } <span class="kw">else </span>{
+            <span class="comment">// We use `evaluate_root_obligation` to correctly track intercrate
+            // ambiguity clauses. We cannot use this in the new solver.
+            </span><a href="#352">selcx</a>.<a href="select/mod.rs.html#585-604">evaluate_root_obligation</a>(<a href="#357">obligation</a>).map_or(
+                <span class="bool-val">false</span>, <span class="comment">// Overflow has occurred, and treat the obligation as possibly holding.
+                </span>|result| !<a href="#365">result</a>.may_apply(),
+            )
+        }
+    })
 }
 
 <span class="doccomment">/// Check if both impls can be satisfied by a common type by considering whether
@@ -1273,19 +1418,19 @@
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;negative_impl(impl1_def_id={:?}, impl2_def_id={:?})&quot;</span>, impl1_def_id, impl2_def_id);
 
     <span class="comment">// Create an infcx, taking the predicates of impl1 as assumptions:
-    </span><span class="kw">let </span>infcx = <a href="#385">tcx</a>.<a href="../../../rustc_trait_selection/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().build();
+    </span><span class="kw">let </span>infcx = <a href="#388">tcx</a>.<a href="../../../rustc_trait_selection/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().build();
     <span class="comment">// create a parameter environment corresponding to a (placeholder) instantiation of impl1
-    </span><span class="kw">let </span>impl_env = <a href="#385">tcx</a>.param_env(<a href="#386">impl1_def_id</a>);
+    </span><span class="kw">let </span>impl_env = <a href="#388">tcx</a>.param_env(<a href="#389">impl1_def_id</a>);
     <span class="kw">let </span>subject1 = <span class="kw">match </span><a href="mod.rs.html#398">traits::fully_normalize</a>(
-        <span class="kw-2">&amp;</span><a href="#392">infcx</a>,
+        <span class="kw-2">&amp;</span><a href="#395">infcx</a>,
         ObligationCause::dummy(),
-        <a href="#394">impl_env</a>,
-        <a href="#385">tcx</a>.impl_subject(<a href="#386">impl1_def_id</a>).instantiate_identity(),
+        <a href="#397">impl_env</a>,
+        <a href="#388">tcx</a>.impl_subject(<a href="#389">impl1_def_id</a>).instantiate_identity(),
     ) {
-        <span class="prelude-val">Ok</span>(s) =&gt; <a href="#401">s</a>,
+        <span class="prelude-val">Ok</span>(s) =&gt; <a href="#404">s</a>,
         <span class="prelude-val">Err</span>(err) =&gt; {
-            <a href="#385">tcx</a>.sess.delay_span_bug(
-                <a href="#385">tcx</a>.def_span(<a href="#386">impl1_def_id</a>),
+            <a href="#388">tcx</a>.sess.delay_span_bug(
+                <a href="#388">tcx</a>.def_span(<a href="#389">impl1_def_id</a>),
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;failed to fully normalize {impl1_def_id:?}: {err:?}&quot;</span>),
             );
             <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1293,17 +1438,17 @@
     };
 
     <span class="comment">// Attempt to prove that impl2 applies, given all of the above.
-    </span><span class="kw">let </span>selcx = <span class="kw-2">&amp;mut </span>SelectionContext::new(<span class="kw-2">&amp;</span><a href="#392">infcx</a>);
-    <span class="kw">let </span>impl2_args = <a href="#392">infcx</a>.fresh_args_for_item(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#387">impl2_def_id</a>);
+    </span><span class="kw">let </span>selcx = <span class="kw-2">&amp;mut </span>SelectionContext::new(<span class="kw-2">&amp;</span><a href="#395">infcx</a>);
+    <span class="kw">let </span>impl2_args = <a href="#395">infcx</a>.fresh_args_for_item(<a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#390">impl2_def_id</a>);
     <span class="kw">let </span>(subject2, normalization_obligations) =
-        <a href="util.rs.html#204-228">impl_subject_and_oblig</a>(<a href="#412">selcx</a>, <a href="#394">impl_env</a>, <a href="#387">impl2_def_id</a>, <a href="#413">impl2_args</a>, |<span class="kw">_</span>, <span class="kw">_</span>| {
+        <a href="util.rs.html#204-228">impl_subject_and_oblig</a>(<a href="#415">selcx</a>, <a href="#397">impl_env</a>, <a href="#390">impl2_def_id</a>, <a href="#416">impl2_args</a>, |<span class="kw">_</span>, <span class="kw">_</span>| {
             ObligationCause::dummy()
         });
 
     <span class="comment">// do the impls unify? If not, then it&#39;s not currently possible to prove any
     // obligations about their intersection.
     </span><span class="kw">let </span><span class="prelude-val">Ok</span>(<a href="../../../rustc_trait_selection/infer/struct.InferOk.html">InferOk</a> { obligations: equate_obligations, .. }) =
-        <a href="#392">infcx</a>.at(<span class="kw-2">&amp;</span>ObligationCause::dummy(), <a href="#394">impl_env</a>).eq(DefineOpaqueTypes::No, <a href="#395">subject1</a>, <a href="#414">subject2</a>)
+        <a href="#395">infcx</a>.at(<span class="kw-2">&amp;</span>ObligationCause::dummy(), <a href="#397">impl_env</a>).eq(DefineOpaqueTypes::No, <a href="#398">subject1</a>, <a href="#417">subject2</a>)
     <span class="kw">else </span>{
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;explicit_disjoint: {:?} does not unify with {:?}&quot;</span>, subject1, subject2);
         <span class="kw">return </span><span class="bool-val">false</span>;
@@ -1386,7 +1531,7 @@
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     trait_ref: ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     <span class="kw-2">mut </span>lazily_normalize_ty: <span class="kw">impl </span>FnMut(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, E&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), <a href="#46-49">Conflict</a>&gt;, E&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), <a href="#52-55">Conflict</a>&gt;, E&gt; {
     <span class="kw">if </span><span class="prelude-val">Some</span>(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
         <span class="comment">// The only types implementing `FnPtr` are function pointers,
         // so if there&#39;s no impl of `FnPtr` in the current crate,
@@ -1428,7 +1573,7 @@
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     trait_ref: ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <a href="#545">trait_ref</a>.def_id.krate == <a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a> || <a href="#544">tcx</a>.has_attr(<a href="#545">trait_ref</a>.def_id, sym::fundamental)
+    <a href="#548">trait_ref</a>.def_id.krate == <a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a> || <a href="#547">tcx</a>.has_attr(<a href="#548">trait_ref</a>.def_id, sym::fundamental)
 }
 
 <span class="attr">#[derive(Debug)]
@@ -1548,7 +1693,7 @@
 </span><span class="attr">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip(lazily_normalize_ty), ret)]
 </span><span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.orphan_check_trait_ref.html">orphan_check_trait_ref</a>&lt;<span class="lifetime">&#39;tcx</span>, E: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>&gt;(
     trait_ref: ty::TraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    in_crate: <a href="#40-43">InCrate</a>,
+    in_crate: <a href="#46-49">InCrate</a>,
     lazily_normalize_ty: <span class="kw">impl </span>FnMut(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, E&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Result</span>&lt;(), OrphanCheckErr&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, E&gt; {
     <span class="kw">if </span>trait_ref.has_infer() &amp;&amp; trait_ref.has_param() {
@@ -1578,7 +1723,7 @@
 }
 
 <span class="kw">struct </span><a href="../../../rustc_trait_selection/traits/coherence/struct.OrphanChecker.html">OrphanChecker</a>&lt;<span class="lifetime">&#39;tcx</span>, F&gt; {
-    in_crate: <a href="#40-43">InCrate</a>,
+    in_crate: <a href="#46-49">InCrate</a>,
     in_self_ty: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     lazily_normalize_ty: F,
     <span class="doccomment">/// Ignore orphan check failures and exclusively search for the first
@@ -1591,18 +1736,18 @@
 <span class="kw">where
     </span>F: FnOnce(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, E&gt;,
 {
-    <span class="kw">fn </span>new(in_crate: <a href="#40-43">InCrate</a>, lazily_normalize_ty: F) -&gt; <span class="self">Self </span>{
-        <a href="#696-704">OrphanChecker</a> {
-            <a href="#710">in_crate</a>,
+    <span class="kw">fn </span>new(in_crate: <a href="#46-49">InCrate</a>, lazily_normalize_ty: F) -&gt; <span class="self">Self </span>{
+        <a href="#699-707">OrphanChecker</a> {
+            <a href="#713">in_crate</a>,
             in_self_ty: <span class="bool-val">true</span>,
-            <a href="#710">lazily_normalize_ty</a>,
+            <a href="#713">lazily_normalize_ty</a>,
             search_first_local_ty: <span class="bool-val">false</span>,
             non_local_tys: Vec::new(),
         }
     }
 
     <span class="kw">fn </span>found_non_local_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;OrphanCheckEarlyExit&lt;<span class="lifetime">&#39;tcx</span>, E&gt;&gt; {
-        <a class="self" href="#720">self</a>.non_local_tys.push((<a href="#720">t</a>, <a class="self" href="#720">self</a>.in_self_ty));
+        <a class="self" href="#723">self</a>.non_local_tys.push((<a href="#723">t</a>, <a class="self" href="#723">self</a>.in_self_ty));
         ControlFlow::Continue(())
     }
 
@@ -1610,14 +1755,14 @@
         <span class="kw">if </span><span class="self">self</span>.search_first_local_ty {
             ControlFlow::Continue(())
         } <span class="kw">else </span>{
-            ControlFlow::Break(<a href="#743">OrphanCheckEarlyExit::ParamTy</a>(<a href="#725">t</a>))
+            ControlFlow::Break(<a href="#746">OrphanCheckEarlyExit::ParamTy</a>(<a href="#728">t</a>))
         }
     }
 
     <span class="kw">fn </span>def_id_is_local(<span class="kw-2">&amp;mut </span><span class="self">self</span>, def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><a class="self" href="#733">self</a>.in_crate {
-            <a href="#41">InCrate::Local</a> =&gt; <a href="#733">def_id</a>.is_local(),
-            <a href="#42">InCrate::Remote</a> =&gt; <span class="bool-val">false</span>,
+        <span class="kw">match </span><a class="self" href="#736">self</a>.in_crate {
+            <a href="#47">InCrate::Local</a> =&gt; <a href="#736">def_id</a>.is_local(),
+            <a href="#48">InCrate::Remote</a> =&gt; <span class="bool-val">false</span>,
         }
     }
 }
@@ -1639,12 +1784,12 @@
 
     <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;<span class="self">Self</span>::BreakTy&gt; {
         <span class="comment">// Need to lazily normalize here in with `-Ztrait-solver=next-coherence`.
-        </span><span class="kw">let </span>ty = <span class="kw">match </span>(<a class="self" href="#756">self</a>.lazily_normalize_ty)(<a href="#756">ty</a>) {
-            <span class="prelude-val">Ok</span>(ty) =&gt; <a href="#759">ty</a>,
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span>ControlFlow::Break(<a href="#742">OrphanCheckEarlyExit::NormalizationFailure</a>(<a href="#760">err</a>)),
+        </span><span class="kw">let </span>ty = <span class="kw">match </span>(<a class="self" href="#759">self</a>.lazily_normalize_ty)(<a href="#759">ty</a>) {
+            <span class="prelude-val">Ok</span>(ty) =&gt; <a href="#762">ty</a>,
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span>ControlFlow::Break(<a href="#745">OrphanCheckEarlyExit::NormalizationFailure</a>(<a href="#763">err</a>)),
         };
 
-        <span class="kw">let </span>result = <span class="kw">match </span><span class="kw-2">*</span><a href="#758">ty</a>.kind() {
+        <span class="kw">let </span>result = <span class="kw">match </span><span class="kw-2">*</span><a href="#761">ty</a>.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(..)
@@ -1659,58 +1804,56 @@
             | ty::Never
             | ty::Tuple(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..) =&gt; {
-                <a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>)
+                <a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>)
             }
 
-            ty::Param(..) =&gt; <a class="self" href="#756">self</a>.<a href="#725-731">found_param_ty</a>(<a href="#758">ty</a>),
+            ty::Param(..) =&gt; <a class="self" href="#759">self</a>.<a href="#728-734">found_param_ty</a>(<a href="#761">ty</a>),
 
-            ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) =&gt; <span class="kw">match </span><a class="self" href="#756">self</a>.in_crate {
-                <a href="#41">InCrate::Local</a> =&gt; <a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>),
+            ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) =&gt; <span class="kw">match </span><a class="self" href="#759">self</a>.in_crate {
+                <a href="#47">InCrate::Local</a> =&gt; <a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>),
                 <span class="comment">// The inference variable might be unified with a local
                 // type in that remote crate.
-                </span><a href="#42">InCrate::Remote</a> =&gt; ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>)),
+                </span><a href="#48">InCrate::Remote</a> =&gt; ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>)),
             },
 
             <span class="comment">// For fundamental types, we just look inside of them.
-            </span>ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) =&gt; <a href="#791">ty</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#756">self</a>),
+            </span>ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) =&gt; <a href="#794">ty</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#759">self</a>),
             ty::Adt(def, args) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.def_id_is_local(def.did()) {
-                    ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>))
+                    ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>))
                 } <span class="kw">else if </span>def.is_fundamental() {
-                    <a href="#792">args</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#756">self</a>)
+                    <a href="#795">args</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#759">self</a>)
                 } <span class="kw">else </span>{
-                    <a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>)
+                    <a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>)
                 }
             }
             ty::Foreign(def_id) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.def_id_is_local(def_id) {
-                    ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>))
+                    ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>))
                 } <span class="kw">else </span>{
-                    <a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>)
+                    <a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>)
                 }
             }
             ty::Dynamic(tt, ..) =&gt; {
-                <span class="kw">let </span>principal = <a href="#808">tt</a>.principal().map(|p| <a href="#809">p</a>.def_id());
+                <span class="kw">let </span>principal = <a href="#811">tt</a>.principal().map(|p| <a href="#812">p</a>.def_id());
                 <span class="kw">if </span>principal.is_some_and(|p| <span class="self">self</span>.def_id_is_local(p)) {
-                    ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>))
+                    ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>))
                 } <span class="kw">else </span>{
-                    <a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>)
+                    <a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>)
                 }
             }
-            ty::Error(<span class="kw">_</span>) =&gt; ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>)),
+            ty::Error(<span class="kw">_</span>) =&gt; ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>)),
             ty::Closure(did, ..) | ty::Generator(did, ..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.def_id_is_local(did) {
-                    ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>))
+                    ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>))
                 } <span class="kw">else </span>{
-                    <a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>)
+                    <a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>)
                 }
             }
             <span class="comment">// This should only be created when checking whether we have to check whether some
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
-            </span>ty::GeneratorWitness(<span class="kw">_</span>) | ty::GeneratorWitnessMIR(..) =&gt; {
-                ControlFlow::Break(<a href="#744">OrphanCheckEarlyExit::LocalTy</a>(<a href="#758">ty</a>))
-            }
+            </span>ty::GeneratorWitness(..) =&gt; ControlFlow::Break(<a href="#747">OrphanCheckEarlyExit::LocalTy</a>(<a href="#761">ty</a>)),
             ty::Alias(ty::Opaque, ..) =&gt; {
                 <span class="comment">// This merits some explanation.
                 // Normally, opaque types are not involved when performing
@@ -1738,13 +1881,13 @@
                 // to a remote type. This would violate the rule that opaque
                 // types should be completely opaque apart from the traits
                 // that they implement, so we don&#39;t use this behavior.
-                </span><a class="self" href="#756">self</a>.<a href="#720-723">found_non_local_ty</a>(<a href="#758">ty</a>)
+                </span><a class="self" href="#759">self</a>.<a href="#723-726">found_non_local_ty</a>(<a href="#761">ty</a>)
             }
         };
         <span class="comment">// A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.
-        </span><a class="self" href="#756">self</a>.in_self_ty = <span class="bool-val">false</span>;
-        <a href="#763">result</a>
+        </span><a class="self" href="#759">self</a>.in_self_ty = <span class="bool-val">false</span>;
+        <a href="#766">result</a>
     }
 
     <span class="doccomment">/// All possible values for a constant parameter already exist
@@ -1765,5 +1908,146 @@
     </span><span class="kw">fn </span>visit_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _c: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;<span class="self">Self</span>::BreakTy&gt; {
         ControlFlow::Continue(())
     }
+}
+
+<span class="doccomment">/// Compute the `intercrate_ambiguity_causes` for the new solver using
+/// &quot;proof trees&quot;.
+///
+/// This is a bit scuffed but seems to be good enough, at least
+/// when looking at UI tests. Given that it is only used to improve
+/// diagnostics this is good enough. We can always improve it once there
+/// are test cases where it is currently not enough.
+</span><span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.compute_intercrate_ambiguity_causes.html">compute_intercrate_ambiguity_causes</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
+    infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    obligations: <span class="kw-2">&amp;</span>[PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;],
+) -&gt; FxIndexSet&lt;<a href="select/mod.rs.html#63-67">IntercrateAmbiguityCause</a>&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>causes: FxIndexSet&lt;<a href="select/mod.rs.html#63-67">IntercrateAmbiguityCause</a>&gt; = <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>();
+
+    <span class="kw">for </span>obligation <span class="kw">in </span>obligations {
+        search_ambiguity_causes(infcx, obligation.clone().into(), <span class="kw-2">&amp;mut </span>causes);
+    }
+
+    <a href="#898">causes</a>
+}
+
+<span class="kw">struct </span><a href="../../../rustc_trait_selection/traits/coherence/struct.AmbiguityCausesVisitor.html">AmbiguityCausesVisitor</a>&lt;<span class="lifetime">&#39;a</span>&gt; {
+    causes: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>FxIndexSet&lt;<a href="select/mod.rs.html#63-67">IntercrateAmbiguityCause</a>&gt;,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; ProofTreeVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>AmbiguityCausesVisitor&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">type </span>BreakTy = !;
+    <span class="kw">fn </span>visit_goal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, goal: <span class="kw-2">&amp;</span>InspectGoal&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;<span class="self">Self</span>::BreakTy&gt; {
+        <span class="kw">let </span>infcx = <a href="#913">goal</a>.<a href="../solve/inspect/analyse.rs.html#103-105">infcx</a>();
+        <span class="kw">for </span>cand <span class="kw">in </span>goal.candidates() {
+            cand.visit_nested(<span class="self">self</span>)<span class="question-mark">?</span>;
+        }
+        <span class="comment">// When searching for intercrate ambiguity causes, we only need to look
+        // at ambiguous goals, as for others the coherence unknowable candidate
+        // was irrelevant.
+        </span><span class="kw">match </span><a href="#913">goal</a>.<a href="../solve/inspect/analyse.rs.html#111-113">result</a>() {
+            <span class="prelude-val">Ok</span>(Certainty::Maybe(<span class="kw">_</span>)) =&gt; {}
+            <span class="prelude-val">Ok</span>(Certainty::Yes) | <span class="prelude-val">Err</span>(NoSolution) =&gt; <span class="kw">return </span>ControlFlow::Continue(()),
+        }
+
+        <span class="kw">let </span><a href="../../../rustc_trait_selection/traits/solve/struct.Goal.html">Goal</a> { param_env, predicate } = <a href="#913">goal</a>.<a href="../solve/inspect/analyse.rs.html#107-109">goal</a>();
+
+        <span class="comment">// For bound predicates we simply call `infcx.replace_bound_vars_with_placeholders`
+        // and then prove the resulting predicate as a nested goal.
+        </span><span class="kw">let </span>trait_ref = <span class="kw">match </span><a href="#926">predicate</a>.kind().no_bound_vars() {
+            <span class="prelude-val">Some</span>(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) =&gt; <a href="#931">tr</a>.trait_ref,
+            <span class="prelude-val">Some</span>(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))) =&gt; {
+                <a href="#932">proj</a>.projection_ty.trait_ref(<a href="#914">infcx</a>.tcx)
+            }
+            <span class="kw">_ </span>=&gt; <span class="kw">return </span>ControlFlow::Continue(()),
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>ambiguity_cause = <span class="prelude-val">None</span>;
+        <span class="kw">for </span>cand <span class="kw">in </span>goal.candidates() {
+            <span class="comment">// FIXME: boiiii, using string comparisions here sure is scuffed.
+            </span><span class="kw">if let </span>inspect::ProbeKind::MiscCandidate { name: <span class="string">&quot;coherence unknowable&quot;</span>, result: <span class="kw">_ </span>} =
+                cand.kind()
+            {
+                <span class="kw">let </span>lazily_normalize_ty = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
+                    <span class="kw">let </span><span class="kw-2">mut </span>fulfill_cx = &lt;<span class="kw">dyn </span>TraitEngine&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;::new(infcx);
+                    <span class="kw">if </span><span class="macro">matches!</span>(ty.kind(), ty::Alias(..)) {
+                        <span class="comment">// FIXME(-Ztrait-solver=next-coherence): we currently don&#39;t
+                        // normalize opaque types here, resulting in diverging behavior
+                        // for TAITs.
+                        </span><span class="kw">match </span>infcx
+                            .at(<span class="kw-2">&amp;</span>ObligationCause::dummy(), param_env)
+                            .structurally_normalize(ty, <span class="kw-2">&amp;mut *</span>fulfill_cx)
+                        {
+                            <span class="prelude-val">Ok</span>(ty) =&gt; <span class="prelude-val">Ok</span>(ty),
+                            <span class="prelude-val">Err</span>(_errs) =&gt; <span class="prelude-val">Err</span>(()),
+                        }
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Ok</span>(ty)
+                    }
+                };
+
+                infcx.probe(|<span class="kw">_</span>| {
+                    <span class="kw">match </span>trait_ref_is_knowable(infcx.tcx, trait_ref, lazily_normalize_ty) {
+                        <span class="prelude-val">Err</span>(()) =&gt; {}
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(())) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;expected an unknowable trait ref: {trait_ref:?}&quot;</span>),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(conflict)) =&gt; {
+                            <span class="kw">if </span>!trait_ref.references_error() {
+                                <span class="kw">let </span>self_ty = trait_ref.self_ty();
+                                <span class="kw">let </span>(trait_desc, self_desc) = <span class="macro">with_no_trimmed_paths!</span>({
+                                    <span class="kw">let </span>trait_desc = trait_ref.print_only_trait_path().to_string();
+                                    <span class="kw">let </span>self_desc = self_ty
+                                        .has_concrete_skeleton()
+                                        .then(|| self_ty.to_string());
+                                    (trait_desc, self_desc)
+                                });
+                                ambiguity_cause = <span class="prelude-val">Some</span>(<span class="kw">match </span>conflict {
+                                    Conflict::Upstream =&gt; {
+                                        IntercrateAmbiguityCause::UpstreamCrateUpdate {
+                                            trait_desc,
+                                            self_desc,
+                                        }
+                                    }
+                                    Conflict::Downstream =&gt; {
+                                        IntercrateAmbiguityCause::DownstreamCrate {
+                                            trait_desc,
+                                            self_desc,
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                })
+            } <span class="kw">else </span>{
+                <span class="kw">match </span>cand.result() {
+                    <span class="comment">// We only add an ambiguity cause if the goal would otherwise
+                    // result in an error.
+                    //
+                    // FIXME: While this matches the behavior of the
+                    // old solver, it is not the only way in which the unknowable
+                    // candidates *weaken* coherence, they can also force otherwise
+                    // sucessful normalization to be ambiguous.
+                    </span><span class="prelude-val">Ok</span>(Certainty::Maybe(<span class="kw">_</span>) | Certainty::Yes) =&gt; {
+                        ambiguity_cause = <span class="prelude-val">None</span>;
+                        <span class="kw">break</span>;
+                    }
+                    <span class="prelude-val">Err</span>(NoSolution) =&gt; <span class="kw">continue</span>,
+                }
+            }
+        }
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ambiguity_cause) = <a href="#938">ambiguity_cause</a> {
+            <a class="self" href="#913">self</a>.causes.insert(<a href="#1012">ambiguity_cause</a>);
+        }
+
+        ControlFlow::Continue(())
+    }
+}
+
+<span class="kw">fn </span><a href="../../../rustc_trait_selection/traits/coherence/fn.search_ambiguity_causes.html">search_ambiguity_causes</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
+    infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, ty::Predicate&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
+    causes: <span class="kw-2">&amp;mut </span>FxIndexSet&lt;<a href="select/mod.rs.html#63-67">IntercrateAmbiguityCause</a>&gt;,
+) {
+    <a href="#1021">infcx</a>.<a href="../solve/inspect/analyse.rs.html#217-221">visit_proof_tree</a>(<a href="#1022">goal</a>, <span class="kw-2">&amp;mut </span><a href="#907-909">AmbiguityCausesVisitor</a> { <a href="#1023">causes</a> });
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["archive","lto","profiling","write"]};
+window.SIDEBAR_ITEMS = {"mod":["archive","lto","owned_target_machine","profiling","write"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/stacked_borrows/diagnostics.rs`."><title>diagnostics.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/stacked_borrows/diagnostics.rs`."><title>diagnostics.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -532,9 +532,17 @@
 <a href="#532" id="532">532</a>
 <a href="#533" id="533">533</a>
 <a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>smallvec::SmallVec;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/alloc/fmt/index.html">std::fmt</a>;
 
+<span class="kw">use </span>rustc_data_structures::fx::FxHashSet;
 <span class="kw">use </span>rustc_middle::mir::interpret::{<a href="../../../../miri/fn.alloc_range.html">alloc_range</a>, AllocId, <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>, <a href="../../../../miri/enum.InterpError.html">InterpError</a>};
 <span class="kw">use </span>rustc_span::{<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../../rustc_span/struct.SpanData.html">SpanData</a>};
 <span class="kw">use </span><a href="../../../../rustc_abi/struct.Size.html">rustc_target::abi::Size</a>;
@@ -548,7 +556,7 @@
 </span><span class="kw">fn </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/fn.err_sb_ub.html">err_sb_ub</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     msg: <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>,
     help: Vec&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;,
-    history: <span class="prelude-ty">Option</span>&lt;<a href="#114-118">TagHistory</a>&gt;,
+    history: <span class="prelude-ty">Option</span>&lt;<a href="#115-119">TagHistory</a>&gt;,
 ) -&gt; InterpError&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.err_machine_stop.html">err_machine_stop!</a>(TerminationInfo::StackedBorrowsUb { msg, help, history })
 }
@@ -557,27 +565,27 @@
 </span><span class="kw">pub struct </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/struct.AllocHistory.html">AllocHistory</a> {
     id: <a href="../../../../miri/struct.AllocId.html">AllocId</a>,
     base: (<a href="item.rs.html#7">Item</a>, <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>),
-    creations: smallvec::SmallVec&lt;[<a href="#32-35">Creation</a>; <span class="number">1</span>]&gt;,
-    invalidations: smallvec::SmallVec&lt;[<a href="#62-67">Invalidation</a>; <span class="number">1</span>]&gt;,
-    protectors: smallvec::SmallVec&lt;[<a href="#108-111">Protection</a>; <span class="number">1</span>]&gt;,
+    creations: smallvec::SmallVec&lt;[<a href="#33-36">Creation</a>; <span class="number">1</span>]&gt;,
+    invalidations: smallvec::SmallVec&lt;[<a href="#63-68">Invalidation</a>; <span class="number">1</span>]&gt;,
+    protectors: smallvec::SmallVec&lt;[<a href="#109-112">Protection</a>; <span class="number">1</span>]&gt;,
 }
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">struct </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/struct.Creation.html">Creation</a> {
-    retag: <a href="#192-198">RetagOp</a>,
+    retag: <a href="#193-199">RetagOp</a>,
     span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
 }
 
-<span class="kw">impl </span><a href="#32-35">Creation</a> {
+<span class="kw">impl </span><a href="#33-36">Creation</a> {
     <span class="kw">fn </span>generate_diagnostic(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>, <a href="../../../../rustc_span/struct.SpanData.html">SpanData</a>) {
-        <span class="kw">let </span>tag = <a class="self" href="#38">self</a>.retag.new_tag;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(perm) = <a class="self" href="#38">self</a>.retag.permission {
+        <span class="kw">let </span>tag = <a class="self" href="#39">self</a>.retag.new_tag;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(perm) = <a class="self" href="#39">self</a>.retag.permission {
             (
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                     <span class="string">&quot;{tag:?} was created by a {:?} retag at offsets {:?}&quot;</span>,
                     perm, <span class="self">self</span>.retag.range,
                 ),
-                <a class="self" href="#38">self</a>.span.data(),
+                <a class="self" href="#39">self</a>.span.data(),
             )
         } <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.retag.range.size == Size::ZERO);
@@ -586,7 +594,7 @@
                     <span class="string">&quot;{tag:?} would have been created here, but this is a zero-size retag ({:?}) so the tag in question does not exist anywhere&quot;</span>,
                     <span class="self">self</span>.retag.range,
                 ),
-                <a class="self" href="#38">self</a>.span.data(),
+                <a class="self" href="#39">self</a>.span.data(),
             )
         }
     }
@@ -597,16 +605,16 @@
     tag: <a href="../mod.rs.html#20">BorTag</a>,
     range: <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>,
     span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    cause: <a href="#70-73">InvalidationCause</a>,
+    cause: <a href="#71-74">InvalidationCause</a>,
 }
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">enum </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/enum.InvalidationCause.html">InvalidationCause</a> {
     Access(<a href="../mod.rs.html#125-128">AccessKind</a>),
-    Retag(<a href="item.rs.html#68-78">Permission</a>, <a href="#201-204">RetagInfo</a>),
+    Retag(<a href="item.rs.html#68-78">Permission</a>, <a href="#202-205">RetagInfo</a>),
 }
 
-<span class="kw">impl </span><a href="#62-67">Invalidation</a> {
+<span class="kw">impl </span><a href="#63-68">Invalidation</a> {
     <span class="kw">fn </span>generate_diagnostic(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>, <a href="../../../../rustc_span/struct.SpanData.html">SpanData</a>) {
         <span class="kw">let </span>message = <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(
             <span class="self">self</span>.cause,
@@ -624,16 +632,16 @@
                 <span class="self">self</span>.tag, <span class="self">self</span>.range, <span class="self">self</span>.cause
             )
         };
-        (<a href="#77">message</a>, <a class="self" href="#76">self</a>.span.data())
+        (<a href="#78">message</a>, <a class="self" href="#77">self</a>.span.data())
     }
 }
 
-<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html">fmt::Display</a> <span class="kw">for </span><a href="#70-73">InvalidationCause</a> {
+<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html">fmt::Display</a> <span class="kw">for </span><a href="#71-74">InvalidationCause</a> {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">fmt::Result</a> {
-        <span class="kw">match </span><span class="self"><a href="#98">self</a> </span>{
-            <a href="#71">InvalidationCause::Access</a>(kind) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#98">f</a>, <span class="string">&quot;{kind}&quot;</span>),
-            <a href="#72">InvalidationCause::Retag</a>(perm, info) =&gt;
-                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#98">f</a>, <span class="string">&quot;{perm:?} {retag}&quot;</span>, retag = info.summary()),
+        <span class="kw">match </span><span class="self"><a href="#99">self</a> </span>{
+            <a href="#72">InvalidationCause::Access</a>(kind) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#99">f</a>, <span class="string">&quot;{kind}&quot;</span>),
+            <a href="#73">InvalidationCause::Retag</a>(perm, info) =&gt;
+                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#99">f</a>, <span class="string">&quot;{perm:?} {retag}&quot;</span>, retag = info.summary()),
         }
     }
 }
@@ -652,37 +660,37 @@
 }
 
 <span class="kw">pub struct </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/struct.DiagnosticCxBuilder.html">DiagnosticCxBuilder</a>&lt;<span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    operation: <a href="#185-189">Operation</a>,
+    operation: <a href="#186-190">Operation</a>,
     machine: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ecx </span>MiriMachine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
 }
 
 <span class="kw">pub struct </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/struct.DiagnosticCx.html">DiagnosticCx</a>&lt;<span class="lifetime">&#39;history</span>, <span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    operation: <a href="#185-189">Operation</a>,
+    operation: <a href="#186-190">Operation</a>,
     machine: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ecx </span>MiriMachine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-    history: <span class="kw-2">&amp;</span><span class="lifetime">&#39;history </span><span class="kw-2">mut </span><a href="#23-29">AllocHistory</a>,
+    history: <span class="kw-2">&amp;</span><span class="lifetime">&#39;history </span><span class="kw-2">mut </span><a href="#24-30">AllocHistory</a>,
     offset: <a href="../../../../rustc_abi/struct.Size.html">Size</a>,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; DiagnosticCxBuilder&lt;<span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>build&lt;<span class="lifetime">&#39;history</span>&gt;(
         <span class="self">self</span>,
-        history: <span class="kw-2">&amp;</span><span class="lifetime">&#39;history </span><span class="kw-2">mut </span><a href="#23-29">AllocHistory</a>,
+        history: <span class="kw-2">&amp;</span><span class="lifetime">&#39;history </span><span class="kw-2">mut </span><a href="#24-30">AllocHistory</a>,
         offset: <a href="../../../../rustc_abi/struct.Size.html">Size</a>,
     ) -&gt; DiagnosticCx&lt;<span class="lifetime">&#39;history</span>, <span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#125-130">DiagnosticCx</a> { operation: <a class="self" href="#134">self</a>.operation, machine: <a class="self" href="#134">self</a>.machine, <a href="#135">history</a>, <a href="#136">offset</a> }
+        <a href="#126-131">DiagnosticCx</a> { operation: <a class="self" href="#135">self</a>.operation, machine: <a class="self" href="#135">self</a>.machine, <a href="#136">history</a>, <a href="#137">offset</a> }
     }
 
     <span class="kw">pub fn </span>retag(
         machine: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ecx </span>MiriMachine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-        info: <a href="#201-204">RetagInfo</a>,
+        info: <a href="#202-205">RetagInfo</a>,
         new_tag: <a href="../mod.rs.html#20">BorTag</a>,
         orig_tag: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>,
         range: <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>operation =
-            <a href="#186">Operation::Retag</a>(<a href="#192-198">RetagOp</a> { <a href="#143">info</a>, <a href="#144">new_tag</a>, <a href="#145">orig_tag</a>, <a href="#146">range</a>, permission: <span class="prelude-val">None </span>});
+            <a href="#187">Operation::Retag</a>(<a href="#193-199">RetagOp</a> { <a href="#144">info</a>, <a href="#145">new_tag</a>, <a href="#146">orig_tag</a>, <a href="#147">range</a>, permission: <span class="prelude-val">None </span>});
 
-        <a href="#120-123">DiagnosticCxBuilder</a> { <a href="#142">machine</a>, <a href="#148">operation</a> }
+        <a href="#121-124">DiagnosticCxBuilder</a> { <a href="#143">machine</a>, <a href="#149">operation</a> }
     }
 
     <span class="kw">pub fn </span>read(
@@ -690,8 +698,8 @@
         tag: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>,
         range: <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>operation = <a href="#187">Operation::Access</a>(<a href="#215-219">AccessOp</a> { kind: <a href="../mod.rs.html#126">AccessKind::Read</a>, <a href="#156">tag</a>, <a href="#157">range</a> });
-        <a href="#120-123">DiagnosticCxBuilder</a> { <a href="#155">machine</a>, <a href="#159">operation</a> }
+        <span class="kw">let </span>operation = <a href="#188">Operation::Access</a>(<a href="#216-220">AccessOp</a> { kind: <a href="../mod.rs.html#126">AccessKind::Read</a>, <a href="#157">tag</a>, <a href="#158">range</a> });
+        <a href="#121-124">DiagnosticCxBuilder</a> { <a href="#156">machine</a>, <a href="#160">operation</a> }
     }
 
     <span class="kw">pub fn </span>write(
@@ -699,32 +707,32 @@
         tag: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>,
         range: <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>operation = <a href="#187">Operation::Access</a>(<a href="#215-219">AccessOp</a> { kind: <a href="../mod.rs.html#127">AccessKind::Write</a>, <a href="#165">tag</a>, <a href="#166">range</a> });
-        <a href="#120-123">DiagnosticCxBuilder</a> { <a href="#164">machine</a>, <a href="#168">operation</a> }
+        <span class="kw">let </span>operation = <a href="#188">Operation::Access</a>(<a href="#216-220">AccessOp</a> { kind: <a href="../mod.rs.html#127">AccessKind::Write</a>, <a href="#166">tag</a>, <a href="#167">range</a> });
+        <a href="#121-124">DiagnosticCxBuilder</a> { <a href="#165">machine</a>, <a href="#169">operation</a> }
     }
 
     <span class="kw">pub fn </span>dealloc(machine: <span class="kw-2">&amp;</span><span class="lifetime">&#39;ecx </span>MiriMachine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;, tag: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>operation = <a href="#188">Operation::Dealloc</a>(<a href="#222-224">DeallocOp</a> { <a href="#172">tag</a> });
-        <a href="#120-123">DiagnosticCxBuilder</a> { <a href="#172">machine</a>, <a href="#173">operation</a> }
+        <span class="kw">let </span>operation = <a href="#189">Operation::Dealloc</a>(<a href="#223-225">DeallocOp</a> { <a href="#173">tag</a> });
+        <a href="#121-124">DiagnosticCxBuilder</a> { <a href="#173">machine</a>, <a href="#174">operation</a> }
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;history</span>, <span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; DiagnosticCx&lt;<span class="lifetime">&#39;history</span>, <span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>unbuild(<span class="self">self</span>) -&gt; DiagnosticCxBuilder&lt;<span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#120-123">DiagnosticCxBuilder</a> { machine: <a class="self" href="#179">self</a>.machine, operation: <a class="self" href="#179">self</a>.operation }
+        <a href="#121-124">DiagnosticCxBuilder</a> { machine: <a class="self" href="#180">self</a>.machine, operation: <a class="self" href="#180">self</a>.operation }
     }
 }
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">enum </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/enum.Operation.html">Operation</a> {
-    Retag(<a href="#192-198">RetagOp</a>),
-    Access(<a href="#215-219">AccessOp</a>),
-    Dealloc(<a href="#222-224">DeallocOp</a>),
+    Retag(<a href="#193-199">RetagOp</a>),
+    Access(<a href="#216-220">AccessOp</a>),
+    Dealloc(<a href="#223-225">DeallocOp</a>),
 }
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">struct </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/struct.RetagOp.html">RetagOp</a> {
-    info: <a href="#201-204">RetagInfo</a>,
+    info: <a href="#202-205">RetagInfo</a>,
     new_tag: <a href="../mod.rs.html#20">BorTag</a>,
     orig_tag: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>,
     range: <a href="../../../../miri/struct.AllocRange.html">AllocRange</a>,
@@ -733,7 +741,7 @@
 
 <span class="attr">#[derive(Debug, Clone, Copy, PartialEq)]
 </span><span class="kw">pub struct </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/struct.RetagInfo.html">RetagInfo</a> {
-    <span class="kw">pub </span>cause: <a href="#207-212">RetagCause</a>,
+    <span class="kw">pub </span>cause: <a href="#208-213">RetagCause</a>,
     <span class="kw">pub </span>in_field: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 }
 
@@ -757,90 +765,96 @@
     tag: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>,
 }
 
-<span class="kw">impl </span><a href="#23-29">AllocHistory</a> {
+<span class="kw">impl </span><a href="#24-30">AllocHistory</a> {
     <span class="kw">pub fn </span>new(id: <a href="../../../../miri/struct.AllocId.html">AllocId</a>, item: <a href="item.rs.html#7">Item</a>, machine: <span class="kw-2">&amp;</span>MiriMachine&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            <a href="#227">id</a>,
-            base: (<a href="#227">item</a>, <a href="#227">machine</a>.<a href="../../helpers.rs.html#1076-1080">current_span</a>()),
+            <a href="#228">id</a>,
+            base: (<a href="#228">item</a>, <a href="#228">machine</a>.<a href="../../helpers.rs.html#1094-1098">current_span</a>()),
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
         }
     }
+
+    <span class="kw">pub fn </span>retain(<span class="kw-2">&amp;mut </span><span class="self">self</span>, live_tags: <span class="kw-2">&amp;</span>FxHashSet&lt;<a href="../mod.rs.html#20">BorTag</a>&gt;) {
+        <a class="self" href="#238">self</a>.invalidations.retain(|event| <a href="#238">live_tags</a>.contains(<span class="kw-2">&amp;</span><a href="#239">event</a>.tag));
+        <a class="self" href="#238">self</a>.creations.retain(|event| <a href="#238">live_tags</a>.contains(<span class="kw-2">&amp;</span><a href="#240">event</a>.retag.new_tag));
+        <a class="self" href="#238">self</a>.protectors.retain(|event| <a href="#238">live_tags</a>.contains(<span class="kw-2">&amp;</span><a href="#241">event</a>.tag));
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;history</span>, <span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; DiagnosticCx&lt;<span class="lifetime">&#39;history</span>, <span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>start_grant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, perm: <a href="item.rs.html#68-78">Permission</a>) {
-        <span class="kw">let </span><a href="#186">Operation::Retag</a>(op) = <span class="kw-2">&amp;mut </span><a class="self" href="#239">self</a>.operation <span class="kw">else </span>{
+        <span class="kw">let </span><a href="#187">Operation::Retag</a>(op) = <span class="kw-2">&amp;mut </span><a class="self" href="#246">self</a>.operation <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(
                 <span class="string">&quot;start_grant must only be called during a retag, this is: {:?}&quot;</span>,
                 <span class="self">self</span>.operation
             )
         };
-        <a href="#240">op</a>.permission = <span class="prelude-val">Some</span>(<a href="#239">perm</a>);
+        <a href="#247">op</a>.permission = <span class="prelude-val">Some</span>(<a href="#246">perm</a>);
 
-        <span class="kw">let </span>last_creation = <span class="kw-2">&amp;mut </span><a class="self" href="#239">self</a>.history.creations.last_mut().unwrap();
-        <span class="kw">match </span><a href="#248">last_creation</a>.retag.permission {
+        <span class="kw">let </span>last_creation = <span class="kw-2">&amp;mut </span><a class="self" href="#246">self</a>.history.creations.last_mut().unwrap();
+        <span class="kw">match </span><a href="#255">last_creation</a>.retag.permission {
             <span class="prelude-val">None </span>=&gt; {
-                <a href="#248">last_creation</a>.retag.permission = <span class="prelude-val">Some</span>(<a href="#239">perm</a>);
+                <a href="#255">last_creation</a>.retag.permission = <span class="prelude-val">Some</span>(<a href="#246">perm</a>);
             }
             <span class="prelude-val">Some</span>(previous) =&gt;
                 <span class="kw">if </span>previous != perm {
                     <span class="comment">// &#39;Split up&#39; the creation event.
-                    </span><span class="kw">let </span>previous_range = <a href="#248">last_creation</a>.retag.range;
-                    <a href="#248">last_creation</a>.retag.range = <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a href="#256">previous_range</a>.start, <a class="self" href="#239">self</a>.offset);
-                    <span class="kw">let </span><span class="kw-2">mut </span>new_event = <a href="#248">last_creation</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
-                    <a href="#258">new_event</a>.retag.range = <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a class="self" href="#239">self</a>.offset, <a href="#256">previous_range</a>.end());
-                    <a href="#258">new_event</a>.retag.permission = <span class="prelude-val">Some</span>(<a href="#239">perm</a>);
-                    <a class="self" href="#239">self</a>.history.creations.push(<a href="#258">new_event</a>);
+                    </span><span class="kw">let </span>previous_range = <a href="#255">last_creation</a>.retag.range;
+                    <a href="#255">last_creation</a>.retag.range = <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a href="#263">previous_range</a>.start, <a class="self" href="#246">self</a>.offset);
+                    <span class="kw">let </span><span class="kw-2">mut </span>new_event = <a href="#255">last_creation</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+                    <a href="#265">new_event</a>.retag.range = <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a class="self" href="#246">self</a>.offset, <a href="#263">previous_range</a>.end());
+                    <a href="#265">new_event</a>.retag.permission = <span class="prelude-val">Some</span>(<a href="#246">perm</a>);
+                    <a class="self" href="#246">self</a>.history.creations.push(<a href="#265">new_event</a>);
                 },
         }
     }
 
     <span class="kw">pub fn </span>log_creation(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><a href="#186">Operation::Retag</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#266">self</a>.operation <span class="kw">else </span>{
+        <span class="kw">let </span><a href="#187">Operation::Retag</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#273">self</a>.operation <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;log_creation must only be called during a retag&quot;</span>)
         };
-        <a class="self" href="#266">self</a>.history
+        <a class="self" href="#273">self</a>.history
             .creations
-            .push(<a href="#32-35">Creation</a> { retag: <a href="#267">op</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), span: <a class="self" href="#266">self</a>.machine.<a href="../../helpers.rs.html#1076-1080">current_span</a>() });
+            .push(<a href="#33-36">Creation</a> { retag: <a href="#274">op</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), span: <a class="self" href="#273">self</a>.machine.<a href="../../helpers.rs.html#1094-1098">current_span</a>() });
     }
 
     <span class="kw">pub fn </span>log_invalidation(<span class="kw-2">&amp;mut </span><span class="self">self</span>, tag: <a href="../mod.rs.html#20">BorTag</a>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>span = <a class="self" href="#275">self</a>.machine.<a href="../../helpers.rs.html#1076-1080">current_span</a>();
-        <span class="kw">let </span>(range, cause) = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#275">self</a>.operation {
-            <a href="#186">Operation::Retag</a>(<a href="#192-198">RetagOp</a> { info, range, permission, .. }) =&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>span = <a class="self" href="#282">self</a>.machine.<a href="../../helpers.rs.html#1094-1098">current_span</a>();
+        <span class="kw">let </span>(range, cause) = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#282">self</a>.operation {
+            <a href="#187">Operation::Retag</a>(<a href="#193-199">RetagOp</a> { info, range, permission, .. }) =&gt; {
                 <span class="kw">if </span>info.cause == RetagCause::FnEntry {
-                    <a href="#276">span</a> = <a class="self" href="#275">self</a>.machine.<a href="../../helpers.rs.html#1087-1093">caller_span</a>();
+                    <a href="#283">span</a> = <a class="self" href="#282">self</a>.machine.<a href="../../helpers.rs.html#1105-1111">caller_span</a>();
                 }
-                (<span class="kw-2">*</span><a href="#278">range</a>, <a href="#72">InvalidationCause::Retag</a>(<a href="#278">permission</a>.unwrap(), <span class="kw-2">*</span><a href="#278">info</a>))
+                (<span class="kw-2">*</span><a href="#285">range</a>, <a href="#73">InvalidationCause::Retag</a>(<a href="#285">permission</a>.unwrap(), <span class="kw-2">*</span><a href="#285">info</a>))
             }
-            <a href="#187">Operation::Access</a>(<a href="#215-219">AccessOp</a> { kind, range, .. }) =&gt;
-                (<span class="kw-2">*</span><a href="#284">range</a>, <a href="#71">InvalidationCause::Access</a>(<span class="kw-2">*</span><a href="#284">kind</a>)),
-            <a href="#188">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt; {
+            <a href="#188">Operation::Access</a>(<a href="#216-220">AccessOp</a> { kind, range, .. }) =&gt;
+                (<span class="kw-2">*</span><a href="#291">range</a>, <a href="#72">InvalidationCause::Access</a>(<span class="kw-2">*</span><a href="#291">kind</a>)),
+            <a href="#189">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// This can be reached, but never be relevant later since the entire allocation is
                 // gone now.
                 </span><span class="kw">return</span>;
             }
         };
-        <a class="self" href="#275">self</a>.history.invalidations.push(<a href="#62-67">Invalidation</a> { <a href="#275">tag</a>, <a href="#277">range</a>, <a href="#276">span</a>, <a href="#277">cause</a> });
+        <a class="self" href="#282">self</a>.history.invalidations.push(<a href="#63-68">Invalidation</a> { <a href="#282">tag</a>, <a href="#284">range</a>, <a href="#283">span</a>, <a href="#284">cause</a> });
     }
 
     <span class="kw">pub fn </span>log_protector(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><a href="#186">Operation::Retag</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#295">self</a>.operation <span class="kw">else </span>{
+        <span class="kw">let </span><a href="#187">Operation::Retag</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#302">self</a>.operation <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;Protectors can only be created during a retag&quot;</span>)
         };
-        <a class="self" href="#295">self</a>.history
+        <a class="self" href="#302">self</a>.history
             .protectors
-            .push(<a href="#108-111">Protection</a> { tag: <a href="#296">op</a>.new_tag, span: <a class="self" href="#295">self</a>.machine.<a href="../../helpers.rs.html#1076-1080">current_span</a>() });
+            .push(<a href="#109-112">Protection</a> { tag: <a href="#303">op</a>.new_tag, span: <a class="self" href="#302">self</a>.machine.<a href="../../helpers.rs.html#1094-1098">current_span</a>() });
     }
 
     <span class="kw">pub fn </span>get_logs_relevant_to(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         tag: <a href="../mod.rs.html#20">BorTag</a>,
         protector_tag: <span class="prelude-ty">Option</span>&lt;<a href="../mod.rs.html#20">BorTag</a>&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#114-118">TagHistory</a>&gt; {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(created) = <span class="self"><a href="#305">self</a>
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#115-119">TagHistory</a>&gt; {
+        <span class="kw">let </span><span class="prelude-val">Some</span>(created) = <span class="self"><a href="#312">self</a>
             </span>.history
             .creations
             .iter()
@@ -849,12 +863,12 @@
                 <span class="comment">// First, look for a Creation event where the tag and the offset matches. This
                 // ensures that we pick the right Creation event when a retag isn&#39;t uniform due to
                 // Freeze.
-                </span><span class="kw">let </span>range = <a href="#314">event</a>.retag.range;
+                </span><span class="kw">let </span>range = <a href="#321">event</a>.retag.range;
                 <span class="kw">if </span>event.retag.new_tag == tag
                     &amp;&amp; <span class="self">self</span>.offset &gt;= range.start
                     &amp;&amp; <span class="self">self</span>.offset &lt; (range.start + range.size)
                 {
-                    <span class="prelude-val">Some</span>(<a href="#314">event</a>.<a href="#38-58">generate_diagnostic</a>())
+                    <span class="prelude-val">Some</span>(<a href="#321">event</a>.<a href="#39-59">generate_diagnostic</a>())
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>}
@@ -863,9 +877,9 @@
                 <span class="comment">// If we didn&#39;t find anything with a matching offset, just return the event where
                 // the tag was created. This branch is hit when we use a tag at an offset that
                 // doesn&#39;t have the tag.
-                </span><a class="self" href="#305">self</a>.history.creations.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find_map</a>(|event| {
+                </span><a class="self" href="#312">self</a>.history.creations.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find_map</a>(|event| {
                     <span class="kw">if </span>event.retag.new_tag == tag {
-                        <span class="prelude-val">Some</span>(<a href="#332">event</a>.<a href="#38-58">generate_diagnostic</a>())
+                        <span class="prelude-val">Some</span>(<a href="#339">event</a>.<a href="#39-59">generate_diagnostic</a>())
                     } <span class="kw">else </span>{
                         <span class="prelude-val">None
                     </span>}
@@ -880,7 +894,7 @@
                             <span class="string">&quot;{tag:?} was created here, as the base tag for {:?}&quot;</span>,
                             <span class="self">self</span>.history.id
                         ),
-                        <a class="self" href="#305">self</a>.history.base.<span class="number">1</span>.data(),
+                        <a class="self" href="#312">self</a>.history.base.<span class="number">1</span>.data(),
                     ))
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
@@ -892,30 +906,30 @@
             </span><span class="kw">return </span><span class="prelude-val">None</span>;
         };
 
-        <span class="kw">let </span>invalidated = <a class="self" href="#305">self</a>.history.invalidations.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find_map</a>(|event| {
-            <span class="kw">if </span>event.tag == tag { <span class="prelude-val">Some</span>(<a href="#361">event</a>.<a href="#76-94">generate_diagnostic</a>()) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
+        <span class="kw">let </span>invalidated = <a class="self" href="#312">self</a>.history.invalidations.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find_map</a>(|event| {
+            <span class="kw">if </span>event.tag == tag { <span class="prelude-val">Some</span>(<a href="#368">event</a>.<a href="#77-95">generate_diagnostic</a>()) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
         });
 
-        <span class="kw">let </span>protected = <a href="#307">protector_tag</a>
+        <span class="kw">let </span>protected = <a href="#314">protector_tag</a>
             .and_then(|protector| {
-                <a class="self" href="#305">self</a>.history.protectors.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|protection| <a href="#367">protection</a>.tag == <a href="#366">protector</a>)
+                <a class="self" href="#312">self</a>.history.protectors.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|protection| <a href="#374">protection</a>.tag == <a href="#373">protector</a>)
             })
             .map(|protection| {
-                <span class="kw">let </span>protected_tag = <a href="#369">protection</a>.tag;
-                (<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{protected_tag:?} is this argument&quot;</span>), <a href="#369">protection</a>.span.data())
+                <span class="kw">let </span>protected_tag = <a href="#376">protection</a>.tag;
+                (<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{protected_tag:?} is this argument&quot;</span>), <a href="#376">protection</a>.span.data())
             });
 
-        <span class="prelude-val">Some</span>(<a href="#114-118">TagHistory</a> { <a href="#309">created</a>, <a href="#361">invalidated</a>, <a href="#365">protected</a> })
+        <span class="prelude-val">Some</span>(<a href="#115-119">TagHistory</a> { <a href="#316">created</a>, <a href="#368">invalidated</a>, <a href="#372">protected</a> })
     }
 
     <span class="doccomment">/// Report a descriptive error when `new` could not be granted from `derived_from`.
     </span><span class="attr">#[inline(never)] </span><span class="comment">// This is only called on fatal code paths
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>grant_error(<span class="kw-2">&amp;</span><span class="self">self</span>, stack: <span class="kw-2">&amp;</span><a href="stack.rs.html#22-43">Stack</a>) -&gt; InterpError&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span><a href="#186">Operation::Retag</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#379">self</a>.operation <span class="kw">else </span>{
+        <span class="kw">let </span><a href="#187">Operation::Retag</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#386">self</a>.operation <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;grant_error should only be called during a retag&quot;</span>)
         };
         <span class="kw">let </span>perm =
-            <a href="#380">op</a>.permission.expect(<span class="string">&quot;`start_grant` must be called before calling `grant_error`&quot;</span>);
+            <a href="#387">op</a>.permission.expect(<span class="string">&quot;`start_grant` must be called before calling `grant_error`&quot;</span>);
         <span class="kw">let </span>action = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
             <span class="string">&quot;trying to retag from {:?} for {:?} permission at {:?}[{:#x}]&quot;</span>,
             op.orig_tag,
@@ -925,12 +939,12 @@
         );
         <span class="kw">let </span><span class="kw-2">mut </span>helps = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[operation_summary(<span class="kw-2">&amp;</span>op.info.summary(), <span class="self">self</span>.history.id, op.range)];
         <span class="kw">if </span>op.info.in_field {
-            <a href="#392">helps</a>.push(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;errors for retagging in fields are fairly new; please reach out to us (e.g. at &lt;https://rust-lang.zulipchat.com/#narrow/stream/269128-miri&gt;) if you find this error troubling&quot;</span>));
+            <a href="#399">helps</a>.push(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;errors for retagging in fields are fairly new; please reach out to us (e.g. at &lt;https://rust-lang.zulipchat.com/#narrow/stream/269128-miri&gt;) if you find this error troubling&quot;</span>));
         }
-        <a href="#14-20">err_sb_ub</a>(
+        <a href="#15-21">err_sb_ub</a>(
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{action}{}&quot;</span>, error_cause(stack, op.orig_tag)),
-            <a href="#392">helps</a>,
-            <a href="#380">op</a>.orig_tag.<a href="../../machine.rs.html#271-276">and_then</a>(|orig_tag| <a class="self" href="#379">self</a>.<a href="#304-375">get_logs_relevant_to</a>(<a href="#399">orig_tag</a>, <span class="prelude-val">None</span>)),
+            <a href="#399">helps</a>,
+            <a href="#387">op</a>.orig_tag.<a href="../../machine.rs.html#271-276">and_then</a>(|orig_tag| <a class="self" href="#386">self</a>.<a href="#311-382">get_logs_relevant_to</a>(<a href="#406">orig_tag</a>, <span class="prelude-val">None</span>)),
         )
     }
 
@@ -938,10 +952,10 @@
     </span><span class="attr">#[inline(never)] </span><span class="comment">// This is only called on fatal code paths
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>access_error(<span class="kw-2">&amp;</span><span class="self">self</span>, stack: <span class="kw-2">&amp;</span><a href="stack.rs.html#22-43">Stack</a>) -&gt; InterpError&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="comment">// Deallocation and retagging also do an access as part of their thing, so handle that here, too.
-        </span><span class="kw">let </span>op = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#405">self</a>.operation {
-            <a href="#187">Operation::Access</a>(op) =&gt; <a href="#408">op</a>,
-            <a href="#186">Operation::Retag</a>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><a class="self" href="#405">self</a>.<a href="#379-401">grant_error</a>(<a href="#405">stack</a>),
-            <a href="#188">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><a class="self" href="#405">self</a>.<a href="#463-477">dealloc_error</a>(<a href="#405">stack</a>),
+        </span><span class="kw">let </span>op = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#412">self</a>.operation {
+            <a href="#188">Operation::Access</a>(op) =&gt; <a href="#415">op</a>,
+            <a href="#187">Operation::Retag</a>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><a class="self" href="#412">self</a>.<a href="#386-408">grant_error</a>(<a href="#412">stack</a>),
+            <a href="#189">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><a class="self" href="#412">self</a>.<a href="#470-484">dealloc_error</a>(<a href="#412">stack</a>),
         };
         <span class="kw">let </span>action = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
             <span class="string">&quot;attempting a {access} using {tag:?} at {alloc_id:?}[{offset:#x}]&quot;</span>,
@@ -950,55 +964,55 @@
             alloc_id = <span class="self">self</span>.history.id,
             offset = <span class="self">self</span>.offset.bytes(),
         );
-        <a href="#14-20">err_sb_ub</a>(
+        <a href="#15-21">err_sb_ub</a>(
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{action}{}&quot;</span>, error_cause(stack, op.tag)),
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[operation_summary(<span class="string">&quot;an access&quot;</span>, <span class="self">self</span>.history.id, op.range)],
-            <a href="#407">op</a>.tag.<a href="../../machine.rs.html#271-276">and_then</a>(|tag| <a class="self" href="#405">self</a>.<a href="#304-375">get_logs_relevant_to</a>(<a href="#422">tag</a>, <span class="prelude-val">None</span>)),
+            <a href="#414">op</a>.tag.<a href="../../machine.rs.html#271-276">and_then</a>(|tag| <a class="self" href="#412">self</a>.<a href="#311-382">get_logs_relevant_to</a>(<a href="#429">tag</a>, <span class="prelude-val">None</span>)),
         )
     }
 
     <span class="attr">#[inline(never)] </span><span class="comment">// This is only called on fatal code paths
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>protector_error(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><a href="item.rs.html#7">Item</a>, kind: <a href="../mod.rs.html#153-169">ProtectorKind</a>) -&gt; InterpError&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>protected = <span class="kw">match </span><a href="#427">kind</a> {
+        <span class="kw">let </span>protected = <span class="kw">match </span><a href="#434">kind</a> {
             <a href="../mod.rs.html#160">ProtectorKind::WeakProtector</a> =&gt; <span class="string">&quot;weakly protected&quot;</span>,
             <a href="../mod.rs.html#168">ProtectorKind::StrongProtector</a> =&gt; <span class="string">&quot;strongly protected&quot;</span>,
         };
-        <span class="kw">let </span>call_id = <span class="self"><a href="#427">self</a>
+        <span class="kw">let </span>call_id = <span class="self"><a href="#434">self</a>
             </span>.machine
             .threads
             .<a href="../../concurrency/thread.rs.html#416-420">all_stacks</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flatten</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|frame| {
-                <a href="#437">frame</a>.extra.borrow_tracker.as_ref().expect(<span class="string">&quot;we should have borrow tracking data&quot;</span>)
+                <a href="#444">frame</a>.extra.borrow_tracker.as_ref().expect(<span class="string">&quot;we should have borrow tracking data&quot;</span>)
             })
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|frame| <a href="#440">frame</a>.protected_tags.contains(<span class="kw-2">&amp;</span><a href="#427">item</a>.<a href="item.rs.html#37-39">tag</a>()))
-            .map(|frame| <a href="#441">frame</a>.call_id)
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|frame| <a href="#447">frame</a>.protected_tags.contains(<span class="kw-2">&amp;</span><a href="#434">item</a>.<a href="item.rs.html#37-39">tag</a>()))
+            .map(|frame| <a href="#448">frame</a>.call_id)
             .unwrap(); <span class="comment">// FIXME: Surely we should find something, but a panic seems wrong here?
-        </span><span class="kw">match </span><a class="self" href="#427">self</a>.operation {
-            <a href="#188">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt;
-                <a href="#14-20">err_sb_ub</a>(
+        </span><span class="kw">match </span><a class="self" href="#434">self</a>.operation {
+            <a href="#189">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt;
+                <a href="#15-21">err_sb_ub</a>(
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;deallocating while item {item:?} is {protected} by call {call_id:?}&quot;</span>,),
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[],
                     <span class="prelude-val">None</span>,
                 ),
-            <a href="#186">Operation::Retag</a>(<a href="#192-198">RetagOp</a> { orig_tag: tag, .. })
-            | <a href="#187">Operation::Access</a>(<a href="#215-219">AccessOp</a> { tag, .. }) =&gt;
-                <a href="#14-20">err_sb_ub</a>(
+            <a href="#187">Operation::Retag</a>(<a href="#193-199">RetagOp</a> { orig_tag: tag, .. })
+            | <a href="#188">Operation::Access</a>(<a href="#216-220">AccessOp</a> { tag, .. }) =&gt;
+                <a href="#15-21">err_sb_ub</a>(
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                         <span class="string">&quot;not granting access to tag {tag:?} because that would remove {item:?} which is {protected} because it is an argument of call {call_id:?}&quot;</span>,
                     ),
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[],
-                    <a href="#450">tag</a>.<a href="../../machine.rs.html#271-276">and_then</a>(|tag| <a class="self" href="#427">self</a>.<a href="#304-375">get_logs_relevant_to</a>(<a href="#457">tag</a>, <span class="prelude-val">Some</span>(<a href="#427">item</a>.<a href="item.rs.html#37-39">tag</a>()))),
+                    <a href="#457">tag</a>.<a href="../../machine.rs.html#271-276">and_then</a>(|tag| <a class="self" href="#434">self</a>.<a href="#311-382">get_logs_relevant_to</a>(<a href="#464">tag</a>, <span class="prelude-val">Some</span>(<a href="#434">item</a>.<a href="item.rs.html#37-39">tag</a>()))),
                 ),
         }
     }
 
     <span class="attr">#[inline(never)] </span><span class="comment">// This is only called on fatal code paths
     </span><span class="kw">pub fn </span>dealloc_error(<span class="kw-2">&amp;</span><span class="self">self</span>, stack: <span class="kw-2">&amp;</span><a href="stack.rs.html#22-43">Stack</a>) -&gt; InterpError&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span><a href="#188">Operation::Dealloc</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#463">self</a>.operation <span class="kw">else </span>{
+        <span class="kw">let </span><a href="#189">Operation::Dealloc</a>(op) = <span class="kw-2">&amp;</span><a class="self" href="#470">self</a>.operation <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(<span class="string">&quot;dealloc_error should only be called during a deallocation&quot;</span>)
         };
-        <a href="#14-20">err_sb_ub</a>(
+        <a href="#15-21">err_sb_ub</a>(
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                 <span class="string">&quot;attempting deallocation using {tag:?} at {alloc_id:?}{cause}&quot;</span>,
                 tag = op.tag,
@@ -1006,7 +1020,7 @@
                 cause = error_cause(stack, op.tag),
             ),
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[],
-            <a href="#464">op</a>.tag.<a href="../../machine.rs.html#271-276">and_then</a>(|tag| <a class="self" href="#463">self</a>.<a href="#304-375">get_logs_relevant_to</a>(<a href="#475">tag</a>, <span class="prelude-val">None</span>)),
+            <a href="#471">op</a>.tag.<a href="../../machine.rs.html#271-276">and_then</a>(|tag| <a class="self" href="#470">self</a>.<a href="#311-382">get_logs_relevant_to</a>(<a href="#482">tag</a>, <span class="prelude-val">None</span>)),
         )
     }
 
@@ -1015,12 +1029,12 @@
         <span class="kw">if </span>!global.tracked_pointer_tags.contains(<span class="kw-2">&amp;</span>item.tag()) {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>cause = <span class="kw">match </span><a class="self" href="#480">self</a>.operation {
-            <a href="#188">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot; due to deallocation&quot;</span>),
-            <a href="#187">Operation::Access</a>(<a href="#215-219">AccessOp</a> { kind, tag, .. }) =&gt;
+        <span class="kw">let </span>cause = <span class="kw">match </span><a class="self" href="#487">self</a>.operation {
+            <a href="#189">Operation::Dealloc</a>(<span class="kw">_</span>) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot; due to deallocation&quot;</span>),
+            <a href="#188">Operation::Access</a>(<a href="#216-220">AccessOp</a> { kind, tag, .. }) =&gt;
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot; due to {kind:?} access for {tag:?}&quot;</span>),
-            <a href="#186">Operation::Retag</a>(<a href="#192-198">RetagOp</a> { orig_tag, permission, new_tag, .. }) =&gt; {
-                <span class="kw">let </span>permission = <a href="#488">permission</a>
+            <a href="#187">Operation::Retag</a>(<a href="#193-199">RetagOp</a> { orig_tag, permission, new_tag, .. }) =&gt; {
+                <span class="kw">let </span>permission = <a href="#495">permission</a>
                     .expect(<span class="string">&quot;start_grant should set the current permission before popping a tag&quot;</span>);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                     <span class="string">&quot; due to {permission:?} retag from {orig_tag:?} (that retag created {new_tag:?})&quot;
@@ -1028,7 +1042,7 @@
             }
         };
 
-        <a class="self" href="#480">self</a>.machine.<a href="../../diagnostics.rs.html#508-605">emit_diagnostic</a>(<a href="../../diagnostics.rs.html#114">NonHaltingDiagnostic::PoppedPointerTag</a>(<span class="kw-2">*</span><a href="#480">item</a>, <a href="#484">cause</a>));
+        <a class="self" href="#487">self</a>.machine.<a href="../../diagnostics.rs.html#508-605">emit_diagnostic</a>(<a href="../../diagnostics.rs.html#114">NonHaltingDiagnostic::PoppedPointerTag</a>(<span class="kw-2">*</span><a href="#487">item</a>, <a href="#491">cause</a>));
     }
 }
 
@@ -1037,7 +1051,7 @@
 }
 
 <span class="kw">fn </span><a href="../../../../miri/borrow_tracker/stacked_borrows/diagnostics/fn.error_cause.html">error_cause</a>(stack: <span class="kw-2">&amp;</span><a href="stack.rs.html#22-43">Stack</a>, prov_extra: <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a> {
-    <span class="kw">if let </span><a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) = <a href="#505">prov_extra</a> {
+    <span class="kw">if let </span><a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) = <a href="#512">prov_extra</a> {
         <span class="kw">if </span>(<span class="number">0</span>..stack.len())
             .map(|i| stack.get(i).unwrap())
             .any(|item| item.tag() == tag &amp;&amp; item.perm() != Permission::Disabled)
@@ -1051,19 +1065,19 @@
     </span>}
 }
 
-<span class="kw">impl </span><a href="#201-204">RetagInfo</a> {
+<span class="kw">impl </span><a href="#202-205">RetagInfo</a> {
     <span class="kw">fn </span>summary(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-        <span class="kw">let </span><span class="kw-2">mut </span>s = <span class="kw">match </span><a class="self" href="#521">self</a>.cause {
-            <a href="#208">RetagCause::Normal</a> =&gt; <span class="string">&quot;retag&quot;</span>,
-            <a href="#210">RetagCause::FnEntry</a> =&gt; <span class="string">&quot;function-entry retag&quot;</span>,
-            <a href="#209">RetagCause::InPlaceFnPassing</a> =&gt; <span class="string">&quot;in-place function argument/return passing protection&quot;</span>,
-            <a href="#211">RetagCause::TwoPhase</a> =&gt; <span class="string">&quot;two-phase retag&quot;</span>,
+        <span class="kw">let </span><span class="kw-2">mut </span>s = <span class="kw">match </span><a class="self" href="#528">self</a>.cause {
+            <a href="#209">RetagCause::Normal</a> =&gt; <span class="string">&quot;retag&quot;</span>,
+            <a href="#211">RetagCause::FnEntry</a> =&gt; <span class="string">&quot;function-entry retag&quot;</span>,
+            <a href="#210">RetagCause::InPlaceFnPassing</a> =&gt; <span class="string">&quot;in-place function argument/return passing protection&quot;</span>,
+            <a href="#212">RetagCause::TwoPhase</a> =&gt; <span class="string">&quot;two-phase retag&quot;</span>,
         }
         .<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
         <span class="kw">if </span><span class="self">self</span>.in_field {
-            <a href="#522">s</a>.push_str(<span class="string">&quot; (of a reference/box inside this compound value)&quot;</span>);
+            <a href="#529">s</a>.push_str(<span class="string">&quot; (of a reference/box inside this compound value)&quot;</span>);
         }
-        <a href="#522">s</a>
+        <a href="#529">s</a>
     }
 }
 </code></pre></div></section></main></body></html>

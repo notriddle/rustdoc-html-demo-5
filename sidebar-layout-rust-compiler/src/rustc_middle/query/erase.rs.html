@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/query/erase.rs`."><title>erase.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/query/erase.rs`."><title>erase.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -346,14 +346,10 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="../lib.rs.html#98"><span class="kw">crate</span>::mir</a>;
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="../lib.rs.html#99"><span class="kw">crate</span>::mir</a>;
 <span class="kw">use </span><a href="plumbing.rs.html#635"><span class="kw">crate</span>::query::CyclePlaceholder</a>;
-<span class="kw">use </span><a href="../lib.rs.html#100"><span class="kw">crate</span>::traits</a>;
-<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="../ty/mod.rs.html#451">Ty</a>};
+<span class="kw">use </span><a href="../lib.rs.html#101"><span class="kw">crate</span>::traits</a>;
+<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="../ty/mod.rs.html#463">Ty</a>};
 <span class="kw">use </span>std::mem::{<a href="https://doc.rust-lang.org/nightly/core/mem/fn.size_of.html">size_of</a>, <a href="https://doc.rust-lang.org/nightly/core/mem/fn.transmute_copy.html">transmute_copy</a>, <a href="https://doc.rust-lang.org/nightly/core/mem/maybe_uninit/union.MaybeUninit.html">MaybeUninit</a>};
 
 <span class="attr">#[derive(Copy, Clone)]
@@ -420,8 +416,8 @@
     <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(), <a href="../../../rustc_span/struct.ErrorGuaranteed.html">rustc_errors::ErrorGuaranteed</a>&gt;&gt;()];
 }
 
-<span class="kw">impl</span>&lt;T&gt; <a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>T, <a href="../traits/mod.rs.html#915-929">traits::CodegenObligationError</a>&gt; {
-    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(), <a href="../traits/mod.rs.html#915-929">traits::CodegenObligationError</a>&gt;&gt;()];
+<span class="kw">impl</span>&lt;T&gt; <a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>T, <a href="../traits/mod.rs.html#922-936">traits::CodegenObligationError</a>&gt; {
+    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(), <a href="../traits/mod.rs.html#922-936">traits::CodegenObligationError</a>&gt;&gt;()];
 }
 
 <span class="kw">impl</span>&lt;T&gt; <a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>T, <span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>ty::layout::FnAbiError&lt;<span class="lifetime">&#39;_</span>&gt;&gt; {
@@ -468,21 +464,16 @@
     <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;ty::Const&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/mod.rs.html#199-205">mir::interpret::LitToConstError</a>&gt;&gt;()];
 }
 
-<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;mir::ConstantKind&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../mir/interpret/mod.rs.html#199-205">mir::interpret::LitToConstError</a>&gt; {
-    <span class="kw">type </span><span class="prelude-ty">Result </span>=
-        [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;mir::ConstantKind&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/mod.rs.html#199-205">mir::interpret::LitToConstError</a>&gt;&gt;()];
+<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;mir::Const&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../mir/interpret/mod.rs.html#199-205">mir::interpret::LitToConstError</a>&gt; {
+    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;mir::Const&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/mod.rs.html#199-205">mir::interpret::LitToConstError</a>&gt;&gt;()];
 }
 
-<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;mir::interpret::ConstAlloc&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt; {
-    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;
-        <span class="prelude-ty">Result</span>&lt;mir::interpret::ConstAlloc&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt;,
-    &gt;()];
+<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;mir::ConstAlloc&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt; {
+    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;mir::ConstAlloc&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt;&gt;()];
 }
 
-<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;mir::interpret::ConstValue&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt; {
-    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;
-        <span class="prelude-ty">Result</span>&lt;mir::interpret::ConstValue&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt;,
-    &gt;()];
+<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;mir::ConstValue&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt; {
+    <span class="kw">type </span><span class="prelude-ty">Result </span>= [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;mir::ConstValue&lt;<span class="lifetime">&#39;static</span>&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt;&gt;()];
 }
 
 <span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ty::ValTree&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt; {
@@ -490,9 +481,9 @@
         [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ty::ValTree&lt;<span class="lifetime">&#39;static</span>&gt;&gt;, <a href="../mir/interpret/error.rs.html#22-29">mir::interpret::ErrorHandled</a>&gt;&gt;()];
 }
 
-<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, <a href="../ty/util.rs.html#1417">ty::util::AlwaysRequiresDrop</a>&gt; {
+<span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;_ </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, <a href="../ty/util.rs.html#1407">ty::util::AlwaysRequiresDrop</a>&gt; {
     <span class="kw">type </span><span class="prelude-ty">Result </span>=
-        [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;static</span>&gt;&gt;, <a href="../ty/util.rs.html#1417">ty::util::AlwaysRequiresDrop</a>&gt;&gt;()];
+        [<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>; size_of::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;static</span>&gt;&gt;, <a href="../ty/util.rs.html#1407">ty::util::AlwaysRequiresDrop</a>&gt;&gt;()];
 }
 
 <span class="kw">impl </span><a href="#14-16">EraseType</a> <span class="kw">for </span><span class="prelude-ty">Result</span>&lt;ty::EarlyBinder&lt;Ty&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, <a href="plumbing.rs.html#635">CyclePlaceholder</a>&gt; {
@@ -557,7 +548,7 @@
     }
 }
 
-<a class="macro" href="#198-206">trivial! </a>{
+<a class="macro" href="#193-201">trivial! </a>{
     (),
     <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     <span class="prelude-ty">Option</span>&lt;(<a href="../../../rustc_span/def_id/struct.DefId.html">rustc_span::def_id::DefId</a>, <a href="../../../rustc_session/config/enum.EntryFnType.html">rustc_session::config::EntryFnType</a>)&gt;,
@@ -570,8 +561,8 @@
     <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_hir/hir/enum.GeneratorKind.html">rustc_hir::GeneratorKind</a>&gt;,
     <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_hir/hir_id/struct.HirId.html">rustc_hir::HirId</a>&gt;,
     <span class="prelude-ty">Option</span>&lt;<a href="../middle/stability.rs.html#32-38">rustc_middle::middle::stability::DeprecationEntry</a>&gt;,
-    <span class="prelude-ty">Option</span>&lt;<a href="../ty/mod.rs.html#1809-1814">rustc_middle::ty::Destructor</a>&gt;,
-    <span class="prelude-ty">Option</span>&lt;<a href="../ty/mod.rs.html#2115-2118">rustc_middle::ty::ImplTraitInTraitData</a>&gt;,
+    <span class="prelude-ty">Option</span>&lt;<a href="../ty/mod.rs.html#1775-1780">rustc_middle::ty::Destructor</a>&gt;,
+    <span class="prelude-ty">Option</span>&lt;<a href="../ty/mod.rs.html#2081-2084">rustc_middle::ty::ImplTraitInTraitData</a>&gt;,
     <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/def_id/struct.CrateNum.html">rustc_span::def_id::CrateNum</a>&gt;,
     <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">rustc_span::def_id::DefId</a>&gt;,
     <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">rustc_span::def_id::LocalDefId</a>&gt;,
@@ -609,28 +600,29 @@
     <a href="../middle/resolve_bound_vars.rs.html#41-46">rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault</a>,
     <a href="../middle/resolve_bound_vars.rs.html#12-18">rustc_middle::middle::resolve_bound_vars::ResolvedArg</a>,
     <a href="../middle/stability.rs.html#32-38">rustc_middle::middle::stability::DeprecationEntry</a>,
-    <a href="../mir/query.rs.html#246-252">rustc_middle::mir::ConstQualifs</a>,
+    <a href="../mir/query.rs.html#245-251">rustc_middle::mir::ConstQualifs</a>,
     <a href="../mir/interpret/mod.rs.html#208">rustc_middle::mir::interpret::AllocId</a>,
     <a href="../mir/interpret/error.rs.html#22-29">rustc_middle::mir::interpret::ErrorHandled</a>,
     <a href="../mir/interpret/mod.rs.html#199-205">rustc_middle::mir::interpret::LitToConstError</a>,
     <a href="../thir.rs.html#88-97">rustc_middle::thir::ExprId</a>,
-    <a href="../traits/mod.rs.html#915-929">rustc_middle::traits::CodegenObligationError</a>,
+    <a href="../traits/mod.rs.html#922-936">rustc_middle::traits::CodegenObligationError</a>,
     <a href="../traits/select.rs.html#186-254">rustc_middle::traits::EvaluationResult</a>,
     <a href="../traits/select.rs.html#296-300">rustc_middle::traits::OverflowError</a>,
     <a href="../traits/query.rs.html#91">rustc_middle::traits::query::NoSolution</a>,
-    <a href="../traits/mod.rs.html#457-471">rustc_middle::traits::WellFormedLoc</a>,
+    <a href="../traits/mod.rs.html#464-478">rustc_middle::traits::WellFormedLoc</a>,
     <a href="../ty/adjustment.rs.html#201-207">rustc_middle::ty::adjustment::CoerceUnsizedInfo</a>,
     <a href="../ty/assoc.rs.html#20-38">rustc_middle::ty::AssocItem</a>,
     <a href="../ty/assoc.rs.html#13-16">rustc_middle::ty::AssocItemContainer</a>,
+    <a href="../ty/mod.rs.html#284-287">rustc_middle::ty::Asyncness</a>,
     <a href="../ty/sty.rs.html#960-964">rustc_middle::ty::BoundVariableKind</a>,
-    <a href="../ty/context.rs.html#2158-2162">rustc_middle::ty::DeducedParamAttrs</a>,
-    <a href="../ty/mod.rs.html#1809-1814">rustc_middle::ty::Destructor</a>,
-    <a href="../ty/fast_reject.rs.html#11-36">rustc_middle::ty::fast_reject::SimplifiedType</a>,
-    <a href="../ty/mod.rs.html#250-260">rustc_middle::ty::ImplPolarity</a>,
+    <a href="../ty/context.rs.html#2163-2167">rustc_middle::ty::DeducedParamAttrs</a>,
+    <a href="../ty/mod.rs.html#1775-1780">rustc_middle::ty::Destructor</a>,
+    <a href="../ty/fast_reject.rs.html#11-35">rustc_middle::ty::fast_reject::SimplifiedType</a>,
+    <a href="../ty/mod.rs.html#249-259">rustc_middle::ty::ImplPolarity</a>,
     <a href="../ty/adt.rs.html#574-577">rustc_middle::ty::Representability</a>,
     <a href="../../../rustc_middle/ty/struct.ReprOptions.html">rustc_middle::ty::ReprOptions</a>,
-    <a href="../ty/instance.rs.html#770">rustc_middle::ty::UnusedGenericParams</a>,
-    <a href="../ty/util.rs.html#1417">rustc_middle::ty::util::AlwaysRequiresDrop</a>,
+    <a href="../ty/instance.rs.html#775">rustc_middle::ty::UnusedGenericParams</a>,
+    <a href="../ty/util.rs.html#1407">rustc_middle::ty::util::AlwaysRequiresDrop</a>,
     rustc_middle::ty::Visibility&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">rustc_span::def_id::DefId</a>&gt;,
     <a href="../../../rustc_session/config/enum.CrateType.html">rustc_session::config::CrateType</a>,
     <a href="../../../rustc_session/config/enum.EntryFnType.html">rustc_session::config::EntryFnType</a>,
@@ -664,13 +656,13 @@
     }
 }
 
-<a class="macro" href="#305-313">tcx_lifetime! </a>{
+<a class="macro" href="#301-309">tcx_lifetime! </a>{
     rustc_middle::hir::Owner,
     rustc_middle::middle::exported_symbols::ExportedSymbol,
-    rustc_middle::mir::ConstantKind,
+    rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,
-    rustc_middle::mir::interpret::ConstAlloc,
-    rustc_middle::mir::interpret::ConstValue,
+    rustc_middle::mir::ConstAlloc,
+    rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::traits::query::MethodAutoderefStepsResult,

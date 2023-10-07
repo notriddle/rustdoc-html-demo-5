@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cargo/util/flock.rs`."><title>flock.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cargo" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cargo/util/flock.rs`."><title>flock.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="cargo" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -507,7 +507,7 @@
 
 <span class="kw">use </span><a href="errors.rs.html#10"><span class="kw">crate</span>::util::errors::CargoResult</a>;
 <span class="kw">use </span><a href="mod.rs.html#63"><span class="kw">crate</span>::util::style</a>;
-<span class="kw">use </span><a href="config/mod.rs.html#161-246"><span class="kw">crate</span>::util::Config</a>;
+<span class="kw">use </span><a href="config/mod.rs.html#163-248"><span class="kw">crate</span>::util::Config</a>;
 <span class="kw">use </span><a href="https://docs.rs/anyhow/1.0.75/anyhow/trait.Context.html">anyhow::Context</a> <span class="kw">as _</span>;
 <span class="kw">use </span><a href="../../../cargo_util/paths/index.html">cargo_util::paths</a>;
 <span class="kw">use </span><a href="#347-432">sys</a>::<span class="kw-2">*</span>;
@@ -669,7 +669,7 @@
     ///
     /// The returned file can be accessed to look at the path and also has
     /// read/write access to the underlying file.
-    </span><span class="kw">pub fn </span>open_rw&lt;P&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, path: P, config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#161-246">Config</a>, msg: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; CargoResult&lt;<a href="#14-18">FileLock</a>&gt;
+    </span><span class="kw">pub fn </span>open_rw&lt;P&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, path: P, config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#163-248">Config</a>, msg: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; CargoResult&lt;<a href="#14-18">FileLock</a>&gt;
     <span class="kw">where
         </span>P: AsRef&lt;<a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>&gt;,
     {
@@ -691,7 +691,7 @@
     /// The returned file can be accessed to look at the path and also has read
     /// access to the underlying file. Any writes to the file will return an
     /// error.
-    </span><span class="kw">pub fn </span>open_ro&lt;P&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, path: P, config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#161-246">Config</a>, msg: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; CargoResult&lt;<a href="#14-18">FileLock</a>&gt;
+    </span><span class="kw">pub fn </span>open_ro&lt;P&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, path: P, config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#163-248">Config</a>, msg: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; CargoResult&lt;<a href="#14-18">FileLock</a>&gt;
     <span class="kw">where
         </span>P: AsRef&lt;<a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>&gt;,
     {
@@ -709,7 +709,7 @@
         path: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>,
         opts: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/fs/struct.OpenOptions.html">OpenOptions</a>,
         state: <a href="#21-25">State</a>,
-        config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#161-246">Config</a>,
+        config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#163-248">Config</a>,
         msg: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
     ) -&gt; CargoResult&lt;<a href="#14-18">FileLock</a>&gt; {
         <span class="kw">let </span>path = <a class="self" href="#206">self</a>.root.join(<a href="#207">path</a>);
@@ -777,7 +777,7 @@
 /// Returns an error if the lock could not be acquired or if any error other
 /// than a contention error happens.
 </span><span class="kw">fn </span><a href="../../../cargo/util/flock/fn.acquire.html">acquire</a>(
-    config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#161-246">Config</a>,
+    config: <span class="kw-2">&amp;</span><a href="config/mod.rs.html#163-248">Config</a>,
     msg: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
     path: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>,
     lock_try: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Fn() -&gt; io::Result&lt;()&gt;,
@@ -822,25 +822,25 @@
     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
 
     <span class="attr">#[cfg(all(target_os = <span class="string">&quot;linux&quot;</span>, not(target_env = <span class="string">&quot;musl&quot;</span>)))]
-    </span><span class="kw">fn </span>is_on_nfs_mount(path: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/alloc/ffi/c_str/struct.CString.html">std::ffi::CString</a>;
-        <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
+    </span><span class="kw">fn </span>is_on_nfs_mount(path: <span class="kw-2">&amp;</span>Path) -&gt; bool {
+        <span class="kw">use </span>std::ffi::CString;
+        <span class="kw">use </span>std::mem;
         <span class="kw">use </span>std::os::unix::prelude::<span class="kw-2">*</span>;
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(path) = CString::new(<a href="#323">path</a>.as_os_str().<a href="https://doc.rust-lang.org/nightly/std/os/unix/ffi/os_str/trait.OsStrExt.html">as_bytes</a>()) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(path) = CString::new(path.as_os_str().as_bytes()) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
 
         <span class="kw">unsafe </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>buf: libc::statfs = mem::zeroed();
-            <span class="kw">let </span>r = libc::statfs(<a href="#328">path</a>.as_ptr(), <span class="kw-2">&amp;mut </span><a href="#333">buf</a>);
+            <span class="kw">let </span>r = libc::statfs(path.as_ptr(), <span class="kw-2">&amp;mut </span>buf);
 
-            <a href="#334">r</a> == <span class="number">0 </span>&amp;&amp; <a href="#333">buf</a>.f_type <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> == libc::NFS_SUPER_MAGIC <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
+            r == <span class="number">0 </span>&amp;&amp; buf.f_type <span class="kw">as </span>u32 == libc::NFS_SUPER_MAGIC <span class="kw">as </span>u32
         }
     }
 
     <span class="attr">#[cfg(any(not(target_os = <span class="string">&quot;linux&quot;</span>), target_env = <span class="string">&quot;musl&quot;</span>))]
-    </span><span class="kw">fn </span>is_on_nfs_mount(_path: <span class="kw-2">&amp;</span>Path) -&gt; bool {
+    </span><span class="kw">fn </span>is_on_nfs_mount(_path: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="bool-val">false
     </span>}
 }

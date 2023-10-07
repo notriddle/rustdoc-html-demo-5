@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["binop_left_homogeneous","binop_right_homogeneous","check_validity_requirement","is_disaligned","is_equal_up_to_subtyping","is_subtype","is_within_packed","type_name"],"mod":["alignment","check_validity_requirement","compare_types","type_name"]};
+window.SIDEBAR_ITEMS = {"fn":["binop_left_homogeneous","binop_right_homogeneous","check_validity_requirement","is_disaligned","is_equal_up_to_subtyping","is_within_packed","relate_types","type_name"],"mod":["alignment","check_validity_requirement","compare_types","type_name"]};

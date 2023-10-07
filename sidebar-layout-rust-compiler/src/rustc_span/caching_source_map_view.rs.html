@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_span/src/caching_source_map_view.rs`."><title>caching_source_map_view.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_span" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_span/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_span"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_span/src/caching_source_map_view.rs`."><title>caching_source_map_view.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_span" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_span/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_span"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -290,8 +290,8 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="source_map.rs.html#186-195"><span class="kw">crate</span>::source_map::SourceMap</a>;
-<span class="kw">use crate</span>::{<a href="lib.rs.html#2013-2031">BytePos</a>, <a href="lib.rs.html#1952-1957">Pos</a>, <a href="lib.rs.html#2013-2031">RelativeBytePos</a>, <a href="lib.rs.html#1326-1354">SourceFile</a>, <a href="lib.rs.html#450-457">SpanData</a>};
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="source_map.rs.html#215-224"><span class="kw">crate</span>::source_map::SourceMap</a>;
+<span class="kw">use crate</span>::{<a href="lib.rs.html#2007-2025">BytePos</a>, <a href="lib.rs.html#1946-1951">Pos</a>, <a href="lib.rs.html#2007-2025">RelativeBytePos</a>, <a href="lib.rs.html#1320-1348">SourceFile</a>, <a href="lib.rs.html#444-451">SpanData</a>};
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html">rustc_data_structures::sync::Lrc</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/ops/range/struct.Range.html">std::ops::Range</a>;
 
@@ -311,8 +311,8 @@
     // entry contains a position, the only ramification of the above is that we will get cache
     // misses for these rare positions. A line lookup for the position via `SourceMap::lookup_line`
     // after a cache miss will produce the last line number, as desired.
-    </span>line: Range&lt;<a href="lib.rs.html#2013-2031">BytePos</a>&gt;,
-    file: Lrc&lt;<a href="lib.rs.html#1326-1354">SourceFile</a>&gt;,
+    </span>line: Range&lt;<a href="lib.rs.html#2007-2025">BytePos</a>&gt;,
+    file: Lrc&lt;<a href="lib.rs.html#1320-1348">SourceFile</a>&gt;,
     file_index: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
 }
 
@@ -320,8 +320,8 @@
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        new_file_and_idx: <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1326-1354">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt;,
-        pos: <a href="lib.rs.html#2013-2031">BytePos</a>,
+        new_file_and_idx: <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1320-1348">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt;,
+        pos: <a href="lib.rs.html#2007-2025">BytePos</a>,
         time_stamp: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
     ) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>((file, file_idx)) = <a href="#31">new_file_and_idx</a> {
@@ -329,9 +329,9 @@
             <a class="self" href="#30">self</a>.file_index = <a href="#35">file_idx</a>;
         }
 
-        <span class="kw">let </span>pos = <a class="self" href="#30">self</a>.file.<a href="lib.rs.html#1703-1705">relative_position</a>(<a href="#32">pos</a>);
-        <span class="kw">let </span>line_index = <a class="self" href="#30">self</a>.file.<a href="lib.rs.html#1716-1718">lookup_line</a>(<a href="#40">pos</a>).unwrap();
-        <span class="kw">let </span>line_bounds = <a class="self" href="#30">self</a>.file.<a href="lib.rs.html#1720-1732">line_bounds</a>(<a href="#41">line_index</a>);
+        <span class="kw">let </span>pos = <a class="self" href="#30">self</a>.file.<a href="lib.rs.html#1697-1699">relative_position</a>(<a href="#32">pos</a>);
+        <span class="kw">let </span>line_index = <a class="self" href="#30">self</a>.file.<a href="lib.rs.html#1710-1712">lookup_line</a>(<a href="#40">pos</a>).unwrap();
+        <span class="kw">let </span>line_bounds = <a class="self" href="#30">self</a>.file.<a href="lib.rs.html#1714-1726">line_bounds</a>(<a href="#41">line_index</a>);
         <a class="self" href="#30">self</a>.line_number = <a href="#41">line_index</a> + <span class="number">1</span>;
         <a class="self" href="#30">self</a>.line = <a href="#42">line_bounds</a>;
         <a class="self" href="#30">self</a>.<a href="#49-51">touch</a>(<a href="#33">time_stamp</a>);
@@ -345,19 +345,19 @@
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span><a href="../../rustc_span/caching_source_map_view/struct.CachingSourceMapView.html">CachingSourceMapView</a>&lt;<span class="lifetime">&#39;sm</span>&gt; {
-    source_map: <span class="kw-2">&amp;</span><span class="lifetime">&#39;sm </span><a href="source_map.rs.html#186-195">SourceMap</a>,
+    source_map: <span class="kw-2">&amp;</span><span class="lifetime">&#39;sm </span><a href="source_map.rs.html#215-224">SourceMap</a>,
     line_cache: [<a href="#7-25">CacheEntry</a>; <span class="number">3</span>],
     time_stamp: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;sm</span>&gt; CachingSourceMapView&lt;<span class="lifetime">&#39;sm</span>&gt; {
-    <span class="kw">pub fn </span>new(source_map: <span class="kw-2">&amp;</span><span class="lifetime">&#39;sm </span><a href="source_map.rs.html#186-195">SourceMap</a>) -&gt; CachingSourceMapView&lt;<span class="lifetime">&#39;sm</span>&gt; {
-        <span class="kw">let </span>files = <a href="#62">source_map</a>.<a href="source_map.rs.html#252-254">files</a>();
+    <span class="kw">pub fn </span>new(source_map: <span class="kw-2">&amp;</span><span class="lifetime">&#39;sm </span><a href="source_map.rs.html#215-224">SourceMap</a>) -&gt; CachingSourceMapView&lt;<span class="lifetime">&#39;sm</span>&gt; {
+        <span class="kw">let </span>files = <a href="#62">source_map</a>.<a href="source_map.rs.html#281-283">files</a>();
         <span class="kw">let </span>first_file = <a href="#63">files</a>[<span class="number">0</span>].<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
         <span class="kw">let </span>entry = <a href="#7-25">CacheEntry</a> {
             time_stamp: <span class="number">0</span>,
             line_number: <span class="number">0</span>,
-            line: <a href="lib.rs.html#2013-2031">BytePos</a>(<span class="number">0</span>)..<a href="lib.rs.html#2013-2031">BytePos</a>(<span class="number">0</span>),
+            line: <a href="lib.rs.html#2007-2025">BytePos</a>(<span class="number">0</span>)..<a href="lib.rs.html#2007-2025">BytePos</a>(<span class="number">0</span>),
             file: <a href="#64">first_file</a>,
             file_index: <span class="number">0</span>,
         };
@@ -371,8 +371,8 @@
 
     <span class="kw">pub fn </span>byte_pos_to_line_and_col(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        pos: <a href="lib.rs.html#2013-2031">BytePos</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1326-1354">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="lib.rs.html#2013-2031">RelativeBytePos</a>)&gt; {
+        pos: <a href="lib.rs.html#2007-2025">BytePos</a>,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1320-1348">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="lib.rs.html#2007-2025">RelativeBytePos</a>)&gt; {
         <a class="self" href="#81">self</a>.time_stamp += <span class="number">1</span>;
 
         <span class="comment">// Check if the position is in one of the cached lines
@@ -381,7 +381,7 @@
             <span class="kw">let </span>cache_entry = <span class="kw-2">&amp;mut </span><a class="self" href="#81">self</a>.line_cache[<a href="#87">cache_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>];
             <a href="#89">cache_entry</a>.<a href="#49-51">touch</a>(<a class="self" href="#81">self</a>.time_stamp);
 
-            <span class="kw">let </span>col = <a href="lib.rs.html#2013-2031">RelativeBytePos</a>(<a href="#82">pos</a>.<a href="lib.rs.html#1956">to_u32</a>() - <a href="#89">cache_entry</a>.line.start.<a href="lib.rs.html#1956">to_u32</a>());
+            <span class="kw">let </span>col = <a href="lib.rs.html#2007-2025">RelativeBytePos</a>(<a href="#82">pos</a>.<a href="lib.rs.html#1950">to_u32</a>() - <a href="#89">cache_entry</a>.line.start.<a href="lib.rs.html#1950">to_u32</a>());
             <span class="kw">return </span><span class="prelude-val">Some</span>((<a href="#89">cache_entry</a>.file.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#89">cache_entry</a>.line_number, <a href="#92">col</a>));
         }
 
@@ -398,14 +398,14 @@
         <span class="kw">let </span>cache_entry = <span class="kw-2">&amp;mut </span><a class="self" href="#81">self</a>.line_cache[<a href="#97">oldest</a>];
         <a href="#106">cache_entry</a>.<a href="#29-46">update</a>(<a href="#100">new_file_and_idx</a>, <a href="#82">pos</a>, <a class="self" href="#81">self</a>.time_stamp);
 
-        <span class="kw">let </span>col = <a href="lib.rs.html#2013-2031">RelativeBytePos</a>(<a href="#82">pos</a>.<a href="lib.rs.html#1956">to_u32</a>() - <a href="#106">cache_entry</a>.line.start.<a href="lib.rs.html#1956">to_u32</a>());
+        <span class="kw">let </span>col = <a href="lib.rs.html#2007-2025">RelativeBytePos</a>(<a href="#82">pos</a>.<a href="lib.rs.html#1950">to_u32</a>() - <a href="#106">cache_entry</a>.line.start.<a href="lib.rs.html#1950">to_u32</a>());
         <span class="prelude-val">Some</span>((<a href="#106">cache_entry</a>.file.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#106">cache_entry</a>.line_number, <a href="#109">col</a>))
     }
 
     <span class="kw">pub fn </span>span_data_to_lines_and_cols(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        span_data: <span class="kw-2">&amp;</span><a href="lib.rs.html#450-457">SpanData</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1326-1354">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="lib.rs.html#2013-2031">BytePos</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="lib.rs.html#2013-2031">BytePos</a>)&gt; {
+        span_data: <span class="kw-2">&amp;</span><a href="lib.rs.html#444-451">SpanData</a>,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1320-1348">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="lib.rs.html#2007-2025">BytePos</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="lib.rs.html#2007-2025">BytePos</a>)&gt; {
         <a class="self" href="#114">self</a>.time_stamp += <span class="number">1</span>;
 
         <span class="comment">// Check if lo and hi are in the cached lines.
@@ -523,7 +523,7 @@
         ))
     }
 
-    <span class="kw">fn </span>cache_entry_index(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <a href="lib.rs.html#2013-2031">BytePos</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.isize.html">isize</a> {
+    <span class="kw">fn </span>cache_entry_index(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <a href="lib.rs.html#2007-2025">BytePos</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.isize.html">isize</a> {
         <span class="kw">for </span>(idx, cache_entry) <span class="kw">in </span><span class="self">self</span>.line_cache.iter().enumerate() {
             <span class="kw">if </span>cache_entry.line.contains(<span class="kw-2">&amp;</span>pos) {
                 <span class="kw">return </span>idx <span class="kw">as </span>isize;
@@ -559,10 +559,10 @@
         <a href="#257">oldest</a>
     }
 
-    <span class="kw">fn </span>file_for_position(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <a href="lib.rs.html#2013-2031">BytePos</a>) -&gt; <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1326-1354">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt; {
+    <span class="kw">fn </span>file_for_position(<span class="kw-2">&amp;</span><span class="self">self</span>, pos: <a href="lib.rs.html#2007-2025">BytePos</a>) -&gt; <span class="prelude-ty">Option</span>&lt;(Lrc&lt;<a href="lib.rs.html#1320-1348">SourceFile</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.source_map.files().is_empty() {
-            <span class="kw">let </span>file_idx = <a class="self" href="#270">self</a>.source_map.<a href="source_map.rs.html#1025-1027">lookup_source_file_idx</a>(<a href="#270">pos</a>);
-            <span class="kw">let </span>file = <span class="kw-2">&amp;</span><a class="self" href="#270">self</a>.source_map.<a href="source_map.rs.html#252-254">files</a>()[<a href="#272">file_idx</a>];
+            <span class="kw">let </span>file_idx = <a class="self" href="#270">self</a>.source_map.<a href="source_map.rs.html#1054-1056">lookup_source_file_idx</a>(<a href="#270">pos</a>);
+            <span class="kw">let </span>file = <span class="kw-2">&amp;</span><a class="self" href="#270">self</a>.source_map.<a href="source_map.rs.html#281-283">files</a>()[<a href="#272">file_idx</a>];
 
             <span class="kw">if </span>file_contains(file, pos) {
                 <span class="kw">return </span><span class="prelude-val">Some</span>((<a href="#273">file</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#272">file_idx</a>));
@@ -574,12 +574,12 @@
 }
 
 <span class="attr">#[inline]
-</span><span class="kw">fn </span><a href="../../rustc_span/caching_source_map_view/fn.file_contains.html">file_contains</a>(file: <span class="kw-2">&amp;</span><a href="lib.rs.html#1326-1354">SourceFile</a>, pos: <a href="lib.rs.html#2013-2031">BytePos</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+</span><span class="kw">fn </span><a href="../../rustc_span/caching_source_map_view/fn.file_contains.html">file_contains</a>(file: <span class="kw-2">&amp;</span><a href="lib.rs.html#1320-1348">SourceFile</a>, pos: <a href="lib.rs.html#2007-2025">BytePos</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
     <span class="comment">// `SourceMap::lookup_source_file_idx` and `SourceFile::contains` both consider the position
     // one past the end of a file to belong to it. Normally, that&#39;s what we want. But for the
     // purposes of converting a byte position to a line and column number, we can&#39;t come up with a
     // line and column number if the file is empty, because an empty file doesn&#39;t contain any
     // lines. So for our purposes, we don&#39;t consider empty files to contain any byte position.
-    </span><a href="#285">file</a>.<a href="lib.rs.html#1739-1741">contains</a>(<a href="#285">pos</a>) &amp;&amp; !<a href="#285">file</a>.<a href="lib.rs.html#1744-1746">is_empty</a>()
+    </span><a href="#285">file</a>.<a href="lib.rs.html#1733-1735">contains</a>(<a href="#285">pos</a>) &amp;&amp; !<a href="#285">file</a>.<a href="lib.rs.html#1738-1740">is_empty</a>()
 }
 </code></pre></div></section></main></body></html>

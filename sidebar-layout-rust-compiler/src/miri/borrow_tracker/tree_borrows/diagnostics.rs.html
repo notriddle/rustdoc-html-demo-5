@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/tree_borrows/diagnostics.rs`."><title>diagnostics.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/tree_borrows/diagnostics.rs`."><title>diagnostics.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -785,8 +785,8 @@
 <span class="kw">use </span>rustc_span::{<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../../rustc_span/struct.SpanData.html">SpanData</a>};
 
 <span class="kw">use </span><span class="kw">crate</span>::borrow_tracker::tree_borrows::{
-    perms::{<a href="perms.rs.html#144-147">PermTransition</a>, <a href="perms.rs.html#138-140">Permission</a>},
-    <a href="tree.rs.html#31-52">tree::LocationState</a>,
+    perms::{<a href="perms.rs.html#150-153">PermTransition</a>, <a href="perms.rs.html#144-146">Permission</a>},
+    <a href="tree.rs.html#35-56">tree::LocationState</a>,
     <a href="unimap.rs.html#21-23">unimap::UniIndex</a>,
 };
 <span class="kw">use </span><span class="kw">crate</span>::borrow_tracker::{<a href="../mod.rs.html#125-128">AccessKind</a>, <a href="../mod.rs.html#153-169">ProtectorKind</a>};
@@ -826,7 +826,7 @@
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/diagnostics/struct.Event.html">Event</a> {
     <span class="doccomment">/// Transformation of permissions that occured because of this event.
-    </span><span class="kw">pub </span>transition: <a href="perms.rs.html#144-147">PermTransition</a>,
+    </span><span class="kw">pub </span>transition: <a href="perms.rs.html#150-153">PermTransition</a>,
     <span class="doccomment">/// Kind of the access that triggered this event.
     </span><span class="kw">pub </span>access_cause: <a href="#18-22">AccessCause</a>,
     <span class="doccomment">/// Relative position of the tag to the one used for the access.
@@ -857,7 +857,7 @@
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/diagnostics/struct.History.html">History</a> {
     tag: <a href="../mod.rs.html#20">BorTag</a>,
-    created: (<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="perms.rs.html#138-140">Permission</a>),
+    created: (<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="perms.rs.html#144-146">Permission</a>),
     events: Vec&lt;<a href="#47-71">Event</a>&gt;,
 }
 
@@ -934,7 +934,7 @@
 <span class="kw">impl </span><a href="#136-152">NodeDebugInfo</a> {
     <span class="doccomment">/// Information for a new node. By default it has no
     /// name and an empty history.
-    </span><span class="kw">pub fn </span>new(tag: <a href="../mod.rs.html#20">BorTag</a>, initial: <a href="perms.rs.html#138-140">Permission</a>, span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(tag: <a href="../mod.rs.html#20">BorTag</a>, initial: <a href="perms.rs.html#144-146">Permission</a>, span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>history = <a href="#78-82">History</a> { <a href="#157">tag</a>, created: (<a href="#157">span</a>, <a href="#157">initial</a>), events: Vec::new() };
         <span class="self">Self </span>{ <a href="#157">tag</a>, name: <span class="prelude-val">None</span>, <a href="#158">history</a> }
     }
@@ -961,7 +961,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="tree.rs.html#178-200">Tree</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="tree.rs.html#207-229">Tree</a> {
     <span class="doccomment">/// Climb the tree to get the tag of a distant ancestor.
     /// Allows operations on tags that are unreachable by the program
     /// but still exist in the tree. Not guaranteed to perform consistently
@@ -1004,13 +1004,13 @@
     /// For example, if a tag is `Frozen` and encounters a child write this will
     /// produce a `ChildAccessForbidden(Frozen)`.
     /// This kind of error can only occur on child accesses.
-    </span>ChildAccessForbidden(<a href="perms.rs.html#138-140">Permission</a>),
+    </span>ChildAccessForbidden(<a href="perms.rs.html#144-146">Permission</a>),
     <span class="doccomment">/// A protector was triggered due to an invalid transition that loses
     /// too much permissions.
     /// For example, if a protected tag goes from `Active` to `Disabled` due
     /// to a foreign write this will produce a `ProtectedDisabled(Active)`.
     /// This kind of error can only occur on foreign accesses.
-    </span>ProtectedDisabled(<a href="perms.rs.html#138-140">Permission</a>),
+    </span>ProtectedDisabled(<a href="perms.rs.html#144-146">Permission</a>),
     <span class="doccomment">/// Cannot deallocate because some tag in the allocation is strongly protected.
     /// This kind of error can only occur on deallocations.
     </span>ProtectedDealloc,
@@ -1030,7 +1030,7 @@
                 </span>.events
                 .iter()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|e| <a href="#252">e</a>.transition_range.contains(<span class="kw-2">&amp;</span><a href="#247">error_offset</a>))
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|e| <a href="#253">e</a>.transition.<a href="perms.rs.html#311-386">is_relevant</a>(<a href="#247">error_kind</a>))
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|e| <a href="#253">e</a>.transition.<a href="perms.rs.html#333-408">is_relevant</a>(<a href="#247">error_kind</a>))
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             created: <a class="self" href="#247">self</a>.created,
@@ -1257,7 +1257,7 @@
     <span class="doccomment">/// Print the permission with the format
     /// ` Res`/` Re*`/` Act`/` Frz`/` Dis` for accessed locations
     /// and `?Res`/`?Re*`/`?Act`/`?Frz`/`?Dis` for unaccessed locations.
-    </span><span class="kw">fn </span>print_perm(<span class="kw-2">&amp;</span><span class="self">self</span>, perm: <span class="prelude-ty">Option</span>&lt;<a href="tree.rs.html#31-52">LocationState</a>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
+    </span><span class="kw">fn </span>print_perm(<span class="kw-2">&amp;</span><span class="self">self</span>, perm: <span class="prelude-ty">Option</span>&lt;<a href="tree.rs.html#35-56">LocationState</a>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(perm) = <a href="#480">perm</a> {
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                 <span class="string">&quot;{ac}{st}&quot;</span>,
@@ -1337,12 +1337,12 @@
 </span><span class="kw">struct </span><a href="../../../../miri/borrow_tracker/tree_borrows/diagnostics/struct.DisplayRepr.html">DisplayRepr</a> {
     tag: <a href="../mod.rs.html#20">BorTag</a>,
     name: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;,
-    rperm: Vec&lt;<span class="prelude-ty">Option</span>&lt;<a href="tree.rs.html#31-52">LocationState</a>&gt;&gt;,
+    rperm: Vec&lt;<span class="prelude-ty">Option</span>&lt;<a href="tree.rs.html#35-56">LocationState</a>&gt;&gt;,
     children: Vec&lt;<a href="#557-562">DisplayRepr</a>&gt;,
 }
 
 <span class="kw">impl </span><a href="#557-562">DisplayRepr</a> {
-    <span class="kw">fn </span>from(tree: <span class="kw-2">&amp;</span><a href="tree.rs.html#178-200">Tree</a>, show_unnamed: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">fn </span>from(tree: <span class="kw-2">&amp;</span><a href="tree.rs.html#207-229">Tree</a>, show_unnamed: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>v = Vec::new();
         <a href="#582-616">extraction_aux</a>(<a href="#565">tree</a>, <a href="#565">tree</a>.root, <a href="#565">show_unnamed</a>, <span class="kw-2">&amp;mut </span><a href="#566">v</a>);
         <span class="kw">let </span><span class="prelude-val">Some</span>(root) = <a href="#566">v</a>.pop() <span class="kw">else </span>{
@@ -1360,7 +1360,7 @@
         <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#568">root</a>);
 
         <span class="kw">fn </span>extraction_aux(
-            tree: <span class="kw-2">&amp;</span><a href="tree.rs.html#178-200">Tree</a>,
+            tree: <span class="kw-2">&amp;</span><a href="tree.rs.html#207-229">Tree</a>,
             idx: <a href="unimap.rs.html#21-23">UniIndex</a>,
             show_unnamed: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
             acc: <span class="kw-2">&amp;mut </span>Vec&lt;<a href="#557-562">DisplayRepr</a>&gt;,
@@ -1537,7 +1537,7 @@
     accessed: <a href="#458-467">DisplayFmtAccess</a> { yes: <span class="string">&quot; &quot;</span>, no: <span class="string">&quot;?&quot;</span>, meh: <span class="string">&quot;-&quot; </span>},
 };
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="tree.rs.html#178-200">Tree</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="tree.rs.html#207-229">Tree</a> {
     <span class="doccomment">/// Display the contents of the tree.
     </span><span class="kw">pub fn </span>print_tree(
         <span class="kw-2">&amp;</span><span class="self">self</span>,

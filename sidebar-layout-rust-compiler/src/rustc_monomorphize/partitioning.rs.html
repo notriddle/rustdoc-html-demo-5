@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_monomorphize/src/partitioning.rs`."><title>partitioning.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_monomorphize" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_monomorphize/src/partitioning.rs`."><title>partitioning.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_monomorphize" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1443,8 +1443,8 @@
 <span class="kw">use </span><a href="../../rustc_session/session/enum.CodegenUnits.html">rustc_session::CodegenUnits</a>;
 <span class="kw">use </span><a href="../../rustc_span/symbol/struct.Symbol.html">rustc_span::symbol::Symbol</a>;
 
-<span class="kw">use </span><a href="collector.rs.html#206-212"><span class="kw">crate</span>::collector::UsageMap</a>;
-<span class="kw">use </span><span class="kw">crate</span>::collector::{<a class="self" href="lib.rs.html#21">self</a>, <a href="collector.rs.html#201-204">MonoItemCollectionMode</a>};
+<span class="kw">use </span><a href="collector.rs.html#205-211"><span class="kw">crate</span>::collector::UsageMap</a>;
+<span class="kw">use </span><span class="kw">crate</span>::collector::{<a class="self" href="lib.rs.html#21">self</a>, <a href="collector.rs.html#200-203">MonoItemCollectionMode</a>};
 <span class="kw">use </span><span class="kw">crate</span>::errors::{<a href="errors.rs.html#92-94">CouldntDumpMonoStats</a>, <a href="errors.rs.html#84-88">SymbolAlreadyDefined</a>, <a href="errors.rs.html#106-108">UnknownCguCollectionMode</a>};
 
 <span class="kw">struct </span><a href="../../rustc_monomorphize/partitioning/struct.PartitioningCx.html">PartitioningCx</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -1620,7 +1620,7 @@
         usage_map: <span class="kw-2">&amp;</span>UsageMap&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         visited: <span class="kw-2">&amp;mut </span>FxHashSet&lt;MonoItem&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) {
-        <a href="#294">usage_map</a>.<a href="collector.rs.html#241-252">for_each_inlined_used_item</a>(<a href="#292">tcx</a>, <a href="#293">item</a>, |inlined_item| {
+        <a href="#294">usage_map</a>.<a href="collector.rs.html#240-251">for_each_inlined_used_item</a>(<a href="#292">tcx</a>, <a href="#293">item</a>, |inlined_item| {
             <span class="kw">let </span>is_new = <a href="#295">visited</a>.insert(<a href="#297">inlined_item</a>);
             <span class="kw">if </span>is_new {
                 <a href="#291-303">get_reachable_inlined_items</a>(<a href="#292">tcx</a>, <a href="#297">inlined_item</a>, <a href="#294">usage_map</a>, <a href="#295">visited</a>);
@@ -1973,7 +1973,7 @@
                 // parameters, but the self-type of their impl block do will fail to normalize.
                 </span><span class="kw">if </span>!tcx.sess.opts.unstable_opts.polymorphize || !instance.has_param() {
                     <span class="comment">// This is a method within an impl, find out what the self-type is:
-                    </span><span class="kw">let </span>impl_self_ty = <a href="#607">tcx</a>.subst_and_normalize_erasing_regions(
+                    </span><span class="kw">let </span>impl_self_ty = <a href="#607">tcx</a>.instantiate_and_normalize_erasing_regions(
                         <a href="#611">instance</a>.args,
                         ty::ParamEnv::reveal_all(),
                         <a href="#607">tcx</a>.type_of(<a href="#636">impl_def_id</a>),
@@ -2411,25 +2411,25 @@
             <span class="kw">let </span>mode = <a href="#1084">s</a>.to_lowercase();
             <span class="kw">let </span>mode = <a href="#1085">mode</a>.trim();
             <span class="kw">if </span>mode == <span class="string">&quot;eager&quot; </span>{
-                <a href="collector.rs.html#202">MonoItemCollectionMode::Eager</a>
+                <a href="collector.rs.html#201">MonoItemCollectionMode::Eager</a>
             } <span class="kw">else </span>{
                 <span class="kw">if </span>mode != <span class="string">&quot;lazy&quot; </span>{
                     <a href="#1082">tcx</a>.sess.emit_warning(<a href="errors.rs.html#106-108">UnknownCguCollectionMode</a> { <a href="#1086">mode</a> });
                 }
 
-                <a href="collector.rs.html#203">MonoItemCollectionMode::Lazy</a>
+                <a href="collector.rs.html#202">MonoItemCollectionMode::Lazy</a>
             }
         }
         <span class="prelude-val">None </span>=&gt; {
             <span class="kw">if </span>tcx.sess.link_dead_code() {
-                <a href="collector.rs.html#202">MonoItemCollectionMode::Eager</a>
+                <a href="collector.rs.html#201">MonoItemCollectionMode::Eager</a>
             } <span class="kw">else </span>{
-                <a href="collector.rs.html#203">MonoItemCollectionMode::Lazy</a>
+                <a href="collector.rs.html#202">MonoItemCollectionMode::Lazy</a>
             }
         }
     };
 
-    <span class="kw">let </span>(items, usage_map) = <a href="collector.rs.html#255">collector::collect_crate_mono_items</a>(<a href="#1082">tcx</a>, <a href="#1083">collection_mode</a>);
+    <span class="kw">let </span>(items, usage_map) = <a href="collector.rs.html#254">collector::collect_crate_mono_items</a>(<a href="#1082">tcx</a>, <a href="#1083">collection_mode</a>);
 
     <a href="#1082">tcx</a>.sess.abort_if_errors();
 

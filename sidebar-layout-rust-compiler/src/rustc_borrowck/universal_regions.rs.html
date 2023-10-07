@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/universal_regions.rs`."><title>universal_regions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/universal_regions.rs`."><title>universal_regions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -937,15 +937,6 @@
 <a href="#937" id="937">937</a>
 <a href="#938" id="938">938</a>
 <a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
-<a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Code to extract the universally quantified regions declared on a
 //! function and the relationships between them. For example:
 //!
@@ -976,7 +967,7 @@
 <span class="kw">use </span><a href="../../rustc_span/symbol/struct.Symbol.html">rustc_span::Symbol</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/iter/index.html">std::iter</a>;
 
-<span class="kw">use </span><span class="kw">crate</span>::renumber::{<a href="renumber.rs.html#33-36">BoundRegionInfo</a>, <a href="renumber.rs.html#39-48">RegionCtxt</a>};
+<span class="kw">use </span><a href="renumber.rs.html#32-41"><span class="kw">crate</span>::renumber::RegionCtxt</a>;
 <span class="kw">use </span><a href="lib.rs.html#463-466"><span class="kw">crate</span>::BorrowckInferCtxt</a>;
 
 <span class="attr">#[derive(Debug)]
@@ -1112,7 +1103,7 @@
     /// be able to map them to our internal `RegionVid`. This is
     /// basically equivalent to an `GenericArgs`, except that it also
     /// contains an entry for `ReStatic` -- it might be nice to just
-    /// use a args, and then handle `ReStatic` another way.
+    /// use an args, and then handle `ReStatic` another way.
     </span>indices: FxHashMap&lt;ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../rustc_middle/ty/sty/struct.RegionVid.html">RegionVid</a>&gt;,
 
     <span class="doccomment">/// The vid assigned to `&#39;static`. Used only for diagnostics.
@@ -1175,7 +1166,7 @@
         mir_def: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <a href="#396-400">UniversalRegionsBuilder</a> { <a href="#226">infcx</a>, <a href="#227">mir_def</a>, <a href="#228">param_env</a> }.<a href="#405-551">build</a>()
+        <a href="#396-400">UniversalRegionsBuilder</a> { <a href="#226">infcx</a>, <a href="#227">mir_def</a>, <a href="#228">param_env</a> }.<a href="#405-547">build</a>()
     }
 
     <span class="doccomment">/// Given a reference to a closure type, extracts all the values
@@ -1199,7 +1190,7 @@
             <a href="#248">region_mapping</a>.push(<a href="#250">fr</a>);
         });
 
-        <a href="#910-927">for_each_late_bound_region_in_recursive_scope</a>(<a href="#243">tcx</a>, <a href="#243">tcx</a>.local_parent(<a href="#246">closure_def_id</a>), |r| {
+        <a href="#901-918">for_each_late_bound_region_in_recursive_scope</a>(<a href="#243">tcx</a>, <a href="#243">tcx</a>.local_parent(<a href="#246">closure_def_id</a>), |r| {
             <a href="#248">region_mapping</a>.push(<a href="#254">r</a>);
         });
 
@@ -1238,7 +1229,7 @@
         (<a href="#217">FIRST_GLOBAL_INDEX</a>..<a class="self" href="#289">self</a>.num_universals).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(RegionVid::from_usize)
     }
 
-    <span class="doccomment">/// Returns `true` if `r` is classified as an local region.
+    <span class="doccomment">/// Returns `true` if `r` is classified as a local region.
     </span><span class="kw">pub fn </span>is_local_free_region(<span class="kw-2">&amp;</span><span class="self">self</span>, r: <a href="../../rustc_middle/ty/sty/struct.RegionVid.html">RegionVid</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#294">self</a>.<a href="#274-285">region_classification</a>(<a href="#294">r</a>) == <span class="prelude-val">Some</span>(<a href="#214">RegionClassification::Local</a>)
     }
@@ -1269,7 +1260,7 @@
 
     <span class="doccomment">/// See `UniversalRegionIndices::to_region_vid`.
     </span><span class="kw">pub fn </span>to_region_vid(<span class="kw-2">&amp;</span><span class="self">self</span>, r: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../rustc_middle/ty/sty/struct.RegionVid.html">RegionVid</a> {
-        <a class="self" href="#323">self</a>.indices.<a href="#881-895">to_region_vid</a>(<a href="#323">r</a>)
+        <a class="self" href="#323">self</a>.indices.<a href="#872-886">to_region_vid</a>(<a href="#323">r</a>)
     }
 
     <span class="doccomment">/// As part of the NLL unit tests, you can annotate a function with
@@ -1298,7 +1289,7 @@
                 // tests, and the resulting print-outs include def-ids
                 // and other things that are not stable across tests!
                 // So we just include the region-vid. Annoying.
-                </span><a href="#910-927">for_each_late_bound_region_in_recursive_scope</a>(<a href="#333">tcx</a>, <a href="#335">def_id</a>.expect_local(), |r| {
+                </span><a href="#901-918">for_each_late_bound_region_in_recursive_scope</a>(<a href="#333">tcx</a>, <a href="#335">def_id</a>.expect_local(), |r| {
                     <a href="#333">err</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;late-bound region is {:?}&quot;</span>, <span class="self">self</span>.to_region_vid(r)));
                 });
             }
@@ -1318,7 +1309,7 @@
                 <span class="comment">// FIXME: As above, we&#39;d like to print out the region
                 // `r` but doing so is not stable across architectures
                 // and so forth.
-                </span><a href="#910-927">for_each_late_bound_region_in_recursive_scope</a>(<a href="#333">tcx</a>, <a href="#357">def_id</a>.expect_local(), |r| {
+                </span><a href="#901-918">for_each_late_bound_region_in_recursive_scope</a>(<a href="#333">tcx</a>, <a href="#357">def_id</a>.expect_local(), |r| {
                     <a href="#333">err</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;late-bound region is {:?}&quot;</span>, <span class="self">self</span>.to_region_vid(r)));
                 });
             }
@@ -1360,16 +1351,16 @@
 
         <span class="comment">// Create the &quot;global&quot; region that is always free in all contexts: &#39;static.
         </span><span class="kw">let </span>fr_static =
-            <a class="self" href="#405">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#42">RegionCtxt::Free</a>(kw::Static)).as_var();
+            <a class="self" href="#405">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#35">RegionCtxt::Free</a>(kw::Static)).as_var();
 
         <span class="comment">// We&#39;ve now added all the global regions. The next ones we
         // add will be external.
         </span><span class="kw">let </span>first_extern_index = <a class="self" href="#405">self</a>.infcx.num_region_vars();
 
-        <span class="kw">let </span>defining_ty = <a class="self" href="#405">self</a>.<a href="#555-612">defining_ty</a>();
+        <span class="kw">let </span>defining_ty = <a class="self" href="#405">self</a>.<a href="#551-608">defining_ty</a>();
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;build: defining_ty={:?}&quot;</span>, defining_ty);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>indices = <a class="self" href="#405">self</a>.<a href="#618-650">compute_indices</a>(<a href="#414">fr_static</a>, <a href="#421">defining_ty</a>);
+        <span class="kw">let </span><span class="kw-2">mut </span>indices = <a class="self" href="#405">self</a>.<a href="#614-645">compute_indices</a>(<a href="#414">fr_static</a>, <a href="#421">defining_ty</a>);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;build: indices={:?}&quot;</span>, indices);
 
         <span class="kw">let </span>typeck_root_def_id = <a class="self" href="#405">self</a>.infcx.tcx.typeck_root_def_id(<a class="self" href="#405">self</a>.mir_def.to_def_id());
@@ -1386,7 +1377,7 @@
             // fn foo&lt;&#39;a&gt;() {
             //     let c = || { let x: &amp;&#39;a u32 = ...; }
             // }
-            </span><a href="#910-927">for_each_late_bound_region_in_recursive_scope</a>(
+            </span><a href="#901-918">for_each_late_bound_region_in_recursive_scope</a>(
                 <a class="self" href="#405">self</a>.infcx.tcx,
                 <a class="self" href="#405">self</a>.infcx.tcx.local_parent(<a class="self" href="#405">self</a>.mir_def),
                 |r| {
@@ -1394,13 +1385,11 @@
                     <span class="kw">if </span>!indices.indices.contains_key(<span class="kw-2">&amp;</span>r) {
                         <span class="kw">let </span>region_vid = {
                             <span class="kw">let </span>name = <a href="#444">r</a>.get_name_or_anon();
-                            <a class="self" href="#405">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || {
-                                <a href="renumber.rs.html#44">RegionCtxt::LateBound</a>(<a href="renumber.rs.html#34">BoundRegionInfo::Name</a>(<a href="#448">name</a>))
-                            })
+                            <a class="self" href="#405">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#37">RegionCtxt::LateBound</a>(<a href="#448">name</a>))
                         };
 
                         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>region_vid);
-                        <a href="#424">indices</a>.<a href="#868-871">insert_late_bound_region</a>(<a href="#444">r</a>, <a href="#447">region_vid</a>.as_var());
+                        <a href="#424">indices</a>.<a href="#859-862">insert_late_bound_region</a>(<a href="#444">r</a>, <a href="#447">region_vid</a>.as_var());
                     }
                 },
             );
@@ -1413,33 +1402,31 @@
         <span class="comment">// &quot;Liberate&quot; the late-bound regions. These correspond to
         // &quot;local&quot; free regions.
 
-        </span><span class="kw">let </span>bound_inputs_and_output = <a class="self" href="#405">self</a>.<a href="#652-725">compute_inputs_and_output</a>(<span class="kw-2">&amp;</span><a href="#424">indices</a>, <a href="#421">defining_ty</a>);
+        </span><span class="kw">let </span>bound_inputs_and_output = <a class="self" href="#405">self</a>.<a href="#647-720">compute_inputs_and_output</a>(<span class="kw-2">&amp;</span><a href="#424">indices</a>, <a href="#421">defining_ty</a>);
 
-        <span class="kw">let </span>inputs_and_output = <a class="self" href="#405">self</a>.infcx.<a href="#737-745">replace_bound_regions_with_nll_infer_vars</a>(
+        <span class="kw">let </span>inputs_and_output = <a class="self" href="#405">self</a>.infcx.<a href="#732-740">replace_bound_regions_with_nll_infer_vars</a>(
             <a href="#402">FR</a>,
             <a class="self" href="#405">self</a>.mir_def,
-            <a href="#468">bound_inputs_and_output</a>,
+            <a href="#466">bound_inputs_and_output</a>,
             <span class="kw-2">&amp;mut </span><a href="#424">indices</a>,
         );
         <span class="comment">// Converse of above, if this is a function/closure then the late-bound regions declared on its
         // signature are local.
-        </span><a href="#932-948">for_each_late_bound_region_in_item</a>(<a class="self" href="#405">self</a>.infcx.tcx, <a class="self" href="#405">self</a>.mir_def, |r| {
+        </span><a href="#923-939">for_each_late_bound_region_in_item</a>(<a class="self" href="#405">self</a>.infcx.tcx, <a class="self" href="#405">self</a>.mir_def, |r| {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>r);
             <span class="kw">if </span>!indices.indices.contains_key(<span class="kw-2">&amp;</span>r) {
                 <span class="kw">let </span>region_vid = {
-                    <span class="kw">let </span>name = <a href="#478">r</a>.get_name_or_anon();
-                    <a class="self" href="#405">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || {
-                        <a href="renumber.rs.html#44">RegionCtxt::LateBound</a>(<a href="renumber.rs.html#34">BoundRegionInfo::Name</a>(<a href="#482">name</a>))
-                    })
+                    <span class="kw">let </span>name = <a href="#476">r</a>.get_name_or_anon();
+                    <a class="self" href="#405">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#37">RegionCtxt::LateBound</a>(<a href="#480">name</a>))
                 };
 
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>region_vid);
-                <a href="#424">indices</a>.<a href="#868-871">insert_late_bound_region</a>(<a href="#478">r</a>, <a href="#481">region_vid</a>.as_var());
+                <a href="#424">indices</a>.<a href="#859-862">insert_late_bound_region</a>(<a href="#476">r</a>, <a href="#479">region_vid</a>.as_var());
             }
         });
 
         <span class="kw">let </span>(unnormalized_output_ty, <span class="kw-2">mut </span>unnormalized_input_tys) =
-            <a href="#470">inputs_and_output</a>.split_last().unwrap();
+            <a href="#468">inputs_and_output</a>.split_last().unwrap();
 
         <span class="comment">// C-variadic fns also have a `VaList` input that&#39;s not listed in the signature
         // (as it&#39;s created inside the body itself, not passed in from outside).
@@ -1452,25 +1439,25 @@
 
                 <span class="kw">let </span>reg_vid = <span class="self"><a href="#405">self</a>
                     </span>.infcx
-                    .<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#42">RegionCtxt::Free</a>(Symbol::intern(<span class="string">&quot;c-variadic&quot;</span>)))
+                    .<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#35">RegionCtxt::Free</a>(Symbol::intern(<span class="string">&quot;c-variadic&quot;</span>)))
                     .as_var();
 
-                <span class="kw">let </span>region = ty::Region::new_var(<a class="self" href="#405">self</a>.infcx.tcx, <a href="#505">reg_vid</a>);
+                <span class="kw">let </span>region = ty::Region::new_var(<a class="self" href="#405">self</a>.infcx.tcx, <a href="#501">reg_vid</a>);
                 <span class="kw">let </span>va_list_ty = <span class="self"><a href="#405">self</a>
                     </span>.infcx
                     .tcx
-                    .type_of(<a href="#500">va_list_did</a>)
-                    .instantiate(<a class="self" href="#405">self</a>.infcx.tcx, <span class="kw-2">&amp;</span>[<a href="#510">region</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()]);
+                    .type_of(<a href="#496">va_list_did</a>)
+                    .instantiate(<a class="self" href="#405">self</a>.infcx.tcx, <span class="kw-2">&amp;</span>[<a href="#506">region</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()]);
 
-                <a href="#493">unnormalized_input_tys</a> = <a class="self" href="#405">self</a>.infcx.tcx.mk_type_list_from_iter(
-                    <a href="#493">unnormalized_input_tys</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(<a href="#511">va_list_ty</a>)),
+                <a href="#489">unnormalized_input_tys</a> = <a class="self" href="#405">self</a>.infcx.tcx.mk_type_list_from_iter(
+                    <a href="#489">unnormalized_input_tys</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(<a href="#507">va_list_ty</a>)),
                 );
             }
         }
 
         <span class="kw">let </span>fr_fn_body = <span class="self"><a href="#405">self</a>
             </span>.infcx
-            .<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#42">RegionCtxt::Free</a>(Symbol::intern(<span class="string">&quot;fn_body&quot;</span>)))
+            .<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#402">FR</a>, || <a href="renumber.rs.html#35">RegionCtxt::Free</a>(Symbol::intern(<span class="string">&quot;fn_body&quot;</span>)))
             .as_var();
 
         <span class="kw">let </span>num_universals = <a class="self" href="#405">self</a>.infcx.num_region_vars();
@@ -1480,45 +1467,45 @@
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;build: local regions  = {}..{}&quot;</span>, first_local_index, num_universals);
 
         <span class="kw">let </span>yield_ty = <span class="kw">match </span><a href="#421">defining_ty</a> {
-            <a href="#97">DefiningTy::Generator</a>(<span class="kw">_</span>, args, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#535">args</a>.as_generator().yield_ty()),
+            <a href="#97">DefiningTy::Generator</a>(<span class="kw">_</span>, args, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#531">args</a>.as_generator().yield_ty()),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         };
 
         <a href="#35-80">UniversalRegions</a> {
             <a href="#424">indices</a>,
             <a href="#414">fr_static</a>,
-            <a href="#523">fr_fn_body</a>,
+            <a href="#519">fr_fn_body</a>,
             <a href="#419">first_extern_index</a>,
             <a href="#432">first_local_index</a>,
-            <a href="#528">num_universals</a>,
+            <a href="#524">num_universals</a>,
             <a href="#421">defining_ty</a>,
-            unnormalized_output_ty: <span class="kw-2">*</span><a href="#493">unnormalized_output_ty</a>,
-            <a href="#493">unnormalized_input_tys</a>,
-            <a href="#534">yield_ty</a>,
+            unnormalized_output_ty: <span class="kw-2">*</span><a href="#489">unnormalized_output_ty</a>,
+            <a href="#489">unnormalized_input_tys</a>,
+            <a href="#530">yield_ty</a>,
         }
     }
 
     <span class="doccomment">/// Returns the &quot;defining type&quot; of the current MIR;
     /// see `DefiningTy` for details.
     </span><span class="kw">fn </span>defining_ty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DefiningTy&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#555">self</a>.infcx.tcx;
-        <span class="kw">let </span>typeck_root_def_id = <a href="#556">tcx</a>.typeck_root_def_id(<a class="self" href="#555">self</a>.mir_def.to_def_id());
+        <span class="kw">let </span>tcx = <a class="self" href="#551">self</a>.infcx.tcx;
+        <span class="kw">let </span>typeck_root_def_id = <a href="#552">tcx</a>.typeck_root_def_id(<a class="self" href="#551">self</a>.mir_def.to_def_id());
 
-        <span class="kw">match </span><a href="#556">tcx</a>.hir().body_owner_kind(<a class="self" href="#555">self</a>.mir_def) {
+        <span class="kw">match </span><a href="#552">tcx</a>.hir().body_owner_kind(<a class="self" href="#551">self</a>.mir_def) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn =&gt; {
-                <span class="kw">let </span>defining_ty = <a href="#556">tcx</a>.type_of(<a class="self" href="#555">self</a>.mir_def).instantiate_identity();
+                <span class="kw">let </span>defining_ty = <a href="#552">tcx</a>.type_of(<a class="self" href="#551">self</a>.mir_def).instantiate_identity();
 
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;defining_ty (pre-replacement): {:?}&quot;</span>, defining_ty);
 
                 <span class="kw">let </span>defining_ty =
-                    <a class="self" href="#555">self</a>.infcx.<a href="#729-735">replace_free_regions_with_nll_infer_vars</a>(<a href="#402">FR</a>, <a href="#561">defining_ty</a>);
+                    <a class="self" href="#551">self</a>.infcx.<a href="#724-730">replace_free_regions_with_nll_infer_vars</a>(<a href="#402">FR</a>, <a href="#557">defining_ty</a>);
 
-                <span class="kw">match </span><span class="kw-2">*</span><a href="#565">defining_ty</a>.kind() {
-                    ty::Closure(def_id, args) =&gt; <a href="#92">DefiningTy::Closure</a>(<a href="#569">def_id</a>, <a href="#569">args</a>),
+                <span class="kw">match </span><span class="kw-2">*</span><a href="#561">defining_ty</a>.kind() {
+                    ty::Closure(def_id, args) =&gt; <a href="#92">DefiningTy::Closure</a>(<a href="#565">def_id</a>, <a href="#565">args</a>),
                     ty::Generator(def_id, args, movability) =&gt; {
-                        <a href="#97">DefiningTy::Generator</a>(<a href="#570">def_id</a>, <a href="#570">args</a>, <a href="#570">movability</a>)
+                        <a href="#97">DefiningTy::Generator</a>(<a href="#566">def_id</a>, <a href="#566">args</a>, <a href="#566">movability</a>)
                     }
-                    ty::FnDef(def_id, args) =&gt; <a href="#101">DefiningTy::FnDef</a>(<a href="#573">def_id</a>, <a href="#573">args</a>),
+                    ty::FnDef(def_id, args) =&gt; <a href="#101">DefiningTy::FnDef</a>(<a href="#569">def_id</a>, <a href="#569">args</a>),
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                         tcx.def_span(<span class="self">self</span>.mir_def),
                         <span class="string">&quot;expected defining type for `{:?}`: `{:?}`&quot;</span>,
@@ -1528,12 +1515,12 @@
                 }
             }
 
-            BodyOwnerKind::Const | BodyOwnerKind::Static(..) =&gt; {
-                <span class="kw">let </span>identity_args = GenericArgs::identity_for_item(<a href="#556">tcx</a>, <a href="#557">typeck_root_def_id</a>);
+            <a href="../../rustc_hir/hir/enum.BodyOwnerKind.html">BodyOwnerKind::Const</a> { .. } | BodyOwnerKind::Static(..) =&gt; {
+                <span class="kw">let </span>identity_args = GenericArgs::identity_for_item(<a href="#552">tcx</a>, <a href="#553">typeck_root_def_id</a>);
                 <span class="kw">if </span><span class="self">self</span>.mir_def.to_def_id() == typeck_root_def_id {
                     <span class="kw">let </span>args =
-                        <a class="self" href="#555">self</a>.infcx.<a href="#729-735">replace_free_regions_with_nll_infer_vars</a>(<a href="#402">FR</a>, <a href="#584">identity_args</a>);
-                    <a href="#106">DefiningTy::Const</a>(<a class="self" href="#555">self</a>.mir_def.to_def_id(), <a href="#586">args</a>)
+                        <a class="self" href="#551">self</a>.infcx.<a href="#724-730">replace_free_regions_with_nll_infer_vars</a>(<a href="#402">FR</a>, <a href="#580">identity_args</a>);
+                    <a href="#106">DefiningTy::Const</a>(<a class="self" href="#551">self</a>.mir_def.to_def_id(), <a href="#582">args</a>)
                 } <span class="kw">else </span>{
                     <span class="comment">// FIXME this line creates a dependency between borrowck and typeck.
                     //
@@ -1544,16 +1531,16 @@
                     // As a workaround, inline consts have an additional generic param (`ty`
                     // below), so that `type_of(inline_const_def_id).args(args)` uses the
                     // proper type with NLL infer vars.
-                    </span><span class="kw">let </span>ty = <a href="#556">tcx</a>
-                        .typeck(<a class="self" href="#555">self</a>.mir_def)
-                        .node_type(<a href="#556">tcx</a>.local_def_id_to_hir_id(<a class="self" href="#555">self</a>.mir_def));
+                    </span><span class="kw">let </span>ty = <a href="#552">tcx</a>
+                        .typeck(<a class="self" href="#551">self</a>.mir_def)
+                        .node_type(<a href="#552">tcx</a>.local_def_id_to_hir_id(<a class="self" href="#551">self</a>.mir_def));
                     <span class="kw">let </span>args = InlineConstArgs::new(
-                        <a href="#556">tcx</a>,
-                        <a href="../../rustc_middle/ty/sty/struct.InlineConstArgsParts.html">InlineConstArgsParts</a> { parent_args: <a href="#584">identity_args</a>, <a href="#599">ty</a> },
+                        <a href="#552">tcx</a>,
+                        <a href="../../rustc_middle/ty/sty/struct.InlineConstArgsParts.html">InlineConstArgsParts</a> { parent_args: <a href="#580">identity_args</a>, <a href="#595">ty</a> },
                     )
                     .args;
-                    <span class="kw">let </span>args = <a class="self" href="#555">self</a>.infcx.<a href="#729-735">replace_free_regions_with_nll_infer_vars</a>(<a href="#402">FR</a>, <a href="#602">args</a>);
-                    <a href="#110">DefiningTy::InlineConst</a>(<a class="self" href="#555">self</a>.mir_def.to_def_id(), <a href="#607">args</a>)
+                    <span class="kw">let </span>args = <a class="self" href="#551">self</a>.infcx.<a href="#724-730">replace_free_regions_with_nll_infer_vars</a>(<a href="#402">FR</a>, <a href="#598">args</a>);
+                    <a href="#110">DefiningTy::InlineConst</a>(<a class="self" href="#551">self</a>.mir_def.to_def_id(), <a href="#603">args</a>)
                 }
             }
         }
@@ -1568,10 +1555,10 @@
         fr_static: <a href="../../rustc_middle/ty/sty/struct.RegionVid.html">RegionVid</a>,
         defining_ty: DefiningTy&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; UniversalRegionIndices&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#619">self</a>.infcx.tcx;
-        <span class="kw">let </span>typeck_root_def_id = <a href="#623">tcx</a>.typeck_root_def_id(<a class="self" href="#619">self</a>.mir_def.to_def_id());
-        <span class="kw">let </span>identity_args = GenericArgs::identity_for_item(<a href="#623">tcx</a>, <a href="#624">typeck_root_def_id</a>);
-        <span class="kw">let </span>fr_args = <span class="kw">match </span><a href="#621">defining_ty</a> {
+        <span class="kw">let </span>tcx = <a class="self" href="#615">self</a>.infcx.tcx;
+        <span class="kw">let </span>typeck_root_def_id = <a href="#619">tcx</a>.typeck_root_def_id(<a class="self" href="#615">self</a>.mir_def.to_def_id());
+        <span class="kw">let </span>identity_args = GenericArgs::identity_for_item(<a href="#619">tcx</a>, <a href="#620">typeck_root_def_id</a>);
+        <span class="kw">let </span>fr_args = <span class="kw">match </span><a href="#617">defining_ty</a> {
             <a href="#92">DefiningTy::Closure</a>(<span class="kw">_</span>, args)
             | <a href="#97">DefiningTy::Generator</a>(<span class="kw">_</span>, args, <span class="kw">_</span>)
             | <a href="#110">DefiningTy::InlineConst</a>(<span class="kw">_</span>, args) =&gt; {
@@ -1584,17 +1571,16 @@
                 // the `typeck_root_def_id`.
                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(args.len() &gt;= identity_args.len());
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(args.regions().count(), identity_args.regions().count());
-                <a href="#627">args</a>
+                <a href="#623">args</a>
             }
 
-            <a href="#101">DefiningTy::FnDef</a>(<span class="kw">_</span>, args) | <a href="#106">DefiningTy::Const</a>(<span class="kw">_</span>, args) =&gt; <a href="#642">args</a>,
+            <a href="#101">DefiningTy::FnDef</a>(<span class="kw">_</span>, args) | <a href="#106">DefiningTy::Const</a>(<span class="kw">_</span>, args) =&gt; <a href="#638">args</a>,
         };
 
-        <span class="kw">let </span>global_mapping = <a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>((<a href="#623">tcx</a>.lifetimes.re_static, <a href="#620">fr_static</a>));
-        <span class="kw">let </span>subst_mapping =
-            <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#625">identity_args</a>.regions(), <a href="#626">fr_args</a>.regions().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|r| <a href="#647">r</a>.as_var()));
+        <span class="kw">let </span>global_mapping = <a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>((<a href="#619">tcx</a>.lifetimes.re_static, <a href="#616">fr_static</a>));
+        <span class="kw">let </span>arg_mapping = <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#621">identity_args</a>.regions(), <a href="#622">fr_args</a>.regions().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|r| <a href="#642">r</a>.as_var()));
 
-        <a href="#158-172">UniversalRegionIndices</a> { indices: <a href="#645">global_mapping</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#646">subst_mapping</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(), <a href="#620">fr_static</a> }
+        <a href="#158-172">UniversalRegionIndices</a> { indices: <a href="#641">global_mapping</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#642">arg_mapping</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(), <a href="#616">fr_static</a> }
     }
 
     <span class="kw">fn </span>compute_inputs_and_output(
@@ -1602,72 +1588,72 @@
         indices: <span class="kw-2">&amp;</span>UniversalRegionIndices&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         defining_ty: DefiningTy&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; ty::Binder&lt;<span class="lifetime">&#39;tcx</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#653">self</a>.infcx.tcx;
-        <span class="kw">match </span><a href="#655">defining_ty</a> {
+        <span class="kw">let </span>tcx = <a class="self" href="#648">self</a>.infcx.tcx;
+        <span class="kw">match </span><a href="#650">defining_ty</a> {
             <a href="#92">DefiningTy::Closure</a>(def_id, args) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="self">self</span>.mir_def.to_def_id(), def_id);
-                <span class="kw">let </span>closure_sig = <a href="#659">args</a>.as_closure().sig();
-                <span class="kw">let </span>inputs_and_output = <a href="#661">closure_sig</a>.inputs_and_output();
-                <span class="kw">let </span>bound_vars = <a href="#657">tcx</a>.mk_bound_variable_kinds_from_iter(
-                    <a href="#662">inputs_and_output</a>
+                <span class="kw">let </span>closure_sig = <a href="#654">args</a>.as_closure().sig();
+                <span class="kw">let </span>inputs_and_output = <a href="#656">closure_sig</a>.inputs_and_output();
+                <span class="kw">let </span>bound_vars = <a href="#652">tcx</a>.mk_bound_variable_kinds_from_iter(
+                    <a href="#657">inputs_and_output</a>
                         .bound_vars()
                         .iter()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(ty::BoundVariableKind::Region(ty::BrEnv))),
                 );
                 <span class="kw">let </span>br = <a href="../../rustc_middle/ty/sty/struct.BoundRegion.html">ty::BoundRegion</a> {
-                    var: ty::BoundVar::from_usize(<a href="#663">bound_vars</a>.len() - <span class="number">1</span>),
+                    var: ty::BoundVar::from_usize(<a href="#658">bound_vars</a>.len() - <span class="number">1</span>),
                     kind: ty::BrEnv,
                 };
-                <span class="kw">let </span>env_region = ty::Region::new_late_bound(<a href="#657">tcx</a>, ty::INNERMOST, <a href="#669">br</a>);
-                <span class="kw">let </span>closure_ty = <a href="#657">tcx</a>.closure_env_ty(<a href="#659">def_id</a>, <a href="#659">args</a>, <a href="#673">env_region</a>).unwrap();
+                <span class="kw">let </span>env_region = ty::Region::new_late_bound(<a href="#652">tcx</a>, ty::INNERMOST, <a href="#664">br</a>);
+                <span class="kw">let </span>closure_ty = <a href="#652">tcx</a>.closure_env_ty(<a href="#654">def_id</a>, <a href="#654">args</a>, <a href="#668">env_region</a>).unwrap();
 
                 <span class="comment">// The &quot;inputs&quot; of the closure in the
                 // signature appear as a tuple. The MIR side
                 // flattens this tuple.
                 </span><span class="kw">let </span>(<span class="kw-2">&amp;</span>output, tuplized_inputs) =
-                    <a href="#662">inputs_and_output</a>.skip_binder().split_last().unwrap();
+                    <a href="#657">inputs_and_output</a>.skip_binder().split_last().unwrap();
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(tuplized_inputs.len(), <span class="number">1</span>, <span class="string">&quot;multiple closure inputs&quot;</span>);
-                <span class="kw">let </span><span class="kw-2">&amp;</span>ty::Tuple(inputs) = <a href="#679">tuplized_inputs</a>[<span class="number">0</span>].kind() <span class="kw">else </span>{
+                <span class="kw">let </span><span class="kw-2">&amp;</span>ty::Tuple(inputs) = <a href="#674">tuplized_inputs</a>[<span class="number">0</span>].kind() <span class="kw">else </span>{
                     <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;closure inputs not a tuple: {:?}&quot;</span>, tuplized_inputs[<span class="number">0</span>]);
                 };
 
                 ty::Binder::bind_with_vars(
-                    <a href="#657">tcx</a>.mk_type_list_from_iter(
-                        <a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(<a href="#674">closure_ty</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#682">inputs</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(<a href="#679">output</a>)),
+                    <a href="#652">tcx</a>.mk_type_list_from_iter(
+                        <a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(<a href="#669">closure_ty</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#677">inputs</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">iter::once</a>(<a href="#674">output</a>)),
                     ),
-                    <a href="#663">bound_vars</a>,
+                    <a href="#658">bound_vars</a>,
                 )
             }
 
             <a href="#97">DefiningTy::Generator</a>(def_id, args, movability) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="self">self</span>.mir_def.to_def_id(), def_id);
-                <span class="kw">let </span>resume_ty = <a href="#694">args</a>.as_generator().resume_ty();
-                <span class="kw">let </span>output = <a href="#694">args</a>.as_generator().return_ty();
-                <span class="kw">let </span>generator_ty = Ty::new_generator(<a href="#657">tcx</a>, <a href="#694">def_id</a>, <a href="#694">args</a>, <a href="#694">movability</a>);
+                <span class="kw">let </span>resume_ty = <a href="#689">args</a>.as_generator().resume_ty();
+                <span class="kw">let </span>output = <a href="#689">args</a>.as_generator().return_ty();
+                <span class="kw">let </span>generator_ty = Ty::new_generator(<a href="#652">tcx</a>, <a href="#689">def_id</a>, <a href="#689">args</a>, <a href="#689">movability</a>);
                 <span class="kw">let </span>inputs_and_output =
-                    <a class="self" href="#653">self</a>.infcx.tcx.mk_type_list(<span class="kw-2">&amp;</span>[<a href="#698">generator_ty</a>, <a href="#696">resume_ty</a>, <a href="#697">output</a>]);
-                ty::Binder::dummy(<a href="#699">inputs_and_output</a>)
+                    <a class="self" href="#648">self</a>.infcx.tcx.mk_type_list(<span class="kw-2">&amp;</span>[<a href="#693">generator_ty</a>, <a href="#691">resume_ty</a>, <a href="#692">output</a>]);
+                ty::Binder::dummy(<a href="#694">inputs_and_output</a>)
             }
 
             <a href="#101">DefiningTy::FnDef</a>(def_id, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>sig = <a href="#657">tcx</a>.fn_sig(<a href="#704">def_id</a>).instantiate_identity();
-                <span class="kw">let </span>sig = <a href="#654">indices</a>.<a href="#899-904">fold_to_region_vids</a>(<a href="#657">tcx</a>, <a href="#705">sig</a>);
-                <a href="#706">sig</a>.inputs_and_output()
+                <span class="kw">let </span>sig = <a href="#652">tcx</a>.fn_sig(<a href="#699">def_id</a>).instantiate_identity();
+                <span class="kw">let </span>sig = <a href="#649">indices</a>.<a href="#890-895">fold_to_region_vids</a>(<a href="#652">tcx</a>, <a href="#700">sig</a>);
+                <a href="#701">sig</a>.inputs_and_output()
             }
 
             <a href="#106">DefiningTy::Const</a>(def_id, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// For a constant body, there are no inputs, and one
                 // &quot;output&quot; (the type of the constant).
                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="self">self</span>.mir_def.to_def_id(), def_id);
-                <span class="kw">let </span>ty = <a href="#657">tcx</a>.type_of(<a class="self" href="#653">self</a>.mir_def).instantiate_identity();
-                <span class="kw">let </span>ty = <a href="#654">indices</a>.<a href="#899-904">fold_to_region_vids</a>(<a href="#657">tcx</a>, <a href="#714">ty</a>);
-                ty::Binder::dummy(<a href="#657">tcx</a>.mk_type_list(<span class="kw-2">&amp;</span>[<a href="#715">ty</a>]))
+                <span class="kw">let </span>ty = <a href="#652">tcx</a>.type_of(<a class="self" href="#648">self</a>.mir_def).instantiate_identity();
+                <span class="kw">let </span>ty = <a href="#649">indices</a>.<a href="#890-895">fold_to_region_vids</a>(<a href="#652">tcx</a>, <a href="#709">ty</a>);
+                ty::Binder::dummy(<a href="#652">tcx</a>.mk_type_list(<span class="kw-2">&amp;</span>[<a href="#710">ty</a>]))
             }
 
             <a href="#110">DefiningTy::InlineConst</a>(def_id, args) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="self">self</span>.mir_def.to_def_id(), def_id);
-                <span class="kw">let </span>ty = <a href="#719">args</a>.as_inline_const().ty();
-                ty::Binder::dummy(<a href="#657">tcx</a>.mk_type_list(<span class="kw-2">&amp;</span>[<a href="#721">ty</a>]))
+                <span class="kw">let </span>ty = <a href="#714">args</a>.as_inline_const().ty();
+                ty::Binder::dummy(<a href="#652">tcx</a>.mk_type_list(<span class="kw-2">&amp;</span>[<a href="#716">ty</a>]))
             }
         }
     }
@@ -1744,7 +1730,7 @@
                     <span class="kw">_ </span>=&gt; sym::anon,
                 };
 
-                <span class="self">self</span>.next_nll_region_var(origin, || RegionCtxt::Bound(BoundRegionInfo::Name(name)))
+                <span class="self">self</span>.next_nll_region_var(origin, || RegionCtxt::Bound(name))
             };
 
             indices.insert_late_bound_region(liberated_region, region_vid.as_var());
@@ -1774,9 +1760,7 @@
             <span class="kw">if </span>!indices.indices.contains_key(<span class="kw-2">&amp;</span>r) {
                 <span class="kw">let </span>region_vid = {
                     <span class="kw">let </span>name = r.get_name_or_anon();
-                    <span class="self">self</span>.next_nll_region_var(FR, || {
-                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
-                    })
+                    <span class="self">self</span>.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                 };
 
                 <span class="macro">debug!</span>(<span class="question-mark">?</span>region_vid);
@@ -1796,9 +1780,7 @@
             <span class="kw">if </span>!indices.indices.contains_key(<span class="kw-2">&amp;</span>r) {
                 <span class="kw">let </span>region_vid = {
                     <span class="kw">let </span>name = r.get_name_or_anon();
-                    <span class="self">self</span>.next_nll_region_var(FR, || {
-                        RegionCtxt::LateBound(BoundRegionInfo::Name(name))
-                    })
+                    <span class="self">self</span>.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
                 };
 
                 indices.insert_late_bound_region(r, region_vid.as_var());
@@ -1815,7 +1797,7 @@
     /// well. These are used for error reporting.
     </span><span class="kw">fn </span>insert_late_bound_region(<span class="kw-2">&amp;mut </span><span class="self">self</span>, r: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;, vid: <a href="../../rustc_middle/ty/sty/struct.RegionVid.html">ty::RegionVid</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;insert_late_bound_region({:?}, {:?})&quot;</span>, r, vid);
-        <a class="self" href="#868">self</a>.indices.insert(<a href="#868">r</a>, <a href="#868">vid</a>);
+        <a class="self" href="#859">self</a>.indices.insert(<a href="#859">r</a>, <a href="#859">vid</a>);
     }
 
     <span class="doccomment">/// Converts `r` into a local inference variable: `r` can either
@@ -1827,17 +1809,17 @@
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
     </span><span class="kw">pub fn </span>to_region_vid(<span class="kw-2">&amp;</span><span class="self">self</span>, r: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../rustc_middle/ty/sty/struct.RegionVid.html">RegionVid</a> {
-        <span class="kw">if let </span>ty::ReVar(..) = <span class="kw-2">*</span><a href="#881">r</a> {
-            <a href="#881">r</a>.as_var()
+        <span class="kw">if let </span>ty::ReVar(..) = <span class="kw-2">*</span><a href="#872">r</a> {
+            <a href="#872">r</a>.as_var()
         } <span class="kw">else if </span>r.is_error() {
             <span class="comment">// We use the `&#39;static` `RegionVid` because `ReError` doesn&#39;t actually exist in the
             // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
             // errors are being emitted and 2) it leaves the happy path unaffected.
-            </span><a class="self" href="#881">self</a>.fr_static
+            </span><a class="self" href="#872">self</a>.fr_static
         } <span class="kw">else </span>{
-            <span class="kw-2">*</span><span class="self"><a href="#881">self</a>
+            <span class="kw-2">*</span><span class="self"><a href="#872">self</a>
                 </span>.indices
-                .get(<span class="kw-2">&amp;</span><a href="#881">r</a>)
+                .get(<span class="kw-2">&amp;</span><a href="#872">r</a>)
                 .unwrap_or_else(|| <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;cannot convert `{:?}` to a region vid&quot;</span>, r))
         }
     }
@@ -1848,7 +1830,7 @@
     <span class="kw">where
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     {
-        <a href="#899">tcx</a>.fold_regions(<a href="#899">value</a>, |region, <span class="kw">_</span>| ty::Region::new_var(<a href="#899">tcx</a>, <a class="self" href="#899">self</a>.<a href="#881-895">to_region_vid</a>(<a href="#903">region</a>)))
+        <a href="#890">tcx</a>.fold_regions(<a href="#890">value</a>, |region, <span class="kw">_</span>| ty::Region::new_var(<a href="#890">tcx</a>, <a class="self" href="#890">self</a>.<a href="#872-886">to_region_vid</a>(<a href="#894">region</a>)))
     }
 }
 
@@ -1860,16 +1842,16 @@
     <span class="kw-2">mut </span>mir_def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     <span class="kw-2">mut </span>f: <span class="kw">impl </span>FnMut(ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;),
 ) {
-    <span class="kw">let </span>typeck_root_def_id = <a href="#911">tcx</a>.typeck_root_def_id(<a href="#912">mir_def_id</a>.to_def_id());
+    <span class="kw">let </span>typeck_root_def_id = <a href="#902">tcx</a>.typeck_root_def_id(<a href="#903">mir_def_id</a>.to_def_id());
 
     <span class="comment">// Walk up the tree, collecting late-bound regions until we hit the typeck root
     </span><span class="kw">loop </span>{
-        <a href="#932-948">for_each_late_bound_region_in_item</a>(<a href="#911">tcx</a>, <a href="#912">mir_def_id</a>, <span class="kw-2">&amp;mut </span><a href="#913">f</a>);
+        <a href="#923-939">for_each_late_bound_region_in_item</a>(<a href="#902">tcx</a>, <a href="#903">mir_def_id</a>, <span class="kw-2">&amp;mut </span><a href="#904">f</a>);
 
         <span class="kw">if </span>mir_def_id.to_def_id() == typeck_root_def_id {
             <span class="kw">break</span>;
         } <span class="kw">else </span>{
-            <a href="#912">mir_def_id</a> = <a href="#911">tcx</a>.local_parent(<a href="#912">mir_def_id</a>);
+            <a href="#903">mir_def_id</a> = <a href="#902">tcx</a>.local_parent(<a href="#903">mir_def_id</a>);
         }
     }
 }

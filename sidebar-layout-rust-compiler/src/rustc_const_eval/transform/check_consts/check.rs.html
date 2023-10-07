@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/transform/check_consts/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/transform/check_consts/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1091,6 +1091,7 @@
 <a href="#1091" id="1091">1091</a>
 <a href="#1092" id="1092">1092</a>
 <a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
 </span><span class="kw">use </span>rustc_errors::{<a href="../../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>, <a href="../../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>};
@@ -1107,7 +1108,7 @@
 <span class="kw">use </span>rustc_middle::ty::{<a href="../../../../rustc_middle/ty/sty/struct.TraitRef.html">TraitRef</a>, <a href="../../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>};
 <span class="kw">use </span>rustc_mir_dataflow::{<a class="self" href="../../../../rustc_mir_dataflow/index.html">self</a>, <a href="../../../../rustc_mir_dataflow/framework/trait.Analysis.html">Analysis</a>};
 <span class="kw">use </span>rustc_span::{<a href="../../../../rustc_span/symbol/sym/index.html">sym</a>, <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>};
-<span class="kw">use </span><a href="../../../../rustc_trait_selection/traits/error_reporting/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a> <span class="kw">as _</span>;
+<span class="kw">use </span><a href="../../../../rustc_trait_selection/traits/error_reporting/type_err_ctxt_ext/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a> <span class="kw">as _</span>;
 <span class="kw">use </span>rustc_trait_selection::traits::{<a class="self" href="../../../../rustc_trait_selection/traits/index.html">self</a>, <a href="../../../../rustc_middle/traits/enum.ObligationCauseCode.html">ObligationCauseCode</a>, <a href="../../../../rustc_trait_selection/traits/engine/struct.ObligationCtxt.html">ObligationCtxt</a>, <a href="../../../../rustc_trait_selection/traits/select/struct.SelectionContext.html">SelectionContext</a>};
 
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
@@ -1260,7 +1261,7 @@
                 <span class="bool-val">false
             </span>}
 
-            hir::ConstContext::Const | hir::ConstContext::Static(<span class="kw">_</span>) =&gt; {
+            <a href="../../../../rustc_hir/hir/enum.ConstContext.html">hir::ConstContext::Const</a> { .. } | hir::ConstContext::Static(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>cursor = FlowSensitiveAnalysis::new(<a href="qualifs.rs.html#205">CustomEq</a>, <a href="#135">ccx</a>)
                     .<a href="../../../../rustc_mir_dataflow/framework/trait.Analysis.html">into_engine</a>(<a href="#135">ccx</a>.tcx, <span class="kw-2">&amp;</span><a href="#135">ccx</a>.body)
                     .iterate_to_fixpoint()
@@ -1330,7 +1331,7 @@
         </span><span class="kw">if </span><span class="self">self</span>.const_kind() == hir::ConstContext::ConstFn {
             <span class="kw">for </span>(idx, local) <span class="kw">in </span>body.local_decls.iter_enumerated() {
                 <span class="comment">// Handle the return place below.
-                </span><span class="kw">if </span>idx == RETURN_PLACE || local.internal {
+                </span><span class="kw">if </span>idx == RETURN_PLACE {
                     <span class="kw">continue</span>;
                 }
 
@@ -1401,7 +1402,7 @@
                 <span class="kw">let </span>unstable_in_stable = <a class="self" href="#303">self</a>.ccx.<a href="mod.rs.html#58-62">is_const_stable_const_fn</a>()
                     &amp;&amp; !<a href="mod.rs.html#80-87"><span class="kw">super</span>::rustc_allow_const_fn_unstable</a>(<a class="self" href="#303">self</a>.tcx, <a class="self" href="#303">self</a>.<a href="mod.rs.html#47-49">def_id</a>(), <a href="#307">gate</a>);
                 <span class="kw">if </span>unstable_in_stable {
-                    <a href="#1089-1093">emit_unstable_in_stable_error</a>(<a class="self" href="#303">self</a>.ccx, <a href="#303">span</a>, <a href="#307">gate</a>);
+                    <a href="#1090-1094">emit_unstable_in_stable_error</a>(<a class="self" href="#303">self</a>.ccx, <a href="#303">span</a>, <a href="#307">gate</a>);
                 }
 
                 <span class="kw">return</span>;
@@ -1503,7 +1504,7 @@
         <span class="comment">// Special-case reborrows to be more like a copy of a reference.
         </span><span class="kw">match </span><span class="kw-2">*</span><a href="#407">rvalue</a> {
             Rvalue::Ref(<span class="kw">_</span>, kind, place) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(reborrowed_place_ref) = <a href="#1057-1083">place_as_reborrow</a>(<a class="self" href="#407">self</a>.tcx, <a class="self" href="#407">self</a>.body, <a href="#412">place</a>) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(reborrowed_place_ref) = <a href="#1058-1084">place_as_reborrow</a>(<a class="self" href="#407">self</a>.tcx, <a class="self" href="#407">self</a>.body, <a href="#412">place</a>) {
                     <span class="kw">let </span>ctx = <span class="kw">match </span><a href="#412">kind</a> {
                         BorrowKind::Shared =&gt; {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
@@ -1521,7 +1522,7 @@
                 }
             }
             Rvalue::AddressOf(mutbl, place) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(reborrowed_place_ref) = <a href="#1057-1083">place_as_reborrow</a>(<a class="self" href="#407">self</a>.tcx, <a class="self" href="#407">self</a>.body, <a href="#430">place</a>) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(reborrowed_place_ref) = <a href="#1058-1084">place_as_reborrow</a>(<a class="self" href="#407">self</a>.tcx, <a class="self" href="#407">self</a>.body, <a href="#430">place</a>) {
                     <span class="kw">let </span>ctx = <span class="kw">match </span><a href="#430">mutbl</a> {
                         Mutability::Not =&gt; {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
@@ -1757,6 +1758,7 @@
             | ProjectionElem::Downcast(..)
             | ProjectionElem::OpaqueCast(..)
             | <a href="../../../../rustc_middle/mir/syntax/enum.ProjectionElem.html">ProjectionElem::Subslice</a> { .. }
+            | ProjectionElem::Subtype(..)
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(<span class="kw">_</span>) =&gt; {}
         }
@@ -1764,15 +1766,15 @@
 
     <span class="kw">fn </span>visit_source_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, source_info: <span class="kw-2">&amp;</span><a href="../../../../rustc_middle/mir/struct.SourceInfo.html">SourceInfo</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;visit_source_info: source_info={:?}&quot;</span>, source_info);
-        <a class="self" href="#672">self</a>.span = <a href="#672">source_info</a>.span;
+        <a class="self" href="#673">self</a>.span = <a href="#673">source_info</a>.span;
     }
 
     <span class="kw">fn </span>visit_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, statement: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;visit_statement: statement={:?} location={:?}&quot;</span>, statement, location);
 
-        <a class="self" href="#677">self</a>.<a href="../../../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#677">statement</a>, <a href="#677">location</a>);
+        <a class="self" href="#678">self</a>.<a href="../../../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#678">statement</a>, <a href="#678">location</a>);
 
-        <span class="kw">match </span><a href="#677">statement</a>.kind {
+        <span class="kw">match </span><a href="#678">statement</a>.kind {
             StatementKind::Assign(..)
             | <a href="../../../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { .. }
             | StatementKind::Deinit(..)
@@ -1835,7 +1837,7 @@
 
                 <span class="kw">let </span>errors = ocx.select_all_or_error();
                 <span class="kw">if </span>!errors.is_empty() {
-                    infcx.err_ctxt().report_fulfillment_errors(<span class="kw-2">&amp;</span>errors);
+                    infcx.err_ctxt().report_fulfillment_errors(errors);
                 }
 
                 <span class="comment">// Attempting to call a trait method?
@@ -1979,7 +1981,7 @@
 
                 <span class="comment">// At this point, we are calling a function, `callee`, whose `DefId` is known...
 
-                // `begin_panic` and `panic_display` are generic functions that accept
+                // `begin_panic` and `#[rustc_const_panic_str]` functions accept generic
                 // types other than str. Check to enforce that only str can be used in
                 // const-eval.
 
@@ -1991,8 +1993,8 @@
                     }
                 }
 
-                <span class="comment">// const-eval of the `panic_display` fn assumes the argument is `&amp;&amp;str`
-                </span><span class="kw">if </span><span class="prelude-val">Some</span>(callee) == tcx.lang_items().panic_display() {
+                <span class="comment">// const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&amp;&amp;str`
+                </span><span class="kw">if </span>tcx.has_attr(callee, sym::rustc_const_panic_str) {
                     <span class="kw">match </span>args[<span class="number">0</span>].ty(<span class="kw-2">&amp;</span><span class="self">self</span>.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) <span class="kw">if </span><span class="macro">matches!</span>(ty.kind(), ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) <span class="kw">if </span>ty.is_str()) =&gt;
                         {
@@ -2152,7 +2154,7 @@
     body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <span class="prelude-ty">Option</span>&lt;PlaceRef&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-    <span class="kw">match </span><a href="#1060">place</a>.as_ref().last_projection() {
+    <span class="kw">match </span><a href="#1061">place</a>.as_ref().last_projection() {
         <span class="prelude-val">Some</span>((place_base, ProjectionElem::Deref)) =&gt; {
             <span class="comment">// A borrow of a `static` also looks like `&amp;(*_1)` in the MIR, but `_1` is a `const`
             // that points to the allocation for the static. Don&#39;t treat these as reborrows.
@@ -2162,10 +2164,10 @@
                 <span class="comment">// Ensure the type being derefed is a reference and not a raw pointer.
                 // This is sufficient to prevent an access to a `static mut` from being marked as a
                 // reborrow, even if the check above were to disappear.
-                </span><span class="kw">let </span>inner_ty = <a href="#1063">place_base</a>.ty(<a href="#1059">body</a>, <a href="#1058">tcx</a>).ty;
+                </span><span class="kw">let </span>inner_ty = <a href="#1064">place_base</a>.ty(<a href="#1060">body</a>, <a href="#1059">tcx</a>).ty;
 
-                <span class="kw">if let </span>ty::Ref(..) = <a href="#1072">inner_ty</a>.kind() {
-                    <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#1063">place_base</a>);
+                <span class="kw">if let </span>ty::Ref(..) = <a href="#1073">inner_ty</a>.kind() {
+                    <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#1064">place_base</a>);
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="prelude-val">None</span>;
                 }
@@ -2176,12 +2178,12 @@
 }
 
 <span class="kw">fn </span><a href="../../../../rustc_const_eval/transform/check_consts/check/fn.is_int_bool_or_char.html">is_int_bool_or_char</a>(ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <a href="#1085">ty</a>.is_bool() || <a href="#1085">ty</a>.is_integral() || <a href="#1085">ty</a>.is_char()
+    <a href="#1086">ty</a>.is_bool() || <a href="#1086">ty</a>.is_integral() || <a href="#1086">ty</a>.is_char()
 }
 
 <span class="kw">fn </span><a href="../../../../rustc_const_eval/transform/check_consts/check/fn.emit_unstable_in_stable_error.html">emit_unstable_in_stable_error</a>(ccx: <span class="kw-2">&amp;</span>ConstCx&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;, span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, gate: <a href="../../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>) {
-    <span class="kw">let </span>attr_span = <a href="#1089">ccx</a>.tcx.def_span(<a href="#1089">ccx</a>.<a href="mod.rs.html#47-49">def_id</a>()).shrink_to_lo();
+    <span class="kw">let </span>attr_span = <a href="#1090">ccx</a>.tcx.def_span(<a href="#1090">ccx</a>.<a href="mod.rs.html#47-49">def_id</a>()).shrink_to_lo();
 
-    <a href="#1089">ccx</a>.tcx.sess.emit_err(<a href="../../errors.rs.html#25-40">UnstableInStable</a> { gate: <a href="#1089">gate</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(), <a href="#1089">span</a>, <a href="#1090">attr_span</a> });
+    <a href="#1090">ccx</a>.tcx.sess.emit_err(<a href="../../errors.rs.html#25-40">UnstableInStable</a> { gate: <a href="#1090">gate</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(), <a href="#1090">span</a>, <a href="#1091">attr_span</a> });
 }
 </code></pre></div></section></main></body></html>

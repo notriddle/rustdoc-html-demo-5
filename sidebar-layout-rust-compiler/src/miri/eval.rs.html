@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/eval.rs`."><title>eval.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/eval.rs`."><title>eval.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -832,7 +832,7 @@
                     <span class="prelude-val">None </span>=&gt; <span class="kw-2">*</span><span class="self"><a href="#210">self</a> </span>= <a href="#205">Done</a>,
                     <span class="prelude-val">Some</span>(new_remaining) =&gt; {
                         <span class="kw-2">*</span><a href="#235">remaining</a> = <a href="#238">new_remaining</a>;
-                        <a href="#211">this</a>.<a href="concurrency/thread.rs.html#994-996">yield_active_thread</a>();
+                        <a href="#211">this</a>.<a href="concurrency/thread.rs.html#993-995">yield_active_thread</a>();
                     }
                 },
             <a href="#205">Done</a> =&gt; {
@@ -875,7 +875,7 @@
     })<span class="question-mark">?</span>;
 
     <span class="comment">// Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
-    </span><span class="kw">let </span>sentinel = <a href="#268">ecx</a>.<a href="helpers.rs.html#129-133">try_resolve_path</a>(<span class="kw-2">&amp;</span>[<span class="string">&quot;core&quot;</span>, <span class="string">&quot;ascii&quot;</span>, <span class="string">&quot;escape_default&quot;</span>], Namespace::ValueNS);
+    </span><span class="kw">let </span>sentinel = <a href="#268">ecx</a>.<a href="helpers.rs.html#127-131">try_resolve_path</a>(<span class="kw-2">&amp;</span>[<span class="string">&quot;core&quot;</span>, <span class="string">&quot;ascii&quot;</span>, <span class="string">&quot;escape_default&quot;</span>], Namespace::ValueNS);
     <span class="kw">if </span>!<span class="macro">matches!</span>(sentinel, <span class="prelude-val">Some</span>(s) <span class="kw">if </span>tcx.is_mir_available(s.def.def_id())) {
         <a href="#261">tcx</a>.sess.fatal(
             <span class="string">&quot;the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
@@ -915,7 +915,7 @@
             <span class="kw">let </span>place = ecx.project_field(<span class="kw-2">&amp;</span>argvs_place, idx)<span class="question-mark">?</span>;
             ecx.write_immediate(arg, <span class="kw-2">&amp;</span>place)<span class="question-mark">?</span>;
         }
-        <a href="#268">ecx</a>.<a href="helpers.rs.html#996-1001">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#318">argvs_place</a>);
+        <a href="#268">ecx</a>.<a href="helpers.rs.html#994-999">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#318">argvs_place</a>);
         <span class="comment">// A pointer to that place is the 3rd argument for main.
         </span><span class="kw">let </span>argv = <a href="#318">argvs_place</a>.to_ref(<span class="kw-2">&amp;</span><a href="#268">ecx</a>);
         <span class="comment">// Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
@@ -923,7 +923,7 @@
             <span class="kw">let </span>argc_place =
                 ecx.allocate(ecx.machine.layouts.isize, MiriMemoryKind::Machine.into())<span class="question-mark">?</span>;
             ecx.write_scalar(argc, <span class="kw-2">&amp;</span>argc_place)<span class="question-mark">?</span>;
-            <a href="#268">ecx</a>.<a href="helpers.rs.html#996-1001">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#328">argc_place</a>);
+            <a href="#268">ecx</a>.<a href="helpers.rs.html#994-999">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#328">argc_place</a>);
             <a href="#268">ecx</a>.machine.argc = <span class="prelude-val">Some</span>(<a href="#328">argc_place</a>.ptr());
 
             <span class="kw">let </span>argv_place = ecx.allocate(
@@ -931,7 +931,7 @@
                 MiriMemoryKind::Machine.into(),
             )<span class="question-mark">?</span>;
             ecx.write_immediate(argv, <span class="kw-2">&amp;</span>argv_place)<span class="question-mark">?</span>;
-            <a href="#268">ecx</a>.<a href="helpers.rs.html#996-1001">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#334">argv_place</a>);
+            <a href="#268">ecx</a>.<a href="helpers.rs.html#994-999">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#334">argv_place</a>);
             <a href="#268">ecx</a>.machine.argv = <span class="prelude-val">Some</span>(<a href="#334">argv_place</a>.ptr());
         }
         <span class="comment">// Store command line as UTF-16 for Windows `GetCommandLineW`.
@@ -949,7 +949,7 @@
                 <span class="kw">let </span>place = ecx.project_field(<span class="kw-2">&amp;</span>cmd_place, idx)<span class="question-mark">?</span>;
                 ecx.write_scalar(Scalar::from_u16(c), <span class="kw-2">&amp;</span>place)<span class="question-mark">?</span>;
             }
-            <a href="#268">ecx</a>.<a href="helpers.rs.html#996-1001">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#349">cmd_place</a>);
+            <a href="#268">ecx</a>.<a href="helpers.rs.html#994-999">mark_immutable</a>(<span class="kw-2">&amp;</span><a href="#349">cmd_place</a>);
         }
         <a href="#325">argv</a>
     };
@@ -1035,7 +1035,7 @@
 
     <span class="comment">// Perform the main execution.
     </span><span class="kw">let </span>res: thread::Result&lt;InterpResult&lt;<span class="lifetime">&#39;_</span>, !&gt;&gt; =
-        panic::catch_unwind(AssertUnwindSafe(|| <a href="#432">ecx</a>.<a href="concurrency/thread.rs.html#1030-1067">run_threads</a>()));
+        panic::catch_unwind(AssertUnwindSafe(|| <a href="#432">ecx</a>.<a href="concurrency/thread.rs.html#1029-1066">run_threads</a>()));
     <span class="kw">let </span>res = <a href="#442">res</a>.unwrap_or_else(|panic_payload| {
         <a href="#432">ecx</a>.<a href="diagnostics.rs.html#616-632">handle_ice</a>();
         panic::resume_unwind(<a href="#444">panic_payload</a>)

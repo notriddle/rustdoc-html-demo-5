@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/callee.rs`."><title>callee.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/callee.rs`."><title>callee.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -887,11 +887,13 @@
 <a href="#887" id="887">887</a>
 <a href="#888" id="888">888</a>
 <a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="method/probe.rs.html#245-251"><span class="kw">super</span>::method::probe::ProbeScope</a>;
 <span class="kw">use </span><a href="method/mod.rs.html#36-45"><span class="kw">super</span>::method::MethodCallee</a>;
-<span class="kw">use super</span>::{<a href="expectation.rs.html#11-24">Expectation</a>, <a href="fn_ctxt/mod.rs.html#40-114">FnCtxt</a>, <a href="lib.rs.html#418-421">TupleArgumentsFlag</a>};
+<span class="kw">use super</span>::{<a href="expectation.rs.html#11-24">Expectation</a>, <a href="fn_ctxt/mod.rs.html#40-114">FnCtxt</a>, <a href="lib.rs.html#416-419">TupleArgumentsFlag</a>};
 
-<span class="kw">use </span><a href="lib.rs.html#27"><span class="kw">crate</span>::errors</a>;
+<span class="kw">use </span><a href="lib.rs.html#26"><span class="kw">crate</span>::errors</a>;
 <span class="kw">use </span><a href="../../rustc_ast/util/parser/constant.PREC_POSTFIX.html">rustc_ast::util::parser::PREC_POSTFIX</a>;
 <span class="kw">use </span>rustc_errors::{<a href="../../rustc_lint_defs/enum.Applicability.html">Applicability</a>, <a href="../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>, <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>, <a href="../../rustc_errors/enum.StashKey.html">StashKey</a>};
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
@@ -963,15 +965,15 @@
     ) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>original_callee_ty = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#71">callee_expr</a>.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)) =&gt; <span class="self"><a href="#69">self</a>
-                </span>.<a href="expr.rs.html#181-265">check_expr_with_expectation_and_args</a>(
+                </span>.<a href="expr.rs.html#183-267">check_expr_with_expectation_and_args</a>(
                     <a href="#71">callee_expr</a>,
                     <a href="expectation.rs.html#13">Expectation::NoExpectation</a>,
                     <a href="#72">arg_exprs</a>,
                 ),
-            <span class="kw">_ </span>=&gt; <a class="self" href="#69">self</a>.<a href="expr.rs.html#148-150">check_expr</a>(<a href="#71">callee_expr</a>),
+            <span class="kw">_ </span>=&gt; <a class="self" href="#69">self</a>.<a href="expr.rs.html#150-152">check_expr</a>(<a href="#71">callee_expr</a>),
         };
 
-        <span class="kw">let </span>expr_ty = <a class="self" href="#69">self</a>.<a href="fn_ctxt/_impl.rs.html#1512-1527">structurally_resolve_type</a>(<a href="#70">call_expr</a>.span, <a href="#75">original_callee_ty</a>);
+        <span class="kw">let </span>expr_ty = <a class="self" href="#69">self</a>.<a href="fn_ctxt/_impl.rs.html#1497-1512">structurally_resolve_type</a>(<a href="#70">call_expr</a>.span, <a href="#75">original_callee_ty</a>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>autoderef = <a class="self" href="#69">self</a>.<a href="autoderef.rs.html#14-16">autoderef</a>(<a href="#71">callee_expr</a>.span, <a href="#85">expr_ty</a>);
         <span class="kw">let </span><span class="kw-2">mut </span>result = <span class="prelude-val">None</span>;
@@ -1001,7 +1003,7 @@
             }
 
             <span class="prelude-val">Some</span>(<a href="#64">CallStep::Overloaded</a>(method_callee)) =&gt; {
-                <a class="self" href="#69">self</a>.<a href="#814-832">confirm_overloaded_call</a>(<a href="#70">call_expr</a>, <a href="#72">arg_exprs</a>, <a href="#73">expected</a>, <a href="#114">method_callee</a>)
+                <a class="self" href="#69">self</a>.<a href="#816-834">confirm_overloaded_call</a>(<a href="#70">call_expr</a>, <a href="#72">arg_exprs</a>, <a href="#73">expected</a>, <a href="#114">method_callee</a>)
             }
         };
 
@@ -1335,20 +1337,20 @@
         <span class="kw">let </span>fn_sig = <a class="self" href="#367">self</a>.<a href="fn_ctxt/_impl.rs.html#310-317">normalize</a>(<a href="#368">call_expr</a>.span, <a href="#445">fn_sig</a>);
 
         <span class="comment">// Call the generic checker.
-        </span><span class="kw">let </span>expected_arg_tys = <a class="self" href="#367">self</a>.<a href="fn_ctxt/_impl.rs.html#700">expected_inputs_for_expected_output</a>(
+        </span><span class="kw">let </span>expected_arg_tys = <a class="self" href="#367">self</a>.<a href="fn_ctxt/_impl.rs.html#685">expected_inputs_for_expected_output</a>(
             <a href="#368">call_expr</a>.span,
             <a href="#372">expected</a>,
             <a href="#446">fn_sig</a>.output(),
             <a href="#446">fn_sig</a>.inputs(),
         );
-        <a class="self" href="#367">self</a>.<a href="fn_ctxt/checks.rs.html#139-461">check_argument_types</a>(
+        <a class="self" href="#367">self</a>.<a href="fn_ctxt/checks.rs.html#139-470">check_argument_types</a>(
             <a href="#368">call_expr</a>.span,
             <a href="#368">call_expr</a>,
             <a href="#446">fn_sig</a>.inputs(),
             <a href="#449">expected_arg_tys</a>,
             <a href="#371">arg_exprs</a>,
             <a href="#446">fn_sig</a>.c_variadic,
-            <a href="lib.rs.html#419">TupleArgumentsFlag::DontTupleArguments</a>,
+            <a href="lib.rs.html#417">TupleArgumentsFlag::DontTupleArguments</a>,
             <a href="#374">def_id</a>,
         );
 
@@ -1468,7 +1470,7 @@
     ) -&gt; <a href="../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a> {
         <span class="comment">// Callee probe fails when APIT references errors, so suppress those
         // errors here.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>, args)) = <a class="self" href="#574">self</a>.<a href="fn_ctxt/suggestions.rs.html#166-171">extract_callable_info</a>(<a href="#577">callee_ty</a>)
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw">_</span>, args)) = <a class="self" href="#574">self</a>.<a href="fn_ctxt/suggestions.rs.html#170-175">extract_callable_info</a>(<a href="#577">callee_ty</a>)
             &amp;&amp; <span class="kw">let </span><span class="prelude-val">Err</span>(err) = <a href="#582">args</a>.<a href="../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">error_reported</a>()
         {
             <span class="kw">return </span><a href="#583">err</a>;
@@ -1491,7 +1493,7 @@
         }
 
         <span class="kw">let </span>callee_ty = <a class="self" href="#574">self</a>.resolve_vars_if_possible(<a href="#577">callee_ty</a>);
-        <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="self" href="#574">self</a>.tcx.sess.create_err(<a href="errors.rs.html#358-362">errors::InvalidCallee</a> {
+        <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="self" href="#574">self</a>.tcx.sess.create_err(<a href="errors.rs.html#325-329">errors::InvalidCallee</a> {
             span: <a href="#576">callee_expr</a>.span,
             ty: <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#588">unit_variant</a> {
                 <span class="prelude-val">Some</span>((<span class="kw">_</span>, kind, path)) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{kind} `{path}`&quot;</span>),
@@ -1554,7 +1556,7 @@
                     Applicability::MaybeIncorrect,
                 );
             }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((maybe_def, output_ty, <span class="kw">_</span>)) = <a class="self" href="#574">self</a>.<a href="fn_ctxt/suggestions.rs.html#166-171">extract_callable_info</a>(<a href="#604">callee_ty</a>)
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((maybe_def, output_ty, <span class="kw">_</span>)) = <a class="self" href="#574">self</a>.<a href="fn_ctxt/suggestions.rs.html#170-175">extract_callable_info</a>(<a href="#604">callee_ty</a>)
                 &amp;&amp; !<span class="self">self</span>.type_is_sized_modulo_regions(<span class="self">self</span>.param_env, output_ty)
             {
                 <span class="kw">let </span>descr = <span class="kw">match </span><a href="#668">maybe_def</a> {
@@ -1622,21 +1624,21 @@
         // do know the types expected for each argument and the return
         // type.
 
-        </span><span class="kw">let </span>expected_arg_tys = <a class="self" href="#724">self</a>.<a href="fn_ctxt/_impl.rs.html#700">expected_inputs_for_expected_output</a>(
+        </span><span class="kw">let </span>expected_arg_tys = <a class="self" href="#724">self</a>.<a href="fn_ctxt/_impl.rs.html#685">expected_inputs_for_expected_output</a>(
             <a href="#725">call_expr</a>.span,
             <a href="#727">expected</a>,
             <a href="#729">fn_sig</a>.output(),
             <a href="#729">fn_sig</a>.inputs(),
         );
 
-        <a class="self" href="#724">self</a>.<a href="fn_ctxt/checks.rs.html#139-461">check_argument_types</a>(
+        <a class="self" href="#724">self</a>.<a href="fn_ctxt/checks.rs.html#139-470">check_argument_types</a>(
             <a href="#725">call_expr</a>.span,
             <a href="#725">call_expr</a>,
             <a href="#729">fn_sig</a>.inputs(),
             <a href="#736">expected_arg_tys</a>,
             <a href="#726">arg_exprs</a>,
             <a href="#729">fn_sig</a>.c_variadic,
-            <a href="lib.rs.html#420">TupleArgumentsFlag::TupleArguments</a>,
+            <a href="lib.rs.html#418">TupleArgumentsFlag::TupleArguments</a>,
             <span class="prelude-val">Some</span>(<a href="#728">closure_def_id</a>.to_def_id()),
         );
 
@@ -1677,7 +1679,9 @@
 
         <span class="kw">let </span>effect = <span class="kw">match </span>const_context {
             <span class="kw">_ if </span>host_always_on =&gt; tcx.consts.true_,
-            <span class="prelude-val">Some</span>(hir::ConstContext::Static(<span class="kw">_</span>) | hir::ConstContext::Const) =&gt; tcx.consts.false_,
+            <span class="prelude-val">Some</span>(hir::ConstContext::Static(<span class="kw">_</span>) | hir::ConstContext::Const { .. }) =&gt; {
+                tcx.consts.false_
+            }
             <span class="prelude-val">Some</span>(hir::ConstContext::ConstFn) =&gt; {
                 <span class="kw">let </span>args = ty::GenericArgs::identity_for_item(tcx, context);
                 args.host_effect_param().expect(<span class="string">&quot;ConstContext::Maybe must have host effect param&quot;</span>)
@@ -1707,17 +1711,17 @@
         expected: Expectation&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         method_callee: MethodCallee&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>output_type = <a class="self" href="#815">self</a>.<a href="fn_ctxt/checks.rs.html#81-135">check_method_argument_types</a>(
-            <a href="#816">call_expr</a>.span,
-            <a href="#816">call_expr</a>,
-            <span class="prelude-val">Ok</span>(<a href="#819">method_callee</a>),
-            <a href="#817">arg_exprs</a>,
-            <a href="lib.rs.html#420">TupleArgumentsFlag::TupleArguments</a>,
-            <a href="#818">expected</a>,
+        <span class="kw">let </span>output_type = <a class="self" href="#817">self</a>.<a href="fn_ctxt/checks.rs.html#81-135">check_method_argument_types</a>(
+            <a href="#818">call_expr</a>.span,
+            <a href="#818">call_expr</a>,
+            <span class="prelude-val">Ok</span>(<a href="#821">method_callee</a>),
+            <a href="#819">arg_exprs</a>,
+            <a href="lib.rs.html#418">TupleArgumentsFlag::TupleArguments</a>,
+            <a href="#820">expected</a>,
         );
 
-        <a class="self" href="#815">self</a>.<a href="fn_ctxt/_impl.rs.html#161">write_method_call</a>(<a href="#816">call_expr</a>.hir_id, <a href="#819">method_callee</a>);
-        <a href="#821">output_type</a>
+        <a class="self" href="#817">self</a>.<a href="fn_ctxt/_impl.rs.html#161">write_method_call</a>(<a href="#818">call_expr</a>.hir_id, <a href="#821">method_callee</a>);
+        <a href="#823">output_type</a>
     }
 }
 
@@ -1740,7 +1744,7 @@
         </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(fcx.closure_kind(<span class="self">self</span>.closure_args).is_some());
 
         <span class="comment">// We may now know enough to figure out fn vs fnmut etc.
-        </span><span class="kw">match </span><a href="#846">fcx</a>.<a href="#213-285">try_overloaded_call_traits</a>(<a class="self" href="#846">self</a>.call_expr, <a class="self" href="#846">self</a>.adjusted_ty, <span class="prelude-val">None</span>) {
+        </span><span class="kw">match </span><a href="#848">fcx</a>.<a href="#213-285">try_overloaded_call_traits</a>(<a class="self" href="#848">self</a>.call_expr, <a class="self" href="#848">self</a>.adjusted_ty, <span class="prelude-val">None</span>) {
             <span class="prelude-val">Some</span>((autoref, method_callee)) =&gt; {
                 <span class="comment">// One problem is that when we get here, we are going
                 // to have a newly instantiated function signature
@@ -1750,7 +1754,7 @@
                 // can&#39;t because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                </span><span class="kw">let </span>method_sig = <a href="#855">method_callee</a>.sig;
+                </span><span class="kw">let </span>method_sig = <a href="#857">method_callee</a>.sig;
 
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;attempt_resolution: method_callee={:?}&quot;</span>, method_callee);
 
@@ -1760,18 +1764,18 @@
                     fcx.demand_eqtype(<span class="self">self</span>.call_expr.span, <span class="kw-2">*</span>self_arg_ty, <span class="kw-2">*</span>method_arg_ty);
                 }
 
-                <a href="#846">fcx</a>.<a href="demand.rs.html#196-200">demand_eqtype</a>(<a class="self" href="#846">self</a>.call_expr.span, <a href="#864">method_sig</a>.output(), <a class="self" href="#846">self</a>.fn_sig.output());
+                <a href="#848">fcx</a>.<a href="demand.rs.html#197-201">demand_eqtype</a>(<a class="self" href="#848">self</a>.call_expr.span, <a href="#866">method_sig</a>.output(), <a class="self" href="#848">self</a>.fn_sig.output());
 
-                <span class="kw">let </span><span class="kw-2">mut </span>adjustments = <a class="self" href="#846">self</a>.adjustments;
-                <a href="#876">adjustments</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#855">autoref</a>);
-                <a href="#846">fcx</a>.<a href="fn_ctxt/_impl.rs.html#220">apply_adjustments</a>(<a class="self" href="#846">self</a>.callee_expr, <a href="#876">adjustments</a>);
+                <span class="kw">let </span><span class="kw-2">mut </span>adjustments = <a class="self" href="#848">self</a>.adjustments;
+                <a href="#878">adjustments</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#857">autoref</a>);
+                <a href="#848">fcx</a>.<a href="fn_ctxt/_impl.rs.html#220">apply_adjustments</a>(<a class="self" href="#848">self</a>.callee_expr, <a href="#878">adjustments</a>);
 
-                <a href="#846">fcx</a>.<a href="fn_ctxt/_impl.rs.html#161">write_method_call</a>(<a class="self" href="#846">self</a>.call_expr.hir_id, <a href="#855">method_callee</a>);
+                <a href="#848">fcx</a>.<a href="fn_ctxt/_impl.rs.html#161">write_method_call</a>(<a class="self" href="#848">self</a>.call_expr.hir_id, <a href="#857">method_callee</a>);
             }
             <span class="prelude-val">None </span>=&gt; {
                 <span class="comment">// This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
                 // lang items are not defined (issue #86238).
-                </span><a href="#846">fcx</a>.inh.tcx.sess.emit_err(<a href="errors.rs.html#89-92">errors::MissingFnLangItems</a> { span: <a class="self" href="#846">self</a>.call_expr.span });
+                </span><a href="#848">fcx</a>.inh.tcx.sess.emit_err(<a href="errors.rs.html#89-92">errors::MissingFnLangItems</a> { span: <a class="self" href="#848">self</a>.call_expr.span });
             }
         }
     }

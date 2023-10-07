@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/fast_reject.rs`."><title>fast_reject.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/fast_reject.rs`."><title>fast_reject.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -385,14 +385,9 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_middle/mir/enum.Mutability.html"><span class="kw">crate</span>::mir::Mutability</a>;
 <span class="kw">use </span><a href="generic_args.rs.html#51-55"><span class="kw">crate</span>::ty::GenericArgKind</a>;
-<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="generic_args.rs.html#247">GenericArgsRef</a>, <a href="mod.rs.html#451">Ty</a>, <a href="context.rs.html#510-512">TyCtxt</a>, <a href="visit.rs.html#10-132">TypeVisitableExt</a>};
+<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="generic_args.rs.html#247">GenericArgsRef</a>, <a href="mod.rs.html#463">Ty</a>, <a href="context.rs.html#510-512">TyCtxt</a>, <a href="visit.rs.html#10-132">TypeVisitableExt</a>};
 <span class="kw">use </span><a href="../../../rustc_span/def_id/struct.DefId.html">rustc_hir::def_id::DefId</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/fmt/macros/derive.Debug.html">std::fmt::Debug</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/hash/macros/derive.Hash.html">std::hash::Hash</a>;
@@ -421,8 +416,7 @@
     Trait(<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
     Closure(<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
     Generator(<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
-    GeneratorWitness(<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>),
-    GeneratorWitnessMIR(<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
+    GeneratorWitness(<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>),
     Function(<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>),
     Placeholder,
 }
@@ -500,68 +494,65 @@
 </span><span class="kw">pub fn </span><a href="../../../rustc_middle/ty/fast_reject/fn.simplify_type.html">simplify_type</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    treat_params: <a href="#51-69">TreatParams</a>,
-) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#11-36">SimplifiedType</a>&gt; {
-    <span class="kw">match </span><span class="kw-2">*</span><a href="#110">ty</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+    treat_params: <a href="#50-68">TreatParams</a>,
+) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#11-35">SimplifiedType</a>&gt; {
+    <span class="kw">match </span><span class="kw-2">*</span><a href="#109">ty</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
         ty::Bool =&gt; <span class="prelude-val">Some</span>(<a href="#12">SimplifiedType::Bool</a>),
         ty::Char =&gt; <span class="prelude-val">Some</span>(<a href="#13">SimplifiedType::Char</a>),
-        ty::Int(int_type) =&gt; <span class="prelude-val">Some</span>(<a href="#14">SimplifiedType::Int</a>(<a href="#116">int_type</a>)),
-        ty::Uint(uint_type) =&gt; <span class="prelude-val">Some</span>(<a href="#15">SimplifiedType::Uint</a>(<a href="#117">uint_type</a>)),
-        ty::Float(float_type) =&gt; <span class="prelude-val">Some</span>(<a href="#16">SimplifiedType::Float</a>(<a href="#118">float_type</a>)),
-        ty::Adt(def, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#17">SimplifiedType::Adt</a>(<a href="#119">def</a>.<a href="adt.rs.html#184-186">did</a>())),
+        ty::Int(int_type) =&gt; <span class="prelude-val">Some</span>(<a href="#14">SimplifiedType::Int</a>(<a href="#115">int_type</a>)),
+        ty::Uint(uint_type) =&gt; <span class="prelude-val">Some</span>(<a href="#15">SimplifiedType::Uint</a>(<a href="#116">uint_type</a>)),
+        ty::Float(float_type) =&gt; <span class="prelude-val">Some</span>(<a href="#16">SimplifiedType::Float</a>(<a href="#117">float_type</a>)),
+        ty::Adt(def, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#17">SimplifiedType::Adt</a>(<a href="#118">def</a>.<a href="adt.rs.html#184-186">did</a>())),
         ty::Str =&gt; <span class="prelude-val">Some</span>(<a href="#19">SimplifiedType::Str</a>),
         ty::Array(..) =&gt; <span class="prelude-val">Some</span>(<a href="#20">SimplifiedType::Array</a>),
         ty::Slice(..) =&gt; <span class="prelude-val">Some</span>(<a href="#21">SimplifiedType::Slice</a>),
-        ty::RawPtr(ptr) =&gt; <span class="prelude-val">Some</span>(<a href="#23">SimplifiedType::Ptr</a>(<a href="#123">ptr</a>.mutbl)),
-        ty::Dynamic(trait_info, ..) =&gt; <span class="kw">match </span><a href="#124">trait_info</a>.<a href="sty.rs.html#781-783">principal_def_id</a>() {
-            <span class="prelude-val">Some</span>(principal_def_id) <span class="kw">if </span>!<a href="#109">tcx</a>.<a href="mod.rs.html#2447-2449">trait_is_auto</a>(<a href="#125">principal_def_id</a>) =&gt; {
-                <span class="prelude-val">Some</span>(<a href="#29">SimplifiedType::Trait</a>(<a href="#125">principal_def_id</a>))
+        ty::RawPtr(ptr) =&gt; <span class="prelude-val">Some</span>(<a href="#23">SimplifiedType::Ptr</a>(<a href="#122">ptr</a>.mutbl)),
+        ty::Dynamic(trait_info, ..) =&gt; <span class="kw">match </span><a href="#123">trait_info</a>.<a href="sty.rs.html#781-783">principal_def_id</a>() {
+            <span class="prelude-val">Some</span>(principal_def_id) <span class="kw">if </span>!<a href="#108">tcx</a>.<a href="mod.rs.html#2409-2411">trait_is_auto</a>(<a href="#124">principal_def_id</a>) =&gt; {
+                <span class="prelude-val">Some</span>(<a href="#29">SimplifiedType::Trait</a>(<a href="#124">principal_def_id</a>))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(<a href="#28">SimplifiedType::MarkerTraitObject</a>),
         },
-        ty::Ref(<span class="kw">_</span>, <span class="kw">_</span>, mutbl) =&gt; <span class="prelude-val">Some</span>(<a href="#22">SimplifiedType::Ref</a>(<a href="#130">mutbl</a>)),
-        ty::FnDef(def_id, <span class="kw">_</span>) | ty::Closure(def_id, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#30">SimplifiedType::Closure</a>(<a href="#131">def_id</a>)),
-        ty::Generator(def_id, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#31">SimplifiedType::Generator</a>(<a href="#132">def_id</a>)),
-        ty::GeneratorWitness(tys) =&gt; {
-            <span class="prelude-val">Some</span>(<a href="#32">SimplifiedType::GeneratorWitness</a>(<a href="#133">tys</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="list.rs.html#67-69">len</a>()))
-        }
-        ty::GeneratorWitnessMIR(def_id, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#33">SimplifiedType::GeneratorWitnessMIR</a>(<a href="#136">def_id</a>)),
+        ty::Ref(<span class="kw">_</span>, <span class="kw">_</span>, mutbl) =&gt; <span class="prelude-val">Some</span>(<a href="#22">SimplifiedType::Ref</a>(<a href="#129">mutbl</a>)),
+        ty::FnDef(def_id, <span class="kw">_</span>) | ty::Closure(def_id, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#30">SimplifiedType::Closure</a>(<a href="#130">def_id</a>)),
+        ty::Generator(def_id, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#31">SimplifiedType::Generator</a>(<a href="#131">def_id</a>)),
+        ty::GeneratorWitness(def_id, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#32">SimplifiedType::GeneratorWitness</a>(<a href="#132">def_id</a>)),
         ty::Never =&gt; <span class="prelude-val">Some</span>(<a href="#24">SimplifiedType::Never</a>),
-        ty::Tuple(tys) =&gt; <span class="prelude-val">Some</span>(<a href="#25">SimplifiedType::Tuple</a>(<a href="#138">tys</a>.<a href="list.rs.html#67-69">len</a>())),
-        ty::FnPtr(f) =&gt; <span class="prelude-val">Some</span>(<a href="#34">SimplifiedType::Function</a>(<a href="#139">f</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="sty.rs.html#1333-1335">inputs</a>().len())),
-        ty::Placeholder(..) =&gt; <span class="prelude-val">Some</span>(<a href="#35">SimplifiedType::Placeholder</a>),
-        ty::Param(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a href="#111">treat_params</a> {
-            <a href="#60">TreatParams::ForLookup</a> | <a href="#68">TreatParams::NextSolverLookup</a> =&gt; {
-                <span class="prelude-val">Some</span>(<a href="#35">SimplifiedType::Placeholder</a>)
+        ty::Tuple(tys) =&gt; <span class="prelude-val">Some</span>(<a href="#25">SimplifiedType::Tuple</a>(<a href="#134">tys</a>.<a href="list.rs.html#67-69">len</a>())),
+        ty::FnPtr(f) =&gt; <span class="prelude-val">Some</span>(<a href="#33">SimplifiedType::Function</a>(<a href="#135">f</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="sty.rs.html#1333-1335">inputs</a>().len())),
+        ty::Placeholder(..) =&gt; <span class="prelude-val">Some</span>(<a href="#34">SimplifiedType::Placeholder</a>),
+        ty::Param(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a href="#110">treat_params</a> {
+            <a href="#59">TreatParams::ForLookup</a> | <a href="#67">TreatParams::NextSolverLookup</a> =&gt; {
+                <span class="prelude-val">Some</span>(<a href="#34">SimplifiedType::Placeholder</a>)
             }
-            <a href="#54">TreatParams::AsCandidateKey</a> =&gt; <span class="prelude-val">None</span>,
+            <a href="#53">TreatParams::AsCandidateKey</a> =&gt; <span class="prelude-val">None</span>,
         },
-        ty::Alias(..) =&gt; <span class="kw">match </span><a href="#111">treat_params</a> {
+        ty::Alias(..) =&gt; <span class="kw">match </span><a href="#110">treat_params</a> {
             <span class="comment">// When treating `ty::Param` as a placeholder, projections also
             // don&#39;t unify with anything else as long as they are fully normalized.
             //
             // We will have to be careful with lazy normalization here.
             // FIXME(lazy_normalization): This is probably not right...
-            </span><a href="#60">TreatParams::ForLookup</a> <span class="kw">if </span>!<a href="#110">ty</a>.<a href="visit.rs.html#76-78">has_non_region_infer</a>() =&gt; {
-                <span class="prelude-val">Some</span>(<a href="#35">SimplifiedType::Placeholder</a>)
+            </span><a href="#59">TreatParams::ForLookup</a> <span class="kw">if </span>!<a href="#109">ty</a>.<a href="visit.rs.html#76-78">has_non_region_infer</a>() =&gt; {
+                <span class="prelude-val">Some</span>(<a href="#34">SimplifiedType::Placeholder</a>)
             }
-            <a href="#68">TreatParams::NextSolverLookup</a> =&gt; <span class="prelude-val">Some</span>(<a href="#35">SimplifiedType::Placeholder</a>),
-            <a href="#60">TreatParams::ForLookup</a> | <a href="#54">TreatParams::AsCandidateKey</a> =&gt; <span class="prelude-val">None</span>,
+            <a href="#67">TreatParams::NextSolverLookup</a> =&gt; <span class="prelude-val">Some</span>(<a href="#34">SimplifiedType::Placeholder</a>),
+            <a href="#59">TreatParams::ForLookup</a> | <a href="#53">TreatParams::AsCandidateKey</a> =&gt; <span class="prelude-val">None</span>,
         },
-        ty::Foreign(def_id) =&gt; <span class="prelude-val">Some</span>(<a href="#18">SimplifiedType::Foreign</a>(<a href="#159">def_id</a>)),
+        ty::Foreign(def_id) =&gt; <span class="prelude-val">Some</span>(<a href="#18">SimplifiedType::Foreign</a>(<a href="#155">def_id</a>)),
         ty::Bound(..) | ty::Infer(<span class="kw">_</span>) | ty::Error(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
     }
 }
 
-<span class="kw">impl </span><a href="#11-36">SimplifiedType</a> {
+<span class="kw">impl </span><a href="#11-35">SimplifiedType</a> {
     <span class="kw">pub fn </span>def(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt; {
-        <span class="kw">match </span><span class="self"><a href="#165">self</a> </span>{
+        <span class="kw">match </span><span class="self"><a href="#161">self</a> </span>{
             <a href="#17">SimplifiedType::Adt</a>(d)
             | <a href="#18">SimplifiedType::Foreign</a>(d)
             | <a href="#29">SimplifiedType::Trait</a>(d)
             | <a href="#30">SimplifiedType::Closure</a>(d)
             | <a href="#31">SimplifiedType::Generator</a>(d)
-            | <a href="#33">SimplifiedType::GeneratorWitnessMIR</a>(d) =&gt; <span class="prelude-val">Some</span>(<a href="#167">d</a>),
+            | <a href="#32">SimplifiedType::GeneratorWitness</a>(d) =&gt; <span class="prelude-val">Some</span>(<a href="#163">d</a>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -581,24 +572,24 @@
 /// using the `treat_obligation_params` field.
 </span><span class="attr">#[derive(Debug, Clone, Copy)]
 </span><span class="kw">pub struct </span><a href="../../../rustc_middle/ty/fast_reject/struct.DeepRejectCtxt.html">DeepRejectCtxt</a> {
-    <span class="kw">pub </span>treat_obligation_params: <a href="#51-69">TreatParams</a>,
+    <span class="kw">pub </span>treat_obligation_params: <a href="#50-68">TreatParams</a>,
 }
 
-<span class="kw">impl </span><a href="#191-193">DeepRejectCtxt</a> {
+<span class="kw">impl </span><a href="#187-189">DeepRejectCtxt</a> {
     <span class="kw">pub fn </span>args_refs_may_unify&lt;<span class="lifetime">&#39;tcx</span>&gt;(
         <span class="self">self</span>,
         obligation_args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         impl_args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#198">obligation_args</a>, <a href="#199">impl_args</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(obl, imp)| {
-            <span class="kw">match </span>(<a href="#201">obl</a>.<a href="generic_args.rs.html#126-145">unpack</a>(), <a href="#201">imp</a>.<a href="generic_args.rs.html#126-145">unpack</a>()) {
+        <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#194">obligation_args</a>, <a href="#195">impl_args</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(obl, imp)| {
+            <span class="kw">match </span>(<a href="#197">obl</a>.<a href="generic_args.rs.html#126-145">unpack</a>(), <a href="#197">imp</a>.<a href="generic_args.rs.html#126-145">unpack</a>()) {
                 <span class="comment">// We don&#39;t fast reject based on regions for now.
                 </span>(<a href="generic_args.rs.html#52">GenericArgKind::Lifetime</a>(<span class="kw">_</span>), <a href="generic_args.rs.html#52">GenericArgKind::Lifetime</a>(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
                 (<a href="generic_args.rs.html#53">GenericArgKind::Type</a>(obl), <a href="generic_args.rs.html#53">GenericArgKind::Type</a>(imp)) =&gt; {
-                    <a class="self" href="#197">self</a>.<a href="#216-349">types_may_unify</a>(<a href="#205">obl</a>, <a href="#205">imp</a>)
+                    <a class="self" href="#193">self</a>.<a href="#212-344">types_may_unify</a>(<a href="#201">obl</a>, <a href="#201">imp</a>)
                 }
                 (<a href="generic_args.rs.html#54">GenericArgKind::Const</a>(obl), <a href="generic_args.rs.html#54">GenericArgKind::Const</a>(imp)) =&gt; {
-                    <a class="self" href="#197">self</a>.<a href="#351-391">consts_may_unify</a>(<a href="#208">obl</a>, <a href="#208">imp</a>)
+                    <a class="self" href="#193">self</a>.<a href="#346-386">consts_may_unify</a>(<a href="#204">obl</a>, <a href="#204">imp</a>)
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;kind mismatch: {obl} {imp}&quot;</span>),
             }
@@ -606,7 +597,7 @@
     }
 
     <span class="kw">pub fn </span>types_may_unify&lt;<span class="lifetime">&#39;tcx</span>&gt;(<span class="self">self</span>, obligation_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, impl_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><a href="#216">impl_ty</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+        <span class="kw">match </span><a href="#212">impl_ty</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
             <span class="comment">// Start by checking whether the type in the impl may unify with
             // pretty much everything. Just return `true` in that case.
             </span>ty::Param(<span class="kw">_</span>) | ty::Error(<span class="kw">_</span>) | ty::Alias(..) =&gt; <span class="kw">return </span><span class="bool-val">true</span>,
@@ -632,14 +623,13 @@
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Infer(<span class="kw">_</span>) =&gt; <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;unexpected impl_ty: {impl_ty}&quot;</span>),
         }
 
-        <span class="kw">let </span>k = <a href="#216">impl_ty</a>.<a href="sty.rs.html#2254-2256">kind</a>();
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#216">obligation_ty</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+        <span class="kw">let </span>k = <a href="#212">impl_ty</a>.<a href="sty.rs.html#2246-2248">kind</a>();
+        <span class="kw">match </span><span class="kw-2">*</span><a href="#212">obligation_ty</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
             <span class="comment">// Purely rigid types, use structural equivalence.
             </span>ty::Bool
             | ty::Char
@@ -648,38 +638,38 @@
             | ty::Float(<span class="kw">_</span>)
             | ty::Str
             | ty::Never
-            | ty::Foreign(<span class="kw">_</span>) =&gt; <a href="#216">obligation_ty</a> == <a href="#216">impl_ty</a>,
-            ty::Ref(<span class="kw">_</span>, obl_ty, obl_mutbl) =&gt; <span class="kw">match </span><a href="#249">k</a> {
+            | ty::Foreign(<span class="kw">_</span>) =&gt; <a href="#212">obligation_ty</a> == <a href="#212">impl_ty</a>,
+            ty::Ref(<span class="kw">_</span>, obl_ty, obl_mutbl) =&gt; <span class="kw">match </span><a href="#244">k</a> {
                 <span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, impl_ty, impl_mutbl) =&gt; {
-                    <a href="#260">obl_mutbl</a> == <a href="#261">impl_mutbl</a> &amp;&amp; <a class="self" href="#216">self</a>.<a href="#216-349">types_may_unify</a>(<a href="#260">obl_ty</a>, <a href="#261">impl_ty</a>)
+                    <a href="#255">obl_mutbl</a> == <a href="#256">impl_mutbl</a> &amp;&amp; <a class="self" href="#212">self</a>.<a href="#212-344">types_may_unify</a>(<a href="#255">obl_ty</a>, <a href="#256">impl_ty</a>)
                 }
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             },
-            ty::Adt(obl_def, obl_args) =&gt; <span class="kw">match </span><a href="#249">k</a> {
+            ty::Adt(obl_def, obl_args) =&gt; <span class="kw">match </span><a href="#244">k</a> {
                 <span class="kw-2">&amp;</span>ty::Adt(impl_def, impl_args) =&gt; {
-                    <a href="#266">obl_def</a> == <a href="#267">impl_def</a> &amp;&amp; <a class="self" href="#216">self</a>.<a href="#196-214">args_refs_may_unify</a>(<a href="#266">obl_args</a>, <a href="#267">impl_args</a>)
+                    <a href="#261">obl_def</a> == <a href="#262">impl_def</a> &amp;&amp; <a class="self" href="#212">self</a>.<a href="#192-210">args_refs_may_unify</a>(<a href="#261">obl_args</a>, <a href="#262">impl_args</a>)
                 }
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             },
             ty::Slice(obl_ty) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(k, <span class="kw-2">&amp;</span>ty::Slice(impl_ty) <span class="kw">if </span><span class="self">self</span>.types_may_unify(obl_ty, impl_ty))
             }
-            ty::Array(obl_ty, obl_len) =&gt; <span class="kw">match </span><a href="#249">k</a> {
+            ty::Array(obl_ty, obl_len) =&gt; <span class="kw">match </span><a href="#244">k</a> {
                 <span class="kw-2">&amp;</span>ty::Array(impl_ty, impl_len) =&gt; {
-                    <a class="self" href="#216">self</a>.<a href="#216-349">types_may_unify</a>(<a href="#275">obl_ty</a>, <a href="#276">impl_ty</a>)
-                        &amp;&amp; <a class="self" href="#216">self</a>.<a href="#351-391">consts_may_unify</a>(<a href="#275">obl_len</a>, <a href="#276">impl_len</a>)
+                    <a class="self" href="#212">self</a>.<a href="#212-344">types_may_unify</a>(<a href="#270">obl_ty</a>, <a href="#271">impl_ty</a>)
+                        &amp;&amp; <a class="self" href="#212">self</a>.<a href="#346-386">consts_may_unify</a>(<a href="#270">obl_len</a>, <a href="#271">impl_len</a>)
                 }
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             },
-            ty::Tuple(obl) =&gt; <span class="kw">match </span><a href="#249">k</a> {
+            ty::Tuple(obl) =&gt; <span class="kw">match </span><a href="#244">k</a> {
                 <span class="kw-2">&amp;</span>ty::Tuple(imp) =&gt; {
-                    <a href="#282">obl</a>.<a href="list.rs.html#67-69">len</a>() == <a href="#283">imp</a>.<a href="list.rs.html#67-69">len</a>()
-                        &amp;&amp; <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#282">obl</a>, <a href="#283">imp</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(obl, imp)| <a class="self" href="#216">self</a>.<a href="#216-349">types_may_unify</a>(<a href="#285">obl</a>, <a href="#285">imp</a>))
+                    <a href="#277">obl</a>.<a href="list.rs.html#67-69">len</a>() == <a href="#278">imp</a>.<a href="list.rs.html#67-69">len</a>()
+                        &amp;&amp; <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#277">obl</a>, <a href="#278">imp</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(obl, imp)| <a class="self" href="#212">self</a>.<a href="#212-344">types_may_unify</a>(<a href="#280">obl</a>, <a href="#280">imp</a>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             },
-            ty::RawPtr(obl) =&gt; <span class="kw">match </span><a href="#249">k</a> {
-                ty::RawPtr(imp) =&gt; <a href="#289">obl</a>.mutbl == <a href="#290">imp</a>.mutbl &amp;&amp; <a class="self" href="#216">self</a>.<a href="#216-349">types_may_unify</a>(<a href="#289">obl</a>.ty, <a href="#290">imp</a>.ty),
+            ty::RawPtr(obl) =&gt; <span class="kw">match </span><a href="#244">k</a> {
+                ty::RawPtr(imp) =&gt; <a href="#284">obl</a>.mutbl == <a href="#285">imp</a>.mutbl &amp;&amp; <a class="self" href="#212">self</a>.<a href="#212-344">types_may_unify</a>(<a href="#284">obl</a>.ty, <a href="#285">imp</a>.ty),
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             },
             ty::Dynamic(obl_preds, ..) =&gt; {
@@ -690,18 +680,18 @@
                     </span>obl_preds.principal_def_id() == impl_preds.principal_def_id()
                 )
             }
-            ty::FnPtr(obl_sig) =&gt; <span class="kw">match </span><a href="#249">k</a> {
+            ty::FnPtr(obl_sig) =&gt; <span class="kw">match </span><a href="#244">k</a> {
                 ty::FnPtr(impl_sig) =&gt; {
                     <span class="kw">let </span><a href="sty.rs.html#1325-1330">ty::FnSig</a> { inputs_and_output, c_variadic, unsafety, abi } =
-                        <a href="#301">obl_sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>();
-                    <span class="kw">let </span>impl_sig = <a href="#302">impl_sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>();
+                        <a href="#296">obl_sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>();
+                    <span class="kw">let </span>impl_sig = <a href="#297">impl_sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>();
 
-                    <a href="#303">abi</a> == <a href="#305">impl_sig</a>.abi
-                        &amp;&amp; <a href="#303">c_variadic</a> == <a href="#305">impl_sig</a>.c_variadic
-                        &amp;&amp; <a href="#303">unsafety</a> == <a href="#305">impl_sig</a>.unsafety
-                        &amp;&amp; <a href="#303">inputs_and_output</a>.<a href="list.rs.html#67-69">len</a>() == <a href="#305">impl_sig</a>.inputs_and_output.<a href="list.rs.html#67-69">len</a>()
-                        &amp;&amp; <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#303">inputs_and_output</a>, <a href="#305">impl_sig</a>.inputs_and_output)
-                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(obl, imp)| <a class="self" href="#216">self</a>.<a href="#216-349">types_may_unify</a>(<a href="#312">obl</a>, <a href="#312">imp</a>))
+                    <a href="#298">abi</a> == <a href="#300">impl_sig</a>.abi
+                        &amp;&amp; <a href="#298">c_variadic</a> == <a href="#300">impl_sig</a>.c_variadic
+                        &amp;&amp; <a href="#298">unsafety</a> == <a href="#300">impl_sig</a>.unsafety
+                        &amp;&amp; <a href="#298">inputs_and_output</a>.<a href="list.rs.html#67-69">len</a>() == <a href="#300">impl_sig</a>.inputs_and_output.<a href="list.rs.html#67-69">len</a>()
+                        &amp;&amp; <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#298">inputs_and_output</a>, <a href="#300">impl_sig</a>.inputs_and_output)
+                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(obl, imp)| <a class="self" href="#212">self</a>.<a href="#212-344">types_may_unify</a>(<a href="#307">obl</a>, <a href="#307">imp</a>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
             },
@@ -714,14 +704,14 @@
 
             <span class="comment">// Depending on the value of `treat_obligation_params`, we either
             // treat generic parameters like placeholders or like inference variables.
-            </span>ty::Param(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#216">self</a>.treat_obligation_params {
-                <a href="#60">TreatParams::ForLookup</a> | <a href="#68">TreatParams::NextSolverLookup</a> =&gt; <span class="bool-val">false</span>,
-                <a href="#54">TreatParams::AsCandidateKey</a> =&gt; <span class="bool-val">true</span>,
+            </span>ty::Param(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#212">self</a>.treat_obligation_params {
+                <a href="#59">TreatParams::ForLookup</a> | <a href="#67">TreatParams::NextSolverLookup</a> =&gt; <span class="bool-val">false</span>,
+                <a href="#53">TreatParams::AsCandidateKey</a> =&gt; <span class="bool-val">true</span>,
             },
 
-            ty::Infer(ty::IntVar(<span class="kw">_</span>)) =&gt; <a href="#216">impl_ty</a>.<a href="sty.rs.html#2494-2496">is_integral</a>(),
+            ty::Infer(ty::IntVar(<span class="kw">_</span>)) =&gt; <a href="#212">impl_ty</a>.<a href="sty.rs.html#2486-2488">is_integral</a>(),
 
-            ty::Infer(ty::FloatVar(<span class="kw">_</span>)) =&gt; <a href="#216">impl_ty</a>.<a href="sty.rs.html#2459-2461">is_floating_point</a>(),
+            ty::Infer(ty::FloatVar(<span class="kw">_</span>)) =&gt; <a href="#212">impl_ty</a>.<a href="sty.rs.html#2451-2453">is_floating_point</a>(),
 
             ty::Infer(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
@@ -734,14 +724,14 @@
 
             ty::Error(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
 
-            ty::GeneratorWitness(..) | ty::GeneratorWitnessMIR(..) =&gt; {
+            ty::GeneratorWitness(..) =&gt; {
                 <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;unexpected obligation type: {:?}&quot;</span>, obligation_ty)
             }
         }
     }
 
     <span class="kw">pub fn </span>consts_may_unify(<span class="self">self</span>, obligation_ct: ty::Const&lt;<span class="lifetime">&#39;_</span>&gt;, impl_ct: ty::Const&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><a href="#351">impl_ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
+        <span class="kw">match </span><a href="#346">impl_ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
             ty::ConstKind::Expr(<span class="kw">_</span>)
             | ty::ConstKind::Param(<span class="kw">_</span>)
             | ty::ConstKind::Unevaluated(<span class="kw">_</span>)
@@ -754,11 +744,11 @@
             }
         }
 
-        <span class="kw">let </span>k = <a href="#351">impl_ct</a>.<a href="consts.rs.html#45-47">kind</a>();
-        <span class="kw">match </span><a href="#351">obligation_ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
-            ty::ConstKind::Param(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#351">self</a>.treat_obligation_params {
-                <a href="#60">TreatParams::ForLookup</a> | <a href="#68">TreatParams::NextSolverLookup</a> =&gt; <span class="bool-val">false</span>,
-                <a href="#54">TreatParams::AsCandidateKey</a> =&gt; <span class="bool-val">true</span>,
+        <span class="kw">let </span>k = <a href="#346">impl_ct</a>.<a href="consts.rs.html#45-47">kind</a>();
+        <span class="kw">match </span><a href="#346">obligation_ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
+            ty::ConstKind::Param(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#346">self</a>.treat_obligation_params {
+                <a href="#59">TreatParams::ForLookup</a> | <a href="#67">TreatParams::NextSolverLookup</a> =&gt; <span class="bool-val">false</span>,
+                <a href="#53">TreatParams::AsCandidateKey</a> =&gt; <span class="bool-val">true</span>,
             },
 
             <span class="comment">// Placeholder consts don&#39;t unify with anything on their own
@@ -769,8 +759,8 @@
             </span>ty::ConstKind::Expr(<span class="kw">_</span>) | ty::ConstKind::Unevaluated(<span class="kw">_</span>) | ty::ConstKind::Error(<span class="kw">_</span>) =&gt; {
                 <span class="bool-val">true
             </span>}
-            ty::ConstKind::Value(obl) =&gt; <span class="kw">match </span><a href="#365">k</a> {
-                ty::ConstKind::Value(imp) =&gt; <a href="#380">obl</a> == <a href="#381">imp</a>,
+            ty::ConstKind::Value(obl) =&gt; <span class="kw">match </span><a href="#360">k</a> {
+                ty::ConstKind::Value(imp) =&gt; <a href="#375">obl</a> == <a href="#376">imp</a>,
                 <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
             },
 

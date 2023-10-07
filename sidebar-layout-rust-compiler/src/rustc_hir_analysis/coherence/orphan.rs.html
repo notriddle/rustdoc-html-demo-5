@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/coherence/orphan.rs`."><title>orphan.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/coherence/orphan.rs`."><title>orphan.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -614,7 +614,6 @@
 <a href="#614" id="614">614</a>
 <a href="#615" id="615">615</a>
 <a href="#616" id="616">616</a>
-<a href="#617" id="617">617</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
@@ -862,7 +861,6 @@
             ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
-            | ty::GeneratorWitnessMIR(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(..) =&gt; {
@@ -889,8 +887,8 @@
                     );
                     <span class="kw">let </span>sp = <a href="#37">tcx</a>.def_span(<a href="#39">def_id</a>);
                     <span class="kw">let </span>reported =
-                        <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(tcx.sess, sp, E0321, <span class="string">&quot;{}&quot;</span>, msg).note(<a href="#268">label</a>).emit();
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#274">reported</a>);
+                        <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(tcx.sess, sp, E0321, <span class="string">&quot;{}&quot;</span>, msg).note(<a href="#267">label</a>).emit();
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#273">reported</a>);
                 }
             }
         } <span class="kw">else </span>{
@@ -918,8 +916,8 @@
             } {
                 <span class="kw">let </span>sp = <a href="#37">tcx</a>.def_span(<a href="#39">def_id</a>);
                 <span class="kw">let </span>reported =
-                    <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(tcx.sess, sp, E0321, <span class="string">&quot;{}&quot;</span>, msg).span_label(<a href="#302">sp</a>, <a href="#280">label</a>).emit();
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#303">reported</a>);
+                    <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(tcx.sess, sp, E0321, <span class="string">&quot;{}&quot;</span>, msg).span_label(<a href="#301">sp</a>, <a href="#279">label</a>).emit();
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#302">reported</a>);
             }
         }
     }
@@ -937,12 +935,12 @@
     generics: <span class="kw-2">&amp;</span>hir::Generics&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     err: traits::OrphanCheckErr&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;!, <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
-    <span class="kw">let </span>self_ty = <a href="#318">trait_ref</a>.self_ty();
-    <span class="prelude-val">Err</span>(<span class="kw">match </span><a href="#321">err</a> {
+    <span class="kw">let </span>self_ty = <a href="#317">trait_ref</a>.self_ty();
+    <span class="prelude-val">Err</span>(<span class="kw">match </span><a href="#320">err</a> {
         traits::OrphanCheckErr::NonLocalInputType(tys) =&gt; {
-            <span class="kw">let </span>msg = <span class="kw">match </span><a href="#323">self_ty</a>.kind() {
+            <span class="kw">let </span>msg = <span class="kw">match </span><a href="#322">self_ty</a>.kind() {
                 ty::Adt(..) =&gt; <span class="string">&quot;can be implemented for types defined outside of the crate&quot;</span>,
-                <span class="kw">_ if </span><a href="#323">self_ty</a>.is_primitive() =&gt; <span class="string">&quot;can be implemented for primitive types&quot;</span>,
+                <span class="kw">_ if </span><a href="#322">self_ty</a>.is_primitive() =&gt; <span class="string">&quot;can be implemented for primitive types&quot;</span>,
                 <span class="kw">_ </span>=&gt; <span class="string">&quot;can be implemented for arbitrary types&quot;</span>,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>err = <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(
@@ -951,7 +949,7 @@
                 E0117,
                 <span class="string">&quot;only traits defined in the current crate {msg}&quot;
             </span>);
-            <a href="#331">err</a>.span_label(<a href="#315">sp</a>, <span class="string">&quot;impl doesn&#39;t use only types from inside the current crate&quot;</span>);
+            <a href="#330">err</a>.span_label(<a href="#314">sp</a>, <span class="string">&quot;impl doesn&#39;t use only types from inside the current crate&quot;</span>);
             <span class="kw">for </span><span class="kw-2">&amp;</span>(<span class="kw-2">mut </span>ty, is_target_ty) <span class="kw">in </span><span class="kw-2">&amp;</span>tys {
                 ty = tcx.erase_regions(ty);
                 ty = <span class="kw">match </span>ty.kind() {
@@ -1005,18 +1003,18 @@
                     </span>err.span_label(trait_span, msg);
                 }
             }
-            <a href="#331">err</a>.note(<span class="string">&quot;define and implement a trait or new type instead&quot;</span>);
-            <a href="#331">err</a>.emit()
+            <a href="#330">err</a>.note(<span class="string">&quot;define and implement a trait or new type instead&quot;</span>);
+            <a href="#330">err</a>.emit()
         }
         traits::OrphanCheckErr::UncoveredTy(param_ty, local_type) =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>sp = <a href="#315">sp</a>;
+            <span class="kw">let </span><span class="kw-2">mut </span>sp = <a href="#314">sp</a>;
             <span class="kw">for </span>param <span class="kw">in </span>generics.params {
                 <span class="kw">if </span>param.name.ident().to_string() == param_ty.to_string() {
                     sp = param.span;
                 }
             }
 
-            <span class="kw">match </span><a href="#394">local_type</a> {
+            <span class="kw">match </span><a href="#393">local_type</a> {
                 <span class="prelude-val">Some</span>(local_type) =&gt; <a class="macro" href="../../../rustc_errors/macro.struct_span_err.html">struct_span_err!</a>(
                     tcx.sess,
                     sp,
@@ -1027,7 +1025,7 @@
                     local_type
                 )
                 .span_label(
-                    <a href="#395">sp</a>,
+                    <a href="#394">sp</a>,
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                         <span class="string">&quot;type parameter `{param_ty}` must be covered by another type \
                     when it appears before the first local type (`{local_type}`)&quot;
@@ -1055,7 +1053,7 @@
                     param_ty
                 )
                 .span_label(
-                    <a href="#395">sp</a>,
+                    <a href="#394">sp</a>,
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                         <span class="string">&quot;type parameter `{param_ty}` must be used as the type parameter for some \
                     local type&quot;</span>,
@@ -1083,7 +1081,7 @@
     diag: <span class="kw-2">&amp;mut </span><a href="../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>,
 ) {
     <span class="kw">if </span>!self_ty.has_param() {
-        <span class="kw">let </span>mut_key = <a href="#465">ptr_ty</a>.mutbl.prefix_str();
+        <span class="kw">let </span>mut_key = <a href="#464">ptr_ty</a>.mutbl.prefix_str();
         <span class="kw">let </span>msg_sugg = <span class="string">&quot;consider introducing a new wrapper type&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/borrow/trait.ToOwned.html">to_owned</a>();
         <span class="kw">let </span>sugg = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
             (
@@ -1092,7 +1090,7 @@
             ),
             (self_ty_span, <span class="string">&quot;WrapperType&quot;</span>.to_owned()),
         ];
-        <a href="#466">diag</a>.multipart_suggestion(<a href="#470">msg_sugg</a>, <a href="#471">sugg</a>, rustc_errors::Applicability::MaybeIncorrect);
+        <a href="#465">diag</a>.multipart_suggestion(<a href="#469">msg_sugg</a>, <a href="#470">sugg</a>, rustc_errors::Applicability::MaybeIncorrect);
     }
 }
 
@@ -1104,9 +1102,9 @@
     impl_def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
 ) {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(trait_ref.args.len(), <span class="number">1</span>);
-    <span class="kw">let </span>self_ty = <a href="#486">trait_ref</a>.self_ty();
-    <span class="kw">let </span>(self_type_did, args) = <span class="kw">match </span><a href="#490">self_ty</a>.kind() {
-        ty::Adt(def, args) =&gt; (<a href="#492">def</a>.did(), <a href="#492">args</a>),
+    <span class="kw">let </span>self_ty = <a href="#485">trait_ref</a>.self_ty();
+    <span class="kw">let </span>(self_type_did, args) = <span class="kw">match </span><a href="#489">self_ty</a>.kind() {
+        ty::Adt(def, args) =&gt; (<a href="#491">def</a>.did(), <a href="#491">args</a>),
         <span class="kw">_ </span>=&gt; {
             <span class="comment">// FIXME: should also lint for stuff like `&amp;i32` but
             // considering that auto traits are unstable, that
@@ -1119,7 +1117,7 @@
     <span class="comment">// Impls which completely cover a given root type are fine as they
     // disable auto impls entirely. So only lint if the args
     // are not a permutation of the identity args.
-    </span><span class="kw">let </span><span class="prelude-val">Err</span>(arg) = <a href="#485">tcx</a>.uses_unique_generic_params(<a href="#491">args</a>, CheckRegions::No) <span class="kw">else </span>{
+    </span><span class="kw">let </span><span class="prelude-val">Err</span>(arg) = <a href="#484">tcx</a>.uses_unique_generic_params(<a href="#490">args</a>, CheckRegions::No) <span class="kw">else </span>{
         <span class="comment">// ok
         </span><span class="kw">return</span>;
     };
@@ -1140,10 +1138,10 @@
         </span><span class="kw">return</span>;
     }
 
-    <a href="#485">tcx</a>.struct_span_lint_hir(
+    <a href="#484">tcx</a>.struct_span_lint_hir(
         lint::builtin::SUSPICIOUS_AUTO_TRAIT_IMPLS,
-        <a href="#485">tcx</a>.hir().local_def_id_to_hir_id(<a href="#487">impl_def_id</a>),
-        <a href="#485">tcx</a>.def_span(<a href="#487">impl_def_id</a>),
+        <a href="#484">tcx</a>.hir().local_def_id_to_hir_id(<a href="#486">impl_def_id</a>),
+        <a href="#484">tcx</a>.def_span(<a href="#486">impl_def_id</a>),
         DelayDm(|| {
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                 <span class="string">&quot;cross-crate traits with a default impl, like `{}`, \
@@ -1152,18 +1150,18 @@
             )
         }),
         |lint| {
-            <span class="kw">let </span>item_span = <a href="#485">tcx</a>.def_span(<a href="#491">self_type_did</a>);
-            <span class="kw">let </span>self_descr = <a href="#485">tcx</a>.def_descr(<a href="#491">self_type_did</a>);
-            <span class="kw">match </span><a href="#505">arg</a> {
+            <span class="kw">let </span>item_span = <a href="#484">tcx</a>.def_span(<a href="#490">self_type_did</a>);
+            <span class="kw">let </span>self_descr = <a href="#484">tcx</a>.def_descr(<a href="#490">self_type_did</a>);
+            <span class="kw">match </span><a href="#504">arg</a> {
                 ty::util::NotUniqueParam::DuplicateParam(arg) =&gt; {
-                    <a href="#537">lint</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{arg}` is mentioned multiple times&quot;</span>));
+                    <a href="#536">lint</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{arg}` is mentioned multiple times&quot;</span>));
                 }
                 ty::util::NotUniqueParam::NotParam(arg) =&gt; {
-                    <a href="#537">lint</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{arg}` is not a generic parameter&quot;</span>));
+                    <a href="#536">lint</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{arg}` is not a generic parameter&quot;</span>));
                 }
             }
-            <a href="#537">lint</a>.span_note(
-                <a href="#538">item_span</a>,
+            <a href="#536">lint</a>.span_note(
+                <a href="#537">item_span</a>,
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                     <span class="string">&quot;try using the same sequence of generic parameters as the {self_descr} definition&quot;</span>,
                 ),
@@ -1183,7 +1181,7 @@
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeVisitor&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span>DisableAutoTraitVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">type </span>BreakTy = ();
         <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;<span class="self">Self</span>::BreakTy&gt; {
-            <span class="kw">let </span>tcx = <a class="self" href="#568">self</a>.tcx;
+            <span class="kw">let </span>tcx = <a class="self" href="#567">self</a>.tcx;
             <span class="kw">if </span>ty != <span class="self">self</span>.self_ty_root {
                 <span class="kw">for </span>impl_def_id <span class="kw">in </span>tcx.non_blanket_impls_for_ty(<span class="self">self</span>.trait_def_id, ty) {
                     <span class="kw">match </span>tcx.impl_polarity(impl_def_id) {
@@ -1198,8 +1196,8 @@
                 }
             }
 
-            <span class="kw">match </span><a href="#568">ty</a>.kind() {
-                ty::Adt(def, args) <span class="kw">if </span><a href="#585">def</a>.is_phantom_data() =&gt; <a href="#585">args</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#568">self</a>),
+            <span class="kw">match </span><a href="#567">ty</a>.kind() {
+                ty::Adt(def, args) <span class="kw">if </span><a href="#584">def</a>.is_phantom_data() =&gt; <a href="#584">args</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<a class="self" href="#567">self</a>),
                 ty::Adt(def, args) =&gt; {
                     <span class="comment">// @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.
@@ -1213,21 +1211,21 @@
 
                     ControlFlow::Continue(())
                 }
-                <span class="kw">_ </span>=&gt; <a href="#568">ty</a>.<a href="../../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">super_visit_with</a>(<a class="self" href="#568">self</a>),
+                <span class="kw">_ </span>=&gt; <a href="#567">ty</a>.<a href="../../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">super_visit_with</a>(<a class="self" href="#567">self</a>),
             }
         }
     }
 
-    <span class="kw">let </span>self_ty_root = <span class="kw">match </span><a href="#558">self_ty</a>.kind() {
-        ty::Adt(def, <span class="kw">_</span>) =&gt; Ty::new_adt(<a href="#558">tcx</a>, <span class="kw-2">*</span><a href="#605">def</a>, GenericArgs::identity_for_item(<a href="#558">tcx</a>, <a href="#605">def</a>.did())),
+    <span class="kw">let </span>self_ty_root = <span class="kw">match </span><a href="#557">self_ty</a>.kind() {
+        ty::Adt(def, <span class="kw">_</span>) =&gt; Ty::new_adt(<a href="#557">tcx</a>, <span class="kw-2">*</span><a href="#604">def</a>, GenericArgs::identity_for_item(<a href="#557">tcx</a>, <a href="#604">def</a>.did())),
         <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unimplemented.html">unimplemented!</a>(<span class="string">&quot;unexpected self ty {:?}&quot;</span>, self_ty),
     };
 
-    <a href="#604">self_ty_root</a>
-        .<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<span class="kw-2">&amp;mut </span><a href="#559-564">DisableAutoTraitVisitor</a> {
-            <a href="#558">tcx</a>,
-            <a href="#604">self_ty_root</a>,
-            <a href="#558">trait_def_id</a>,
+    <a href="#603">self_ty_root</a>
+        .<a href="../../../rustc_type_ir/visit/trait.TypeVisitable.html">visit_with</a>(<span class="kw-2">&amp;mut </span><a href="#558-563">DisableAutoTraitVisitor</a> {
+            <a href="#557">tcx</a>,
+            <a href="#603">self_ty_root</a>,
+            <a href="#557">trait_def_id</a>,
             seen: FxHashSet::default(),
         })
         .is_break()

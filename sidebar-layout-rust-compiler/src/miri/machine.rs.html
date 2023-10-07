@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/machine.rs`."><title>machine.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/machine.rs`."><title>machine.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1629,12 +1629,12 @@
 }
 
 <span class="attr">#[cfg(all(target_arch = <span class="string">&quot;x86_64&quot;</span>, target_pointer_width = <span class="string">&quot;64&quot;</span>))]
-</span><a class="macro" href="../../rustc_index/macro.static_assert_size.html">static_assert_size!</a>(Pointer&lt;Provenance&gt;, <span class="number">24</span>);
+</span><span class="macro">static_assert_size!</span>(Pointer&lt;Provenance&gt;, <span class="number">24</span>);
 <span class="comment">// FIXME: this would with in 24bytes but layout optimizations are not smart enough
 // #[cfg(all(target_arch = &quot;x86_64&quot;, target_pointer_width = &quot;64&quot;))]
 //static_assert_size!(Pointer&lt;Option&lt;Provenance&gt;&gt;, 24);
 </span><span class="attr">#[cfg(all(target_arch = <span class="string">&quot;x86_64&quot;</span>, target_pointer_width = <span class="string">&quot;64&quot;</span>))]
-</span><a class="macro" href="../../rustc_index/macro.static_assert_size.html">static_assert_size!</a>(Scalar&lt;Provenance&gt;, <span class="number">32</span>);
+</span><span class="macro">static_assert_size!</span>(Scalar&lt;Provenance&gt;, <span class="number">32</span>);
 
 <span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">fmt::Debug</a> <span class="kw">for </span><a href="#171-178">Provenance</a> {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
@@ -1917,7 +1917,7 @@
 
     <span class="doccomment">/// Handle of the optional shared object file for external functions.
     </span><span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
-    </span><span class="kw">pub </span>external_so_lib: <span class="prelude-ty">Option</span>&lt;(libloading::Library, <a href="https://doc.rust-lang.org/nightly/std/path/struct.PathBuf.html">std::path::PathBuf</a>)&gt;,
+    </span><span class="kw">pub </span>external_so_lib: <span class="prelude-ty">Option</span>&lt;(libloading::Library, std::path::PathBuf)&gt;,
     <span class="attr">#[cfg(not(target_os = <span class="string">&quot;linux&quot;</span>))]
     </span><span class="kw">pub </span>external_so_lib: <span class="prelude-ty">Option</span>&lt;!&gt;,
 
@@ -1945,7 +1945,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; MiriMachine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(config: <span class="kw-2">&amp;</span><a href="eval.rs.html#86-156">MiriConfig</a>, layout_cx: LayoutCx&lt;<span class="lifetime">&#39;tcx</span>, TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>tcx = <a href="#520">layout_cx</a>.tcx;
-        <span class="kw">let </span>local_crates = <a href="helpers.rs.html#1132-1147">helpers::get_local_crates</a>(<a href="#521">tcx</a>);
+        <span class="kw">let </span>local_crates = <a href="helpers.rs.html#1150-1165">helpers::get_local_crates</a>(<a href="#521">tcx</a>);
         <span class="kw">let </span>layouts =
             PrimitiveLayouts::new(<a href="#520">layout_cx</a>).expect(<span class="string">&quot;Couldn&#39;t get layouts of primitive types&quot;</span>);
         <span class="kw">let </span>profiler = <a href="#520">config</a>.measureme_out.as_ref().map(|out| {
@@ -2032,11 +2032,11 @@
             basic_block_count: <span class="number">0</span>,
             clock: Clock::new(<a href="#520">config</a>.isolated_op == <a href="eval.rs.html#71">IsolatedOp::Allow</a>),
             <span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
-            </span>external_so_lib: <a href="#520">config</a>.external_so_file.as_ref().map(|lib_file_path| {
-                <span class="kw">let </span>target_triple = <a href="#520">layout_cx</a>.tcx.sess.opts.target_triple.triple();
+            </span>external_so_lib: config.external_so_file.as_ref().map(|lib_file_path| {
+                <span class="kw">let </span>target_triple = layout_cx.tcx.sess.opts.target_triple.triple();
                 <span class="comment">// Check if host target == the session target.
                 </span><span class="kw">if </span><span class="macro">env!</span>(<span class="string">&quot;TARGET&quot;</span>) != target_triple {
-                    <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.panic.html">panic!</a>(
+                    <span class="macro">panic!</span>(
                         <span class="string">&quot;calling external C functions in linked .so file requires host and target to be the same: host={}, target={}&quot;</span>,
                         <span class="macro">env!</span>(<span class="string">&quot;TARGET&quot;</span>),
                         target_triple,
@@ -2047,15 +2047,15 @@
                 // undefined behaviour in Miri itself!
                 </span>(
                     <span class="kw">unsafe </span>{
-                        libloading::Library::new(<a href="#609">lib_file_path</a>)
+                        libloading::Library::new(lib_file_path)
                             .expect(<span class="string">&quot;failed to read specified extern shared object file&quot;</span>)
                     },
-                    <a href="#609">lib_file_path</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
+                    lib_file_path.clone(),
                 )
             }),
             <span class="attr">#[cfg(not(target_os = <span class="string">&quot;linux&quot;</span>))]
-            </span>external_so_lib: config.external_so_file.as_ref().map(|<span class="kw">_</span>| {
-                <span class="macro">panic!</span>(<span class="string">&quot;loading external .so files is only supported on Linux&quot;</span>)
+            </span>external_so_lib: <a href="#520">config</a>.external_so_file.as_ref().map(|<span class="kw">_</span>| {
+                <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.panic.html">panic!</a>(<span class="string">&quot;loading external .so files is only supported on Linux&quot;</span>)
             }),
             gc_interval: <a href="#520">config</a>.gc_interval,
             since_gc: <span class="number">0</span>,
@@ -2424,7 +2424,7 @@
         bin_op: <a href="../../rustc_middle/mir/syntax/enum.BinOp.html">mir::BinOp</a>,
         left: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="#171-178">Provenance</a>&gt;,
         right: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="#171-178">Provenance</a>&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, (Scalar&lt;<a href="#171-178">Provenance</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, (ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="#171-178">Provenance</a>&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>)&gt; {
         <a href="#997">ecx</a>.<a href="operator.rs.html#9-14">binary_ptr_op</a>(<a href="#998">bin_op</a>, <a href="#999">left</a>, <a href="#1000">right</a>)
     }
 
@@ -2432,14 +2432,14 @@
         ecx: <span class="kw-2">&amp;mut </span>MiriInterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Pointer&lt;<a href="#171-178">Provenance</a>&gt;&gt; {
-        <a href="#1006">ecx</a>.<a href="concurrency/thread.rs.html#789-816">get_or_create_thread_local_alloc</a>(<a href="#1007">def_id</a>)
+        <a href="#1006">ecx</a>.<a href="concurrency/thread.rs.html#789-815">get_or_create_thread_local_alloc</a>(<a href="#1007">def_id</a>)
     }
 
     <span class="kw">fn </span>extern_static_base_pointer(
         ecx: <span class="kw-2">&amp;</span>MiriInterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Pointer&lt;<a href="#171-178">Provenance</a>&gt;&gt; {
-        <span class="kw">let </span>link_name = <a href="#1013">ecx</a>.<a href="helpers.rs.html#1003-1009">item_link_name</a>(<a href="#1014">def_id</a>);
+        <span class="kw">let </span>link_name = <a href="#1013">ecx</a>.<a href="helpers.rs.html#1001-1007">item_link_name</a>(<a href="#1014">def_id</a>);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>ptr) = <a href="#1013">ecx</a>.machine.extern_statics.get(<span class="kw-2">&amp;</span><a href="#1016">link_name</a>) {
             <span class="comment">// Various parts of the engine rely on `get_alloc_info` for size and alignment
             // information. That uses the type information of this static.
@@ -2503,7 +2503,7 @@
                 <span class="kw-2">&amp;</span><a href="#1052">ecx</a>.machine.threads,
                 <a href="#1067">alloc</a>.size(),
                 <a href="#1057">kind</a>,
-                <a href="#1052">ecx</a>.machine.<a href="helpers.rs.html#1076-1080">current_span</a>(),
+                <a href="#1052">ecx</a>.machine.<a href="helpers.rs.html#1094-1098">current_span</a>(),
             )
         });
         <span class="kw">let </span>buffer_alloc = <a href="#1052">ecx</a>.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
@@ -2532,7 +2532,7 @@
             <a href="#1052">ecx</a>.machine
                 .allocation_spans
                 .borrow_mut()
-                .insert(<a href="#1053">id</a>, (<a href="#1052">ecx</a>.machine.<a href="helpers.rs.html#1076-1080">current_span</a>(), <span class="prelude-val">None</span>));
+                .insert(<a href="#1053">id</a>, (<a href="#1052">ecx</a>.machine.<a href="helpers.rs.html#1094-1098">current_span</a>(), <span class="prelude-val">None</span>));
         }
 
         <span class="prelude-val">Ok</span>(Cow::Owned(<a href="#1094">alloc</a>))
@@ -2667,7 +2667,7 @@
         }
         <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, deallocated_at)) = <a href="#1228">machine</a>.allocation_spans.borrow_mut().get_mut(<span class="kw-2">&amp;</span><a href="#1230">alloc_id</a>)
         {
-            <span class="kw-2">*</span><a href="#1242">deallocated_at</a> = <span class="prelude-val">Some</span>(<a href="#1228">machine</a>.<a href="helpers.rs.html#1076-1080">current_span</a>());
+            <span class="kw-2">*</span><a href="#1242">deallocated_at</a> = <span class="prelude-val">Some</span>(<a href="#1228">machine</a>.<a href="helpers.rs.html#1094-1098">current_span</a>());
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -2731,7 +2731,7 @@
             <span class="prelude-val">Some</span>(<a href="#1300">profiler</a>.start_recording_interval_event_detached(
                 <span class="kw-2">*</span><a href="#1303">name</a>,
                 measureme::EventId::from_label(<span class="kw-2">*</span><a href="#1303">name</a>),
-                <a href="#1296">ecx</a>.<a href="concurrency/thread.rs.html#908-911">get_active_thread</a>().<a href="concurrency/thread.rs.html#48-50">to_u32</a>(),
+                <a href="#1296">ecx</a>.<a href="concurrency/thread.rs.html#907-910">get_active_thread</a>().<a href="concurrency/thread.rs.html#48-50">to_u32</a>(),
             ))
         } <span class="kw">else </span>{
             <span class="prelude-val">None
@@ -2743,7 +2743,7 @@
             borrow_tracker: <a href="#1314">borrow_tracker</a>.map(|bt| <a href="#1317">bt</a>.borrow_mut().<a href="borrow_tracker/mod.rs.html#200-208">new_frame</a>(<span class="kw-2">&amp;</span><a href="#1296">ecx</a>.machine)),
             catch_unwind: <span class="prelude-val">None</span>,
             <a href="#1300">timing</a>,
-            is_user_relevant: <a href="#1296">ecx</a>.machine.<a href="helpers.rs.html#1104-1108">is_user_relevant</a>(<span class="kw-2">&amp;</span><a href="#1297">frame</a>),
+            is_user_relevant: <a href="#1296">ecx</a>.machine.<a href="helpers.rs.html#1122-1126">is_user_relevant</a>(<span class="kw-2">&amp;</span><a href="#1297">frame</a>),
         };
 
         <span class="prelude-val">Ok</span>(<a href="#1297">frame</a>.with_extra(<a href="#1316">extra</a>))
@@ -2752,13 +2752,13 @@
     <span class="kw">fn </span>stack&lt;<span class="lifetime">&#39;a</span>&gt;(
         ecx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt;,
     ) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Frame&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>::Provenance, <span class="self">Self</span>::FrameExtra&gt;] {
-        <a href="#1327">ecx</a>.<a href="concurrency/thread.rs.html#944-947">active_thread_stack</a>()
+        <a href="#1327">ecx</a>.<a href="concurrency/thread.rs.html#943-946">active_thread_stack</a>()
     }
 
     <span class="kw">fn </span>stack_mut&lt;<span class="lifetime">&#39;a</span>&gt;(
         ecx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt;,
     ) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>Vec&lt;Frame&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>::Provenance, <span class="self">Self</span>::FrameExtra&gt;&gt; {
-        <a href="#1333">ecx</a>.<a href="concurrency/thread.rs.html#950-955">active_thread_stack_mut</a>()
+        <a href="#1333">ecx</a>.<a href="concurrency/thread.rs.html#949-954">active_thread_stack_mut</a>()
     }
 
     <span class="kw">fn </span>before_terminator(ecx: <span class="kw-2">&amp;mut </span>InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -2783,7 +2783,7 @@
         }
 
         <span class="comment">// These are our preemption points.
-        </span><a href="#1338">ecx</a>.<a href="concurrency/thread.rs.html#999-1006">maybe_preempt_active_thread</a>();
+        </span><a href="#1338">ecx</a>.<a href="concurrency/thread.rs.html#998-1005">maybe_preempt_active_thread</a>();
 
         <span class="comment">// Make sure some time passes.
         </span><a href="#1338">ecx</a>.machine.clock.<a href="clock.rs.html#79-88">tick</a>();
@@ -2796,8 +2796,8 @@
         <span class="kw">if </span>ecx.frame().extra.is_user_relevant {
             <span class="comment">// We just pushed a local frame, so we know that the topmost local frame is the topmost
             // frame. If we push a non-local frame, there&#39;s no need to do anything.
-            </span><span class="kw">let </span>stack_len = <a href="#1369">ecx</a>.<a href="concurrency/thread.rs.html#944-947">active_thread_stack</a>().len();
-            <a href="#1369">ecx</a>.<a href="concurrency/thread.rs.html#914-917">active_thread_mut</a>().<a href="concurrency/thread.rs.html#179-182">set_top_user_relevant_frame</a>(<a href="#1373">stack_len</a> - <span class="number">1</span>);
+            </span><span class="kw">let </span>stack_len = <a href="#1369">ecx</a>.<a href="concurrency/thread.rs.html#943-946">active_thread_stack</a>().len();
+            <a href="#1369">ecx</a>.<a href="concurrency/thread.rs.html#913-916">active_thread_mut</a>().<a href="concurrency/thread.rs.html#179-182">set_top_user_relevant_frame</a>(<a href="#1373">stack_len</a> - <span class="number">1</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -2825,7 +2825,7 @@
             // have no idea where the next topmost local frame is. So we recompute it.
             // (If this ever becomes a bottleneck, we could have `push` store the previous
             // user-relevant frame and restore that here.)
-            </span><a href="#1393">ecx</a>.<a href="concurrency/thread.rs.html#914-917">active_thread_mut</a>().<a href="concurrency/thread.rs.html#173-175">recompute_top_user_relevant_frame</a>();
+            </span><a href="#1393">ecx</a>.<a href="concurrency/thread.rs.html#913-916">active_thread_mut</a>().<a href="concurrency/thread.rs.html#173-175">recompute_top_user_relevant_frame</a>();
         }
         <span class="kw">let </span>timing = <a href="#1394">frame</a>.extra.timing.take();
         <span class="kw">let </span>res = <a href="#1393">ecx</a>.<a href="shims/panic.rs.html#125-170">handle_stack_pop_unwind</a>(<a href="#1394">frame</a>.extra, <a href="#1395">unwinding</a>);
@@ -2844,7 +2844,7 @@
         <span class="kw">let </span><span class="prelude-val">Some</span>(<a href="#172-176">Provenance::Concrete</a> { alloc_id, .. }) = <a href="#1416">mplace</a>.ptr().provenance <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.panic.html">panic!</a>(<span class="string">&quot;after_local_allocated should only be called on fresh allocations&quot;</span>);
         };
-        <span class="kw">let </span>local_decl = <span class="kw-2">&amp;</span><a href="#1413">ecx</a>.<a href="concurrency/thread.rs.html#944-947">active_thread_stack</a>()[<a href="#1414">frame</a>].body.local_decls[<a href="#1415">local</a>];
+        <span class="kw">let </span>local_decl = <span class="kw-2">&amp;</span><a href="#1413">ecx</a>.<a href="concurrency/thread.rs.html#943-946">active_thread_stack</a>()[<a href="#1414">frame</a>].body.local_decls[<a href="#1415">local</a>];
         <span class="kw">let </span>span = <a href="#1421">local_decl</a>.source_info.span;
         <a href="#1413">ecx</a>.machine.allocation_spans.borrow_mut().insert(<a href="#1418">alloc_id</a>, (<a href="#1422">span</a>, <span class="prelude-val">None</span>));
         <span class="prelude-val">Ok</span>(())

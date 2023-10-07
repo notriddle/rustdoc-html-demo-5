@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/engine.rs`."><title>engine.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/traits/engine.rs`."><title>engine.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -258,13 +258,28 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html">std::cell::RefCell</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/fmt/macros/derive.Debug.html">std::fmt::Debug</a>;
 
 <span class="kw">use </span><a href="fulfill.rs.html#53-63"><span class="kw">super</span>::FulfillmentContext</a>;
 <span class="kw">use </span><a href="../../../rustc_trait_selection/traits/trait.TraitEngine.html"><span class="kw">super</span>::TraitEngine</a>;
 <span class="kw">use </span><a href="../solve/fulfill.rs.html#27-35"><span class="kw">crate</span>::solve::FulfillmentCtxt</a> <span class="kw">as </span>NextFulfillmentCtxt;
-<span class="kw">use </span><a href="error_reporting/mod.rs.html#108-165"><span class="kw">crate</span>::traits::error_reporting::TypeErrCtxtExt</a>;
+<span class="kw">use </span><a href="error_reporting/type_err_ctxt_ext.rs.html#55-112"><span class="kw">crate</span>::traits::error_reporting::TypeErrCtxtExt</a>;
 <span class="kw">use </span><a href="project.rs.html#54-80"><span class="kw">crate</span>::traits::NormalizeExt</a>;
 <span class="kw">use </span><a href="../../../rustc_data_structures/fx/type.FxIndexSet.html">rustc_data_structures::fx::FxIndexSet</a>;
 <span class="kw">use </span><a href="../../../rustc_span/struct.ErrorGuaranteed.html">rustc_errors::ErrorGuaranteed</a>;
@@ -283,6 +298,7 @@
 <span class="kw">use </span><a href="../../../rustc_middle/ty/error/enum.TypeError.html">rustc_middle::ty::error::TypeError</a>;
 <span class="kw">use </span><a href="../../../rustc_middle/ty/trait.ToPredicate.html">rustc_middle::ty::ToPredicate</a>;
 <span class="kw">use </span><a href="../../../rustc_type_ir/fold/trait.TypeFoldable.html">rustc_middle::ty::TypeFoldable</a>;
+<span class="kw">use </span><a href="../../../rustc_type_ir/enum.Variance.html">rustc_middle::ty::Variance</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="../../../rustc_session/config/enum.TraitSolver.html">rustc_session::config::TraitSolver</a>;
 
@@ -292,12 +308,12 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TraitEngineExt&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for dyn </span>TraitEngine&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>new(infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Box&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">match </span>(<a href="#34">infcx</a>.tcx.sess.opts.unstable_opts.trait_solver, <a href="#34">infcx</a>.next_trait_solver()) {
+        <span class="kw">match </span>(<a href="#35">infcx</a>.tcx.sess.opts.unstable_opts.trait_solver, <a href="#35">infcx</a>.next_trait_solver()) {
             (TraitSolver::Classic, <span class="bool-val">false</span>) | (TraitSolver::NextCoherence, <span class="bool-val">false</span>) =&gt; {
-                Box::new(FulfillmentContext::new(<a href="#34">infcx</a>))
+                Box::new(FulfillmentContext::new(<a href="#35">infcx</a>))
             }
             (TraitSolver::Next | TraitSolver::NextCoherence, <span class="bool-val">true</span>) =&gt; {
-                Box::new(NextFulfillmentCtxt::new(<a href="#34">infcx</a>))
+                Box::new(NextFulfillmentCtxt::new(<a href="#35">infcx</a>))
             }
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(
                 <span class="string">&quot;incompatible combination of -Ztrait-solver flag ({:?}) and InferCtxt::next_trait_solver ({:?})&quot;</span>,
@@ -317,11 +333,11 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; ObligationCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>new(infcx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ <a href="#59">infcx</a>, engine: RefCell::new(&lt;<span class="kw">dyn </span>TraitEngine&lt;<span class="lifetime">&#39;_</span>&gt;&gt;::new(<a href="#59">infcx</a>)) }
+        <span class="self">Self </span>{ <a href="#60">infcx</a>, engine: RefCell::new(&lt;<span class="kw">dyn </span>TraitEngine&lt;<span class="lifetime">&#39;_</span>&gt;&gt;::new(<a href="#60">infcx</a>)) }
     }
 
     <span class="kw">pub fn </span>register_obligation(<span class="kw-2">&amp;</span><span class="self">self</span>, obligation: PredicateObligation&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a class="self" href="#63">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/trait.TraitEngine.html">register_predicate_obligation</a>(<a class="self" href="#63">self</a>.infcx, <a href="#63">obligation</a>);
+        <a class="self" href="#64">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/trait.TraitEngine.html">register_predicate_obligation</a>(<a class="self" href="#64">self</a>.infcx, <a href="#64">obligation</a>);
     }
 
     <span class="kw">pub fn </span>register_obligations(
@@ -336,9 +352,9 @@
     }
 
     <span class="kw">pub fn </span>register_infer_ok_obligations&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, infer_ok: InferOk&lt;<span class="lifetime">&#39;tcx</span>, T&gt;) -&gt; T {
-        <span class="kw">let </span><a href="../../../rustc_trait_selection/infer/struct.InferOk.html">InferOk</a> { value, obligations } = <a href="#78">infer_ok</a>;
-        <a class="self" href="#78">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/util/traits/trait.TraitEngineExt.html">register_predicate_obligations</a>(<a class="self" href="#78">self</a>.infcx, <a href="#79">obligations</a>);
-        <a href="#79">value</a>
+        <span class="kw">let </span><a href="../../../rustc_trait_selection/infer/struct.InferOk.html">InferOk</a> { value, obligations } = <a href="#79">infer_ok</a>;
+        <a class="self" href="#79">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/util/traits/trait.TraitEngineExt.html">register_predicate_obligations</a>(<a class="self" href="#79">self</a>.infcx, <a href="#80">obligations</a>);
+        <a href="#80">value</a>
     }
 
     <span class="doccomment">/// Requires that `ty` must implement the trait with `def_id` in
@@ -351,13 +367,13 @@
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     ) {
-        <span class="kw">let </span>tcx = <a class="self" href="#88">self</a>.infcx.tcx;
-        <span class="kw">let </span>trait_ref = ty::TraitRef::new(<a href="#94">tcx</a>, <a href="#92">def_id</a>, [<a href="#91">ty</a>]);
-        <a class="self" href="#88">self</a>.<a href="#63-65">register_obligation</a>(<a href="../../../rustc_trait_selection/traits/struct.Obligation.html">Obligation</a> {
-            <a href="#89">cause</a>,
+        <span class="kw">let </span>tcx = <a class="self" href="#89">self</a>.infcx.tcx;
+        <span class="kw">let </span>trait_ref = ty::TraitRef::new(<a href="#95">tcx</a>, <a href="#93">def_id</a>, [<a href="#92">ty</a>]);
+        <a class="self" href="#89">self</a>.<a href="#64-66">register_obligation</a>(<a href="../../../rustc_trait_selection/traits/struct.Obligation.html">Obligation</a> {
+            <a href="#90">cause</a>,
             recursion_depth: <span class="number">0</span>,
-            <a href="#90">param_env</a>,
-            predicate: ty::Binder::dummy(<a href="#95">trait_ref</a>).<a href="../../../rustc_middle/ty/trait.ToPredicate.html">to_predicate</a>(<a href="#94">tcx</a>),
+            <a href="#91">param_env</a>,
+            predicate: ty::Binder::dummy(<a href="#96">trait_ref</a>).<a href="../../../rustc_middle/ty/trait.ToPredicate.html">to_predicate</a>(<a href="#95">tcx</a>),
         });
     }
 
@@ -367,8 +383,8 @@
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         value: T,
     ) -&gt; T {
-        <span class="kw">let </span>infer_ok = <a class="self" href="#105">self</a>.infcx.at(<span class="kw-2">&amp;</span><a href="#106">cause</a>, <a href="#107">param_env</a>).<a href="project.rs.html#59">normalize</a>(<a href="#108">value</a>);
-        <a class="self" href="#105">self</a>.<a href="#78-82">register_infer_ok_obligations</a>(<a href="#110">infer_ok</a>)
+        <span class="kw">let </span>infer_ok = <a class="self" href="#106">self</a>.infcx.at(<span class="kw-2">&amp;</span><a href="#107">cause</a>, <a href="#108">param_env</a>).<a href="project.rs.html#59">normalize</a>(<a href="#109">value</a>);
+        <a class="self" href="#106">self</a>.<a href="#79-83">register_infer_ok_obligations</a>(<a href="#111">infer_ok</a>)
     }
 
     <span class="doccomment">/// Makes `expected &lt;: actual`.
@@ -383,10 +399,10 @@
     <span class="kw">where
         </span>T: ToTrace&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     {
-        <a class="self" href="#116">self</a>.infcx
-            .at(<a href="#117">cause</a>, <a href="#118">param_env</a>)
-            .eq_exp(DefineOpaqueTypes::Yes, <a href="#119">a_is_expected</a>, <a href="#120">a</a>, <a href="#121">b</a>)
-            .map(|infer_ok| <a class="self" href="#116">self</a>.<a href="#78-82">register_infer_ok_obligations</a>(<a href="#129">infer_ok</a>))
+        <a class="self" href="#117">self</a>.infcx
+            .at(<a href="#118">cause</a>, <a href="#119">param_env</a>)
+            .eq_exp(DefineOpaqueTypes::Yes, <a href="#120">a_is_expected</a>, <a href="#121">a</a>, <a href="#122">b</a>)
+            .map(|infer_ok| <a class="self" href="#117">self</a>.<a href="#79-83">register_infer_ok_obligations</a>(<a href="#130">infer_ok</a>))
     }
 
     <span class="kw">pub fn </span>eq&lt;T: ToTrace&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;(
@@ -396,10 +412,10 @@
         expected: T,
         actual: T,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TypeError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#133">self</a>.infcx
-            .at(<a href="#134">cause</a>, <a href="#135">param_env</a>)
-            .eq(DefineOpaqueTypes::Yes, <a href="#136">expected</a>, <a href="#137">actual</a>)
-            .map(|infer_ok| <a class="self" href="#133">self</a>.<a href="#78-82">register_infer_ok_obligations</a>(<a href="#142">infer_ok</a>))
+        <a class="self" href="#134">self</a>.infcx
+            .at(<a href="#135">cause</a>, <a href="#136">param_env</a>)
+            .eq(DefineOpaqueTypes::Yes, <a href="#137">expected</a>, <a href="#138">actual</a>)
+            .map(|infer_ok| <a class="self" href="#134">self</a>.<a href="#79-83">register_infer_ok_obligations</a>(<a href="#143">infer_ok</a>))
     }
 
     <span class="doccomment">/// Checks whether `expected` is a subtype of `actual`: `expected &lt;: actual`.
@@ -410,10 +426,24 @@
         expected: T,
         actual: T,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TypeError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#147">self</a>.infcx
-            .at(<a href="#148">cause</a>, <a href="#149">param_env</a>)
-            .sub(DefineOpaqueTypes::Yes, <a href="#150">expected</a>, <a href="#151">actual</a>)
-            .map(|infer_ok| <a class="self" href="#147">self</a>.<a href="#78-82">register_infer_ok_obligations</a>(<a href="#156">infer_ok</a>))
+        <a class="self" href="#148">self</a>.infcx
+            .at(<a href="#149">cause</a>, <a href="#150">param_env</a>)
+            .sub(DefineOpaqueTypes::Yes, <a href="#151">expected</a>, <a href="#152">actual</a>)
+            .map(|infer_ok| <a class="self" href="#148">self</a>.<a href="#79-83">register_infer_ok_obligations</a>(<a href="#157">infer_ok</a>))
+    }
+
+    <span class="kw">pub fn </span>relate&lt;T: ToTrace&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cause: <span class="kw-2">&amp;</span>ObligationCause&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        variance: <a href="../../../rustc_type_ir/enum.Variance.html">Variance</a>,
+        expected: T,
+        actual: T,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TypeError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
+        <a class="self" href="#161">self</a>.infcx
+            .at(<a href="#162">cause</a>, <a href="#163">param_env</a>)
+            .relate(DefineOpaqueTypes::Yes, <a href="#165">expected</a>, <a href="#164">variance</a>, <a href="#166">actual</a>)
+            .map(|infer_ok| <a class="self" href="#161">self</a>.<a href="#79-83">register_infer_ok_obligations</a>(<a href="#171">infer_ok</a>))
     }
 
     <span class="doccomment">/// Checks whether `expected` is a supertype of `actual`: `expected :&gt; actual`.
@@ -424,20 +454,20 @@
         expected: T,
         actual: T,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), TypeError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#161">self</a>.infcx
-            .at(<a href="#162">cause</a>, <a href="#163">param_env</a>)
-            .sup(DefineOpaqueTypes::Yes, <a href="#164">expected</a>, <a href="#165">actual</a>)
-            .map(|infer_ok| <a class="self" href="#161">self</a>.<a href="#78-82">register_infer_ok_obligations</a>(<a href="#170">infer_ok</a>))
+        <a class="self" href="#176">self</a>.infcx
+            .at(<a href="#177">cause</a>, <a href="#178">param_env</a>)
+            .sup(DefineOpaqueTypes::Yes, <a href="#179">expected</a>, <a href="#180">actual</a>)
+            .map(|infer_ok| <a class="self" href="#176">self</a>.<a href="#79-83">register_infer_ok_obligations</a>(<a href="#185">infer_ok</a>))
     }
 
     <span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>select_where_possible(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;FulfillmentError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#174">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/trait.TraitEngine.html">select_where_possible</a>(<a class="self" href="#174">self</a>.infcx)
+        <a class="self" href="#189">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/trait.TraitEngine.html">select_where_possible</a>(<a class="self" href="#189">self</a>.infcx)
     }
 
     <span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>select_all_or_error(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;FulfillmentError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#179">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/util/traits/trait.TraitEngineExt.html">select_all_or_error</a>(<a class="self" href="#179">self</a>.infcx)
+        <a class="self" href="#194">self</a>.engine.borrow_mut().<a href="../../../rustc_trait_selection/traits/util/traits/trait.TraitEngineExt.html">select_all_or_error</a>(<a class="self" href="#194">self</a>.infcx)
     }
 
     <span class="doccomment">/// Resolves regions and reports errors.
@@ -449,11 +479,11 @@
         generic_param_scope: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
         outlives_env: <span class="kw-2">&amp;</span>OutlivesEnvironment&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
-        <span class="kw">let </span>errors = <a class="self" href="#188">self</a>.infcx.resolve_regions(<span class="kw-2">&amp;</span><a href="#190">outlives_env</a>);
+        <span class="kw">let </span>errors = <a class="self" href="#203">self</a>.infcx.resolve_regions(<span class="kw-2">&amp;</span><a href="#205">outlives_env</a>);
         <span class="kw">if </span>errors.is_empty() {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(<a class="self" href="#188">self</a>.infcx.err_ctxt().report_region_errors(<a href="#189">generic_param_scope</a>, <span class="kw-2">&amp;</span><a href="#192">errors</a>))
+            <span class="prelude-val">Err</span>(<a class="self" href="#203">self</a>.infcx.err_ctxt().report_region_errors(<a href="#204">generic_param_scope</a>, <span class="kw-2">&amp;</span><a href="#207">errors</a>))
         }
     }
 
@@ -462,8 +492,8 @@
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;FxIndexSet&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
-        <a class="self" href="#201">self</a>.<a href="#209-243">assumed_wf_types</a>(<a href="#202">param_env</a>, <a href="#203">def_id</a>)
-            .map_err(|errors| <a class="self" href="#201">self</a>.infcx.err_ctxt().<a href="error_reporting/mod.rs.html#136">report_fulfillment_errors</a>(<span class="kw-2">&amp;</span><a href="#206">errors</a>))
+        <a class="self" href="#216">self</a>.<a href="#224-258">assumed_wf_types</a>(<a href="#217">param_env</a>, <a href="#218">def_id</a>)
+            .map_err(|errors| <a class="self" href="#216">self</a>.infcx.err_ctxt().<a href="error_reporting/type_err_ctxt_ext.rs.html#83">report_fulfillment_errors</a>(<a href="#221">errors</a>))
     }
 
     <span class="kw">pub fn </span>assumed_wf_types(
@@ -471,7 +501,7 @@
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;FxIndexSet&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, Vec&lt;FulfillmentError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#210">self</a>.infcx.tcx;
+        <span class="kw">let </span>tcx = <a class="self" href="#225">self</a>.infcx.tcx;
         <span class="kw">let </span><span class="kw-2">mut </span>implied_bounds = FxIndexSet::default();
         <span class="kw">let </span><span class="kw-2">mut </span>errors = Vec::new();
         <span class="kw">for </span><span class="kw-2">&amp;</span>(ty, span) <span class="kw">in </span>tcx.assumed_wf_types(def_id) {
@@ -499,7 +529,7 @@
             };
         }
 
-        <span class="kw">if </span>errors.is_empty() { <span class="prelude-val">Ok</span>(<a href="#215">implied_bounds</a>) } <span class="kw">else </span>{ <span class="prelude-val">Err</span>(<a href="#216">errors</a>) }
+        <span class="kw">if </span>errors.is_empty() { <span class="prelude-val">Ok</span>(<a href="#230">implied_bounds</a>) } <span class="kw">else </span>{ <span class="prelude-val">Err</span>(<a href="#231">errors</a>) }
     }
 
     <span class="kw">pub fn </span>make_canonicalized_query_response&lt;T&gt;(
@@ -511,10 +541,10 @@
         </span>T: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a> + TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         Canonical&lt;<span class="lifetime">&#39;tcx</span>, QueryResponse&lt;<span class="lifetime">&#39;tcx</span>, T&gt;&gt;: ArenaAllocatable&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     {
-        <a class="self" href="#246">self</a>.infcx.make_canonicalized_query_response(
-            <a href="#247">inference_vars</a>,
-            <a href="#248">answer</a>,
-            <span class="kw-2">&amp;mut **</span><a class="self" href="#246">self</a>.engine.borrow_mut(),
+        <a class="self" href="#261">self</a>.infcx.make_canonicalized_query_response(
+            <a href="#262">inference_vars</a>,
+            <a href="#263">answer</a>,
+            <span class="kw-2">&amp;mut **</span><a class="self" href="#261">self</a>.engine.borrow_mut(),
         )
     }
 }

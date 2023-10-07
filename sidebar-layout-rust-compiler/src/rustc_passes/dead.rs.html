@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_passes/src/dead.rs`."><title>dead.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_passes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_passes/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_passes"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_passes/src/dead.rs`."><title>dead.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_passes" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_passes/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_passes"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1042,9 +1042,15 @@
 <a href="#1042" id="1042">1042</a>
 <a href="#1043" id="1043">1043</a>
 <a href="#1044" id="1044">1044</a>
-</pre></div><pre class="rust"><code><span class="comment">// This implements the dead-code warning pass. It follows middle::reachable
-// closely. The idea is that all reachable symbols are live, codes called
-// from live codes are live, and everything else is dead.
+<a href="#1045" id="1045">1045</a>
+<a href="#1046" id="1046">1046</a>
+<a href="#1047" id="1047">1047</a>
+<a href="#1048" id="1048">1048</a>
+<a href="#1049" id="1049">1049</a>
+</pre></div><pre class="rust"><code><span class="comment">// This implements the dead-code warning pass.
+// All reachable symbols are live, code called from live code is live, code with certain lint
+// expectations such as `#[expect(unused)]` and `#[expect(dead_code)]` is live, and everything else
+// is dead.
 
 </span><span class="kw">use </span>hir::def_id::{<a href="../../rustc_span/def_id/type.LocalDefIdMap.html">LocalDefIdMap</a>, <a href="../../rustc_span/def_id/type.LocalDefIdSet.html">LocalDefIdSet</a>};
 <span class="kw">use </span><a href="https://docs.rs/itertools/0.8/itertools/trait.Itertools.html">itertools::Itertools</a>;
@@ -1061,12 +1067,12 @@
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="../../rustc_lint_defs/index.html">rustc_session::lint</a>;
 <span class="kw">use </span>rustc_span::symbol::{<a href="../../rustc_span/symbol/sym/index.html">sym</a>, <a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>};
-<span class="kw">use </span><a href="../../rustc_abi/struct.FieldIdx.html">rustc_target::abi::FieldIdx</a>;
+<span class="kw">use </span><a href="../../rustc_target/abi/struct.FieldIdx.html">rustc_target::abi::FieldIdx</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
 
 <span class="kw">use </span><span class="kw">crate</span>::errors::{
-    <a href="errors.rs.html#1615-1619">ChangeFieldsToBeOfUnitType</a>, <a href="errors.rs.html#1607-1611">IgnoredDerivedImpls</a>, <a href="errors.rs.html#1566-1593">MultipleDeadCodes</a>, <a href="errors.rs.html#1597-1603">ParentInfo</a>,
-    <a href="errors.rs.html#1377-1380">UselessAssignment</a>,
+    <a href="errors.rs.html#1634-1638">ChangeFieldsToBeOfUnitType</a>, <a href="errors.rs.html#1626-1630">IgnoredDerivedImpls</a>, <a href="errors.rs.html#1585-1612">MultipleDeadCodes</a>, <a href="errors.rs.html#1616-1622">ParentInfo</a>,
+    <a href="errors.rs.html#1396-1399">UselessAssignment</a>,
 };
 
 <span class="comment">// Any local node that may call something in its body block should be
@@ -1096,7 +1102,7 @@
 }
 
 <span class="kw">struct </span><a href="../../rustc_passes/dead/struct.MarkSymbolVisitor.html">MarkSymbolVisitor</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    worklist: Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#49-52">ComesFromAllowExpect</a>)&gt;,
+    worklist: Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#50-53">ComesFromAllowExpect</a>)&gt;,
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     maybe_typeck_results: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::TypeckResults&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     live_symbols: <a href="../../rustc_span/def_id/type.LocalDefIdSet.html">LocalDefIdSet</a>,
@@ -1118,68 +1124,68 @@
     /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
     </span><span class="attr">#[track_caller]
     </span><span class="kw">fn </span>typeck_results(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::TypeckResults&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#76">self</a>.maybe_typeck_results
+        <a class="self" href="#77">self</a>.maybe_typeck_results
             .expect(<span class="string">&quot;`MarkSymbolVisitor::typeck_results` called outside of body&quot;</span>)
     }
 
     <span class="kw">fn </span>check_def_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#81">def_id</a>.as_local() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#82">def_id</a>.as_local() {
             <span class="kw">if </span>should_explore(<span class="self">self</span>.tcx, def_id) || <span class="self">self</span>.struct_constructors.contains_key(<span class="kw-2">&amp;</span>def_id) {
-                <a class="self" href="#81">self</a>.worklist.push((<a href="#82">def_id</a>, <a href="#51">ComesFromAllowExpect::No</a>));
+                <a class="self" href="#82">self</a>.worklist.push((<a href="#83">def_id</a>, <a href="#52">ComesFromAllowExpect::No</a>));
             }
-            <a class="self" href="#81">self</a>.live_symbols.insert(<a href="#82">def_id</a>);
+            <a class="self" href="#82">self</a>.live_symbols.insert(<a href="#83">def_id</a>);
         }
     }
 
     <span class="kw">fn </span>insert_def_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>, def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#90">def_id</a>.as_local() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#91">def_id</a>.as_local() {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(!should_explore(<span class="self">self</span>.tcx, def_id));
-            <a class="self" href="#90">self</a>.live_symbols.insert(<a href="#91">def_id</a>);
+            <a class="self" href="#91">self</a>.live_symbols.insert(<a href="#92">def_id</a>);
         }
     }
 
     <span class="kw">fn </span>handle_res(<span class="kw-2">&amp;mut </span><span class="self">self</span>, res: <a href="../../rustc_hir/def/enum.Res.html">Res</a>) {
-        <span class="kw">match </span><a href="#97">res</a> {
-            Res::Def(DefKind::Const | DefKind::AssocConst | <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { .. }, def_id) =&gt; {
-                <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#99">def_id</a>);
+        <span class="kw">match </span><a href="#98">res</a> {
+            Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::TyAlias, def_id) =&gt; {
+                <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#100">def_id</a>);
             }
-            <span class="kw">_ if </span><a class="self" href="#97">self</a>.in_pat =&gt; {}
+            <span class="kw">_ if </span><a class="self" href="#98">self</a>.in_pat =&gt; {}
             Res::PrimTy(..) | Res::SelfCtor(..) | Res::Local(..) =&gt; {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) =&gt; {
-                <span class="kw">let </span>variant_id = <a class="self" href="#97">self</a>.tcx.parent(<a href="#104">ctor_def_id</a>);
-                <span class="kw">let </span>enum_id = <a class="self" href="#97">self</a>.tcx.parent(<a href="#105">variant_id</a>);
-                <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#106">enum_id</a>);
+                <span class="kw">let </span>variant_id = <a class="self" href="#98">self</a>.tcx.parent(<a href="#105">ctor_def_id</a>);
+                <span class="kw">let </span>enum_id = <a class="self" href="#98">self</a>.tcx.parent(<a href="#106">variant_id</a>);
+                <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#107">enum_id</a>);
                 <span class="kw">if </span>!<span class="self">self</span>.ignore_variant_stack.contains(<span class="kw-2">&amp;</span>ctor_def_id) {
-                    <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#105">variant_id</a>);
+                    <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#106">variant_id</a>);
                 }
             }
             Res::Def(DefKind::Variant, variant_id) =&gt; {
-                <span class="kw">let </span>enum_id = <a class="self" href="#97">self</a>.tcx.parent(<a href="#112">variant_id</a>);
-                <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#113">enum_id</a>);
+                <span class="kw">let </span>enum_id = <a class="self" href="#98">self</a>.tcx.parent(<a href="#113">variant_id</a>);
+                <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#114">enum_id</a>);
                 <span class="kw">if </span>!<span class="self">self</span>.ignore_variant_stack.contains(<span class="kw-2">&amp;</span>variant_id) {
-                    <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#112">variant_id</a>);
+                    <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#113">variant_id</a>);
                 }
             }
-            Res::Def(<span class="kw">_</span>, def_id) =&gt; <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#119">def_id</a>),
-            <a href="../../rustc_hir/def/enum.Res.html">Res::SelfTyParam</a> { trait_: t } =&gt; <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#120">t</a>),
-            <a href="../../rustc_hir/def/enum.Res.html">Res::SelfTyAlias</a> { alias_to: i, .. } =&gt; <a class="self" href="#97">self</a>.<a href="#81-88">check_def_id</a>(<a href="#121">i</a>),
+            Res::Def(<span class="kw">_</span>, def_id) =&gt; <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#120">def_id</a>),
+            <a href="../../rustc_hir/def/enum.Res.html">Res::SelfTyParam</a> { trait_: t } =&gt; <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#121">t</a>),
+            <a href="../../rustc_hir/def/enum.Res.html">Res::SelfTyAlias</a> { alias_to: i, .. } =&gt; <a class="self" href="#98">self</a>.<a href="#82-89">check_def_id</a>(<a href="#122">i</a>),
             Res::ToolMod | Res::NonMacroAttr(..) | Res::Err =&gt; {}
         }
     }
 
     <span class="kw">fn </span>lookup_and_handle_method(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a class="self" href="#126">self</a>.<a href="#76-79">typeck_results</a>().type_dependent_def_id(<a href="#126">id</a>) {
-            <a class="self" href="#126">self</a>.<a href="#81-88">check_def_id</a>(<a href="#127">def_id</a>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a class="self" href="#127">self</a>.<a href="#77-80">typeck_results</a>().type_dependent_def_id(<a href="#127">id</a>) {
+            <a class="self" href="#127">self</a>.<a href="#82-89">check_def_id</a>(<a href="#128">def_id</a>);
         } <span class="kw">else </span>{
             <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;no type-dependent def for method&quot;</span>);
         }
     }
 
     <span class="kw">fn </span>handle_field_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lhs: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;, hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) {
-        <span class="kw">match </span><a class="self" href="#134">self</a>.<a href="#76-79">typeck_results</a>().expr_ty_adjusted(<a href="#134">lhs</a>).kind() {
+        <span class="kw">match </span><a class="self" href="#135">self</a>.<a href="#77-80">typeck_results</a>().expr_ty_adjusted(<a href="#135">lhs</a>).kind() {
             ty::Adt(def, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>index = <a class="self" href="#134">self</a>.<a href="#76-79">typeck_results</a>().field_index(<a href="#134">hir_id</a>);
-                <a class="self" href="#134">self</a>.<a href="#90-95">insert_def_id</a>(<a href="#136">def</a>.non_enum_variant().fields[<a href="#137">index</a>].did);
+                <span class="kw">let </span>index = <a class="self" href="#135">self</a>.<a href="#77-80">typeck_results</a>().field_index(<a href="#135">hir_id</a>);
+                <a class="self" href="#135">self</a>.<a href="#91-96">insert_def_id</a>(<a href="#137">def</a>.non_enum_variant().fields[<a href="#138">index</a>].did);
             }
             ty::Tuple(..) =&gt; {}
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(lhs.span, <span class="string">&quot;named field access on non-ADT&quot;</span>),
@@ -1194,12 +1200,12 @@
             .iter()
             .any(|adj| <span class="macro">matches!</span>(adj.kind, ty::adjustment::Adjust::Deref(<span class="kw">_</span>)))
         {
-            <a class="self" href="#146">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_expr</a>(<a href="#146">expr</a>);
-        } <span class="kw">else if let </span>hir::ExprKind::Field(base, ..) = <a href="#146">expr</a>.kind {
+            <a class="self" href="#147">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_expr</a>(<a href="#147">expr</a>);
+        } <span class="kw">else if let </span>hir::ExprKind::Field(base, ..) = <a href="#147">expr</a>.kind {
             <span class="comment">// Ignore write to field
-            </span><a class="self" href="#146">self</a>.<a href="#146-160">handle_assign</a>(<a href="#154">base</a>);
+            </span><a class="self" href="#147">self</a>.<a href="#147-161">handle_assign</a>(<a href="#155">base</a>);
         } <span class="kw">else </span>{
-            <a class="self" href="#146">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_expr</a>(<a href="#146">expr</a>);
+            <a class="self" href="#147">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_expr</a>(<a href="#147">expr</a>);
         }
     }
 
@@ -1210,11 +1216,11 @@
             lhs: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;,
             rhs: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-            <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#166">lhs</a>.kind, <span class="kw-2">&amp;</span><a href="#167">rhs</a>.kind) {
+            <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#167">lhs</a>.kind, <span class="kw-2">&amp;</span><a href="#168">rhs</a>.kind) {
                 (hir::ExprKind::Path(<span class="kw-2">ref </span>qpath_l), hir::ExprKind::Path(<span class="kw-2">ref </span>qpath_r)) =&gt; {
                     <span class="kw">if let </span>(Res::Local(id_l), Res::Local(id_r)) = (
-                        <a href="#165">typeck_results</a>.qpath_res(<a href="#170">qpath_l</a>, <a href="#166">lhs</a>.hir_id),
-                        <a href="#165">typeck_results</a>.qpath_res(<a href="#170">qpath_r</a>, <a href="#167">rhs</a>.hir_id),
+                        <a href="#166">typeck_results</a>.qpath_res(<a href="#171">qpath_l</a>, <a href="#167">lhs</a>.hir_id),
+                        <a href="#166">typeck_results</a>.qpath_res(<a href="#171">qpath_r</a>, <a href="#168">rhs</a>.hir_id),
                     ) {
                         <span class="kw">if </span>id_l == id_r {
                             <span class="kw">return </span><span class="bool-val">true</span>;
@@ -1224,7 +1230,7 @@
                 }
                 (hir::ExprKind::Field(lhs_l, ident_l), hir::ExprKind::Field(lhs_r, ident_r)) =&gt; {
                     <span class="kw">if </span>ident_l == ident_r {
-                        <span class="kw">return </span><a href="#164-191">check_for_self_assign_helper</a>(<a href="#165">typeck_results</a>, <a href="#181">lhs_l</a>, <a href="#181">lhs_r</a>);
+                        <span class="kw">return </span><a href="#165-192">check_for_self_assign_helper</a>(<a href="#166">typeck_results</a>, <a href="#182">lhs_l</a>, <a href="#182">lhs_r</a>);
                     }
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
@@ -1234,16 +1240,16 @@
             }
         }
 
-        <span class="kw">if let </span>hir::ExprKind::Assign(lhs, rhs, <span class="kw">_</span>) = <a href="#163">assign</a>.kind
+        <span class="kw">if let </span>hir::ExprKind::Assign(lhs, rhs, <span class="kw">_</span>) = <a href="#164">assign</a>.kind
             &amp;&amp; check_for_self_assign_helper(<span class="self">self</span>.typeck_results(), lhs, rhs)
                 &amp;&amp; !assign.span.from_expansion()
         {
                 <span class="kw">let </span>is_field_assign = <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(lhs.kind, hir::ExprKind::Field(..));
-                <a class="self" href="#163">self</a>.tcx.emit_spanned_lint(
+                <a class="self" href="#164">self</a>.tcx.emit_spanned_lint(
                     lint::builtin::DEAD_CODE,
-                    <a href="#163">assign</a>.hir_id,
-                    <a href="#163">assign</a>.span,
-                    <a href="errors.rs.html#1377-1380">UselessAssignment</a> { <a href="#197">is_field_assign</a>, ty: <a class="self" href="#163">self</a>.<a href="#76-79">typeck_results</a>().expr_ty(<a href="#193">lhs</a>) }
+                    <a href="#164">assign</a>.hir_id,
+                    <a href="#164">assign</a>.span,
+                    <a href="errors.rs.html#1396-1399">UselessAssignment</a> { <a href="#198">is_field_assign</a>, ty: <a class="self" href="#164">self</a>.<a href="#77-80">typeck_results</a>().expr_ty(<a href="#194">lhs</a>) }
                 )
         }
     }
@@ -1254,8 +1260,8 @@
         res: <a href="../../rustc_hir/def/enum.Res.html">Res</a>,
         pats: <span class="kw-2">&amp;</span>[hir::PatField&lt;<span class="lifetime">&#39;_</span>&gt;],
     ) {
-        <span class="kw">let </span>variant = <span class="kw">match </span><a class="self" href="#208">self</a>.<a href="#76-79">typeck_results</a>().node_type(<a href="#209">lhs</a>.hir_id).kind() {
-            ty::Adt(adt, <span class="kw">_</span>) =&gt; <a href="#214">adt</a>.variant_of_res(<a href="#210">res</a>),
+        <span class="kw">let </span>variant = <span class="kw">match </span><a class="self" href="#209">self</a>.<a href="#77-80">typeck_results</a>().node_type(<a href="#210">lhs</a>.hir_id).kind() {
+            ty::Adt(adt, <span class="kw">_</span>) =&gt; <a href="#215">adt</a>.variant_of_res(<a href="#211">res</a>),
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(lhs.span, <span class="string">&quot;non-ADT in struct pattern&quot;</span>),
         };
         <span class="kw">for </span>pat <span class="kw">in </span>pats {
@@ -1274,14 +1280,14 @@
         pats: <span class="kw-2">&amp;</span>[hir::Pat&lt;<span class="lifetime">&#39;_</span>&gt;],
         dotdot: <a href="../../rustc_hir/hir/struct.DotDotPos.html">hir::DotDotPos</a>,
     ) {
-        <span class="kw">let </span>variant = <span class="kw">match </span><a class="self" href="#227">self</a>.<a href="#76-79">typeck_results</a>().node_type(<a href="#228">lhs</a>.hir_id).kind() {
-            ty::Adt(adt, <span class="kw">_</span>) =&gt; <a href="#234">adt</a>.variant_of_res(<a href="#229">res</a>),
+        <span class="kw">let </span>variant = <span class="kw">match </span><a class="self" href="#228">self</a>.<a href="#77-80">typeck_results</a>().node_type(<a href="#229">lhs</a>.hir_id).kind() {
+            ty::Adt(adt, <span class="kw">_</span>) =&gt; <a href="#235">adt</a>.variant_of_res(<a href="#230">res</a>),
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(lhs.span, <span class="string">&quot;non-ADT in tuple struct pattern&quot;</span>),
         };
-        <span class="kw">let </span>dotdot = <a href="#231">dotdot</a>.as_opt_usize().unwrap_or(<a href="#230">pats</a>.len());
-        <span class="kw">let </span>first_n = <a href="#230">pats</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">take</a>(<a href="#237">dotdot</a>);
-        <span class="kw">let </span>missing = <a href="#233">variant</a>.fields.len() - <a href="#230">pats</a>.len();
-        <span class="kw">let </span>last_n = <a href="#230">pats</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">skip</a>(<a href="#237">dotdot</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(idx, pat)| (<a href="#240">idx</a> + <a href="#239">missing</a>, <a href="#240">pat</a>));
+        <span class="kw">let </span>dotdot = <a href="#232">dotdot</a>.as_opt_usize().unwrap_or(<a href="#231">pats</a>.len());
+        <span class="kw">let </span>first_n = <a href="#231">pats</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">take</a>(<a href="#238">dotdot</a>);
+        <span class="kw">let </span>missing = <a href="#234">variant</a>.fields.len() - <a href="#231">pats</a>.len();
+        <span class="kw">let </span>last_n = <a href="#231">pats</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">skip</a>(<a href="#238">dotdot</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(idx, pat)| (<a href="#241">idx</a> + <a href="#240">missing</a>, <a href="#241">pat</a>));
         <span class="kw">for </span>(idx, pat) <span class="kw">in </span>first_n.chain(last_n) {
             <span class="kw">if let </span>PatKind::Wild = pat.kind {
                 <span class="kw">continue</span>;
@@ -1291,14 +1297,14 @@
     }
 
     <span class="kw">fn </span>handle_offset_of(<span class="kw-2">&amp;mut </span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">let </span>data = <a class="self" href="#249">self</a>.<a href="#76-79">typeck_results</a>().offset_of_data();
+        <span class="kw">let </span>data = <a class="self" href="#250">self</a>.<a href="#77-80">typeck_results</a>().offset_of_data();
         <span class="kw">let </span><span class="kw-2">&amp;</span>(container, <span class="kw-2">ref </span>indices) =
-            <a href="#250">data</a>.get(<a href="#249">expr</a>.hir_id).expect(<span class="string">&quot;no offset_of_data for offset_of&quot;</span>);
+            <a href="#251">data</a>.get(<a href="#250">expr</a>.hir_id).expect(<span class="string">&quot;no offset_of_data for offset_of&quot;</span>);
 
-        <span class="kw">let </span>body_did = <a class="self" href="#249">self</a>.<a href="#76-79">typeck_results</a>().hir_owner.to_def_id();
-        <span class="kw">let </span>param_env = <a class="self" href="#249">self</a>.tcx.param_env(<a href="#254">body_did</a>);
+        <span class="kw">let </span>body_did = <a class="self" href="#250">self</a>.<a href="#77-80">typeck_results</a>().hir_owner.to_def_id();
+        <span class="kw">let </span>param_env = <a class="self" href="#250">self</a>.tcx.param_env(<a href="#255">body_did</a>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>current_ty = <a href="#251">container</a>;
+        <span class="kw">let </span><span class="kw-2">mut </span>current_ty = <a href="#252">container</a>;
 
         <span class="kw">for </span><span class="kw-2">&amp;</span>index <span class="kw">in </span>indices {
             <span class="kw">match </span>current_ty.kind() {
@@ -1374,22 +1380,22 @@
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     </span><span class="kw">fn </span>should_ignore_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(impl_of) = <a class="self" href="#332">self</a>.tcx.impl_of_method(<a href="#332">def_id</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(impl_of) = <a class="self" href="#333">self</a>.tcx.impl_of_method(<a href="#333">def_id</a>) {
             <span class="kw">if </span>!<span class="self">self</span>.tcx.is_automatically_derived(impl_of) {
                 <span class="kw">return </span><span class="bool-val">false</span>;
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(trait_of) = <a class="self" href="#332">self</a>.tcx.trait_id_of_impl(<a href="#333">impl_of</a>)
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(trait_of) = <a class="self" href="#333">self</a>.tcx.trait_id_of_impl(<a href="#334">impl_of</a>)
                 &amp;&amp; <span class="self">self</span>.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads)
             {
-                <span class="kw">let </span>trait_ref = <a class="self" href="#332">self</a>.tcx.impl_trait_ref(<a href="#333">impl_of</a>).unwrap().instantiate_identity();
-                <span class="kw">if let </span>ty::Adt(adt_def, <span class="kw">_</span>) = <a href="#341">trait_ref</a>.self_ty().kind()
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(adt_def_id) = <a href="#342">adt_def</a>.did().as_local()
+                <span class="kw">let </span>trait_ref = <a class="self" href="#333">self</a>.tcx.impl_trait_ref(<a href="#334">impl_of</a>).unwrap().instantiate_identity();
+                <span class="kw">if let </span>ty::Adt(adt_def, <span class="kw">_</span>) = <a href="#342">trait_ref</a>.self_ty().kind()
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(adt_def_id) = <a href="#343">adt_def</a>.did().as_local()
                 {
-                    <a class="self" href="#332">self</a>.ignored_derived_traits
-                        .entry(<a href="#343">adt_def_id</a>)
+                    <a class="self" href="#333">self</a>.ignored_derived_traits
+                        .entry(<a href="#344">adt_def_id</a>)
                         .or_default()
-                        .push((<a href="#338">trait_of</a>, <a href="#333">impl_of</a>));
+                        .push((<a href="#339">trait_of</a>, <a href="#334">impl_of</a>));
                 }
                 <span class="kw">return </span><span class="bool-val">true</span>;
             }
@@ -1399,59 +1405,59 @@
     }
 
     <span class="kw">fn </span>visit_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, node: Node&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">if let </span>Node::ImplItem(<a href="../../rustc_hir/hir/struct.ImplItem.html">hir::ImplItem</a> { owner_id, .. }) = <a href="#357">node</a>
+        <span class="kw">if let </span>Node::ImplItem(<a href="../../rustc_hir/hir/struct.ImplItem.html">hir::ImplItem</a> { owner_id, .. }) = <a href="#358">node</a>
             &amp;&amp; <span class="self">self</span>.should_ignore_item(owner_id.to_def_id())
         {
             <span class="kw">return</span>;
         }
 
-        <span class="kw">let </span>had_repr_c = <a class="self" href="#357">self</a>.repr_has_repr_c;
-        <span class="kw">let </span>had_repr_simd = <a class="self" href="#357">self</a>.repr_has_repr_simd;
-        <a class="self" href="#357">self</a>.repr_has_repr_c = <span class="bool-val">false</span>;
-        <a class="self" href="#357">self</a>.repr_has_repr_simd = <span class="bool-val">false</span>;
-        <span class="kw">match </span><a href="#357">node</a> {
-            Node::Item(item) =&gt; <span class="kw">match </span><a href="#369">item</a>.kind {
+        <span class="kw">let </span>had_repr_c = <a class="self" href="#358">self</a>.repr_has_repr_c;
+        <span class="kw">let </span>had_repr_simd = <a class="self" href="#358">self</a>.repr_has_repr_simd;
+        <a class="self" href="#358">self</a>.repr_has_repr_c = <span class="bool-val">false</span>;
+        <a class="self" href="#358">self</a>.repr_has_repr_simd = <span class="bool-val">false</span>;
+        <span class="kw">match </span><a href="#358">node</a> {
+            Node::Item(item) =&gt; <span class="kw">match </span><a href="#370">item</a>.kind {
                 hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) =&gt; {
-                    <span class="kw">let </span>def = <a class="self" href="#357">self</a>.tcx.adt_def(<a href="#369">item</a>.owner_id);
-                    <a class="self" href="#357">self</a>.repr_has_repr_c = <a href="#371">def</a>.repr().c();
-                    <a class="self" href="#357">self</a>.repr_has_repr_simd = <a href="#371">def</a>.repr().simd();
+                    <span class="kw">let </span>def = <a class="self" href="#358">self</a>.tcx.adt_def(<a href="#370">item</a>.owner_id);
+                    <a class="self" href="#358">self</a>.repr_has_repr_c = <a href="#372">def</a>.repr().c();
+                    <a class="self" href="#358">self</a>.repr_has_repr_simd = <a href="#372">def</a>.repr().simd();
 
-                    intravisit::walk_item(<a class="self" href="#357">self</a>, <span class="kw-2">&amp;</span><a href="#369">item</a>)
+                    intravisit::walk_item(<a class="self" href="#358">self</a>, <span class="kw-2">&amp;</span><a href="#370">item</a>)
                 }
                 <a href="../../rustc_hir/hir/enum.ItemKind.html">hir::ItemKind::ForeignMod</a> { .. } =&gt; {}
-                <span class="kw">_ </span>=&gt; intravisit::walk_item(<a class="self" href="#357">self</a>, <span class="kw-2">&amp;</span><a href="#369">item</a>),
+                <span class="kw">_ </span>=&gt; intravisit::walk_item(<a class="self" href="#358">self</a>, <span class="kw-2">&amp;</span><a href="#370">item</a>),
             },
             Node::TraitItem(trait_item) =&gt; {
-                intravisit::walk_trait_item(<a class="self" href="#357">self</a>, <a href="#380">trait_item</a>);
+                intravisit::walk_trait_item(<a class="self" href="#358">self</a>, <a href="#381">trait_item</a>);
             }
             Node::ImplItem(impl_item) =&gt; {
-                <span class="kw">let </span>item = <a class="self" href="#357">self</a>.tcx.local_parent(<a href="#383">impl_item</a>.owner_id.def_id);
+                <span class="kw">let </span>item = <a class="self" href="#358">self</a>.tcx.local_parent(<a href="#384">impl_item</a>.owner_id.def_id);
                 <span class="kw">if </span><span class="self">self</span>.tcx.impl_trait_ref(item).is_none() {
                     <span class="comment">//// If it&#39;s a type whose items are live, then it&#39;s live, too.
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
-                    </span><span class="kw">let </span>self_ty = <a class="self" href="#357">self</a>.tcx.type_of(<a href="#384">item</a>).instantiate_identity();
-                    <span class="kw">match </span><span class="kw-2">*</span><a href="#390">self_ty</a>.kind() {
-                        ty::Adt(def, <span class="kw">_</span>) =&gt; <a class="self" href="#357">self</a>.<a href="#81-88">check_def_id</a>(<a href="#392">def</a>.did()),
-                        ty::Foreign(did) =&gt; <a class="self" href="#357">self</a>.<a href="#81-88">check_def_id</a>(<a href="#393">did</a>),
+                    </span><span class="kw">let </span>self_ty = <a class="self" href="#358">self</a>.tcx.type_of(<a href="#385">item</a>).instantiate_identity();
+                    <span class="kw">match </span><span class="kw-2">*</span><a href="#391">self_ty</a>.kind() {
+                        ty::Adt(def, <span class="kw">_</span>) =&gt; <a class="self" href="#358">self</a>.<a href="#82-89">check_def_id</a>(<a href="#393">def</a>.did()),
+                        ty::Foreign(did) =&gt; <a class="self" href="#358">self</a>.<a href="#82-89">check_def_id</a>(<a href="#394">did</a>),
                         ty::Dynamic(data, ..) =&gt; {
-                            <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#394">data</a>.principal_def_id() {
-                                <a class="self" href="#357">self</a>.<a href="#81-88">check_def_id</a>(<a href="#395">def_id</a>)
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#395">data</a>.principal_def_id() {
+                                <a class="self" href="#358">self</a>.<a href="#82-89">check_def_id</a>(<a href="#396">def_id</a>)
                             }
                         }
                         <span class="kw">_ </span>=&gt; {}
                     }
                 }
-                intravisit::walk_impl_item(<a class="self" href="#357">self</a>, <a href="#383">impl_item</a>);
+                intravisit::walk_impl_item(<a class="self" href="#358">self</a>, <a href="#384">impl_item</a>);
             }
             Node::ForeignItem(foreign_item) =&gt; {
-                intravisit::walk_foreign_item(<a class="self" href="#357">self</a>, <span class="kw-2">&amp;</span><a href="#404">foreign_item</a>);
+                intravisit::walk_foreign_item(<a class="self" href="#358">self</a>, <span class="kw-2">&amp;</span><a href="#405">foreign_item</a>);
             }
             <span class="kw">_ </span>=&gt; {}
         }
-        <a class="self" href="#357">self</a>.repr_has_repr_simd = <a href="#365">had_repr_simd</a>;
-        <a class="self" href="#357">self</a>.repr_has_repr_c = <a href="#364">had_repr_c</a>;
+        <a class="self" href="#358">self</a>.repr_has_repr_simd = <a href="#366">had_repr_simd</a>;
+        <a class="self" href="#358">self</a>.repr_has_repr_c = <a href="#365">had_repr_c</a>;
     }
 
     <span class="kw">fn </span>mark_as_used_if_union(<span class="kw-2">&amp;mut </span><span class="self">self</span>, adt: ty::AdtDef&lt;<span class="lifetime">&#39;tcx</span>&gt;, fields: <span class="kw-2">&amp;</span>[hir::ExprField&lt;<span class="lifetime">&#39;_</span>&gt;]) {
@@ -1467,162 +1473,162 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>MarkSymbolVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>visit_nested_body(<span class="kw-2">&amp;mut </span><span class="self">self</span>, body: <a href="../../rustc_hir/hir/struct.BodyId.html">hir::BodyId</a>) {
         <span class="kw">let </span>old_maybe_typeck_results =
-            <a class="self" href="#424">self</a>.maybe_typeck_results.replace(<a class="self" href="#424">self</a>.tcx.typeck_body(<a href="#424">body</a>));
-        <span class="kw">let </span>body = <a class="self" href="#424">self</a>.tcx.hir().body(<a href="#424">body</a>);
-        <a class="self" href="#424">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#427">body</a>);
-        <a class="self" href="#424">self</a>.maybe_typeck_results = <a href="#425">old_maybe_typeck_results</a>;
+            <a class="self" href="#425">self</a>.maybe_typeck_results.replace(<a class="self" href="#425">self</a>.tcx.typeck_body(<a href="#425">body</a>));
+        <span class="kw">let </span>body = <a class="self" href="#425">self</a>.tcx.hir().body(<a href="#425">body</a>);
+        <a class="self" href="#425">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#428">body</a>);
+        <a class="self" href="#425">self</a>.maybe_typeck_results = <a href="#426">old_maybe_typeck_results</a>;
     }
 
     <span class="kw">fn </span>visit_variant_data(<span class="kw-2">&amp;mut </span><span class="self">self</span>, def: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::VariantData&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">let </span>tcx = <a class="self" href="#432">self</a>.tcx;
-        <span class="kw">let </span>has_repr_c = <a class="self" href="#432">self</a>.repr_has_repr_c;
-        <span class="kw">let </span>has_repr_simd = <a class="self" href="#432">self</a>.repr_has_repr_simd;
-        <span class="kw">let </span>live_fields = <a href="#432">def</a>.fields().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|f| {
-            <span class="kw">let </span>def_id = <a href="#436">f</a>.def_id;
+        <span class="kw">let </span>tcx = <a class="self" href="#433">self</a>.tcx;
+        <span class="kw">let </span>has_repr_c = <a class="self" href="#433">self</a>.repr_has_repr_c;
+        <span class="kw">let </span>has_repr_simd = <a class="self" href="#433">self</a>.repr_has_repr_simd;
+        <span class="kw">let </span>live_fields = <a href="#433">def</a>.fields().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|f| {
+            <span class="kw">let </span>def_id = <a href="#437">f</a>.def_id;
             <span class="kw">if </span>has_repr_c || (f.is_positional() &amp;&amp; has_repr_simd) {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#437">def_id</a>);
+                <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#438">def_id</a>);
             }
             <span class="kw">if </span>!tcx.visibility(f.hir_id.owner.def_id).is_public() {
                 <span class="kw">return </span><span class="prelude-val">None</span>;
             }
-            <span class="kw">if </span>tcx.visibility(def_id).is_public() { <span class="prelude-val">Some</span>(<a href="#437">def_id</a>) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
+            <span class="kw">if </span>tcx.visibility(def_id).is_public() { <span class="prelude-val">Some</span>(<a href="#438">def_id</a>) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
         });
-        <a class="self" href="#432">self</a>.live_symbols.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#436">live_fields</a>);
+        <a class="self" href="#433">self</a>.live_symbols.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#437">live_fields</a>);
 
-        intravisit::walk_struct_def(<a class="self" href="#432">self</a>, <a href="#432">def</a>);
+        intravisit::walk_struct_def(<a class="self" href="#433">self</a>, <a href="#433">def</a>);
     }
 
     <span class="kw">fn </span>visit_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">match </span><a href="#451">expr</a>.kind {
+        <span class="kw">match </span><a href="#452">expr</a>.kind {
             hir::ExprKind::Path(<span class="kw-2">ref </span>qpath @ hir::QPath::TypeRelative(..)) =&gt; {
-                <span class="kw">let </span>res = <a class="self" href="#451">self</a>.<a href="#76-79">typeck_results</a>().qpath_res(<a href="#453">qpath</a>, <a href="#451">expr</a>.hir_id);
-                <a class="self" href="#451">self</a>.<a href="#97-124">handle_res</a>(<a href="#454">res</a>);
+                <span class="kw">let </span>res = <a class="self" href="#452">self</a>.<a href="#77-80">typeck_results</a>().qpath_res(<a href="#454">qpath</a>, <a href="#452">expr</a>.hir_id);
+                <a class="self" href="#452">self</a>.<a href="#98-125">handle_res</a>(<a href="#455">res</a>);
             }
             hir::ExprKind::MethodCall(..) =&gt; {
-                <a class="self" href="#451">self</a>.<a href="#126-132">lookup_and_handle_method</a>(<a href="#451">expr</a>.hir_id);
+                <a class="self" href="#452">self</a>.<a href="#127-133">lookup_and_handle_method</a>(<a href="#452">expr</a>.hir_id);
             }
             hir::ExprKind::Field(<span class="kw-2">ref </span>lhs, ..) =&gt; {
-                <a class="self" href="#451">self</a>.<a href="#134-143">handle_field_access</a>(<span class="kw-2">&amp;</span><a href="#460">lhs</a>, <a href="#451">expr</a>.hir_id);
+                <a class="self" href="#452">self</a>.<a href="#135-144">handle_field_access</a>(<span class="kw-2">&amp;</span><a href="#461">lhs</a>, <a href="#452">expr</a>.hir_id);
             }
             hir::ExprKind::Struct(<span class="kw-2">ref </span>qpath, <span class="kw-2">ref </span>fields, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>res = <a class="self" href="#451">self</a>.<a href="#76-79">typeck_results</a>().qpath_res(<a href="#463">qpath</a>, <a href="#451">expr</a>.hir_id);
-                <a class="self" href="#451">self</a>.<a href="#97-124">handle_res</a>(<a href="#464">res</a>);
-                <span class="kw">if let </span>ty::Adt(adt, <span class="kw">_</span>) = <a class="self" href="#451">self</a>.<a href="#76-79">typeck_results</a>().expr_ty(<a href="#451">expr</a>).kind() {
-                    <a class="self" href="#451">self</a>.<a href="#413-420">mark_as_used_if_union</a>(<span class="kw-2">*</span><a href="#466">adt</a>, <a href="#463">fields</a>);
+                <span class="kw">let </span>res = <a class="self" href="#452">self</a>.<a href="#77-80">typeck_results</a>().qpath_res(<a href="#464">qpath</a>, <a href="#452">expr</a>.hir_id);
+                <a class="self" href="#452">self</a>.<a href="#98-125">handle_res</a>(<a href="#465">res</a>);
+                <span class="kw">if let </span>ty::Adt(adt, <span class="kw">_</span>) = <a class="self" href="#452">self</a>.<a href="#77-80">typeck_results</a>().expr_ty(<a href="#452">expr</a>).kind() {
+                    <a class="self" href="#452">self</a>.<a href="#414-421">mark_as_used_if_union</a>(<span class="kw-2">*</span><a href="#467">adt</a>, <a href="#464">fields</a>);
                 }
             }
             hir::ExprKind::Closure(cls) =&gt; {
-                <a class="self" href="#451">self</a>.<a href="#90-95">insert_def_id</a>(<a href="#470">cls</a>.def_id.to_def_id());
+                <a class="self" href="#452">self</a>.<a href="#91-96">insert_def_id</a>(<a href="#471">cls</a>.def_id.to_def_id());
             }
             hir::ExprKind::OffsetOf(..) =&gt; {
-                <a class="self" href="#451">self</a>.<a href="#249-278">handle_offset_of</a>(<a href="#451">expr</a>);
+                <a class="self" href="#452">self</a>.<a href="#250-279">handle_offset_of</a>(<a href="#452">expr</a>);
             }
             <span class="kw">_ </span>=&gt; (),
         }
 
-        intravisit::walk_expr(<a class="self" href="#451">self</a>, <a href="#451">expr</a>);
+        intravisit::walk_expr(<a class="self" href="#452">self</a>, <a href="#452">expr</a>);
     }
 
     <span class="kw">fn </span>visit_arm(<span class="kw-2">&amp;mut </span><span class="self">self</span>, arm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Arm&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="comment">// Inside the body, ignore constructions of variants
         // necessary for the pattern to match. Those construction sites
         // can&#39;t be reached unless the variant is constructed elsewhere.
-        </span><span class="kw">let </span>len = <a class="self" href="#482">self</a>.ignore_variant_stack.len();
-        <a class="self" href="#482">self</a>.ignore_variant_stack.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#482">arm</a>.pat.necessary_variants());
-        intravisit::walk_arm(<a class="self" href="#482">self</a>, <a href="#482">arm</a>);
-        <a class="self" href="#482">self</a>.ignore_variant_stack.truncate(<a href="#486">len</a>);
+        </span><span class="kw">let </span>len = <a class="self" href="#483">self</a>.ignore_variant_stack.len();
+        <a class="self" href="#483">self</a>.ignore_variant_stack.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#483">arm</a>.pat.necessary_variants());
+        intravisit::walk_arm(<a class="self" href="#483">self</a>, <a href="#483">arm</a>);
+        <a class="self" href="#483">self</a>.ignore_variant_stack.truncate(<a href="#487">len</a>);
     }
 
     <span class="kw">fn </span>visit_pat(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pat: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a class="self" href="#492">self</a>.in_pat = <span class="bool-val">true</span>;
-        <span class="kw">match </span><a href="#492">pat</a>.kind {
+        <a class="self" href="#493">self</a>.in_pat = <span class="bool-val">true</span>;
+        <span class="kw">match </span><a href="#493">pat</a>.kind {
             PatKind::Struct(<span class="kw-2">ref </span>path, <span class="kw-2">ref </span>fields, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>res = <a class="self" href="#492">self</a>.<a href="#76-79">typeck_results</a>().qpath_res(<a href="#495">path</a>, <a href="#492">pat</a>.hir_id);
-                <a class="self" href="#492">self</a>.<a href="#207-224">handle_field_pattern_match</a>(<a href="#492">pat</a>, <a href="#496">res</a>, <a href="#495">fields</a>);
+                <span class="kw">let </span>res = <a class="self" href="#493">self</a>.<a href="#77-80">typeck_results</a>().qpath_res(<a href="#496">path</a>, <a href="#493">pat</a>.hir_id);
+                <a class="self" href="#493">self</a>.<a href="#208-225">handle_field_pattern_match</a>(<a href="#493">pat</a>, <a href="#497">res</a>, <a href="#496">fields</a>);
             }
             PatKind::Path(<span class="kw-2">ref </span>qpath) =&gt; {
-                <span class="kw">let </span>res = <a class="self" href="#492">self</a>.<a href="#76-79">typeck_results</a>().qpath_res(<a href="#499">qpath</a>, <a href="#492">pat</a>.hir_id);
-                <a class="self" href="#492">self</a>.<a href="#97-124">handle_res</a>(<a href="#500">res</a>);
+                <span class="kw">let </span>res = <a class="self" href="#493">self</a>.<a href="#77-80">typeck_results</a>().qpath_res(<a href="#500">qpath</a>, <a href="#493">pat</a>.hir_id);
+                <a class="self" href="#493">self</a>.<a href="#98-125">handle_res</a>(<a href="#501">res</a>);
             }
             PatKind::TupleStruct(<span class="kw-2">ref </span>qpath, <span class="kw-2">ref </span>fields, dotdot) =&gt; {
-                <span class="kw">let </span>res = <a class="self" href="#492">self</a>.<a href="#76-79">typeck_results</a>().qpath_res(<a href="#503">qpath</a>, <a href="#492">pat</a>.hir_id);
-                <a class="self" href="#492">self</a>.<a href="#226-247">handle_tuple_field_pattern_match</a>(<a href="#492">pat</a>, <a href="#504">res</a>, <a href="#503">fields</a>, <a href="#503">dotdot</a>);
+                <span class="kw">let </span>res = <a class="self" href="#493">self</a>.<a href="#77-80">typeck_results</a>().qpath_res(<a href="#504">qpath</a>, <a href="#493">pat</a>.hir_id);
+                <a class="self" href="#493">self</a>.<a href="#227-248">handle_tuple_field_pattern_match</a>(<a href="#493">pat</a>, <a href="#505">res</a>, <a href="#504">fields</a>, <a href="#504">dotdot</a>);
             }
             <span class="kw">_ </span>=&gt; (),
         }
 
-        intravisit::walk_pat(<a class="self" href="#492">self</a>, <a href="#492">pat</a>);
-        <a class="self" href="#492">self</a>.in_pat = <span class="bool-val">false</span>;
+        intravisit::walk_pat(<a class="self" href="#493">self</a>, <a href="#493">pat</a>);
+        <a class="self" href="#493">self</a>.in_pat = <span class="bool-val">false</span>;
     }
 
     <span class="kw">fn </span>visit_path(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>hir::Path&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="kw">_</span>: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) {
-        <a class="self" href="#514">self</a>.<a href="#97-124">handle_res</a>(<a href="#514">path</a>.res);
-        intravisit::walk_path(<a class="self" href="#514">self</a>, <a href="#514">path</a>);
+        <a class="self" href="#515">self</a>.<a href="#98-125">handle_res</a>(<a href="#515">path</a>.res);
+        intravisit::walk_path(<a class="self" href="#515">self</a>, <a href="#515">path</a>);
     }
 
     <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">if let </span>TyKind::OpaqueDef(item_id, <span class="kw">_</span>, <span class="kw">_</span>) = <a href="#519">ty</a>.kind {
-            <span class="kw">let </span>item = <a class="self" href="#519">self</a>.tcx.hir().item(<a href="#520">item_id</a>);
-            intravisit::walk_item(<a class="self" href="#519">self</a>, <a href="#521">item</a>);
+        <span class="kw">if let </span>TyKind::OpaqueDef(item_id, <span class="kw">_</span>, <span class="kw">_</span>) = <a href="#520">ty</a>.kind {
+            <span class="kw">let </span>item = <a class="self" href="#520">self</a>.tcx.hir().item(<a href="#521">item_id</a>);
+            intravisit::walk_item(<a class="self" href="#520">self</a>, <a href="#522">item</a>);
         }
-        intravisit::walk_ty(<a class="self" href="#519">self</a>, <a href="#519">ty</a>);
+        intravisit::walk_ty(<a class="self" href="#520">self</a>, <a href="#520">ty</a>);
     }
 
     <span class="kw">fn </span>visit_anon_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../rustc_hir/hir/struct.AnonConst.html">hir::AnonConst</a>) {
         <span class="comment">// When inline const blocks are used in pattern position, paths
         // referenced by it should be considered as used.
-        </span><span class="kw">let </span>in_pat = <a href="https://doc.rust-lang.org/nightly/core/mem/fn.replace.html">mem::replace</a>(<span class="kw-2">&amp;mut </span><a class="self" href="#527">self</a>.in_pat, <span class="bool-val">false</span>);
+        </span><span class="kw">let </span>in_pat = <a href="https://doc.rust-lang.org/nightly/core/mem/fn.replace.html">mem::replace</a>(<span class="kw-2">&amp;mut </span><a class="self" href="#528">self</a>.in_pat, <span class="bool-val">false</span>);
 
-        <a class="self" href="#527">self</a>.live_symbols.insert(<a href="#527">c</a>.def_id);
-        intravisit::walk_anon_const(<a class="self" href="#527">self</a>, <a href="#527">c</a>);
+        <a class="self" href="#528">self</a>.live_symbols.insert(<a href="#528">c</a>.def_id);
+        intravisit::walk_anon_const(<a class="self" href="#528">self</a>, <a href="#528">c</a>);
 
-        <a class="self" href="#527">self</a>.in_pat = <a href="#530">in_pat</a>;
+        <a class="self" href="#528">self</a>.in_pat = <a href="#531">in_pat</a>;
     }
 
     <span class="kw">fn </span>visit_inline_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../rustc_hir/hir/struct.ConstBlock.html">hir::ConstBlock</a>) {
         <span class="comment">// When inline const blocks are used in pattern position, paths
         // referenced by it should be considered as used.
-        </span><span class="kw">let </span>in_pat = <a href="https://doc.rust-lang.org/nightly/core/mem/fn.replace.html">mem::replace</a>(<span class="kw-2">&amp;mut </span><a class="self" href="#538">self</a>.in_pat, <span class="bool-val">false</span>);
+        </span><span class="kw">let </span>in_pat = <a href="https://doc.rust-lang.org/nightly/core/mem/fn.replace.html">mem::replace</a>(<span class="kw-2">&amp;mut </span><a class="self" href="#539">self</a>.in_pat, <span class="bool-val">false</span>);
 
-        <a class="self" href="#538">self</a>.live_symbols.insert(<a href="#538">c</a>.def_id);
-        intravisit::walk_inline_const(<a class="self" href="#538">self</a>, <a href="#538">c</a>);
+        <a class="self" href="#539">self</a>.live_symbols.insert(<a href="#539">c</a>.def_id);
+        intravisit::walk_inline_const(<a class="self" href="#539">self</a>, <a href="#539">c</a>);
 
-        <a class="self" href="#538">self</a>.in_pat = <a href="#541">in_pat</a>;
+        <a class="self" href="#539">self</a>.in_pat = <a href="#542">in_pat</a>;
     }
 }
 
 <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.has_allow_dead_code_or_lang_attr.html">has_allow_dead_code_or_lang_attr</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
     def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
-) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#49-52">ComesFromAllowExpect</a>&gt; {
+) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#50-53">ComesFromAllowExpect</a>&gt; {
     <span class="kw">fn </span>has_lang_attr(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#554">tcx</a>.has_attr(<a href="#554">def_id</a>, sym::lang)
+        <a href="#555">tcx</a>.has_attr(<a href="#555">def_id</a>, sym::lang)
             <span class="comment">// Stable attribute for #[lang = &quot;panic_impl&quot;]
-            </span>|| <a href="#554">tcx</a>.has_attr(<a href="#554">def_id</a>, sym::panic_handler)
+            </span>|| <a href="#555">tcx</a>.has_attr(<a href="#555">def_id</a>, sym::panic_handler)
     }
 
     <span class="kw">fn </span>has_allow_expect_dead_code(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>hir_id = <a href="#560">tcx</a>.hir().local_def_id_to_hir_id(<a href="#560">def_id</a>);
-        <span class="kw">let </span>lint_level = <a href="#560">tcx</a>.lint_level_at_node(lint::builtin::DEAD_CODE, <a href="#561">hir_id</a>).<span class="number">0</span>;
+        <span class="kw">let </span>hir_id = <a href="#561">tcx</a>.hir().local_def_id_to_hir_id(<a href="#561">def_id</a>);
+        <span class="kw">let </span>lint_level = <a href="#561">tcx</a>.lint_level_at_node(lint::builtin::DEAD_CODE, <a href="#562">hir_id</a>).<span class="number">0</span>;
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(lint_level, lint::Allow | lint::Expect(<span class="kw">_</span>))
     }
 
     <span class="kw">fn </span>has_used_like_attr(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#566">tcx</a>.def_kind(<a href="#566">def_id</a>).has_codegen_attrs() &amp;&amp; {
-            <span class="kw">let </span>cg_attrs = <a href="#566">tcx</a>.codegen_fn_attrs(<a href="#566">def_id</a>);
+        <a href="#567">tcx</a>.def_kind(<a href="#567">def_id</a>).has_codegen_attrs() &amp;&amp; {
+            <span class="kw">let </span>cg_attrs = <a href="#567">tcx</a>.codegen_fn_attrs(<a href="#567">def_id</a>);
 
             <span class="comment">// #[used], #[no_mangle], #[export_name], etc also keeps the item alive
             // forcefully, e.g., for placing it in a specific section.
-            </span><a href="#568">cg_attrs</a>.contains_extern_indicator()
-                || <a href="#568">cg_attrs</a>.flags.contains(CodegenFnAttrFlags::USED)
-                || <a href="#568">cg_attrs</a>.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+            </span><a href="#569">cg_attrs</a>.contains_extern_indicator()
+                || <a href="#569">cg_attrs</a>.flags.contains(CodegenFnAttrFlags::USED)
+                || <a href="#569">cg_attrs</a>.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         }
     }
 
     <span class="kw">if </span>has_allow_expect_dead_code(tcx, def_id) {
-        <span class="prelude-val">Some</span>(<a href="#50">ComesFromAllowExpect::Yes</a>)
+        <span class="prelude-val">Some</span>(<a href="#51">ComesFromAllowExpect::Yes</a>)
     } <span class="kw">else if </span>has_used_like_attr(tcx, def_id) || has_lang_attr(tcx, def_id) {
-        <span class="prelude-val">Some</span>(<a href="#51">ComesFromAllowExpect::No</a>)
+        <span class="prelude-val">Some</span>(<a href="#52">ComesFromAllowExpect::No</a>)
     } <span class="kw">else </span>{
         <span class="prelude-val">None
     </span>}
@@ -1643,22 +1649,22 @@
 //     * Implementations of traits and trait methods
 </span><span class="kw">fn </span><a href="../../rustc_passes/dead/fn.check_item.html">check_item</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    worklist: <span class="kw-2">&amp;mut </span>Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#49-52">ComesFromAllowExpect</a>)&gt;,
+    worklist: <span class="kw-2">&amp;mut </span>Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#50-53">ComesFromAllowExpect</a>)&gt;,
     struct_constructors: <span class="kw-2">&amp;mut </span>LocalDefIdMap&lt;<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>&gt;,
     id: <a href="../../rustc_hir/hir/struct.ItemId.html">hir::ItemId</a>,
 ) {
-    <span class="kw">let </span>allow_dead_code = <a href="#550-585">has_allow_dead_code_or_lang_attr</a>(<a href="#601">tcx</a>, <a href="#604">id</a>.owner_id.def_id);
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#606">allow_dead_code</a> {
-        <a href="#602">worklist</a>.push((<a href="#604">id</a>.owner_id.def_id, <a href="#607">comes_from_allow</a>));
+    <span class="kw">let </span>allow_dead_code = <a href="#551-586">has_allow_dead_code_or_lang_attr</a>(<a href="#602">tcx</a>, <a href="#605">id</a>.owner_id.def_id);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#607">allow_dead_code</a> {
+        <a href="#603">worklist</a>.push((<a href="#605">id</a>.owner_id.def_id, <a href="#608">comes_from_allow</a>));
     }
 
-    <span class="kw">match </span><a href="#601">tcx</a>.def_kind(<a href="#604">id</a>.owner_id) {
+    <span class="kw">match </span><a href="#602">tcx</a>.def_kind(<a href="#605">id</a>.owner_id) {
         DefKind::Enum =&gt; {
-            <span class="kw">let </span>item = <a href="#601">tcx</a>.hir().item(<a href="#604">id</a>);
-            <span class="kw">if let </span>hir::ItemKind::Enum(<span class="kw-2">ref </span>enum_def, <span class="kw">_</span>) = <a href="#613">item</a>.kind {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#606">allow_dead_code</a> {
-                    <a href="#602">worklist</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(
-                        <a href="#614">enum_def</a>.variants.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|variant| (<a href="#617">variant</a>.def_id, <a href="#615">comes_from_allow</a>)),
+            <span class="kw">let </span>item = <a href="#602">tcx</a>.hir().item(<a href="#605">id</a>);
+            <span class="kw">if let </span>hir::ItemKind::Enum(<span class="kw-2">ref </span>enum_def, <span class="kw">_</span>) = <a href="#614">item</a>.kind {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#607">allow_dead_code</a> {
+                    <a href="#603">worklist</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(
+                        <a href="#615">enum_def</a>.variants.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|variant| (<a href="#618">variant</a>.def_id, <a href="#616">comes_from_allow</a>)),
                     );
                 }
 
@@ -1671,14 +1677,14 @@
         }
         <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { of_trait } =&gt; {
             <span class="kw">if </span>of_trait {
-                <a href="#602">worklist</a>.push((<a href="#604">id</a>.owner_id.def_id, <a href="#51">ComesFromAllowExpect::No</a>));
+                <a href="#603">worklist</a>.push((<a href="#605">id</a>.owner_id.def_id, <a href="#52">ComesFromAllowExpect::No</a>));
             }
 
             <span class="comment">// get DefIds from another query
-            </span><span class="kw">let </span>local_def_ids = <a href="#601">tcx</a>
-                .associated_item_def_ids(<a href="#604">id</a>.owner_id)
+            </span><span class="kw">let </span>local_def_ids = <a href="#602">tcx</a>
+                .associated_item_def_ids(<a href="#605">id</a>.owner_id)
                 .iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|def_id| <a href="#637">def_id</a>.as_local());
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|def_id| <a href="#638">def_id</a>.as_local());
 
             <span class="comment">// And we access the Map here to get HirId from LocalDefId
             </span><span class="kw">for </span>id <span class="kw">in </span>local_def_ids {
@@ -1690,16 +1696,16 @@
             }
         }
         DefKind::Struct =&gt; {
-            <span class="kw">let </span>item = <a href="#601">tcx</a>.hir().item(<a href="#604">id</a>);
-            <span class="kw">if let </span>hir::ItemKind::Struct(<span class="kw-2">ref </span>variant_data, <span class="kw">_</span>) = <a href="#649">item</a>.kind
-                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(ctor_def_id) = <a href="#650">variant_data</a>.ctor_def_id()
+            <span class="kw">let </span>item = <a href="#602">tcx</a>.hir().item(<a href="#605">id</a>);
+            <span class="kw">if let </span>hir::ItemKind::Struct(<span class="kw-2">ref </span>variant_data, <span class="kw">_</span>) = <a href="#650">item</a>.kind
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(ctor_def_id) = <a href="#651">variant_data</a>.ctor_def_id()
             {
-                <a href="#603">struct_constructors</a>.insert(<a href="#651">ctor_def_id</a>, <a href="#649">item</a>.owner_id.def_id);
+                <a href="#604">struct_constructors</a>.insert(<a href="#652">ctor_def_id</a>, <a href="#650">item</a>.owner_id.def_id);
             }
         }
         DefKind::GlobalAsm =&gt; {
             <span class="comment">// global_asm! is always live.
-            </span><a href="#602">worklist</a>.push((<a href="#604">id</a>.owner_id.def_id, <a href="#51">ComesFromAllowExpect::No</a>));
+            </span><a href="#603">worklist</a>.push((<a href="#605">id</a>.owner_id.def_id, <a href="#52">ComesFromAllowExpect::No</a>));
         }
         <span class="kw">_ </span>=&gt; {}
     }
@@ -1707,54 +1713,54 @@
 
 <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.check_trait_item.html">check_trait_item</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-    worklist: <span class="kw-2">&amp;mut </span>Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#49-52">ComesFromAllowExpect</a>)&gt;,
+    worklist: <span class="kw-2">&amp;mut </span>Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#50-53">ComesFromAllowExpect</a>)&gt;,
     id: <a href="../../rustc_hir/hir/struct.TraitItemId.html">hir::TraitItemId</a>,
 ) {
     <span class="kw">use </span>hir::TraitItemKind::{Const, Fn};
     <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
-        <span class="kw">let </span>trait_item = <a href="#665">tcx</a>.hir().trait_item(<a href="#667">id</a>);
+        <span class="kw">let </span>trait_item = <a href="#666">tcx</a>.hir().trait_item(<a href="#668">id</a>);
         <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(trait_item.kind, Const(<span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) | Fn(<span class="kw">_</span>, hir::TraitFn::Provided(<span class="kw">_</span>)))
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#550-585">has_allow_dead_code_or_lang_attr</a>(<a href="#665">tcx</a>, <a href="#671">trait_item</a>.owner_id.def_id)
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#551-586">has_allow_dead_code_or_lang_attr</a>(<a href="#666">tcx</a>, <a href="#672">trait_item</a>.owner_id.def_id)
         {
-            <a href="#666">worklist</a>.push((<a href="#671">trait_item</a>.owner_id.def_id, <a href="#673">comes_from_allow</a>));
+            <a href="#667">worklist</a>.push((<a href="#672">trait_item</a>.owner_id.def_id, <a href="#674">comes_from_allow</a>));
         }
     }
 }
 
 <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.check_foreign_item.html">check_foreign_item</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-    worklist: <span class="kw-2">&amp;mut </span>Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#49-52">ComesFromAllowExpect</a>)&gt;,
+    worklist: <span class="kw-2">&amp;mut </span>Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#50-53">ComesFromAllowExpect</a>)&gt;,
     id: <a href="../../rustc_hir/hir/struct.ForeignItemId.html">hir::ForeignItemId</a>,
 ) {
     <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(tcx.def_kind(id.owner_id), DefKind::Static(<span class="kw">_</span>) | DefKind::Fn)
-        &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#550-585">has_allow_dead_code_or_lang_attr</a>(<a href="#681">tcx</a>, <a href="#683">id</a>.owner_id.def_id)
+        &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(comes_from_allow) = <a href="#551-586">has_allow_dead_code_or_lang_attr</a>(<a href="#682">tcx</a>, <a href="#684">id</a>.owner_id.def_id)
     {
-        <a href="#682">worklist</a>.push((<a href="#683">id</a>.owner_id.def_id, <a href="#686">comes_from_allow</a>));
+        <a href="#683">worklist</a>.push((<a href="#684">id</a>.owner_id.def_id, <a href="#687">comes_from_allow</a>));
     }
 }
 
 <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.create_and_seed_worklist.html">create_and_seed_worklist</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-) -&gt; (Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#49-52">ComesFromAllowExpect</a>)&gt;, LocalDefIdMap&lt;<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>&gt;) {
-    <span class="kw">let </span>effective_visibilities = <span class="kw-2">&amp;</span><a href="#693">tcx</a>.effective_visibilities(());
+) -&gt; (Vec&lt;(<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="#50-53">ComesFromAllowExpect</a>)&gt;, LocalDefIdMap&lt;<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>&gt;) {
+    <span class="kw">let </span>effective_visibilities = <span class="kw-2">&amp;</span><a href="#694">tcx</a>.effective_visibilities(());
     <span class="comment">// see `MarkSymbolVisitor::struct_constructors`
     </span><span class="kw">let </span><span class="kw-2">mut </span>struct_constructors = <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>();
-    <span class="kw">let </span><span class="kw-2">mut </span>worklist = <a href="#695">effective_visibilities</a>
+    <span class="kw">let </span><span class="kw-2">mut </span>worklist = <a href="#696">effective_visibilities</a>
         .iter()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|(<span class="kw-2">&amp;</span>id, effective_vis)| {
-            <a href="#700">effective_vis</a>
+            <a href="#701">effective_vis</a>
                 .is_public_at_level(Level::Reachable)
-                .then_some(<a href="#700">id</a>)
-                .map(|id| (<a href="#704">id</a>, <a href="#51">ComesFromAllowExpect::No</a>))
+                .then_some(<a href="#701">id</a>)
+                .map(|id| (<a href="#705">id</a>, <a href="#52">ComesFromAllowExpect::No</a>))
         })
         <span class="comment">// Seed entry point
         </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(
-            <a href="#693">tcx</a>.entry_fn(())
-                .and_then(|(def_id, <span class="kw">_</span>)| <a href="#709">def_id</a>.as_local().map(|id| (<a href="#709">id</a>, <a href="#51">ComesFromAllowExpect::No</a>))),
+            <a href="#694">tcx</a>.entry_fn(())
+                .and_then(|(def_id, <span class="kw">_</span>)| <a href="#710">def_id</a>.as_local().map(|id| (<a href="#710">id</a>, <a href="#52">ComesFromAllowExpect::No</a>))),
         )
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-    <span class="kw">let </span>crate_items = <a href="#693">tcx</a>.hir_crate_items(());
+    <span class="kw">let </span>crate_items = <a href="#694">tcx</a>.hir_crate_items(());
     <span class="kw">for </span>id <span class="kw">in </span>crate_items.items() {
         check_item(tcx, <span class="kw-2">&amp;mut </span>worklist, <span class="kw-2">&amp;mut </span>struct_constructors, id);
     }
@@ -1767,31 +1773,31 @@
         check_foreign_item(tcx, <span class="kw-2">&amp;mut </span>worklist, id);
     }
 
-    (<a href="#698">worklist</a>, <a href="#697">struct_constructors</a>)
+    (<a href="#699">worklist</a>, <a href="#698">struct_constructors</a>)
 }
 
 <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.live_symbols_and_ignored_derived_traits.html">live_symbols_and_ignored_derived_traits</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
     (): (),
 ) -&gt; (<a href="../../rustc_span/def_id/type.LocalDefIdSet.html">LocalDefIdSet</a>, LocalDefIdMap&lt;Vec&lt;(<a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>, <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>)&gt;&gt;) {
-    <span class="kw">let </span>(worklist, struct_constructors) = <a href="#692-727">create_and_seed_worklist</a>(<a href="#730">tcx</a>);
-    <span class="kw">let </span><span class="kw-2">mut </span>symbol_visitor = <a href="#54-69">MarkSymbolVisitor</a> {
-        <a href="#733">worklist</a>,
-        <a href="#730">tcx</a>,
+    <span class="kw">let </span>(worklist, struct_constructors) = <a href="#693-728">create_and_seed_worklist</a>(<a href="#731">tcx</a>);
+    <span class="kw">let </span><span class="kw-2">mut </span>symbol_visitor = <a href="#55-70">MarkSymbolVisitor</a> {
+        <a href="#734">worklist</a>,
+        <a href="#731">tcx</a>,
         maybe_typeck_results: <span class="prelude-val">None</span>,
         live_symbols: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
         repr_has_repr_c: <span class="bool-val">false</span>,
         repr_has_repr_simd: <span class="bool-val">false</span>,
         in_pat: <span class="bool-val">false</span>,
         ignore_variant_stack: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[],
-        <a href="#733">struct_constructors</a>,
+        <a href="#734">struct_constructors</a>,
         ignored_derived_traits: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
     };
-    <a href="#734">symbol_visitor</a>.<a href="#280-327">mark_live_symbols</a>();
-    (<a href="#734">symbol_visitor</a>.live_symbols, <a href="#734">symbol_visitor</a>.ignored_derived_traits)
+    <a href="#735">symbol_visitor</a>.<a href="#281-328">mark_live_symbols</a>();
+    (<a href="#735">symbol_visitor</a>.live_symbols, <a href="#735">symbol_visitor</a>.ignored_derived_traits)
 }
 
-<span class="kw">struct </span><a href="../../rustc_passes/dead/struct.DeadVariant.html">DeadVariant</a> {
+<span class="kw">struct </span><a href="../../rustc_passes/dead/struct.DeadItem.html">DeadItem</a> {
     def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     name: <a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>,
     level: <a href="../../rustc_lint_defs/enum.Level.html">lint::Level</a>,
@@ -1809,58 +1815,73 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; DeadVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">fn </span>should_warn_about_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, field: <span class="kw-2">&amp;</span><a href="../../rustc_middle/ty/struct.FieldDef.html">ty::FieldDef</a>) -&gt; <a href="#762-765">ShouldWarnAboutField</a> {
+    <span class="kw">fn </span>should_warn_about_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, field: <span class="kw-2">&amp;</span><a href="../../rustc_middle/ty/struct.FieldDef.html">ty::FieldDef</a>) -&gt; <a href="#763-766">ShouldWarnAboutField</a> {
         <span class="kw">if </span><span class="self">self</span>.live_symbols.contains(<span class="kw-2">&amp;</span>field.did.expect_local()) {
-            <span class="kw">return </span><a href="#764">ShouldWarnAboutField::No</a>;
+            <span class="kw">return </span><a href="#765">ShouldWarnAboutField::No</a>;
         }
-        <span class="kw">let </span>field_type = <a class="self" href="#768">self</a>.tcx.type_of(<a href="#768">field</a>.did).instantiate_identity();
+        <span class="kw">let </span>field_type = <a class="self" href="#769">self</a>.tcx.type_of(<a href="#769">field</a>.did).instantiate_identity();
         <span class="kw">if </span>field_type.is_phantom_data() {
-            <span class="kw">return </span><a href="#764">ShouldWarnAboutField::No</a>;
+            <span class="kw">return </span><a href="#765">ShouldWarnAboutField::No</a>;
         }
-        <span class="kw">let </span>is_positional = <a href="#768">field</a>.name.as_str().starts_with(|c: <a href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>| <a href="#776">c</a>.is_ascii_digit());
+        <span class="kw">let </span>is_positional = <a href="#769">field</a>.name.as_str().starts_with(|c: <a href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>| <a href="#777">c</a>.is_ascii_digit());
         <span class="kw">if </span>is_positional
             &amp;&amp; <span class="self">self
                 </span>.tcx
                 .layout_of(<span class="self">self</span>.tcx.param_env(field.did).and(field_type))
                 .map_or(<span class="bool-val">true</span>, |layout| layout.is_zst())
         {
-            <span class="kw">return </span><a href="#764">ShouldWarnAboutField::No</a>;
+            <span class="kw">return </span><a href="#765">ShouldWarnAboutField::No</a>;
         }
-        <a href="#763">ShouldWarnAboutField::Yes</a>(<a href="#776">is_positional</a>)
+        <a href="#764">ShouldWarnAboutField::Yes</a>(<a href="#777">is_positional</a>)
     }
 
-    <span class="kw">fn </span>warn_multiple_dead_codes(
+    <span class="comment">// # Panics
+    // All `dead_codes` must have the same lint level, otherwise we will intentionally ICE.
+    // This is because we emit a multi-spanned lint using the lint level of the `dead_codes`&#39;s
+    // first local def id.
+    // Prefer calling `Self.warn_dead_code` or `Self.warn_dead_code_grouped_by_lint_level`
+    // since those methods group by lint level before calling this method.
+    </span><span class="kw">fn </span>lint_at_single_level(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         dead_codes: <span class="kw-2">&amp;</span>[<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>],
         participle: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
         parent_item: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>&gt;,
         is_positional: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) {
-        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>first_id) = <a href="#790">dead_codes</a>.first() <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>first_id) = <a href="#797">dead_codes</a>.first() <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
-        <span class="kw">let </span>tcx = <a class="self" href="#789">self</a>.tcx;
+        <span class="kw">let </span>tcx = <a class="self" href="#796">self</a>.tcx;
+
+        <span class="kw">let </span>first_hir_id = <a href="#805">tcx</a>.hir().local_def_id_to_hir_id(<a href="#802">first_id</a>);
+        <span class="kw">let </span>first_lint_level = <a href="#805">tcx</a>.lint_level_at_node(lint::builtin::DEAD_CODE, <a href="#807">first_hir_id</a>).<span class="number">0</span>;
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(dead_codes.iter().skip(<span class="number">1</span>).all(|id| {
+            <span class="kw">let </span>hir_id = tcx.hir().local_def_id_to_hir_id(<span class="kw-2">*</span>id);
+            <span class="kw">let </span>level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).<span class="number">0</span>;
+            level == first_lint_level
+        }));
+
         <span class="kw">let </span>names: Vec&lt;<span class="kw">_</span>&gt; =
-            <a href="#790">dead_codes</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>def_id| <a href="#798">tcx</a>.item_name(<a href="#800">def_id</a>.to_def_id())).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <span class="kw">let </span>spans: Vec&lt;<span class="kw">_</span>&gt; = <a href="#790">dead_codes</a>
+            <a href="#797">dead_codes</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>def_id| <a href="#805">tcx</a>.item_name(<a href="#816">def_id</a>.to_def_id())).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        <span class="kw">let </span>spans: Vec&lt;<span class="kw">_</span>&gt; = <a href="#797">dead_codes</a>
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>def_id| <span class="kw">match </span><a href="#798">tcx</a>.def_ident_span(<a href="#803">def_id</a>) {
-                <span class="prelude-val">Some</span>(s) =&gt; <a href="#804">s</a>.with_ctxt(<a href="#798">tcx</a>.def_span(<a href="#803">def_id</a>).ctxt()),
-                <span class="prelude-val">None </span>=&gt; <a href="#798">tcx</a>.def_span(<a href="#803">def_id</a>),
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>def_id| <span class="kw">match </span><a href="#805">tcx</a>.def_ident_span(<a href="#819">def_id</a>) {
+                <span class="prelude-val">Some</span>(s) =&gt; <a href="#820">s</a>.with_ctxt(<a href="#805">tcx</a>.def_span(<a href="#819">def_id</a>).ctxt()),
+                <span class="prelude-val">None </span>=&gt; <a href="#805">tcx</a>.def_span(<a href="#819">def_id</a>),
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-        <span class="kw">let </span>descr = <a href="#798">tcx</a>.def_descr(<a href="#795">first_id</a>.to_def_id());
+        <span class="kw">let </span>descr = <a href="#805">tcx</a>.def_descr(<a href="#802">first_id</a>.to_def_id());
         <span class="comment">// `impl` blocks are &quot;batched&quot; and (unlike other batching) might
         // contain different kinds of associated items.
         </span><span class="kw">let </span>descr = <span class="kw">if </span>dead_codes.iter().any(|did| tcx.def_descr(did.to_def_id()) != descr) {
             <span class="string">&quot;associated item&quot;
         </span>} <span class="kw">else </span>{
-            <a href="#809">descr</a>
+            <a href="#825">descr</a>
         };
-        <span class="kw">let </span>num = <a href="#790">dead_codes</a>.len();
-        <span class="kw">let </span>multiple = <a href="#817">num</a> &gt; <span class="number">6</span>;
-        <span class="kw">let </span>name_list = <a href="#799">names</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
+        <span class="kw">let </span>num = <a href="#797">dead_codes</a>.len();
+        <span class="kw">let </span>multiple = <a href="#833">num</a> &gt; <span class="number">6</span>;
+        <span class="kw">let </span>name_list = <a href="#815">names</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
 
         <span class="kw">let </span>lint = <span class="kw">if </span>is_positional {
             lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
@@ -1868,83 +1889,78 @@
             lint::builtin::DEAD_CODE
         };
 
-        <span class="kw">let </span>parent_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_item) = <a href="#792">parent_item</a> {
-            <span class="kw">let </span>parent_descr = <a href="#798">tcx</a>.def_descr(<a href="#827">parent_item</a>.to_def_id());
-            <span class="kw">let </span>span = <span class="kw">if let </span><a href="../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { .. } = <a href="#798">tcx</a>.def_kind(<a href="#827">parent_item</a>) {
-                <a href="#798">tcx</a>.def_span(<a href="#827">parent_item</a>)
+        <span class="kw">let </span>parent_info = <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_item) = <a href="#799">parent_item</a> {
+            <span class="kw">let </span>parent_descr = <a href="#805">tcx</a>.def_descr(<a href="#843">parent_item</a>.to_def_id());
+            <span class="kw">let </span>span = <span class="kw">if let </span><a href="../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { .. } = <a href="#805">tcx</a>.def_kind(<a href="#843">parent_item</a>) {
+                <a href="#805">tcx</a>.def_span(<a href="#843">parent_item</a>)
             } <span class="kw">else </span>{
-                <a href="#798">tcx</a>.def_ident_span(<a href="#827">parent_item</a>).unwrap()
+                <a href="#805">tcx</a>.def_ident_span(<a href="#843">parent_item</a>).unwrap()
             };
-            <span class="prelude-val">Some</span>(<a href="errors.rs.html#1597-1603">ParentInfo</a> { <a href="#817">num</a>, <a href="#812">descr</a>, <a href="#828">parent_descr</a>, <a href="#829">span</a> })
+            <span class="prelude-val">Some</span>(<a href="errors.rs.html#1616-1622">ParentInfo</a> { <a href="#833">num</a>, <a href="#828">descr</a>, <a href="#844">parent_descr</a>, <a href="#845">span</a> })
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
 
-        <span class="kw">let </span>encl_def_id = <a href="#792">parent_item</a>.unwrap_or(<a href="#795">first_id</a>);
+        <span class="kw">let </span>encl_def_id = <a href="#799">parent_item</a>.unwrap_or(<a href="#802">first_id</a>);
         <span class="kw">let </span>ignored_derived_impls =
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(ign_traits) = <a class="self" href="#789">self</a>.ignored_derived_traits.get(<span class="kw-2">&amp;</span><a href="#839">encl_def_id</a>) {
-                <span class="kw">let </span>trait_list = <a href="#841">ign_traits</a>
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ign_traits) = <a class="self" href="#796">self</a>.ignored_derived_traits.get(<span class="kw-2">&amp;</span><a href="#855">encl_def_id</a>) {
+                <span class="kw">let </span>trait_list = <a href="#857">ign_traits</a>
                     .iter()
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(trait_id, <span class="kw">_</span>)| <a class="self" href="#789">self</a>.tcx.item_name(<span class="kw-2">*</span><a href="#844">trait_id</a>))
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(trait_id, <span class="kw">_</span>)| <a class="self" href="#796">self</a>.tcx.item_name(<span class="kw-2">*</span><a href="#860">trait_id</a>))
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                <span class="kw">let </span>trait_list_len = <a href="#842">trait_list</a>.len();
-                <span class="prelude-val">Some</span>(<a href="errors.rs.html#1607-1611">IgnoredDerivedImpls</a> {
-                    name: <a class="self" href="#789">self</a>.tcx.item_name(<a href="#839">encl_def_id</a>.to_def_id()),
-                    trait_list: <a href="#842">trait_list</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
-                    <a href="#846">trait_list_len</a>,
+                <span class="kw">let </span>trait_list_len = <a href="#858">trait_list</a>.len();
+                <span class="prelude-val">Some</span>(<a href="errors.rs.html#1626-1630">IgnoredDerivedImpls</a> {
+                    name: <a class="self" href="#796">self</a>.tcx.item_name(<a href="#855">encl_def_id</a>.to_def_id()),
+                    trait_list: <a href="#858">trait_list</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+                    <a href="#862">trait_list_len</a>,
                 })
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>};
 
         <span class="kw">let </span>diag = <span class="kw">if </span>is_positional {
-            <a href="errors.rs.html#1580-1592">MultipleDeadCodes::UnusedTupleStructFields</a> {
-                <a href="#818">multiple</a>,
-                <a href="#817">num</a>,
-                <a href="#812">descr</a>,
-                <a href="#791">participle</a>,
-                <a href="#819">name_list</a>,
-                change_fields_suggestion: <a href="errors.rs.html#1615-1619">ChangeFieldsToBeOfUnitType</a> { <a href="#817">num</a>, spans: <a href="#801">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>() },
-                <a href="#827">parent_info</a>,
-                <a href="#840">ignored_derived_impls</a>,
+            <a href="errors.rs.html#1599-1611">MultipleDeadCodes::UnusedTupleStructFields</a> {
+                <a href="#834">multiple</a>,
+                <a href="#833">num</a>,
+                <a href="#828">descr</a>,
+                <a href="#798">participle</a>,
+                <a href="#835">name_list</a>,
+                change_fields_suggestion: <a href="errors.rs.html#1634-1638">ChangeFieldsToBeOfUnitType</a> { <a href="#833">num</a>, spans: <a href="#817">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>() },
+                <a href="#843">parent_info</a>,
+                <a href="#856">ignored_derived_impls</a>,
             }
         } <span class="kw">else </span>{
-            <a href="errors.rs.html#1568-1578">MultipleDeadCodes::DeadCodes</a> {
-                <a href="#818">multiple</a>,
-                <a href="#817">num</a>,
-                <a href="#812">descr</a>,
-                <a href="#791">participle</a>,
-                <a href="#819">name_list</a>,
-                <a href="#827">parent_info</a>,
-                <a href="#840">ignored_derived_impls</a>,
+            <a href="errors.rs.html#1587-1597">MultipleDeadCodes::DeadCodes</a> {
+                <a href="#834">multiple</a>,
+                <a href="#833">num</a>,
+                <a href="#828">descr</a>,
+                <a href="#798">participle</a>,
+                <a href="#835">name_list</a>,
+                <a href="#843">parent_info</a>,
+                <a href="#856">ignored_derived_impls</a>,
             }
         };
 
-        <a class="self" href="#789">self</a>.tcx.emit_spanned_lint(
-            <a href="#821">lint</a>,
-            <a href="#798">tcx</a>.hir().local_def_id_to_hir_id(<a href="#795">first_id</a>),
-            MultiSpan::from_spans(<a href="#801">spans</a>),
-            <a href="#856">diag</a>,
-        );
+        <a class="self" href="#796">self</a>.tcx.emit_spanned_lint(<a href="#837">lint</a>, <a href="#807">first_hir_id</a>, MultiSpan::from_spans(<a href="#817">spans</a>), <a href="#872">diag</a>);
     }
 
-    <span class="kw">fn </span>warn_dead_fields_and_variants(
+    <span class="kw">fn </span>warn_multiple(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
         participle: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
-        dead_codes: Vec&lt;<a href="#750-754">DeadVariant</a>&gt;,
+        dead_codes: Vec&lt;<a href="#751-755">DeadItem</a>&gt;,
         is_positional: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) {
-        <span class="kw">let </span><span class="kw-2">mut </span>dead_codes = <a href="#891">dead_codes</a>
+        <span class="kw">let </span><span class="kw-2">mut </span>dead_codes = <a href="#902">dead_codes</a>
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|v| !<a href="#896">v</a>.name.as_str().starts_with(<span class="string">&#39;_&#39;</span>))
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw-2">&amp;</span><a href="#750-754">DeadVariant</a>&gt;&gt;();
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|v| !<a href="#907">v</a>.name.as_str().starts_with(<span class="string">&#39;_&#39;</span>))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw-2">&amp;</span><a href="#751-755">DeadItem</a>&gt;&gt;();
         <span class="kw">if </span>dead_codes.is_empty() {
             <span class="kw">return</span>;
         }
-        <a href="#894">dead_codes</a>.sort_by_key(|v| <a href="#901">v</a>.level);
+        <a href="#905">dead_codes</a>.sort_by_key(|v| <a href="#912">v</a>.level);
         <span class="kw">for </span>(<span class="kw">_</span>, group) <span class="kw">in </span><span class="kw-2">&amp;</span>dead_codes.into_iter().group_by(|v| v.level) {
-            <span class="self">self</span>.warn_multiple_dead_codes(
+            <span class="self">self</span>.lint_at_single_level(
                 <span class="kw-2">&amp;</span>group.map(|v| v.def_id).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
                 participle,
                 <span class="prelude-val">Some</span>(def_id),
@@ -1954,24 +1970,24 @@
     }
 
     <span class="kw">fn </span>warn_dead_code(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, participle: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) {
-        <a class="self" href="#912">self</a>.<a href="#788-885">warn_multiple_dead_codes</a>(<span class="kw-2">&amp;</span>[<a href="#912">id</a>], <a href="#912">participle</a>, <span class="prelude-val">None</span>, <span class="bool-val">false</span>);
+        <a class="self" href="#923">self</a>.<a href="#795-896">lint_at_single_level</a>(<span class="kw-2">&amp;</span>[<a href="#923">id</a>], <a href="#923">participle</a>, <span class="prelude-val">None</span>, <span class="bool-val">false</span>);
     }
 
     <span class="kw">fn </span>check_definition(<span class="kw-2">&amp;mut </span><span class="self">self</span>, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) {
         <span class="kw">if </span><span class="self">self</span>.is_live_code(def_id) {
             <span class="kw">return</span>;
         }
-        <span class="kw">match </span><a class="self" href="#916">self</a>.tcx.def_kind(<a href="#916">def_id</a>) {
+        <span class="kw">match </span><a class="self" href="#927">self</a>.tcx.def_kind(<a href="#927">def_id</a>) {
             DefKind::AssocConst
             | DefKind::AssocFn
             | DefKind::Fn
             | DefKind::Static(<span class="kw">_</span>)
             | DefKind::Const
-            | <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { .. }
+            | DefKind::TyAlias
             | DefKind::Enum
             | DefKind::Union
-            | DefKind::ForeignTy =&gt; <a class="self" href="#916">self</a>.<a href="#912-914">warn_dead_code</a>(<a href="#916">def_id</a>, <span class="string">&quot;used&quot;</span>),
-            DefKind::Struct =&gt; <a class="self" href="#916">self</a>.<a href="#912-914">warn_dead_code</a>(<a href="#916">def_id</a>, <span class="string">&quot;constructed&quot;</span>),
+            | DefKind::ForeignTy =&gt; <a class="self" href="#927">self</a>.<a href="#923-925">warn_dead_code</a>(<a href="#927">def_id</a>, <span class="string">&quot;used&quot;</span>),
+            DefKind::Struct =&gt; <a class="self" href="#927">self</a>.<a href="#923-925">warn_dead_code</a>(<a href="#927">def_id</a>, <span class="string">&quot;constructed&quot;</span>),
             DefKind::Variant | DefKind::Field =&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;should be handled specially&quot;</span>),
             <span class="kw">_ </span>=&gt; {}
         }
@@ -1980,35 +1996,34 @@
     <span class="kw">fn </span>is_live_code(<span class="kw-2">&amp;</span><span class="self">self</span>, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="comment">// if we cannot get a name for the item, then we just assume that it is
         // live. I mean, we can&#39;t really emit a lint.
-        </span><span class="kw">let </span><span class="prelude-val">Some</span>(name) = <a class="self" href="#936">self</a>.tcx.opt_item_name(<a href="#936">def_id</a>.to_def_id()) <span class="kw">else </span>{
+        </span><span class="kw">let </span><span class="prelude-val">Some</span>(name) = <a class="self" href="#947">self</a>.tcx.opt_item_name(<a href="#947">def_id</a>.to_def_id()) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">true</span>;
         };
 
-        <a class="self" href="#936">self</a>.live_symbols.contains(<span class="kw-2">&amp;</span><a href="#936">def_id</a>) || <a href="#939">name</a>.as_str().starts_with(<span class="string">&#39;_&#39;</span>)
+        <a class="self" href="#947">self</a>.live_symbols.contains(<span class="kw-2">&amp;</span><a href="#947">def_id</a>) || <a href="#950">name</a>.as_str().starts_with(<span class="string">&#39;_&#39;</span>)
     }
 }
 
 <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.check_mod_deathness.html">check_mod_deathness</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, module: <a href="../../rustc_span/def_id/struct.LocalModDefId.html">LocalModDefId</a>) {
-    <span class="kw">let </span>(live_symbols, ignored_derived_traits) = <a href="#947">tcx</a>.live_symbols_and_ignored_derived_traits(());
-    <span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#756-760">DeadVisitor</a> { <a href="#947">tcx</a>, <a href="#948">live_symbols</a>, <a href="#948">ignored_derived_traits</a> };
+    <span class="kw">let </span>(live_symbols, ignored_derived_traits) = <a href="#958">tcx</a>.live_symbols_and_ignored_derived_traits(());
+    <span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#757-761">DeadVisitor</a> { <a href="#958">tcx</a>, <a href="#959">live_symbols</a>, <a href="#959">ignored_derived_traits</a> };
 
-    <span class="kw">let </span>module_items = <a href="#947">tcx</a>.hir_module_items(<a href="#947">module</a>);
+    <span class="kw">let </span>module_items = <a href="#958">tcx</a>.hir_module_items(<a href="#958">module</a>);
 
     <span class="kw">for </span>item <span class="kw">in </span>module_items.items() {
         <span class="kw">if let </span>hir::ItemKind::Impl(impl_item) = tcx.hir().item(item).kind {
             <span class="kw">let </span><span class="kw-2">mut </span>dead_items = Vec::new();
             <span class="kw">for </span>item <span class="kw">in </span>impl_item.items {
-                <span class="kw">let </span>did = item.id.owner_id.def_id;
-                <span class="kw">if </span>!visitor.is_live_code(did) {
-                    dead_items.push(did)
+                <span class="kw">let </span>def_id = item.id.owner_id.def_id;
+                <span class="kw">if </span>!visitor.is_live_code(def_id) {
+                    <span class="kw">let </span>name = tcx.item_name(def_id.to_def_id());
+                    <span class="kw">let </span>hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                    <span class="kw">let </span>level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).<span class="number">0</span>;
+
+                    dead_items.push(DeadItem { def_id, name, level })
                 }
             }
-            visitor.warn_multiple_dead_codes(
-                <span class="kw-2">&amp;</span>dead_items,
-                <span class="string">&quot;used&quot;</span>,
-                <span class="prelude-val">Some</span>(item.owner_id.def_id),
-                <span class="bool-val">false</span>,
-            );
+            visitor.warn_multiple(item.owner_id.def_id, <span class="string">&quot;used&quot;</span>, dead_items, <span class="bool-val">false</span>);
         }
 
         <span class="kw">if </span>!live_symbols.contains(<span class="kw-2">&amp;</span>item.owner_id.def_id) {
@@ -2032,7 +2047,7 @@
                     <span class="comment">// Record to group diagnostics.
                     </span><span class="kw">let </span>hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                     <span class="kw">let </span>level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).<span class="number">0</span>;
-                    dead_variants.push(DeadVariant { def_id, name: variant.name, level });
+                    dead_variants.push(DeadItem { def_id, name: variant.name, level });
                     <span class="kw">continue</span>;
                 }
 
@@ -2057,21 +2072,16 @@
                                     hir_id,
                                 )
                                 .<span class="number">0</span>;
-                            <span class="prelude-val">Some</span>(DeadVariant { def_id, name: field.name, level })
+                            <span class="prelude-val">Some</span>(DeadItem { def_id, name: field.name, level })
                         } <span class="kw">else </span>{
                             <span class="prelude-val">None
                         </span>}
                     })
                     .collect();
-                visitor.warn_dead_fields_and_variants(def_id, <span class="string">&quot;read&quot;</span>, dead_fields, is_positional)
+                visitor.warn_multiple(def_id, <span class="string">&quot;read&quot;</span>, dead_fields, is_positional);
             }
 
-            visitor.warn_dead_fields_and_variants(
-                item.owner_id.def_id,
-                <span class="string">&quot;constructed&quot;</span>,
-                dead_variants,
-                <span class="bool-val">false</span>,
-            );
+            visitor.warn_multiple(item.owner_id.def_id, <span class="string">&quot;constructed&quot;</span>, dead_variants, <span class="bool-val">false</span>);
         }
     }
 
@@ -2083,7 +2093,7 @@
 </span>}
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span><a href="../../rustc_passes/dead/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../rustc_middle/query/struct.Providers.html">Providers</a>) {
-    <span class="kw-2">*</span><a href="#1041">providers</a> =
-        <a href="../../rustc_middle/query/struct.Providers.html">Providers</a> { <a href="#729-748">live_symbols_and_ignored_derived_traits</a>, <a href="#947-1039">check_mod_deathness</a>, ..<span class="kw-2">*</span><a href="#1041">providers</a> };
+    <span class="kw-2">*</span><a href="#1046">providers</a> =
+        <a href="../../rustc_middle/query/struct.Providers.html">Providers</a> { <a href="#730-749">live_symbols_and_ignored_derived_traits</a>, <a href="#958-1044">check_mod_deathness</a>, ..<span class="kw-2">*</span><a href="#1046">providers</a> };
 }
 </code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/build/expr/as_rvalue.rs`."><title>as_rvalue.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/build/expr/as_rvalue.rs`."><title>as_rvalue.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -837,11 +837,11 @@
 
 </span><span class="kw">use </span>rustc_index::{<a href="../../../../rustc_index/idx/trait.Idx.html">Idx</a>, <a href="../../../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
 <span class="kw">use </span><a href="../../../../rustc_middle/ty/util/trait.IntTypeExt.html">rustc_middle::ty::util::IntTypeExt</a>;
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/enum.Abi.html">Abi</a>, <a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../../rustc_abi/enum.Primitive.html">Primitive</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/enum.Abi.html">Abi</a>, <a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../../rustc_abi/enum.Primitive.html">Primitive</a>};
 
 <span class="kw">use </span><a href="as_place.rs.html#23-62"><span class="kw">crate</span>::build::expr::as_place::PlaceBase</a>;
 <span class="kw">use </span><span class="kw">crate</span>::build::expr::category::{<a href="category.rs.html#4-17">Category</a>, <a href="category.rs.html#22-29">RvalueFunc</a>};
-<span class="kw">use </span><span class="kw">crate</span>::build::{<a href="../mod.rs.html#408">BlockAnd</a>, <a href="../mod.rs.html#410-413">BlockAndExtension</a>, <a href="../mod.rs.html#162-227">Builder</a>, <a href="../mod.rs.html#390-399">NeedsTemporary</a>};
+<span class="kw">use </span><span class="kw">crate</span>::build::{<a href="../mod.rs.html#407">BlockAnd</a>, <a href="../mod.rs.html#409-412">BlockAndExtension</a>, <a href="../mod.rs.html#161-226">Builder</a>, <a href="../mod.rs.html#389-398">NeedsTemporary</a>};
 <span class="kw">use </span><a href="../../../../rustc_hir/lang_items/enum.LangItem.html">rustc_hir::lang_items::LangItem</a>;
 <span class="kw">use </span><a href="../../../../rustc_middle/middle/region/index.html">rustc_middle::middle::region</a>;
 <span class="kw">use </span><a href="../../../../rustc_middle/mir/interpret/value/enum.Scalar.html">rustc_middle::mir::interpret::Scalar</a>;
@@ -884,7 +884,7 @@
         <span class="kw">let </span>source_info = <a href="#47">this</a>.<a href="../scope.rs.html#871-873">source_info</a>(<a href="#48">expr_span</a>);
 
         <span class="kw">match </span><a href="#43">expr</a>.kind {
-            ExprKind::ThreadLocalRef(did) =&gt; <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::ThreadLocalRef(<a href="#52">did</a>)),
+            ExprKind::ThreadLocalRef(did) =&gt; <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::ThreadLocalRef(<a href="#52">did</a>)),
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Scope</a> { region_scope, lint_level, value } =&gt; {
                 <span class="kw">let </span>region_scope = (<a href="#53">region_scope</a>, <a href="#49">source_info</a>);
                 <a href="#47">this</a>.<a href="../scope.rs.html#562">in_scope</a>(<a href="#54">region_scope</a>, <a href="#53">lint_level</a>, |this| {
@@ -895,7 +895,7 @@
                 <span class="kw">if </span><span class="prelude-val">Some</span>(<span class="number">0</span>) == count.try_eval_target_usize(this.tcx, this.param_env) {
                     <a href="#47">this</a>.<a href="#699-734">build_zero_repeat</a>(<a href="#41">block</a>, <a href="#59">value</a>, <a href="#42">scope</a>, <a href="#49">source_info</a>)
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>value_operand = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                    <span class="kw">let </span>value_operand = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                         block = this.as_operand(
                             block,
                             scope,
@@ -904,11 +904,11 @@
                             NeedsTemporary::No
                         )
                     );
-                    <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Repeat(<a href="#63">value_operand</a>, <a href="#59">count</a>))
+                    <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Repeat(<a href="#63">value_operand</a>, <a href="#59">count</a>))
                 }
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Binary</a> { op, lhs, rhs } =&gt; {
-                <span class="kw">let </span>lhs = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                <span class="kw">let </span>lhs = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                     block = this.as_operand(
                         block,
                         scope,
@@ -917,7 +917,7 @@
                         NeedsTemporary::Maybe
                     )
                 );
-                <span class="kw">let </span>rhs = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                <span class="kw">let </span>rhs = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                     block = this.as_operand(
                         block,
                         scope,
@@ -929,7 +929,7 @@
                 <a href="#47">this</a>.<a href="#550-697">build_binary_op</a>(<a href="#41">block</a>, <a href="#75">op</a>, <a href="#48">expr_span</a>, <a href="#43">expr</a>.ty, <a href="#76">lhs</a>, <a href="#85">rhs</a>)
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Unary</a> { op, arg } =&gt; {
-                <span class="kw">let </span>arg = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                <span class="kw">let </span>arg = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                     block = this.as_operand(
                         block,
                         scope,
@@ -943,7 +943,7 @@
                     <span class="kw">let </span>bool_ty = <a href="#47">this</a>.tcx.types.bool;
 
                     <span class="kw">let </span>minval = <a href="#47">this</a>.<a href="#826-834">minval_literal</a>(<a href="#48">expr_span</a>, <a href="#43">expr</a>.ty);
-                    <span class="kw">let </span>is_min = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#108">bool_ty</a>, <a href="#48">expr_span</a>);
+                    <span class="kw">let </span>is_min = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#108">bool_ty</a>, <a href="#48">expr_span</a>);
 
                     <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                         <a href="#41">block</a>,
@@ -960,7 +960,7 @@
                         <a href="#48">expr_span</a>,
                     );
                 }
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::UnaryOp(<a href="#96">op</a>, <a href="#97">arg</a>))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::UnaryOp(<a href="#96">op</a>, <a href="#97">arg</a>))
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Box</a> { value } =&gt; {
                 <span class="kw">let </span>value = <span class="kw-2">&amp;</span><a href="#47">this</a>.thir[<a href="#130">value</a>];
@@ -974,7 +974,7 @@
                 );
                 <span class="kw">let </span>synth_info = <a href="../../../../rustc_middle/mir/struct.SourceInfo.html">SourceInfo</a> { span: <a href="#48">expr_span</a>, scope: <a href="#135">synth_scope</a> };
 
-                <span class="kw">let </span>size = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#132">tcx</a>.types.usize, <a href="#48">expr_span</a>);
+                <span class="kw">let </span>size = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#132">tcx</a>.types.usize, <a href="#48">expr_span</a>);
                 <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                     <a href="#41">block</a>,
                     <a href="#140">synth_info</a>,
@@ -982,7 +982,7 @@
                     Rvalue::NullaryOp(NullOp::SizeOf, <a href="#131">value</a>.ty),
                 );
 
-                <span class="kw">let </span>align = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#132">tcx</a>.types.usize, <a href="#48">expr_span</a>);
+                <span class="kw">let </span>align = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#132">tcx</a>.types.usize, <a href="#48">expr_span</a>);
                 <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                     <a href="#41">block</a>,
                     <a href="#140">synth_info</a>,
@@ -997,7 +997,7 @@
                     [],
                     <a href="#48">expr_span</a>,
                 );
-                <span class="kw">let </span>storage = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(Ty::new_mut_ptr(<a href="#132">tcx</a>, <a href="#132">tcx</a>.types.u8), <a href="#48">expr_span</a>);
+                <span class="kw">let </span>storage = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(Ty::new_mut_ptr(<a href="#132">tcx</a>, <a href="#132">tcx</a>.types.u8), <a href="#48">expr_span</a>);
                 <span class="kw">let </span>success = <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#19-21">start_new_block</a>();
                 <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#104-118">terminate</a>(
                     <a href="#41">block</a>,
@@ -1018,10 +1018,10 @@
                 <span class="comment">// The `Box&lt;T&gt;` temporary created here is not a part of the HIR,
                 // and therefore is not considered during generator auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
-                </span><span class="kw">let </span>result = <a href="#47">this</a>.local_decls.push(LocalDecl::new(<a href="#43">expr</a>.ty, <a href="#48">expr_span</a>).internal());
+                </span><span class="kw">let </span>result = <a href="#47">this</a>.local_decls.push(LocalDecl::new(<a href="#43">expr</a>.ty, <a href="#48">expr_span</a>));
                 <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#29-32">push</a>(
                     <a href="#41">block</a>,
-                    <a href="../../../../rustc_middle/mir/struct.Statement.html">Statement</a> { <a href="#49">source_info</a>, kind: StatementKind::StorageLive(<a href="#186">result</a>) },
+                    <a href="../../../../rustc_middle/mir/statement/struct.Statement.html">Statement</a> { <a href="#49">source_info</a>, kind: StatementKind::StorageLive(<a href="#186">result</a>) },
                 );
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = <a href="#42">scope</a> {
                     <span class="comment">// schedule a shallow free of that memory, lest we unwind:
@@ -1033,14 +1033,14 @@
                 <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(<a href="#41">block</a>, <a href="#49">source_info</a>, Place::from(<a href="#186">result</a>), <a href="#197">box_</a>);
 
                 <span class="comment">// initialize the box contents:
-                </span><a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                </span><a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                     block = this.expr_into_dest(
                         this.tcx.mk_place_deref(Place::from(result)),
                         block,
                         value
                     )
                 );
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Use(Operand::Move(Place::from(<a href="#186">result</a>))))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Use(Operand::Move(Place::from(<a href="#186">result</a>))))
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Cast</a> { source } =&gt; {
                 <span class="kw">let </span>source = <span class="kw-2">&amp;</span><a href="#47">this</a>.thir[<a href="#210">source</a>];
@@ -1050,9 +1050,9 @@
                 // create all the steps directly in MIR with operations all backends need to support anyway.
                 </span><span class="kw">let </span>(source, ty) = <span class="kw">if let </span>ty::Adt(adt_def, ..) = <a href="#211">source</a>.ty.kind() &amp;&amp; adt_def.is_enum() {
                     <span class="kw">let </span>discr_ty = <a href="#216">adt_def</a>.repr().discr_type().<a href="../../../../rustc_middle/ty/util/trait.IntTypeExt.html">to_ty</a>(<a href="#47">this</a>.tcx);
-                    <span class="kw">let </span>temp = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(block = this.as_temp(block, scope, source, Mutability::Not));
+                    <span class="kw">let </span>temp = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(block = this.as_temp(block, scope, source, Mutability::Not));
                     <span class="kw">let </span>layout = <a href="#47">this</a>.tcx.layout_of(<a href="#47">this</a>.param_env.and(<a href="#211">source</a>.ty));
-                    <span class="kw">let </span>discr = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#217">discr_ty</a>, <a href="#211">source</a>.span);
+                    <span class="kw">let </span>discr = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#217">discr_ty</a>, <a href="#211">source</a>.span);
                     <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                         <a href="#41">block</a>,
                         <a href="#49">source_info</a>,
@@ -1066,7 +1066,7 @@
                         &amp;&amp; <span class="kw">let </span>Primitive::Int(int_width, _signed) = <a href="#229">scalar</a>.primitive()
                     {
                         <span class="kw">let </span>unsigned_ty = <a href="#231">int_width</a>.<a href="../../../../rustc_middle/ty/layout/trait.IntegerExt.html">to_ty</a>(<a href="#47">this</a>.tcx, <span class="bool-val">false</span>);
-                        <span class="kw">let </span>unsigned_place = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#233">unsigned_ty</a>, <a href="#48">expr_span</a>);
+                        <span class="kw">let </span>unsigned_place = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#233">unsigned_ty</a>, <a href="#48">expr_span</a>);
                         <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                             <a href="#41">block</a>,
                             <a href="#49">source_info</a>,
@@ -1084,9 +1084,9 @@
 
                         <span class="kw">let </span><span class="kw-2">mut </span>comparer = |range: <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>, bin_op: <a href="../../../../rustc_middle/mir/syntax/enum.BinOp.html">BinOp</a>| -&gt; Place&lt;<span class="lifetime">&#39;tcx</span>&gt; {
                             <span class="kw">let </span>range_val =
-                                ConstantKind::from_bits(<a href="#47">this</a>.tcx, <a href="#250">range</a>, ty::ParamEnv::empty().and(<a href="#233">unsigned_ty</a>));
-                            <span class="kw">let </span>lit_op = <a href="#47">this</a>.<a href="../misc.rs.html#28-35">literal_operand</a>(<a href="#43">expr</a>.span, <a href="#251">range_val</a>);
-                            <span class="kw">let </span>is_bin_op = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#241">bool_ty</a>, <a href="#48">expr_span</a>);
+                                Const::from_bits(<a href="#47">this</a>.tcx, <a href="#250">range</a>, ty::ParamEnv::empty().and(<a href="#233">unsigned_ty</a>));
+                            <span class="kw">let </span>lit_op = <a href="#47">this</a>.<a href="../misc.rs.html#26-29">literal_operand</a>(<a href="#43">expr</a>.span, <a href="#251">range_val</a>);
+                            <span class="kw">let </span>is_bin_op = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#241">bool_ty</a>, <a href="#48">expr_span</a>);
                             <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                                 <a href="#41">block</a>,
                                 <a href="#49">source_info</a>,
@@ -1100,7 +1100,7 @@
                         } <span class="kw">else </span>{
                             <span class="kw">let </span>start_place = <a href="#250">comparer</a>(<a href="#242">range</a>.start, BinOp::Ge);
                             <span class="kw">let </span>end_place = <a href="#250">comparer</a>(<a href="#242">range</a>.end, BinOp::Le);
-                            <span class="kw">let </span>merge_place = <a href="#47">this</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#241">bool_ty</a>, <a href="#48">expr_span</a>);
+                            <span class="kw">let </span>merge_place = <a href="#47">this</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#241">bool_ty</a>, <a href="#48">expr_span</a>);
                             <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                                 <a href="#41">block</a>,
                                 <a href="#49">source_info</a>,
@@ -1111,7 +1111,7 @@
                         };
                         <a href="#47">this</a>.cfg.<a href="../cfg.rs.html#29-32">push</a>(
                             <a href="#41">block</a>,
-                            <a href="../../../../rustc_middle/mir/struct.Statement.html">Statement</a> {
+                            <a href="../../../../rustc_middle/mir/statement/struct.Statement.html">Statement</a> {
                                 <a href="#49">source_info</a>,
                                 kind: StatementKind::Intrinsic(Box::new(NonDivergingIntrinsic::Assume(
                                     Operand::Move(<a href="#263">assert_place</a>),
@@ -1124,7 +1124,7 @@
 
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>ty = <a href="#211">source</a>.ty;
-                    <span class="kw">let </span>source = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                    <span class="kw">let </span>source = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                         block = this.as_operand(block, scope, source, LocalInfo::Boring, NeedsTemporary::No)
                     );
                     (<a href="#292">source</a>, <a href="#291">ty</a>)
@@ -1133,10 +1133,10 @@
                 <span class="kw">let </span>cast_ty = CastTy::from_ty(<a href="#43">expr</a>.ty);
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;ExprKind::Cast from_ty={from_ty:?}, cast_ty={:?}/{cast_ty:?}&quot;</span>, expr.ty,);
                 <span class="kw">let </span>cast_kind = <a href="../../../../rustc_middle/ty/cast/fn.mir_cast_kind.html">mir_cast_kind</a>(<a href="#216">ty</a>, <a href="#43">expr</a>.ty);
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Cast(<a href="#300">cast_kind</a>, <a href="#216">source</a>, <a href="#43">expr</a>.ty))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Cast(<a href="#300">cast_kind</a>, <a href="#216">source</a>, <a href="#43">expr</a>.ty))
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::PointerCoercion</a> { cast, source } =&gt; {
-                <span class="kw">let </span>source = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                <span class="kw">let </span>source = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                     block = this.as_operand(
                         block,
                         scope,
@@ -1145,7 +1145,7 @@
                         NeedsTemporary::No
                     )
                 );
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Cast(CastKind::PointerCoercion(<a href="#303">cast</a>), <a href="#304">source</a>, <a href="#43">expr</a>.ty))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Cast(CastKind::PointerCoercion(<a href="#303">cast</a>), <a href="#304">source</a>, <a href="#43">expr</a>.ty))
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Array</a> { <span class="kw-2">ref </span>fields } =&gt; {
                 <span class="comment">// (*) We would (maybe) be closer to codegen if we
@@ -1176,11 +1176,11 @@
 
                 // first process the set of fields
                 </span><span class="kw">let </span>el_ty = <a href="#43">expr</a>.ty.sequence_element_type(<a href="#47">this</a>.tcx);
-                <span class="kw">let </span>fields: IndexVec&lt;<a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <span class="kw">_</span>&gt; = <a href="#315">fields</a>
+                <span class="kw">let </span>fields: IndexVec&lt;<a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <span class="kw">_</span>&gt; = <a href="#315">fields</a>
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| {
-                        <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                        <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                             block = this.as_operand(
                                 block,
                                 scope,
@@ -1192,16 +1192,16 @@
                     })
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Aggregate(Box::new(AggregateKind::Array(<a href="#343">el_ty</a>)), <a href="#344">fields</a>))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Aggregate(Box::new(AggregateKind::Array(<a href="#343">el_ty</a>)), <a href="#344">fields</a>))
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Tuple</a> { <span class="kw-2">ref </span>fields } =&gt; {
                 <span class="comment">// see (*) above
                 // first process the set of fields
-                </span><span class="kw">let </span>fields: IndexVec&lt;<a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <span class="kw">_</span>&gt; = <a href="#362">fields</a>
+                </span><span class="kw">let </span>fields: IndexVec&lt;<a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <span class="kw">_</span>&gt; = <a href="#362">fields</a>
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| {
-                        <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                        <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                             block = this.as_operand(
                                 block,
                                 scope,
@@ -1213,7 +1213,7 @@
                     })
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), <a href="#365">fields</a>))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), <a href="#365">fields</a>))
             }
             ExprKind::Closure(<span class="kw">box </span><a href="../../../../rustc_middle/thir/struct.ClosureExpr.html">ClosureExpr</a> {
                 closure_id,
@@ -1251,7 +1251,7 @@
                 }
 
                 <span class="comment">// see (*) above
-                </span><span class="kw">let </span>operands: IndexVec&lt;<a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <span class="kw">_</span>&gt; = <a href="#386">upvars</a>
+                </span><span class="kw">let </span>operands: IndexVec&lt;<a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <span class="kw">_</span>&gt; = <a href="#386">upvars</a>
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|upvar| {
@@ -1266,8 +1266,8 @@
                             // This occurs when capturing by copy/move, while
                             // by reference captures use as_operand
                             </span><span class="prelude-val">Some</span>(<a href="category.rs.html#8">Category::Place</a>) =&gt; {
-                                <span class="kw">let </span>place = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(block = this.as_place(block, upvar));
-                                <a href="#47">this</a>.<a href="../misc.rs.html#66-74">consume_by_copy_or_move</a>(<a href="#434">place</a>)
+                                <span class="kw">let </span>place = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(block = this.as_place(block, upvar));
+                                <a href="#47">this</a>.<a href="../misc.rs.html#60-68">consume_by_copy_or_move</a>(<a href="#434">place</a>)
                             }
                             <span class="kw">_ </span>=&gt; {
                                 <span class="comment">// Turn mutable borrow captures into unique
@@ -1279,7 +1279,7 @@
                                         borrow_kind:
                                             <a href="../../../../rustc_middle/mir/syntax/enum.BorrowKind.html">BorrowKind::Mut</a> { kind: MutBorrowKind::Default },
                                         arg,
-                                    } =&gt; <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                                    } =&gt; <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                                         block = this.limit_capture_mutability(
                                             upvar.span,
                                             upvar.ty,
@@ -1289,7 +1289,7 @@
                                         )
                                     ),
                                     <span class="kw">_ </span>=&gt; {
-                                        <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                                        <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                                             block = this.as_operand(
                                                 block,
                                                 scope,
@@ -1316,19 +1316,19 @@
                         Box::new(AggregateKind::Closure(<a href="#384">closure_id</a>.to_def_id(), <a href="#480">args</a>))
                     }
                 };
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Aggregate(<a href="#473">result</a>, <a href="#419">operands</a>))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Aggregate(<a href="#473">result</a>, <a href="#419">operands</a>))
             }
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Assign</a> { .. } | <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::AssignOp</a> { .. } =&gt; {
-                <a href="#41">block</a> = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(this.stmt_expr(block, expr, <span class="prelude-val">None</span>));
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Use(Operand::Constant(Box::new(<a href="../../../../rustc_middle/mir/struct.Constant.html">Constant</a> {
+                <a href="#41">block</a> = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(this.stmt_expr(block, expr, <span class="prelude-val">None</span>));
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Use(Operand::Constant(Box::new(<a href="../../../../rustc_middle/mir/syntax/struct.ConstOperand.html">ConstOperand</a> {
                     span: <a href="#48">expr_span</a>,
                     user_ty: <span class="prelude-val">None</span>,
-                    literal: ConstantKind::zero_sized(<a href="#47">this</a>.tcx.types.unit),
+                    const_: Const::zero_sized(<a href="#47">this</a>.tcx.types.unit),
                 }))))
             }
 
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::OffsetOf</a> { container, fields } =&gt; {
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::NullaryOp(NullOp::OffsetOf(<a href="#495">fields</a>), <a href="#495">container</a>))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::NullaryOp(NullOp::OffsetOf(<a href="#495">fields</a>), <a href="#495">container</a>))
             }
 
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Literal</a> { .. }
@@ -1338,8 +1338,8 @@
             | <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::ConstParam</a> { .. }
             | <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::ConstBlock</a> { .. }
             | <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::StaticRef</a> { .. } =&gt; {
-                <span class="kw">let </span>constant = <a href="#47">this</a>.<a href="as_constant.rs.html#20-40">as_constant</a>(<a href="#43">expr</a>);
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Use(Operand::Constant(Box::new(<a href="#506">constant</a>))))
+                <span class="kw">let </span>constant = <a href="#47">this</a>.<a href="as_constant.rs.html#18-38">as_constant</a>(<a href="#43">expr</a>);
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Use(Operand::Constant(Box::new(<a href="#506">constant</a>))))
             }
 
             <a href="../../../../rustc_middle/thir/enum.ExprKind.html">ExprKind::Yield</a> { .. }
@@ -1373,11 +1373,11 @@
                     Category::of(<span class="kw-2">&amp;</span>expr.kind),
                     <span class="prelude-val">Some</span>(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
-                <span class="kw">let </span>operand = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+                <span class="kw">let </span>operand = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                     block =
                         this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
-                <a href="#41">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Use(<a href="#541">operand</a>))
+                <a href="#41">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Use(<a href="#541">operand</a>))
             }
         }
     }
@@ -1396,7 +1396,7 @@
         <span class="kw">let </span>rvalue = <span class="kw">match </span><a href="#553">op</a> {
             BinOp::Add | BinOp::Sub | BinOp::Mul <span class="kw">if </span><a class="self" href="#551">self</a>.check_overflow &amp;&amp; <a href="#555">ty</a>.is_integral() =&gt; {
                 <span class="kw">let </span>result_tup = Ty::new_tup(<a class="self" href="#551">self</a>.tcx, <span class="kw-2">&amp;</span>[<a href="#555">ty</a>, <a href="#560">bool_ty</a>]);
-                <span class="kw">let </span>result_value = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#563">result_tup</a>, <a href="#554">span</a>);
+                <span class="kw">let </span>result_value = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#563">result_tup</a>, <a href="#554">span</a>);
 
                 <a class="self" href="#551">self</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                     <a href="#552">block</a>,
@@ -1430,7 +1430,7 @@
                     ty::Uint(<span class="kw">_</span>) =&gt; (<a href="#557">rhs</a>.to_copy(), <a href="#591">rhs_ty</a>),
                     ty::Int(int_width) =&gt; {
                         <span class="kw">let </span>uint_ty = Ty::new_uint(<a class="self" href="#551">self</a>.tcx, <a href="#596">int_width</a>.to_unsigned());
-                        <span class="kw">let </span>rhs_temp = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#597">uint_ty</a>, <a href="#554">span</a>);
+                        <span class="kw">let </span>rhs_temp = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#597">uint_ty</a>, <a href="#554">span</a>);
                         <a class="self" href="#551">self</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                             <a href="#552">block</a>,
                             <a href="#559">source_info</a>,
@@ -1452,7 +1452,7 @@
                     <a href="#554">span</a>,
                 );
 
-                <span class="kw">let </span>inbounds = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
+                <span class="kw">let </span>inbounds = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
                 <a class="self" href="#551">self</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                     <a href="#552">block</a>,
                     <a href="#559">source_info</a>,
@@ -1476,8 +1476,8 @@
                 <span class="kw">let </span>overflow_err = AssertKind::Overflow(<a href="#553">op</a>, <a href="#556">lhs</a>.to_copy(), <a href="#557">rhs</a>.to_copy());
 
                 <span class="comment">// Check for / 0
-                </span><span class="kw">let </span>is_zero = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
-                <span class="kw">let </span>zero = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#39-43">zero_literal</a>(<a href="#554">span</a>, <a href="#555">ty</a>);
+                </span><span class="kw">let </span>is_zero = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
+                <span class="kw">let </span>zero = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#33-37">zero_literal</a>(<a href="#554">span</a>, <a href="#555">ty</a>);
                 <a class="self" href="#551">self</a>.cfg.<a href="../cfg.rs.html#34-45">push_assign</a>(
                     <a href="#552">block</a>,
                     <a href="#559">source_info</a>,
@@ -1493,9 +1493,9 @@
                     <span class="kw">let </span>neg_1 = <a class="self" href="#551">self</a>.<a href="#817-823">neg_1_literal</a>(<a href="#554">span</a>, <a href="#555">ty</a>);
                     <span class="kw">let </span>min = <a class="self" href="#551">self</a>.<a href="#826-834">minval_literal</a>(<a href="#554">span</a>, <a href="#555">ty</a>);
 
-                    <span class="kw">let </span>is_neg_1 = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
-                    <span class="kw">let </span>is_min = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
-                    <span class="kw">let </span>of = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-24">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
+                    <span class="kw">let </span>is_neg_1 = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
+                    <span class="kw">let </span>is_min = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
+                    <span class="kw">let </span>of = <a class="self" href="#551">self</a>.<a href="../misc.rs.html#17-22">temp</a>(<a href="#560">bool_ty</a>, <a href="#554">span</a>);
 
                     <span class="comment">// this does (rhs == -1) &amp; (lhs == MIN). It could short-circuit instead
 
@@ -1528,7 +1528,7 @@
             }
             <span class="kw">_ </span>=&gt; Rvalue::BinaryOp(<a href="#553">op</a>, Box::new((<a href="#556">lhs</a>, <a href="#557">rhs</a>))),
         };
-        <a href="#552">block</a>.<a href="../mod.rs.html#411">and</a>(<a href="#561">rvalue</a>)
+        <a href="#552">block</a>.<a href="../mod.rs.html#410">and</a>(<a href="#561">rvalue</a>)
     }
 
     <span class="kw">fn </span>build_zero_repeat(
@@ -1545,7 +1545,7 @@
             <span class="comment">// Repeating a const does nothing
         </span>} <span class="kw">else </span>{
             <span class="comment">// For a non-const, we may need to generate an appropriate `Drop`
-            </span><span class="kw">let </span>value_operand = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(
+            </span><span class="kw">let </span>value_operand = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(
                 block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
             );
             <span class="kw">if let </span>Operand::Move(to_drop) = <a href="#713">value_operand</a> {
@@ -1565,7 +1565,7 @@
             }
             <a href="#706">this</a>.<a href="../scope.rs.html#1051-1072">record_operands_moved</a>(<span class="kw-2">&amp;</span>[<a href="#713">value_operand</a>]);
         }
-        <a href="#701">block</a>.<a href="../mod.rs.html#411">and</a>(Rvalue::Aggregate(Box::new(AggregateKind::Array(<a href="#708">elem_ty</a>)), IndexVec::new()))
+        <a href="#701">block</a>.<a href="../mod.rs.html#410">and</a>(Rvalue::Aggregate(Box::new(AggregateKind::Array(<a href="#708">elem_ty</a>)), IndexVec::new()))
     }
 
     <span class="kw">fn </span>limit_capture_mutability(
@@ -1581,9 +1581,9 @@
         <span class="kw">let </span>source_info = <a href="#744">this</a>.<a href="../scope.rs.html#871-873">source_info</a>(<a href="#738">upvar_span</a>);
         <span class="kw">let </span>temp = <a href="#744">this</a>.local_decls.push(LocalDecl::new(<a href="#739">upvar_ty</a>, <a href="#738">upvar_span</a>));
 
-        <a href="#744">this</a>.cfg.<a href="../cfg.rs.html#29-32">push</a>(<a href="#741">block</a>, <a href="../../../../rustc_middle/mir/struct.Statement.html">Statement</a> { <a href="#746">source_info</a>, kind: StatementKind::StorageLive(<a href="#747">temp</a>) });
+        <a href="#744">this</a>.cfg.<a href="../cfg.rs.html#29-32">push</a>(<a href="#741">block</a>, <a href="../../../../rustc_middle/mir/statement/struct.Statement.html">Statement</a> { <a href="#746">source_info</a>, kind: StatementKind::StorageLive(<a href="#747">temp</a>) });
 
-        <span class="kw">let </span>arg_place_builder = <a class="macro" href="../mod.rs.html#427-438">unpack!</a>(block = this.as_place_builder(block, arg));
+        <span class="kw">let </span>arg_place_builder = <a class="macro" href="../mod.rs.html#426-437">unpack!</a>(block = this.as_place_builder(block, arg));
 
         <span class="kw">let </span>mutability = <span class="kw">match </span><a href="#751">arg_place_builder</a>.<a href="as_place.rs.html#285-287">base</a>() {
             <span class="comment">// We are capturing a path that starts off a local variable in the parent.
@@ -1597,11 +1597,11 @@
                 <span class="kw">let </span>enclosing_upvars_resolved = <a href="#751">arg_place_builder</a>.<a href="as_place.rs.html#252-254">to_place</a>(<a href="#744">this</a>);
 
                 <span class="kw">match </span><a href="#762">enclosing_upvars_resolved</a>.as_ref() {
-                    <a href="../../../../rustc_middle/mir/struct.PlaceRef.html">PlaceRef</a> {
+                    <a href="../../../../rustc_middle/mir/statement/struct.PlaceRef.html">PlaceRef</a> {
                         local,
                         projection: <span class="kw-2">&amp;</span>[ProjectionElem::Field(upvar_index, <span class="kw">_</span>), ..],
                     }
-                    | <a href="../../../../rustc_middle/mir/struct.PlaceRef.html">PlaceRef</a> {
+                    | <a href="../../../../rustc_middle/mir/statement/struct.PlaceRef.html">PlaceRef</a> {
                         local,
                         projection:
                             <span class="kw-2">&amp;</span>[ProjectionElem::Deref, ProjectionElem::Field(upvar_index, <span class="kw">_</span>), ..],
@@ -1645,16 +1645,16 @@
             <a href="#744">this</a>.<a href="../scope.rs.html#904-912">schedule_drop_storage_and_value</a>(<a href="#738">upvar_span</a>, <a href="#809">temp_lifetime</a>, <a href="#747">temp</a>);
         }
 
-        <a href="#741">block</a>.<a href="../mod.rs.html#411">and</a>(Operand::Move(Place::from(<a href="#747">temp</a>)))
+        <a href="#741">block</a>.<a href="../mod.rs.html#410">and</a>(Operand::Move(Place::from(<a href="#747">temp</a>)))
     }
 
     <span class="comment">// Helper to get a `-1` value of the appropriate type
     </span><span class="kw">fn </span>neg_1_literal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Operand&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>param_ty = ty::ParamEnv::empty().and(<a href="#817">ty</a>);
         <span class="kw">let </span>size = <a class="self" href="#817">self</a>.tcx.layout_of(<a href="#818">param_ty</a>).unwrap().size;
-        <span class="kw">let </span>literal = ConstantKind::from_bits(<a class="self" href="#817">self</a>.tcx, <a href="#819">size</a>.unsigned_int_max(), <a href="#818">param_ty</a>);
+        <span class="kw">let </span>literal = Const::from_bits(<a class="self" href="#817">self</a>.tcx, <a href="#819">size</a>.unsigned_int_max(), <a href="#818">param_ty</a>);
 
-        <a class="self" href="#817">self</a>.<a href="../misc.rs.html#28-35">literal_operand</a>(<a href="#817">span</a>, <a href="#820">literal</a>)
+        <a class="self" href="#817">self</a>.<a href="../misc.rs.html#26-29">literal_operand</a>(<a href="#817">span</a>, <a href="#820">literal</a>)
     }
 
     <span class="comment">// Helper to get the minimum value of the appropriate type
@@ -1663,9 +1663,9 @@
         <span class="kw">let </span>param_ty = ty::ParamEnv::empty().and(<a href="#826">ty</a>);
         <span class="kw">let </span>bits = <a class="self" href="#826">self</a>.tcx.layout_of(<a href="#828">param_ty</a>).unwrap().size.bits();
         <span class="kw">let </span>n = <span class="number">1 </span>&lt;&lt; (<a href="#829">bits</a> - <span class="number">1</span>);
-        <span class="kw">let </span>literal = ConstantKind::from_bits(<a class="self" href="#826">self</a>.tcx, <a href="#830">n</a>, <a href="#828">param_ty</a>);
+        <span class="kw">let </span>literal = Const::from_bits(<a class="self" href="#826">self</a>.tcx, <a href="#830">n</a>, <a href="#828">param_ty</a>);
 
-        <a class="self" href="#826">self</a>.<a href="../misc.rs.html#28-35">literal_operand</a>(<a href="#826">span</a>, <a href="#831">literal</a>)
+        <a class="self" href="#826">self</a>.<a href="../misc.rs.html#26-29">literal_operand</a>(<a href="#826">span</a>, <a href="#831">literal</a>)
     }
 }
 </code></pre></div></section></main></body></html>

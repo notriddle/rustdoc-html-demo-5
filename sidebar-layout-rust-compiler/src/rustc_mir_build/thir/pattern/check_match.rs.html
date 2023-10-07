@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/thir/pattern/check_match.rs`."><title>check_match.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/thir/pattern/check_match.rs`."><title>check_match.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1042,9 +1042,7 @@
 <a href="#1042" id="1042">1042</a>
 <a href="#1043" id="1043">1043</a>
 <a href="#1044" id="1044">1044</a>
-<a href="#1045" id="1045">1045</a>
-<a href="#1046" id="1046">1046</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::deconstruct_pat::{<a href="deconstruct_pat.rs.html#613-642">Constructor</a>, <a href="deconstruct_pat.rs.html#1233-1239">DeconstructedPat</a>};
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::deconstruct_pat::{<a href="deconstruct_pat.rs.html#580-612">Constructor</a>, <a href="deconstruct_pat.rs.html#1205-1211">DeconstructedPat</a>};
 <span class="kw">use </span><span class="kw">super</span>::usefulness::{
     <a href="usefulness.rs.html#980">compute_match_usefulness</a>, <a href="usefulness.rs.html#948-953">MatchArm</a>, <a href="usefulness.rs.html#327-339">MatchCheckCtxt</a>, <a href="usefulness.rs.html#957-964">Reachability</a>, <a href="usefulness.rs.html#967-973">UsefulnessReport</a>,
 };
@@ -1250,7 +1248,7 @@
     }
 
     <span class="kw">fn </span>check_patterns(<span class="kw-2">&amp;</span><span class="self">self</span>, pat: <span class="kw-2">&amp;</span>Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;, rf: <a href="#62-65">RefutableFlag</a>) {
-        <a href="#206">pat</a>.walk_always(|pat| <a href="#954-1046">check_borrow_conflicts_in_at_patterns</a>(<a class="self" href="#206">self</a>, <a href="#207">pat</a>));
+        <a href="#206">pat</a>.walk_always(|pat| <a href="#952-1044">check_borrow_conflicts_in_at_patterns</a>(<a class="self" href="#206">self</a>, <a href="#207">pat</a>));
         <a href="#535-576">check_for_bindings_named_same_as_variants</a>(<a class="self" href="#206">self</a>, <a href="#206">pat</a>, <a href="#206">rf</a>);
     }
 
@@ -1341,7 +1339,7 @@
                 <span class="kw">let </span>[pat_field] = <span class="kw-2">&amp;</span><a href="#294">subpatterns</a>[..] <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>() };
                 <a class="self" href="#241">self</a>.<a href="#427">check_irrefutable</a>(<span class="kw-2">&amp;</span><a href="#295">pat_field</a>.pattern, <span class="string">&quot;`for` loop binding&quot;</span>, <span class="prelude-val">None</span>);
             } <span class="kw">else </span>{
-                <a class="self" href="#241">self</a>.error = <span class="prelude-val">Err</span>(<a href="#676-855">non_exhaustive_match</a>(
+                <a class="self" href="#241">self</a>.error = <span class="prelude-val">Err</span>(<a href="#676-853">non_exhaustive_match</a>(
                     <span class="kw-2">&amp;</span><a href="#247">cx</a>, <a class="self" href="#241">self</a>.thir, <a href="#271">scrut_ty</a>, <a href="#270">scrut</a>.span, <a href="#287">witnesses</a>, <a href="#243">arms</a>, <a href="#245">expr_span</a>,
                 ));
             }
@@ -1623,10 +1621,10 @@
 
 <span class="doccomment">/// Checks for common cases of &quot;catchall&quot; patterns that may not be intended as such.
 </span><span class="kw">fn </span><a href="../../../../rustc_mir_build/thir/pattern/check_match/fn.pat_is_catchall.html">pat_is_catchall</a>(pat: <span class="kw-2">&amp;</span>DeconstructedPat&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">use </span><a href="deconstruct_pat.rs.html#613-642">Constructor</a>::<span class="kw-2">*</span>;
-    <span class="kw">match </span><a href="#579">pat</a>.<a href="deconstruct_pat.rs.html#1513-1515">ctor</a>() {
-        <a href="deconstruct_pat.rs.html#639">Wildcard</a> =&gt; <span class="bool-val">true</span>,
-        <a href="deconstruct_pat.rs.html#616">Single</a> =&gt; <a href="#579">pat</a>.<a href="deconstruct_pat.rs.html#1523-1527">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|pat| <a href="#579-586">pat_is_catchall</a>(<a href="#583">pat</a>)),
+    <span class="kw">use </span><a href="deconstruct_pat.rs.html#580-612">Constructor</a>::<span class="kw-2">*</span>;
+    <span class="kw">match </span><a href="#579">pat</a>.<a href="deconstruct_pat.rs.html#1512-1514">ctor</a>() {
+        <a href="deconstruct_pat.rs.html#609">Wildcard</a> =&gt; <span class="bool-val">true</span>,
+        <a href="deconstruct_pat.rs.html#583">Single</a> =&gt; <a href="#579">pat</a>.<a href="deconstruct_pat.rs.html#1522-1526">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|pat| <a href="#579-586">pat_is_catchall</a>(<a href="#583">pat</a>)),
         <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
     }
 }
@@ -1668,7 +1666,7 @@
     pat: <span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
     <span class="kw">let </span>arms = [<a href="usefulness.rs.html#948-953">MatchArm</a> { <a href="#622">pat</a>, hir_id: <a href="#621">pat_id</a>, has_guard: <span class="bool-val">false </span>}];
-    <span class="kw">let </span>report = <a href="usefulness.rs.html#980">compute_match_usefulness</a>(<span class="kw-2">&amp;</span><a href="#620">cx</a>, <span class="kw-2">&amp;</span><a href="#624">arms</a>, <a href="#621">pat_id</a>, <a href="#622">pat</a>.<a href="deconstruct_pat.rs.html#1516-1518">ty</a>());
+    <span class="kw">let </span>report = <a href="usefulness.rs.html#980">compute_match_usefulness</a>(<span class="kw-2">&amp;</span><a href="#620">cx</a>, <span class="kw-2">&amp;</span><a href="#624">arms</a>, <a href="#621">pat_id</a>, <a href="#622">pat</a>.<a href="deconstruct_pat.rs.html#1515-1517">ty</a>());
 
     <span class="comment">// Report if the pattern is unreachable, which can only occur when the type is uninhabited.
     // This also reports unreachable sub-patterns though, so we can&#39;t just replace it with an
@@ -1712,9 +1710,9 @@
     non_exhaustive_tys: <span class="kw-2">&amp;mut </span>FxHashSet&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 ) {
     <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(pat.ctor(), Constructor::NonExhaustive) {
-        <a href="#666">non_exhaustive_tys</a>.insert(<a href="#665">pat</a>.<a href="deconstruct_pat.rs.html#1516-1518">ty</a>());
+        <a href="#666">non_exhaustive_tys</a>.insert(<a href="#665">pat</a>.<a href="deconstruct_pat.rs.html#1515-1517">ty</a>());
     }
-    <a href="#665">pat</a>.<a href="deconstruct_pat.rs.html#1523-1527">iter_fields</a>()
+    <a href="#665">pat</a>.<a href="deconstruct_pat.rs.html#1522-1526">iter_fields</a>()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">for_each</a>(|field_pat| <a href="#664-673">collect_non_exhaustive_tys</a>(<a href="#672">field_pat</a>, <a href="#666">non_exhaustive_tys</a>))
 }
 
@@ -1747,18 +1745,18 @@
         });
     } <span class="kw">else </span>{
         <span class="comment">// FIXME: migration of this diagnostic will require list support
-        </span><span class="kw">let </span>joined_patterns = <a href="#857-876">joined_uncovered_patterns</a>(<a href="#677">cx</a>, <span class="kw-2">&amp;</span><a href="#681">witnesses</a>);
+        </span><span class="kw">let </span>joined_patterns = <a href="#855-874">joined_uncovered_patterns</a>(<a href="#677">cx</a>, <span class="kw-2">&amp;</span><a href="#681">witnesses</a>);
         <a href="#692">err</a> = <a href="#53-59">create_e0004</a>(
             <a href="#677">cx</a>.tcx.sess,
             <a href="#680">sp</a>,
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;non-exhaustive patterns: {joined_patterns} not covered&quot;</span>),
         );
-        <a href="#692">err</a>.span_label(<a href="#680">sp</a>, <a href="#878-883">pattern_not_covered_label</a>(<span class="kw-2">&amp;</span><a href="#681">witnesses</a>, <span class="kw-2">&amp;</span><a href="#704">joined_patterns</a>));
+        <a href="#692">err</a>.span_label(<a href="#680">sp</a>, <a href="#876-881">pattern_not_covered_label</a>(<span class="kw-2">&amp;</span><a href="#681">witnesses</a>, <span class="kw-2">&amp;</span><a href="#704">joined_patterns</a>));
         <a href="#694">patterns_len</a> = <a href="#681">witnesses</a>.len();
         <a href="#693">pattern</a> = <span class="kw">if </span>witnesses.len() &lt; <span class="number">4 </span>{
             <a href="#681">witnesses</a>
                 .iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|witness| <a href="#715">witness</a>.<a href="deconstruct_pat.rs.html#1419-1507">to_pat</a>(<a href="#677">cx</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>())
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|witness| <a href="#715">witness</a>.<a href="deconstruct_pat.rs.html#1419-1506">to_pat</a>(<a href="#677">cx</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>())
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;&gt;()
                 .join(<span class="string">&quot; | &quot;</span>)
         } <span class="kw">else </span>{
@@ -1766,7 +1764,7 @@
         };
     };
 
-    <a href="#886-916">adt_defined_here</a>(<a href="#677">cx</a>, <span class="kw-2">&amp;mut </span><a href="#692">err</a>, <a href="#679">scrut_ty</a>, <span class="kw-2">&amp;</span><a href="#681">witnesses</a>);
+    <a href="#884-914">adt_defined_here</a>(<a href="#677">cx</a>, <span class="kw-2">&amp;mut </span><a href="#692">err</a>, <a href="#679">scrut_ty</a>, <span class="kw-2">&amp;</span><a href="#681">witnesses</a>);
     <a href="#692">err</a>.note(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;the matched value is of type `{}`&quot;</span>, scrut_ty));
 
     <span class="kw">if </span>!is_empty_match &amp;&amp; witnesses.len() == <span class="number">1 </span>{
@@ -1786,9 +1784,7 @@
                         ));
                 }
             } <span class="kw">else if </span>ty == cx.tcx.types.str_ {
-                err.note(<span class="macro">format!</span>(
-                    <span class="string">&quot;`&amp;str` cannot be matched exhaustively, so a wildcard `_` is necessary&quot;</span>,
-                ));
+                err.note(<span class="string">&quot;`&amp;str` cannot be matched exhaustively, so a wildcard `_` is necessary&quot;</span>);
             } <span class="kw">else if </span>cx.is_foreign_non_exhaustive_enum(ty) {
                 err.note(<span class="macro">format!</span>(<span class="string">&quot;`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively&quot;</span>));
             }
@@ -1806,27 +1802,27 @@
     <span class="kw">match </span><a href="#682">arms</a> {
         [] <span class="kw">if </span><a href="#680">sp</a>.eq_ctxt(<a href="#683">expr_span</a>) =&gt; {
             <span class="comment">// Get the span for the empty match body `{}`.
-            </span><span class="kw">let </span>(indentation, more) = <span class="kw">if let </span><span class="prelude-val">Some</span>(snippet) = <a href="#759">sm</a>.indentation_before(<a href="#680">sp</a>) {
+            </span><span class="kw">let </span>(indentation, more) = <span class="kw">if let </span><span class="prelude-val">Some</span>(snippet) = <a href="#757">sm</a>.indentation_before(<a href="#680">sp</a>) {
                 (<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;\n{snippet}&quot;</span>), <span class="string">&quot;    &quot;</span>)
             } <span class="kw">else </span>{
                 (<span class="string">&quot; &quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(), <span class="string">&quot;&quot;</span>)
             };
-            <a href="#758">suggestion</a> = <span class="prelude-val">Some</span>((
+            <a href="#756">suggestion</a> = <span class="prelude-val">Some</span>((
                 <a href="#680">sp</a>.shrink_to_hi().with_hi(<a href="#683">expr_span</a>.hi()),
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot; {{{indentation}{more}{pattern} =&gt; todo!(),{indentation}}}&quot;</span>,),
             ));
         }
         [only] =&gt; {
-            <span class="kw">let </span>only = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<span class="kw-2">*</span><a href="#773">only</a>];
-            <span class="kw">let </span>(pre_indentation, is_multiline) = <span class="kw">if let </span><span class="prelude-val">Some</span>(snippet) = <a href="#759">sm</a>.indentation_before(<a href="#774">only</a>.span)
-                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(with_trailing) = <a href="#759">sm</a>.span_extend_while(<a href="#774">only</a>.span, |c| <a href="#776">c</a>.is_whitespace() || <a href="#776">c</a> == <span class="string">&#39;,&#39;</span>)
+            <span class="kw">let </span>only = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<span class="kw-2">*</span><a href="#771">only</a>];
+            <span class="kw">let </span>(pre_indentation, is_multiline) = <span class="kw">if let </span><span class="prelude-val">Some</span>(snippet) = <a href="#757">sm</a>.indentation_before(<a href="#772">only</a>.span)
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(with_trailing) = <a href="#757">sm</a>.span_extend_while(<a href="#772">only</a>.span, |c| <a href="#774">c</a>.is_whitespace() || <a href="#774">c</a> == <span class="string">&#39;,&#39;</span>)
                 &amp;&amp; sm.is_multiline(with_trailing)
             {
                 (<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;\n{snippet}&quot;</span>), <span class="bool-val">true</span>)
             } <span class="kw">else </span>{
                 (<span class="string">&quot; &quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(), <span class="bool-val">false</span>)
             };
-            <span class="kw">let </span>only_body = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<a href="#774">only</a>.body];
+            <span class="kw">let </span>only_body = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<a href="#772">only</a>.body];
             <span class="kw">let </span>comma = <span class="kw">if </span><span class="macro">matches!</span>(only_body.kind, ExprKind::Block { .. })
                 &amp;&amp; only.span.eq_ctxt(only_body.span)
                 &amp;&amp; is_multiline
@@ -1835,16 +1831,16 @@
             </span>} <span class="kw">else </span>{
                 <span class="string">&quot;,&quot;
             </span>};
-            <a href="#758">suggestion</a> = <span class="prelude-val">Some</span>((
-                <a href="#774">only</a>.span.shrink_to_hi(),
+            <a href="#756">suggestion</a> = <span class="prelude-val">Some</span>((
+                <a href="#772">only</a>.span.shrink_to_hi(),
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{comma}{pre_indentation}{pattern} =&gt; todo!()&quot;</span>),
             ));
         }
         [.., prev, last] =&gt; {
-            <span class="kw">let </span>prev = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<span class="kw-2">*</span><a href="#797">prev</a>];
-            <span class="kw">let </span>last = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<span class="kw-2">*</span><a href="#797">last</a>];
+            <span class="kw">let </span>prev = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<span class="kw-2">*</span><a href="#795">prev</a>];
+            <span class="kw">let </span>last = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<span class="kw-2">*</span><a href="#795">last</a>];
             <span class="kw">if </span>prev.span.eq_ctxt(last.span) {
-                <span class="kw">let </span>last_body = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<a href="#799">last</a>.body];
+                <span class="kw">let </span>last_body = <span class="kw-2">&amp;</span><a href="#678">thir</a>[<a href="#797">last</a>.body];
                 <span class="kw">let </span>comma = <span class="kw">if </span><span class="macro">matches!</span>(last_body.kind, ExprKind::Block { .. })
                     &amp;&amp; last.span.eq_ctxt(last_body.span)
                 {
@@ -1853,13 +1849,13 @@
                     <span class="string">&quot;,&quot;
                 </span>};
                 <span class="kw">let </span>spacing = <span class="kw">if </span>sm.is_multiline(prev.span.between(last.span)) {
-                    <a href="#759">sm</a>.indentation_before(<a href="#799">last</a>.span).map(|indent| <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;\n{indent}&quot;</span>))
+                    <a href="#757">sm</a>.indentation_before(<a href="#797">last</a>.span).map(|indent| <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;\n{indent}&quot;</span>))
                 } <span class="kw">else </span>{
                     <span class="prelude-val">Some</span>(<span class="string">&quot; &quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>())
                 };
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(spacing) = <a href="#809">spacing</a> {
-                    <a href="#758">suggestion</a> = <span class="prelude-val">Some</span>((
-                        <a href="#799">last</a>.span.shrink_to_hi(),
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(spacing) = <a href="#807">spacing</a> {
+                    <a href="#756">suggestion</a> = <span class="prelude-val">Some</span>((
+                        <a href="#797">last</a>.span.shrink_to_hi(),
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{comma}{spacing}{pattern} =&gt; todo!()&quot;</span>),
                     ));
                 }
@@ -1888,14 +1884,14 @@
         },
     );
 
-    <span class="kw">let </span>all_arms_have_guards = <a href="#682">arms</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|arm_id| <a href="#678">thir</a>[<span class="kw-2">*</span><a href="#845">arm_id</a>].guard.is_some());
+    <span class="kw">let </span>all_arms_have_guards = <a href="#682">arms</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|arm_id| <a href="#678">thir</a>[<span class="kw-2">*</span><a href="#843">arm_id</a>].guard.is_some());
     <span class="kw">if </span>!is_empty_match &amp;&amp; all_arms_have_guards {
         <a href="#692">err</a>.subdiagnostic(<a href="../../errors.rs.html#484">NonExhaustiveMatchAllArmsGuarded</a>);
     }
-    <span class="kw">if let </span><span class="prelude-val">Some</span>((span, sugg)) = <a href="#758">suggestion</a> {
-        <a href="#692">err</a>.span_suggestion_verbose(<a href="#849">span</a>, <a href="#825">msg</a>, <a href="#849">sugg</a>, Applicability::HasPlaceholders);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>((span, sugg)) = <a href="#756">suggestion</a> {
+        <a href="#692">err</a>.span_suggestion_verbose(<a href="#847">span</a>, <a href="#823">msg</a>, <a href="#847">sugg</a>, Applicability::HasPlaceholders);
     } <span class="kw">else </span>{
-        <a href="#692">err</a>.help(<a href="#825">msg</a>);
+        <a href="#692">err</a>.help(<a href="#823">msg</a>);
     }
     <a href="#692">err</a>.emit()
 }
@@ -1905,17 +1901,17 @@
     witnesses: <span class="kw-2">&amp;</span>[DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;],
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
     <span class="kw">const </span>LIMIT: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> = <span class="number">3</span>;
-    <span class="kw">let </span>pat_to_str = |pat: <span class="kw-2">&amp;</span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;| <a href="#862">pat</a>.<a href="deconstruct_pat.rs.html#1419-1507">to_pat</a>(<a href="#858">cx</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
-    <span class="kw">match </span><a href="#859">witnesses</a> {
+    <span class="kw">let </span>pat_to_str = |pat: <span class="kw-2">&amp;</span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;| <a href="#860">pat</a>.<a href="deconstruct_pat.rs.html#1419-1506">to_pat</a>(<a href="#856">cx</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
+    <span class="kw">match </span><a href="#857">witnesses</a> {
         [] =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
         [witness] =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{}`&quot;</span>, witness.to_pat(cx)),
-        [head @ .., tail] <span class="kw">if </span><a href="#866">head</a>.len() &lt; <a href="#861">LIMIT</a> =&gt; {
-            <span class="kw">let </span>head: Vec&lt;<span class="kw">_</span>&gt; = <a href="#866">head</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#862">pat_to_str</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        [head @ .., tail] <span class="kw">if </span><a href="#864">head</a>.len() &lt; <a href="#859">LIMIT</a> =&gt; {
+            <span class="kw">let </span>head: Vec&lt;<span class="kw">_</span>&gt; = <a href="#864">head</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#860">pat_to_str</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{}` and `{}`&quot;</span>, head.join(<span class="string">&quot;`, `&quot;</span>), tail.to_pat(cx))
         }
         <span class="kw">_ </span>=&gt; {
-            <span class="kw">let </span>(head, tail) = <a href="#859">witnesses</a>.split_at(<a href="#861">LIMIT</a>);
-            <span class="kw">let </span>head: Vec&lt;<span class="kw">_</span>&gt; = <a href="#871">head</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#862">pat_to_str</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+            <span class="kw">let </span>(head, tail) = <a href="#857">witnesses</a>.split_at(<a href="#859">LIMIT</a>);
+            <span class="kw">let </span>head: Vec&lt;<span class="kw">_</span>&gt; = <a href="#869">head</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#860">pat_to_str</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{}` and {} more&quot;</span>, head.join(<span class="string">&quot;`, `&quot;</span>), tail.len())
         }
     }
@@ -1935,29 +1931,29 @@
     ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     witnesses: <span class="kw-2">&amp;</span>[DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;],
 ) {
-    <span class="kw">let </span>ty = <a href="#889">ty</a>.peel_refs();
-    <span class="kw">if let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#892">ty</a>.kind() {
+    <span class="kw">let </span>ty = <a href="#887">ty</a>.peel_refs();
+    <span class="kw">if let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#890">ty</a>.kind() {
         <span class="kw">let </span><span class="kw-2">mut </span>spans = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
         <span class="kw">if </span>witnesses.len() &lt; <span class="number">5 </span>{
             <span class="kw">for </span>sp <span class="kw">in </span>maybe_point_at_variant(cx, <span class="kw-2">*</span>def, witnesses.iter()) {
                 spans.push(sp);
             }
         }
-        <span class="kw">let </span>def_span = <a href="#887">cx</a>
+        <span class="kw">let </span>def_span = <a href="#885">cx</a>
             .tcx
             .hir()
-            .get_if_local(<a href="#893">def</a>.did())
-            .and_then(|node| <a href="#904">node</a>.ident())
-            .map(|ident| <a href="#905">ident</a>.span)
-            .unwrap_or_else(|| <a href="#887">cx</a>.tcx.def_span(<a href="#893">def</a>.did()));
+            .get_if_local(<a href="#891">def</a>.did())
+            .and_then(|node| <a href="#902">node</a>.ident())
+            .map(|ident| <a href="#903">ident</a>.span)
+            .unwrap_or_else(|| <a href="#885">cx</a>.tcx.def_span(<a href="#891">def</a>.did()));
         <span class="kw">let </span><span class="kw-2">mut </span>span: <a href="../../../../rustc_error_messages/struct.MultiSpan.html">MultiSpan</a> =
-            <span class="kw">if </span>spans.is_empty() { <a href="#900">def_span</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() } <span class="kw">else </span>{ <a href="#894">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() };
+            <span class="kw">if </span>spans.is_empty() { <a href="#898">def_span</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() } <span class="kw">else </span>{ <a href="#892">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() };
 
-        <a href="#907">span</a>.push_span_label(<a href="#900">def_span</a>, <span class="string">&quot;&quot;</span>);
+        <a href="#905">span</a>.push_span_label(<a href="#898">def_span</a>, <span class="string">&quot;&quot;</span>);
         <span class="kw">for </span>pat <span class="kw">in </span>spans {
             span.push_span_label(pat, <span class="string">&quot;not covered&quot;</span>);
         }
-        <a href="#888">err</a>.span_note(<a href="#907">span</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{ty}` defined here&quot;</span>));
+        <a href="#886">err</a>.span_note(<a href="#905">span</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{ty}` defined here&quot;</span>));
     }
 }
 
@@ -1966,7 +1962,7 @@
     def: AdtDef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     patterns: <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt;,
 ) -&gt; Vec&lt;<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt; {
-    <span class="kw">use </span><a href="deconstruct_pat.rs.html#613-642">Constructor</a>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><a href="deconstruct_pat.rs.html#580-612">Constructor</a>::<span class="kw-2">*</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>covered = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
     <span class="kw">for </span>pattern <span class="kw">in </span>patterns {
         <span class="kw">if let </span>Variant(variant_index) = pattern.ctor() {
@@ -1983,7 +1979,7 @@
         }
         covered.extend(maybe_point_at_variant(cx, def, pattern.iter_fields()));
     }
-    <a href="#924">covered</a>
+    <a href="#922">covered</a>
 }
 
 <span class="doccomment">/// Check if a by-value binding is by-value. That is, check if the binding&#39;s type is not `Copy`.
@@ -1999,36 +1995,36 @@
 /// This analysis is *not* subsumed by NLL.
 </span><span class="kw">fn </span><a href="../../../../rustc_mir_build/thir/pattern/check_match/fn.check_borrow_conflicts_in_at_patterns.html">check_borrow_conflicts_in_at_patterns</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(cx: <span class="kw-2">&amp;</span>MatchVisitor&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;, pat: <span class="kw-2">&amp;</span>Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
     <span class="comment">// Extract `sub` in `binding @ sub`.
-    </span><span class="kw">let </span><a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Binding</a> { name, mode, ty, subpattern: <span class="prelude-val">Some</span>(<span class="kw">box </span><span class="kw-2">ref </span>sub), .. } = <a href="#954">pat</a>.kind <span class="kw">else </span>{
+    </span><span class="kw">let </span><a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Binding</a> { name, mode, ty, subpattern: <span class="prelude-val">Some</span>(<span class="kw">box </span><span class="kw-2">ref </span>sub), .. } = <a href="#952">pat</a>.kind <span class="kw">else </span>{
         <span class="kw">return</span>;
     };
 
-    <span class="kw">let </span>is_binding_by_move = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| !<a href="#960">ty</a>.is_copy_modulo_regions(<a href="#954">cx</a>.tcx, <a href="#954">cx</a>.param_env);
+    <span class="kw">let </span>is_binding_by_move = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| !<a href="#958">ty</a>.is_copy_modulo_regions(<a href="#952">cx</a>.tcx, <a href="#952">cx</a>.param_env);
 
-    <span class="kw">let </span>sess = <a href="#954">cx</a>.tcx.sess;
+    <span class="kw">let </span>sess = <a href="#952">cx</a>.tcx.sess;
 
     <span class="comment">// Get the binding move, extract the mutability if by-ref.
-    </span><span class="kw">let </span>mut_outer = <span class="kw">match </span><a href="#956">mode</a> {
-        BindingMode::ByValue <span class="kw">if </span><a href="#960">is_binding_by_move</a>(<a href="#956">ty</a>) =&gt; {
+    </span><span class="kw">let </span>mut_outer = <span class="kw">match </span><a href="#954">mode</a> {
+        BindingMode::ByValue <span class="kw">if </span><a href="#958">is_binding_by_move</a>(<a href="#954">ty</a>) =&gt; {
             <span class="comment">// We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             </span><span class="kw">let </span><span class="kw-2">mut </span>conflicts_ref = Vec::new();
-            <a href="#956">sub</a>.each_binding(|<span class="kw">_</span>, mode, <span class="kw">_</span>, span| <span class="kw">match </span><a href="#969">mode</a> {
+            <a href="#954">sub</a>.each_binding(|<span class="kw">_</span>, mode, <span class="kw">_</span>, span| <span class="kw">match </span><a href="#967">mode</a> {
                 BindingMode::ByValue =&gt; {}
-                BindingMode::ByRef(<span class="kw">_</span>) =&gt; <a href="#968">conflicts_ref</a>.push(<a href="#969">span</a>),
+                BindingMode::ByRef(<span class="kw">_</span>) =&gt; <a href="#966">conflicts_ref</a>.push(<a href="#967">span</a>),
             });
             <span class="kw">if </span>!conflicts_ref.is_empty() {
-                <a href="#962">sess</a>.emit_err(<a href="../../errors.rs.html#623-634">BorrowOfMovedValue</a> {
-                    binding_span: <a href="#954">pat</a>.span,
-                    <a href="#968">conflicts_ref</a>,
-                    <a href="#956">name</a>,
-                    <a href="#956">ty</a>,
-                    suggest_borrowing: <span class="prelude-val">Some</span>(<a href="#954">pat</a>.span.shrink_to_lo()),
+                <a href="#960">sess</a>.emit_err(<a href="../../errors.rs.html#623-634">BorrowOfMovedValue</a> {
+                    binding_span: <a href="#952">pat</a>.span,
+                    <a href="#966">conflicts_ref</a>,
+                    <a href="#954">name</a>,
+                    <a href="#954">ty</a>,
+                    suggest_borrowing: <span class="prelude-val">Some</span>(<a href="#952">pat</a>.span.shrink_to_lo()),
                 });
             }
             <span class="kw">return</span>;
         }
         BindingMode::ByValue =&gt; <span class="kw">return</span>,
-        BindingMode::ByRef(m) =&gt; <a href="#985">m</a>.mutability(),
+        BindingMode::ByRef(m) =&gt; <a href="#983">m</a>.mutability(),
     };
 
     <span class="comment">// We now have `ref $mut_outer binding @ sub` (semantically).
@@ -2036,58 +2032,58 @@
     </span><span class="kw">let </span><span class="kw-2">mut </span>conflicts_move = Vec::new();
     <span class="kw">let </span><span class="kw-2">mut </span>conflicts_mut_mut = Vec::new();
     <span class="kw">let </span><span class="kw-2">mut </span>conflicts_mut_ref = Vec::new();
-    <a href="#956">sub</a>.each_binding(|name, mode, ty, span| {
-        <span class="kw">match </span><a href="#993">mode</a> {
-            BindingMode::ByRef(mut_inner) =&gt; <span class="kw">match </span>(<a href="#965">mut_outer</a>, <a href="#995">mut_inner</a>.mutability()) {
+    <a href="#954">sub</a>.each_binding(|name, mode, ty, span| {
+        <span class="kw">match </span><a href="#991">mode</a> {
+            BindingMode::ByRef(mut_inner) =&gt; <span class="kw">match </span>(<a href="#963">mut_outer</a>, <a href="#993">mut_inner</a>.mutability()) {
                 <span class="comment">// Both sides are `ref`.
                 </span>(Mutability::Not, Mutability::Not) =&gt; {}
                 <span class="comment">// 2x `ref mut`.
                 </span>(Mutability::Mut, Mutability::Mut) =&gt; {
-                    <a href="#991">conflicts_mut_mut</a>.push(<a href="../../errors.rs.html#675-679">Conflict::Mut</a> { <a href="#993">span</a>, <a href="#993">name</a> })
+                    <a href="#989">conflicts_mut_mut</a>.push(<a href="../../errors.rs.html#675-679">Conflict::Mut</a> { <a href="#991">span</a>, <a href="#991">name</a> })
                 }
                 (Mutability::Not, Mutability::Mut) =&gt; {
-                    <a href="#992">conflicts_mut_ref</a>.push(<a href="../../errors.rs.html#675-679">Conflict::Mut</a> { <a href="#993">span</a>, <a href="#993">name</a> })
+                    <a href="#990">conflicts_mut_ref</a>.push(<a href="../../errors.rs.html#675-679">Conflict::Mut</a> { <a href="#991">span</a>, <a href="#991">name</a> })
                 }
                 (Mutability::Mut, Mutability::Not) =&gt; {
-                    <a href="#992">conflicts_mut_ref</a>.push(<a href="../../errors.rs.html#681-685">Conflict::Ref</a> { <a href="#993">span</a>, <a href="#993">name</a> })
+                    <a href="#990">conflicts_mut_ref</a>.push(<a href="../../errors.rs.html#681-685">Conflict::Ref</a> { <a href="#991">span</a>, <a href="#991">name</a> })
                 }
             },
-            BindingMode::ByValue <span class="kw">if </span><a href="#960">is_binding_by_move</a>(<a href="#993">ty</a>) =&gt; {
-                <a href="#990">conflicts_move</a>.push(<a href="../../errors.rs.html#687-691">Conflict::Moved</a> { <a href="#993">span</a>, <a href="#993">name</a> }) <span class="comment">// `ref mut?` + by-move conflict.
+            BindingMode::ByValue <span class="kw">if </span><a href="#958">is_binding_by_move</a>(<a href="#991">ty</a>) =&gt; {
+                <a href="#988">conflicts_move</a>.push(<a href="../../errors.rs.html#687-691">Conflict::Moved</a> { <a href="#991">span</a>, <a href="#991">name</a> }) <span class="comment">// `ref mut?` + by-move conflict.
             </span>}
             BindingMode::ByValue =&gt; {} <span class="comment">// `ref mut?` + by-copy is fine.
         </span>}
     });
 
-    <span class="kw">let </span>report_mut_mut = !<a href="#991">conflicts_mut_mut</a>.is_empty();
-    <span class="kw">let </span>report_mut_ref = !<a href="#992">conflicts_mut_ref</a>.is_empty();
-    <span class="kw">let </span>report_move_conflict = !<a href="#990">conflicts_move</a>.is_empty();
+    <span class="kw">let </span>report_mut_mut = !<a href="#989">conflicts_mut_mut</a>.is_empty();
+    <span class="kw">let </span>report_mut_ref = !<a href="#990">conflicts_mut_ref</a>.is_empty();
+    <span class="kw">let </span>report_move_conflict = !<a href="#988">conflicts_move</a>.is_empty();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>occurrences = <span class="kw">match </span><a href="#965">mut_outer</a> {
+    <span class="kw">let </span><span class="kw-2">mut </span>occurrences = <span class="kw">match </span><a href="#963">mut_outer</a> {
         Mutability::Mut =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[Conflict::Mut { span: pat.span, name }],
         Mutability::Not =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[Conflict::Ref { span: pat.span, name }],
     };
-    <a href="#1020">occurrences</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#991">conflicts_mut_mut</a>);
-    <a href="#1020">occurrences</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#992">conflicts_mut_ref</a>);
-    <a href="#1020">occurrences</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#990">conflicts_move</a>);
+    <a href="#1018">occurrences</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#989">conflicts_mut_mut</a>);
+    <a href="#1018">occurrences</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#990">conflicts_mut_ref</a>);
+    <a href="#1018">occurrences</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#988">conflicts_move</a>);
 
     <span class="comment">// Report errors if any.
     </span><span class="kw">if </span>report_mut_mut {
         <span class="comment">// Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        </span><a href="#962">sess</a>.emit_err(<a href="../../errors.rs.html#638-643">MultipleMutBorrows</a> { span: <a href="#954">pat</a>.span, <a href="#1020">occurrences</a> });
+        </span><a href="#960">sess</a>.emit_err(<a href="../../errors.rs.html#638-643">MultipleMutBorrows</a> { span: <a href="#952">pat</a>.span, <a href="#1018">occurrences</a> });
     } <span class="kw">else if </span>report_mut_ref {
         <span class="comment">// Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
-        </span><span class="kw">match </span><a href="#965">mut_outer</a> {
+        </span><span class="kw">match </span><a href="#963">mut_outer</a> {
             Mutability::Mut =&gt; {
-                <a href="#962">sess</a>.emit_err(<a href="../../errors.rs.html#656-661">AlreadyMutBorrowed</a> { span: <a href="#954">pat</a>.span, <a href="#1020">occurrences</a> });
+                <a href="#960">sess</a>.emit_err(<a href="../../errors.rs.html#656-661">AlreadyMutBorrowed</a> { span: <a href="#952">pat</a>.span, <a href="#1018">occurrences</a> });
             }
             Mutability::Not =&gt; {
-                <a href="#962">sess</a>.emit_err(<a href="../../errors.rs.html#647-652">AlreadyBorrowed</a> { span: <a href="#954">pat</a>.span, <a href="#1020">occurrences</a> });
+                <a href="#960">sess</a>.emit_err(<a href="../../errors.rs.html#647-652">AlreadyBorrowed</a> { span: <a href="#952">pat</a>.span, <a href="#1018">occurrences</a> });
             }
         };
     } <span class="kw">else if </span>report_move_conflict {
         <span class="comment">// Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        </span><a href="#962">sess</a>.emit_err(<a href="../../errors.rs.html#665-670">MovedWhileBorrowed</a> { span: <a href="#954">pat</a>.span, <a href="#1020">occurrences</a> });
+        </span><a href="#960">sess</a>.emit_err(<a href="../../errors.rs.html#665-670">MovedWhileBorrowed</a> { span: <a href="#952">pat</a>.span, <a href="#1018">occurrences</a> });
     }
 }
 </code></pre></div></section></main></body></html>

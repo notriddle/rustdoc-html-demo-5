@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ConstToPat","FallbackToConstRef"]};
+window.SIDEBAR_ITEMS = {"struct":["ConstToPat","FallbackToOpaqueConst"]};

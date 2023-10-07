@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/cast.rs`."><title>cast.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/cast.rs`."><title>cast.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -449,6 +449,10 @@
 <a href="#449" id="449">449</a>
 <a href="#450" id="450">450</a>
 <a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/macros/macro.assert_matches.html">std::assert_matches::assert_matches</a>;
 
 <span class="kw">use </span>rustc_apfloat::ieee::{<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/type.Double.html">Double</a>, <a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/type.Single.html">Single</a>};
@@ -462,10 +466,10 @@
 <span class="kw">use </span><a href="../../../rustc_type_ir/sty/enum.TyKind.html">rustc_type_ir::sty::TyKind</a>::<span class="kw-2">*</span>;
 
 <span class="kw">use super</span>::{
-    <a href="util.rs.html#12-73">util::ensure_monomorphic_enough</a>, <a href="memory.rs.html#75-78">FnVal</a>, <a href="operand.rs.html#91-94">ImmTy</a>, <a href="operand.rs.html#29-37">Immediate</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="operand.rs.html#296-307">OpTy</a>, <a href="place.rs.html#229-237">PlaceTy</a>,
+    <a href="util.rs.html#12-74">util::ensure_monomorphic_enough</a>, <a href="memory.rs.html#75-78">FnVal</a>, <a href="operand.rs.html#96-99">ImmTy</a>, <a href="operand.rs.html#28-36">Immediate</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="operand.rs.html#315-326">OpTy</a>, <a href="place.rs.html#228-236">PlaceTy</a>,
 };
 
-<span class="kw">use </span><a href="../lib.rs.html#44"><span class="kw">crate</span>::fluent_generated</a> <span class="kw">as </span>fluent;
+<span class="kw">use </span><a href="../lib.rs.html#43"><span class="kw">crate</span>::fluent_generated</a> <span class="kw">as </span>fluent;
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;mir</span>, M: Machine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M&gt; {
     <span class="kw">pub fn </span>cast(
@@ -475,41 +479,44 @@
         cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         dest: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+        <span class="comment">// `cast_ty` will often be the same as `dest.ty`, but not always, since subtyping is still
+        // possible.
+        </span><span class="kw">let </span>cast_layout =
+            <span class="kw">if </span>cast_ty == dest.layout.ty { <a href="#25">dest</a>.layout } <span class="kw">else </span>{ <span class="self">self</span>.layout_of(cast_ty)<span class="question-mark">? </span>};
         <span class="comment">// FIXME: In which cases should we trigger UB when the source is uninit?
         </span><span class="kw">match </span><a href="#23">cast_kind</a> {
             CastKind::PointerCoercion(PointerCoercion::Unsize) =&gt; {
-                <span class="kw">let </span>cast_ty = <span class="self">self</span>.layout_of(cast_ty)<span class="question-mark">?</span>;
-                <span class="self">self</span>.unsize_into(src, cast_ty, dest)<span class="question-mark">?</span>;
+                <span class="self">self</span>.unsize_into(src, cast_layout, dest)<span class="question-mark">?</span>;
             }
 
             CastKind::PointerExposeAddress =&gt; {
                 <span class="kw">let </span>src = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>;
-                <span class="kw">let </span>res = <span class="self">self</span>.pointer_expose_address_cast(<span class="kw-2">&amp;</span>src, cast_ty)<span class="question-mark">?</span>;
-                <span class="self">self</span>.write_immediate(res, dest)<span class="question-mark">?</span>;
+                <span class="kw">let </span>res = <span class="self">self</span>.pointer_expose_address_cast(<span class="kw-2">&amp;</span>src, cast_layout)<span class="question-mark">?</span>;
+                <span class="self">self</span>.write_immediate(<span class="kw-2">*</span>res, dest)<span class="question-mark">?</span>;
             }
 
             CastKind::PointerFromExposedAddress =&gt; {
                 <span class="kw">let </span>src = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>;
-                <span class="kw">let </span>res = <span class="self">self</span>.pointer_from_exposed_address_cast(<span class="kw-2">&amp;</span>src, cast_ty)<span class="question-mark">?</span>;
-                <span class="self">self</span>.write_immediate(res, dest)<span class="question-mark">?</span>;
+                <span class="kw">let </span>res = <span class="self">self</span>.pointer_from_exposed_address_cast(<span class="kw-2">&amp;</span>src, cast_layout)<span class="question-mark">?</span>;
+                <span class="self">self</span>.write_immediate(<span class="kw-2">*</span>res, dest)<span class="question-mark">?</span>;
             }
 
             CastKind::IntToInt | CastKind::IntToFloat =&gt; {
                 <span class="kw">let </span>src = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>;
-                <span class="kw">let </span>res = <span class="self">self</span>.int_to_int_or_float(<span class="kw-2">&amp;</span>src, cast_ty)<span class="question-mark">?</span>;
-                <span class="self">self</span>.write_immediate(res, dest)<span class="question-mark">?</span>;
+                <span class="kw">let </span>res = <span class="self">self</span>.int_to_int_or_float(<span class="kw-2">&amp;</span>src, cast_layout)<span class="question-mark">?</span>;
+                <span class="self">self</span>.write_immediate(<span class="kw-2">*</span>res, dest)<span class="question-mark">?</span>;
             }
 
             CastKind::FloatToFloat | CastKind::FloatToInt =&gt; {
                 <span class="kw">let </span>src = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>;
-                <span class="kw">let </span>res = <span class="self">self</span>.float_to_float_or_int(<span class="kw-2">&amp;</span>src, cast_ty)<span class="question-mark">?</span>;
-                <span class="self">self</span>.write_immediate(res, dest)<span class="question-mark">?</span>;
+                <span class="kw">let </span>res = <span class="self">self</span>.float_to_float_or_int(<span class="kw-2">&amp;</span>src, cast_layout)<span class="question-mark">?</span>;
+                <span class="self">self</span>.write_immediate(<span class="kw-2">*</span>res, dest)<span class="question-mark">?</span>;
             }
 
             CastKind::FnPtrToPtr | CastKind::PtrToPtr =&gt; {
                 <span class="kw">let </span>src = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>;
-                <span class="kw">let </span>res = <span class="self">self</span>.ptr_to_ptr(<span class="kw-2">&amp;</span>src, cast_ty)<span class="question-mark">?</span>;
-                <span class="self">self</span>.write_immediate(res, dest)<span class="question-mark">?</span>;
+                <span class="kw">let </span>res = <span class="self">self</span>.ptr_to_ptr(<span class="kw-2">&amp;</span>src, cast_layout)<span class="question-mark">?</span>;
+                <span class="self">self</span>.write_immediate(<span class="kw-2">*</span>res, dest)<span class="question-mark">?</span>;
             }
 
             CastKind::PointerCoercion(
@@ -535,10 +542,10 @@
                         )
                         .ok_or_else(|| <span class="macro">err_inval!</span>(TooGeneric))<span class="question-mark">?</span>;
 
-                        <span class="kw">let </span>fn_ptr = <a class="self" href="#21">self</a>.<a href="memory.rs.html#179-193">fn_ptr</a>(<a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#79">instance</a>));
+                        <span class="kw">let </span>fn_ptr = <a class="self" href="#21">self</a>.<a href="memory.rs.html#179-193">fn_ptr</a>(<a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#82">instance</a>));
                         <span class="self">self</span>.write_pointer(fn_ptr, dest)<span class="question-mark">?</span>;
                     }
-                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;reify fn pointer on {:?}&quot;</span>, src.layout.ty),
+                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;reify fn pointer on {}&quot;</span>, src.layout.ty),
                 }
             }
 
@@ -549,7 +556,7 @@
                         <span class="comment">// No change to value
                         </span><span class="self">self</span>.write_immediate(<span class="kw-2">*</span>src, dest)<span class="question-mark">?</span>;
                     }
-                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;fn to unsafe fn cast on {:?}&quot;</span>, cast_ty),
+                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;fn to unsafe fn cast on {}&quot;</span>, cast_ty),
                 }
             }
 
@@ -567,10 +574,10 @@
                             ty::ClosureKind::FnOnce,
                         )
                         .ok_or_else(|| <span class="macro">err_inval!</span>(TooGeneric))<span class="question-mark">?</span>;
-                        <span class="kw">let </span>fn_ptr = <a class="self" href="#21">self</a>.<a href="memory.rs.html#179-193">fn_ptr</a>(<a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#112">instance</a>));
+                        <span class="kw">let </span>fn_ptr = <a class="self" href="#21">self</a>.<a href="memory.rs.html#179-193">fn_ptr</a>(<a href="memory.rs.html#76">FnVal::Instance</a>(<a href="#115">instance</a>));
                         <span class="self">self</span>.write_pointer(fn_ptr, dest)<span class="question-mark">?</span>;
                     }
-                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;closure fn pointer on {:?}&quot;</span>, src.layout.ty),
+                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;closure fn pointer on {}&quot;</span>, src.layout.ty),
                 }
             }
 
@@ -578,10 +585,10 @@
                 <span class="kw">if let </span>ty::Dynamic(data, <span class="kw">_</span>, ty::DynStar) = <a href="#24">cast_ty</a>.kind() {
                     <span class="comment">// Initial cast from sized to dyn trait
                     </span><span class="kw">let </span>vtable = <span class="self">self</span>.get_vtable_ptr(src.layout.ty, data.principal())<span class="question-mark">?</span>;
-                    <span class="kw">let </span>vtable = Scalar::from_maybe_pointer(<a href="#129">vtable</a>, <a class="self" href="#21">self</a>);
-                    <span class="kw">let </span>data = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>.<a href="operand.rs.html#69-75">to_scalar</a>();
+                    <span class="kw">let </span>vtable = Scalar::from_maybe_pointer(<a href="#132">vtable</a>, <a class="self" href="#21">self</a>);
+                    <span class="kw">let </span>data = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>.<a href="operand.rs.html#74-80">to_scalar</a>();
                     <span class="kw">let </span>_assert_pointer_like = data.to_pointer(<span class="self">self</span>)<span class="question-mark">?</span>;
-                    <span class="kw">let </span>val = <a href="operand.rs.html#34">Immediate::ScalarPair</a>(<a href="#131">data</a>, <a href="#130">vtable</a>);
+                    <span class="kw">let </span>val = <a href="operand.rs.html#33">Immediate::ScalarPair</a>(<a href="#134">data</a>, <a href="#133">vtable</a>);
                     <span class="self">self</span>.write_immediate(val, dest)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>()
@@ -591,7 +598,8 @@
             CastKind::Transmute =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(src.layout.is_sized());
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(dest.layout.is_sized());
-                <span class="kw">if </span>src.layout.size != dest.layout.size {
+                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(cast_ty, dest.layout.ty); <span class="comment">// we otherwise ignore `cast_ty` enirely...
+                </span><span class="kw">if </span>src.layout.size != dest.layout.size {
                     <span class="kw">let </span>src_bytes = <a href="#22">src</a>.layout.size.bytes();
                     <span class="kw">let </span>dest_bytes = <a href="#25">dest</a>.layout.size.bytes();
                     <span class="kw">let </span>src_ty = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{}&quot;</span>, src.layout.ty);
@@ -615,64 +623,63 @@
     </span><span class="kw">pub fn </span>int_to_int_or_float(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-        cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Immediate&lt;M::Provenance&gt;&gt; {
+        cast_to: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(src.layout.ty.is_integral() || src.layout.ty.is_char() || src.layout.ty.is_bool());
-        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cast_ty.is_floating_point() || cast_ty.is_integral() || cast_ty.is_char());
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cast_to.ty.is_floating_point() || cast_to.ty.is_integral() || cast_to.ty.is_char());
 
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.cast_from_int_like(src.to_scalar(), src.layout, cast_ty)<span class="question-mark">?</span>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+        <span class="prelude-val">Ok</span>(ImmTy::from_scalar(
+            <span class="self">self</span>.cast_from_int_like(src.to_scalar(), src.layout, cast_to.ty)<span class="question-mark">?</span>,
+            <a href="#171">cast_to</a>,
+        ))
     }
 
     <span class="doccomment">/// Handles &#39;FloatToFloat&#39; and &#39;FloatToInt&#39; casts.
     </span><span class="kw">pub fn </span>float_to_float_or_int(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-        cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Immediate&lt;M::Provenance&gt;&gt; {
+        cast_to: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <span class="kw">use </span><a href="../../../rustc_type_ir/sty/enum.TyKind.html">rustc_type_ir::sty::TyKind</a>::<span class="kw-2">*</span>;
 
-        <span class="kw">match </span><a href="#178">src</a>.layout.ty.kind() {
+        <span class="kw">let </span>val = <span class="kw">match </span><a href="#185">src</a>.layout.ty.kind() {
             <span class="comment">// Floating point
-            </span>Float(FloatTy::F32) =&gt; {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<a class="self" href="#177">self</a>.<a href="#306-336">cast_from_float</a>(src.to_scalar().to_f32()<span class="question-mark">?</span>, <a href="#179">cast_ty</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
-            }
-            Float(FloatTy::F64) =&gt; {
-                <span class="kw">return </span><span class="prelude-val">Ok</span>(<a class="self" href="#177">self</a>.<a href="#306-336">cast_from_float</a>(src.to_scalar().to_f64()<span class="question-mark">?</span>, <a href="#179">cast_ty</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
-            }
+            </span>Float(FloatTy::F32) =&gt; <a class="self" href="#184">self</a>.<a href="#309-339">cast_from_float</a>(src.to_scalar().to_f32()<span class="question-mark">?</span>, <a href="#186">cast_to</a>.ty),
+            Float(FloatTy::F64) =&gt; <a class="self" href="#184">self</a>.<a href="#309-339">cast_from_float</a>(src.to_scalar().to_f64()<span class="question-mark">?</span>, <a href="#186">cast_to</a>.ty),
             <span class="kw">_ </span>=&gt; {
-                <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Can&#39;t cast &#39;Float&#39; type into {:?}&quot;</span>, cast_ty);
+                <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Can&#39;t cast &#39;Float&#39; type into {}&quot;</span>, cast_to.ty);
             }
-        }
+        };
+        <span class="prelude-val">Ok</span>(ImmTy::from_scalar(<a href="#190">val</a>, <a href="#186">cast_to</a>))
     }
 
     <span class="doccomment">/// Handles &#39;FnPtrToPtr&#39; and &#39;PtrToPtr&#39; casts.
     </span><span class="kw">pub fn </span>ptr_to_ptr(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-        cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Immediate&lt;M::Provenance&gt;&gt; {
+        cast_to: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(src.layout.ty.is_any_ptr());
-        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cast_ty.is_unsafe_ptr());
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cast_to.ty.is_unsafe_ptr());
         <span class="comment">// Handle casting any ptr to raw ptr (might be a fat ptr).
-        </span><span class="kw">let </span>dest_layout = <span class="self">self</span>.layout_of(cast_ty)<span class="question-mark">?</span>;
-        <span class="kw">if </span>dest_layout.size == src.layout.size {
+        </span><span class="kw">if </span>cast_to.size == src.layout.size {
             <span class="comment">// Thin or fat pointer that just hast the ptr kind of target type changed.
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="kw-2">**</span><a href="#200">src</a>);
+            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(ImmTy::from_immediate(<span class="kw-2">**</span><a href="#204">src</a>, <a href="#205">cast_to</a>));
         } <span class="kw">else </span>{
             <span class="comment">// Casting the metadata away from a fat ptr.
             </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(src.layout.size, <span class="number">2 </span>* <span class="self">self</span>.pointer_size());
-            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(dest_layout.size, <span class="self">self</span>.pointer_size());
+            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(cast_to.size, <span class="self">self</span>.pointer_size());
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(src.layout.ty.is_unsafe_ptr());
-            <span class="kw">return match </span><span class="kw-2">**</span><a href="#200">src</a> {
-                <a href="operand.rs.html#34">Immediate::ScalarPair</a>(data, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<a href="#216">data</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()),
-                <a href="operand.rs.html#31">Immediate::Scalar</a>(..) =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
+            <span class="kw">return match </span><span class="kw-2">**</span><a href="#204">src</a> {
+                <a href="operand.rs.html#33">Immediate::ScalarPair</a>(data, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(ImmTy::from_scalar(<a href="#219">data</a>, <a href="#205">cast_to</a>)),
+                <a href="operand.rs.html#30">Immediate::Scalar</a>(..) =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                     <span class="self">self</span>.cur_span(),
-                    <span class="string">&quot;{:?} input to a fat-to-thin cast ({:?} -&gt; {:?})&quot;</span>,
+                    <span class="string">&quot;{:?} input to a fat-to-thin cast ({} -&gt; {})&quot;</span>,
                     <span class="kw-2">*</span>src,
                     src.layout.ty,
-                    cast_ty
+                    cast_to.ty
                 ),
-                <a href="operand.rs.html#36">Immediate::Uninit</a> =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub.html">throw_ub!</a>(InvalidUninitBytes(<span class="prelude-val">None</span>)),
+                <a href="operand.rs.html#35">Immediate::Uninit</a> =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub.html">throw_ub!</a>(InvalidUninitBytes(<span class="prelude-val">None</span>)),
             };
         }
     }
@@ -680,76 +687,76 @@
     <span class="kw">pub fn </span>pointer_expose_address_cast(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         src: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-        cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Immediate&lt;M::Provenance&gt;&gt; {
+        cast_to: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macros/macro.assert_matches.html">assert_matches!</a>(src.layout.ty.kind(), ty::RawPtr(<span class="kw">_</span>) | ty::FnPtr(<span class="kw">_</span>));
-        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cast_ty.is_integral());
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cast_to.ty.is_integral());
 
-        <span class="kw">let </span>scalar = <a href="#231">src</a>.<a href="operand.rs.html#69-75">to_scalar</a>();
+        <span class="kw">let </span>scalar = <a href="#234">src</a>.<a href="operand.rs.html#74-80">to_scalar</a>();
         <span class="kw">let </span>ptr = scalar.to_pointer(<span class="self">self</span>)<span class="question-mark">?</span>;
-        <span class="kw">match </span><a href="#238">ptr</a>.into_pointer_or_addr() {
+        <span class="kw">match </span><a href="#241">ptr</a>.into_pointer_or_addr() {
             <span class="prelude-val">Ok</span>(ptr) =&gt; M::expose_ptr(<span class="self">self</span>, ptr)<span class="question-mark">?</span>,
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {} <span class="comment">// Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
         </span>};
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.cast_from_int_like(scalar, src.layout, cast_ty)<span class="question-mark">?</span>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+        <span class="prelude-val">Ok</span>(ImmTy::from_scalar(<span class="self">self</span>.cast_from_int_like(scalar, src.layout, cast_to.ty)<span class="question-mark">?</span>, <a href="#235">cast_to</a>))
     }
 
     <span class="kw">pub fn </span>pointer_from_exposed_address_cast(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-        cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Immediate&lt;M::Provenance&gt;&gt; {
+        cast_to: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(src.layout.ty.is_integral());
-        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macros/macro.assert_matches.html">assert_matches!</a>(cast_ty.kind(), ty::RawPtr(<span class="kw">_</span>));
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macros/macro.assert_matches.html">assert_matches!</a>(cast_to.ty.kind(), ty::RawPtr(<span class="kw">_</span>));
 
         <span class="comment">// First cast to usize.
-        </span><span class="kw">let </span>scalar = <a href="#248">src</a>.<a href="operand.rs.html#69-75">to_scalar</a>();
+        </span><span class="kw">let </span>scalar = <a href="#251">src</a>.<a href="operand.rs.html#74-80">to_scalar</a>();
         <span class="kw">let </span>addr = <span class="self">self</span>.cast_from_int_like(scalar, src.layout, <span class="self">self</span>.tcx.types.usize)<span class="question-mark">?</span>;
         <span class="kw">let </span>addr = addr.to_target_usize(<span class="self">self</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Then turn address into pointer.
         </span><span class="kw">let </span>ptr = M::ptr_from_addr_cast(<span class="kw-2">&amp;</span><span class="self">self</span>, addr)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(Scalar::from_maybe_pointer(<a href="#260">ptr</a>, <a class="self" href="#247">self</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+        <span class="prelude-val">Ok</span>(ImmTy::from_scalar(Scalar::from_maybe_pointer(<a href="#263">ptr</a>, <a class="self" href="#250">self</a>), <a href="#252">cast_to</a>))
     }
 
     <span class="doccomment">/// Low-level cast helper function. This works directly on scalars and can take &#39;int-like&#39; input
     /// type (basically everything with a scalar layout) to int/float/char types.
-    </span><span class="kw">pub fn </span>cast_from_int_like(
+    </span><span class="kw">fn </span>cast_from_int_like(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         scalar: Scalar&lt;M::Provenance&gt;, <span class="comment">// input value (there is no ScalarTy so we separate data+layout)
         </span>src_layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         cast_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Scalar&lt;M::Provenance&gt;&gt; {
         <span class="comment">// Let&#39;s make sure v is sign-extended *if* it has a signed type.
-        </span><span class="kw">let </span>signed = <a href="#269">src_layout</a>.abi.is_signed(); <span class="comment">// Also asserts that abi is `Scalar`.
+        </span><span class="kw">let </span>signed = <a href="#272">src_layout</a>.abi.is_signed(); <span class="comment">// Also asserts that abi is `Scalar`.
 
         </span><span class="kw">let </span>v = scalar.to_bits(src_layout.size)<span class="question-mark">?</span>;
-        <span class="kw">let </span>v = <span class="kw">if </span>signed { <a class="self" href="#267">self</a>.<a href="eval_context.rs.html#518-521">sign_extend</a>(<a href="#275">v</a>, <a href="#269">src_layout</a>) } <span class="kw">else </span>{ <a href="#275">v</a> };
+        <span class="kw">let </span>v = <span class="kw">if </span>signed { <a class="self" href="#270">self</a>.<a href="eval_context.rs.html#518-521">sign_extend</a>(<a href="#278">v</a>, <a href="#272">src_layout</a>) } <span class="kw">else </span>{ <a href="#278">v</a> };
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;cast_from_scalar: {}, {} -&gt; {}&quot;</span>, v, src_layout.ty, cast_ty);
 
-        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="kw-2">*</span><a href="#270">cast_ty</a>.kind() {
+        <span class="prelude-val">Ok</span>(<span class="kw">match </span><span class="kw-2">*</span><a href="#273">cast_ty</a>.kind() {
             Int(<span class="kw">_</span>) | Uint(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>size = <span class="kw">match </span><span class="kw-2">*</span><a href="#270">cast_ty</a>.kind() {
-                    Int(t) =&gt; Integer::from_int_ty(<a class="self" href="#267">self</a>, <a href="#282">t</a>).size(),
-                    Uint(t) =&gt; Integer::from_uint_ty(<a class="self" href="#267">self</a>, <a href="#283">t</a>).size(),
+                <span class="kw">let </span>size = <span class="kw">match </span><span class="kw-2">*</span><a href="#273">cast_ty</a>.kind() {
+                    Int(t) =&gt; Integer::from_int_ty(<a class="self" href="#270">self</a>, <a href="#285">t</a>).size(),
+                    Uint(t) =&gt; Integer::from_uint_ty(<a class="self" href="#270">self</a>, <a href="#286">t</a>).size(),
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
                 };
-                <span class="kw">let </span>v = <a href="#281">size</a>.truncate(<a href="#276">v</a>);
-                Scalar::from_uint(<a href="#286">v</a>, <a href="#281">size</a>)
+                <span class="kw">let </span>v = <a href="#284">size</a>.truncate(<a href="#279">v</a>);
+                Scalar::from_uint(<a href="#289">v</a>, <a href="#284">size</a>)
             }
 
-            Float(FloatTy::F32) <span class="kw">if </span><a href="#273">signed</a> =&gt; Scalar::from_f32(Single::from_i128(<a href="#276">v</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i128.html">i128</a>).value),
-            Float(FloatTy::F64) <span class="kw">if </span><a href="#273">signed</a> =&gt; Scalar::from_f64(Double::from_i128(<a href="#276">v</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i128.html">i128</a>).value),
-            Float(FloatTy::F32) =&gt; Scalar::from_f32(Single::from_u128(<a href="#276">v</a>).value),
-            Float(FloatTy::F64) =&gt; Scalar::from_f64(Double::from_u128(<a href="#276">v</a>).value),
+            Float(FloatTy::F32) <span class="kw">if </span><a href="#276">signed</a> =&gt; Scalar::from_f32(Single::from_i128(<a href="#279">v</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i128.html">i128</a>).value),
+            Float(FloatTy::F64) <span class="kw">if </span><a href="#276">signed</a> =&gt; Scalar::from_f64(Double::from_i128(<a href="#279">v</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.i128.html">i128</a>).value),
+            Float(FloatTy::F32) =&gt; Scalar::from_f32(Single::from_u128(<a href="#279">v</a>).value),
+            Float(FloatTy::F64) =&gt; Scalar::from_f64(Double::from_u128(<a href="#279">v</a>).value),
 
             Char =&gt; {
                 <span class="comment">// `u8` to `char` cast
-                </span>Scalar::from_u32(u8::try_from(<a href="#276">v</a>).unwrap().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+                </span>Scalar::from_u32(u8::try_from(<a href="#279">v</a>).unwrap().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
             }
 
             <span class="comment">// Casts to bool are not permitted by rustc, no need to handle them here.
-            </span><span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;invalid int to {:?} cast&quot;</span>, cast_ty),
+            </span><span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;invalid int to {} cast&quot;</span>, cast_ty),
         })
     }
 
@@ -759,30 +766,30 @@
         </span>F: <a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">Float</a> + Into&lt;Scalar&lt;M::Provenance&gt;&gt; + FloatConvert&lt;<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/type.Single.html">Single</a>&gt; + FloatConvert&lt;<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/type.Double.html">Double</a>&gt;,
     {
         <span class="kw">use </span><a href="../../../rustc_type_ir/sty/enum.TyKind.html">rustc_type_ir::sty::TyKind</a>::<span class="kw-2">*</span>;
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#306">dest_ty</a>.kind() {
+        <span class="kw">match </span><span class="kw-2">*</span><a href="#309">dest_ty</a>.kind() {
             <span class="comment">// float -&gt; uint
             </span>Uint(t) =&gt; {
-                <span class="kw">let </span>size = Integer::from_uint_ty(<a class="self" href="#306">self</a>, <a href="#313">t</a>).size();
+                <span class="kw">let </span>size = Integer::from_uint_ty(<a class="self" href="#309">self</a>, <a href="#316">t</a>).size();
                 <span class="comment">// `to_u128` is a saturating cast, which is what we need
                 // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
-                </span><span class="kw">let </span>v = <a href="#306">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">to_u128</a>(<a href="#314">size</a>.bits_usize()).value;
+                </span><span class="kw">let </span>v = <a href="#309">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">to_u128</a>(<a href="#317">size</a>.bits_usize()).value;
                 <span class="comment">// This should already fit the bit width
-                </span>Scalar::from_uint(<a href="#317">v</a>, <a href="#314">size</a>)
+                </span>Scalar::from_uint(<a href="#320">v</a>, <a href="#317">size</a>)
             }
             <span class="comment">// float -&gt; int
             </span>Int(t) =&gt; {
-                <span class="kw">let </span>size = Integer::from_int_ty(<a class="self" href="#306">self</a>, <a href="#322">t</a>).size();
+                <span class="kw">let </span>size = Integer::from_int_ty(<a class="self" href="#309">self</a>, <a href="#325">t</a>).size();
                 <span class="comment">// `to_i128` is a saturating cast, which is what we need
                 // (https://doc.rust-lang.org/nightly/nightly-rustc/rustc_apfloat/trait.Float.html#method.to_i128_r).
-                </span><span class="kw">let </span>v = <a href="#306">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">to_i128</a>(<a href="#323">size</a>.bits_usize()).value;
-                Scalar::from_int(<a href="#326">v</a>, <a href="#323">size</a>)
+                </span><span class="kw">let </span>v = <a href="#309">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">to_i128</a>(<a href="#326">size</a>.bits_usize()).value;
+                Scalar::from_int(<a href="#329">v</a>, <a href="#326">size</a>)
             }
             <span class="comment">// float -&gt; f32
-            </span>Float(FloatTy::F32) =&gt; Scalar::from_f32(<a href="#306">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.FloatConvert.html">convert</a>(<span class="kw-2">&amp;mut </span><span class="bool-val">false</span>).value),
+            </span>Float(FloatTy::F32) =&gt; Scalar::from_f32(<a href="#309">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.FloatConvert.html">convert</a>(<span class="kw-2">&amp;mut </span><span class="bool-val">false</span>).value),
             <span class="comment">// float -&gt; f64
-            </span>Float(FloatTy::F64) =&gt; Scalar::from_f64(<a href="#306">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.FloatConvert.html">convert</a>(<span class="kw-2">&amp;mut </span><span class="bool-val">false</span>).value),
+            </span>Float(FloatTy::F64) =&gt; Scalar::from_f64(<a href="#309">f</a>.<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.FloatConvert.html">convert</a>(<span class="kw-2">&amp;mut </span><span class="bool-val">false</span>).value),
             <span class="comment">// That&#39;s it.
-            </span><span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;invalid float to {:?} cast&quot;</span>, dest_ty),
+            </span><span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;invalid float to {} cast&quot;</span>, dest_ty),
         }
     }
 
@@ -798,40 +805,41 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="comment">// A&lt;Struct&gt; -&gt; A&lt;Trait&gt; conversion
         </span><span class="kw">let </span>(src_pointee_ty, dest_pointee_ty) =
-            <a class="self" href="#341">self</a>.tcx.struct_lockstep_tails_erasing_lifetimes(<a href="#345">source_ty</a>, <a href="#346">cast_ty</a>, <a class="self" href="#341">self</a>.param_env);
+            <a class="self" href="#344">self</a>.tcx.struct_lockstep_tails_erasing_lifetimes(<a href="#348">source_ty</a>, <a href="#349">cast_ty</a>, <a class="self" href="#344">self</a>.param_env);
 
-        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#349">src_pointee_ty</a>.kind(), <span class="kw-2">&amp;</span><a href="#349">dest_pointee_ty</a>.kind()) {
+        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#352">src_pointee_ty</a>.kind(), <span class="kw-2">&amp;</span><a href="#352">dest_pointee_ty</a>.kind()) {
             (<span class="kw-2">&amp;</span>ty::Array(<span class="kw">_</span>, length), <span class="kw-2">&amp;</span>ty::Slice(<span class="kw">_</span>)) =&gt; {
-                <span class="kw">let </span>ptr = <span class="self">self</span>.read_scalar(src)<span class="question-mark">?</span>;
+                <span class="kw">let </span>ptr = <span class="self">self</span>.read_pointer(src)<span class="question-mark">?</span>;
                 <span class="comment">// u64 cast is from usize to u64, which is always good
                 </span><span class="kw">let </span>val = Immediate::new_slice(
-                    <a href="#354">ptr</a>,
-                    <a href="#353">length</a>.eval_target_usize(<span class="kw-2">*</span><a class="self" href="#341">self</a>.tcx, <a class="self" href="#341">self</a>.param_env),
-                    <a class="self" href="#341">self</a>,
+                    <a href="#357">ptr</a>,
+                    <a href="#356">length</a>.eval_target_usize(<span class="kw-2">*</span><a class="self" href="#344">self</a>.tcx, <a class="self" href="#344">self</a>.param_env),
+                    <a class="self" href="#344">self</a>,
                 );
-                <a class="self" href="#341">self</a>.<a href="place.rs.html#595">write_immediate</a>(<a href="#356">val</a>, <a href="#343">dest</a>)
+                <a class="self" href="#344">self</a>.<a href="place.rs.html#599">write_immediate</a>(<a href="#359">val</a>, <a href="#346">dest</a>)
             }
             (ty::Dynamic(data_a, <span class="kw">_</span>, ty::Dyn), ty::Dynamic(data_b, <span class="kw">_</span>, ty::Dyn)) =&gt; {
                 <span class="kw">let </span>val = <span class="self">self</span>.read_immediate(src)<span class="question-mark">?</span>;
                 <span class="kw">if </span>data_a.principal() == data_b.principal() {
                     <span class="comment">// A NOP cast that doesn&#39;t actually change anything, should be allowed even with mismatching vtables.
-                    </span><span class="kw">return </span><a class="self" href="#341">self</a>.<a href="place.rs.html#595">write_immediate</a>(<span class="kw-2">*</span><a href="#364">val</a>, <a href="#343">dest</a>);
+                    </span><span class="kw">return </span><a class="self" href="#344">self</a>.<a href="place.rs.html#599">write_immediate</a>(<span class="kw-2">*</span><a href="#367">val</a>, <a href="#346">dest</a>);
                 }
-                <span class="kw">let </span>(old_data, old_vptr) = <a href="#364">val</a>.<a href="operand.rs.html#79-85">to_scalar_pair</a>();
+                <span class="kw">let </span>(old_data, old_vptr) = <a href="#367">val</a>.<a href="operand.rs.html#84-90">to_scalar_pair</a>();
+                <span class="kw">let </span>old_data = old_data.to_pointer(<span class="self">self</span>)<span class="question-mark">?</span>;
                 <span class="kw">let </span>old_vptr = old_vptr.to_pointer(<span class="self">self</span>)<span class="question-mark">?</span>;
                 <span class="kw">let </span>(ty, old_trait) = <span class="self">self</span>.get_ptr_vtable(old_vptr)<span class="question-mark">?</span>;
                 <span class="kw">if </span>old_trait != data_a.principal() {
                     <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_upcast_mismatch);
                 }
                 <span class="kw">let </span>new_vptr = <span class="self">self</span>.get_vtable_ptr(ty, data_b.principal())<span class="question-mark">?</span>;
-                <a class="self" href="#341">self</a>.<a href="place.rs.html#595">write_immediate</a>(Immediate::new_dyn_trait(<a href="#369">old_data</a>, <a href="#375">new_vptr</a>, <a class="self" href="#341">self</a>), <a href="#343">dest</a>)
+                <a class="self" href="#344">self</a>.<a href="place.rs.html#599">write_immediate</a>(Immediate::new_dyn_trait(<a href="#373">old_data</a>, <a href="#379">new_vptr</a>, <a class="self" href="#344">self</a>), <a href="#346">dest</a>)
             }
             (<span class="kw">_</span>, <span class="kw-2">&amp;</span>ty::Dynamic(data, <span class="kw">_</span>, ty::Dyn)) =&gt; {
                 <span class="comment">// Initial cast from sized to dyn trait
                 </span><span class="kw">let </span>vtable = <span class="self">self</span>.get_vtable_ptr(src_pointee_ty, data.principal())<span class="question-mark">?</span>;
-                <span class="kw">let </span>ptr = <span class="self">self</span>.read_scalar(src)<span class="question-mark">?</span>;
-                <span class="kw">let </span>val = Immediate::new_dyn_trait(<a href="#381">ptr</a>, <a href="#380">vtable</a>, <span class="kw-2">&amp;*</span><a class="self" href="#341">self</a>.tcx);
-                <a class="self" href="#341">self</a>.<a href="place.rs.html#595">write_immediate</a>(<a href="#382">val</a>, <a href="#343">dest</a>)
+                <span class="kw">let </span>ptr = <span class="self">self</span>.read_pointer(src)<span class="question-mark">?</span>;
+                <span class="kw">let </span>val = Immediate::new_dyn_trait(<a href="#385">ptr</a>, <a href="#384">vtable</a>, <span class="kw-2">&amp;*</span><a class="self" href="#344">self</a>.tcx);
+                <a class="self" href="#344">self</a>.<a href="place.rs.html#599">write_immediate</a>(<a href="#386">val</a>, <a href="#346">dest</a>)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// Do not ICE if we are not monomorphic enough.
@@ -840,7 +848,7 @@
 
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                     <span class="self">self</span>.cur_span(),
-                    <span class="string">&quot;invalid pointer unsizing {:?} -&gt; {:?}&quot;</span>,
+                    <span class="string">&quot;invalid pointer unsizing {} -&gt; {}&quot;</span>,
                     src.layout.ty,
                     cast_ty
                 )
@@ -854,11 +862,11 @@
         cast_ty: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         dest: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;Unsizing {:?} of type {} into {:?}&quot;</span>, <span class="kw-2">*</span>src, src.layout.ty, cast_ty.ty);
-        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#402">src</a>.layout.ty.kind(), <span class="kw-2">&amp;</span><a href="#403">cast_ty</a>.ty.kind()) {
+        <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;Unsizing {:?} of type {} into {}&quot;</span>, <span class="kw-2">*</span>src, src.layout.ty, cast_ty.ty);
+        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#406">src</a>.layout.ty.kind(), <span class="kw-2">&amp;</span><a href="#407">cast_ty</a>.ty.kind()) {
             (<span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, s, <span class="kw">_</span>), <span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, c, <span class="kw">_</span>) | <span class="kw-2">&amp;</span>ty::RawPtr(<a href="../../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { ty: c, .. }))
             | (<span class="kw-2">&amp;</span>ty::RawPtr(<a href="../../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { ty: s, .. }), <span class="kw-2">&amp;</span>ty::RawPtr(<a href="../../../rustc_middle/ty/sty/struct.TypeAndMut.html">TypeAndMut</a> { ty: c, .. })) =&gt; {
-                <a class="self" href="#401">self</a>.<a href="#340-398">unsize_into_ptr</a>(<a href="#402">src</a>, <a href="#404">dest</a>, <span class="kw-2">*</span><a href="#408">s</a>, <span class="kw-2">*</span><a href="#408">c</a>)
+                <a class="self" href="#405">self</a>.<a href="#343-402">unsize_into_ptr</a>(<a href="#406">src</a>, <a href="#408">dest</a>, <span class="kw-2">*</span><a href="#412">s</a>, <span class="kw-2">*</span><a href="#412">c</a>)
             }
             (<span class="kw-2">&amp;</span>ty::Adt(def_a, <span class="kw">_</span>), <span class="kw-2">&amp;</span>ty::Adt(def_b, <span class="kw">_</span>)) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(def_a, def_b); <span class="comment">// implies same number of fields

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/dataflow_const_prop.rs`."><title>dataflow_const_prop.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/dataflow_const_prop.rs`."><title>dataflow_const_prop.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -820,6 +820,14 @@
 <a href="#820" id="820">820</a>
 <a href="#821" id="821">821</a>
 <a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A constant propagation optimization pass based on dataflow analysis.
 //!
 //! Currently, this pass only propagates scalar values.
@@ -828,7 +836,7 @@
 <span class="kw">use </span>rustc_const_eval::interpret::{<a href="../../rustc_const_eval/interpret/operand/struct.ImmTy.html">ImmTy</a>, <a href="../../rustc_const_eval/interpret/operand/enum.Immediate.html">Immediate</a>, <a href="../../rustc_const_eval/interpret/eval_context/struct.InterpCx.html">InterpCx</a>, <a href="../../rustc_const_eval/interpret/operand/struct.OpTy.html">OpTy</a>, <a href="../../rustc_const_eval/interpret/projection/trait.Projectable.html">Projectable</a>};
 <span class="kw">use </span>rustc_data_structures::fx::FxHashMap;
 <span class="kw">use </span><a href="../../rustc_hir/def/enum.DefKind.html">rustc_hir::def::DefKind</a>;
-<span class="kw">use </span>rustc_middle::mir::interpret::{AllocId, ConstAllocation, <a href="../../rustc_middle/mir/interpret/value/enum.ConstValue.html">ConstValue</a>, <a href="../../rustc_middle/mir/interpret/error/type.InterpResult.html">InterpResult</a>, <a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>};
+<span class="kw">use </span>rustc_middle::mir::interpret::{AllocId, ConstAllocation, <a href="../../rustc_middle/mir/interpret/error/type.InterpResult.html">InterpResult</a>, <a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>};
 <span class="kw">use </span>rustc_middle::mir::visit::{<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">MutVisitor</a>, <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>};
 <span class="kw">use </span><a href="../../rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
 <span class="kw">use </span><a href="../../rustc_middle/ty/layout/type.TyAndLayout.html">rustc_middle::ty::layout::TyAndLayout</a>;
@@ -839,7 +847,7 @@
 <span class="kw">use </span>rustc_mir_dataflow::{<a href="../../rustc_mir_dataflow/framework/lattice/enum.FlatSet.html">lattice::FlatSet</a>, <a href="../../rustc_mir_dataflow/framework/trait.Analysis.html">Analysis</a>, <a href="../../rustc_mir_dataflow/framework/engine/struct.Results.html">Results</a>, <a href="../../rustc_mir_dataflow/framework/visitor/trait.ResultsVisitor.html">ResultsVisitor</a>};
 <span class="kw">use </span><a href="../../rustc_span/def_id/struct.DefId.html">rustc_span::def_id::DefId</a>;
 <span class="kw">use </span><a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">rustc_span::DUMMY_SP</a>;
-<span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_abi/struct.Align.html">Align</a>, <a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_abi/struct.Align.html">Align</a>, <a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>};
 
 <span class="kw">use </span><a href="../../rustc_middle/mir/trait.MirPass.html"><span class="kw">crate</span>::MirPass</a>;
 
@@ -893,7 +901,7 @@
     map: <a href="../../rustc_mir_dataflow/value_analysis/struct.Map.html">Map</a>,
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     local_decls: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>LocalDecls&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ecx: InterpCx&lt;<span class="lifetime">&#39;tcx</span>, <span class="lifetime">&#39;tcx</span>, <a href="#696">DummyMachine</a>&gt;,
+    ecx: InterpCx&lt;<span class="lifetime">&#39;tcx</span>, <span class="lifetime">&#39;tcx</span>, <a href="#704">DummyMachine</a>&gt;,
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 }
 
@@ -909,13 +917,13 @@
     <span class="kw">fn </span>handle_set_discriminant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        variant_index: <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) {
         <a href="#91">state</a>.flood_discr(<a href="#89">place</a>.as_ref(), <span class="kw-2">&amp;</span><a class="self" href="#88">self</a>.map);
         <span class="kw">if </span><span class="self">self</span>.map.find_discr(place.as_ref()).is_some() {
             <span class="kw">let </span>enum_ty = <a href="#89">place</a>.ty(<a class="self" href="#88">self</a>.local_decls, <a class="self" href="#88">self</a>.tcx).ty;
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(discr) = <a class="self" href="#88">self</a>.<a href="#497-504">eval_discriminant</a>(<a href="#95">enum_ty</a>, <a href="#90">variant_index</a>) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(discr) = <a class="self" href="#88">self</a>.<a href="#505-512">eval_discriminant</a>(<a href="#95">enum_ty</a>, <a href="#90">variant_index</a>) {
                 <a href="#91">state</a>.assign_discr(
                     <a href="#89">place</a>.as_ref(),
                     ValueOrPlace::Value(FlatSet::Elem(<a href="#96">discr</a>)),
@@ -935,13 +943,13 @@
             Rvalue::Use(operand) =&gt; {
                 <a href="#110">state</a>.flood(<a href="#108">target</a>.as_ref(), <a class="self" href="#107">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>());
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a class="self" href="#107">self</a>.map.find(<a href="#108">target</a>.as_ref()) {
-                    <a class="self" href="#107">self</a>.<a href="#343-368">assign_operand</a>(<a href="#110">state</a>, <a href="#115">target</a>, <a href="#113">operand</a>);
+                    <a class="self" href="#107">self</a>.<a href="#349-374">assign_operand</a>(<a href="#110">state</a>, <a href="#115">target</a>, <a href="#113">operand</a>);
                 }
             }
             Rvalue::CopyForDeref(rhs) =&gt; {
                 <a href="#110">state</a>.flood(<a href="#108">target</a>.as_ref(), <a class="self" href="#107">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>());
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a class="self" href="#107">self</a>.map.find(<a href="#108">target</a>.as_ref()) {
-                    <a class="self" href="#107">self</a>.<a href="#343-368">assign_operand</a>(<a href="#110">state</a>, <a href="#121">target</a>, <span class="kw-2">&amp;</span>Operand::Copy(<span class="kw-2">*</span><a href="#119">rhs</a>));
+                    <a class="self" href="#107">self</a>.<a href="#349-374">assign_operand</a>(<a href="#110">state</a>, <a href="#121">target</a>, <span class="kw-2">&amp;</span>Operand::Copy(<span class="kw-2">*</span><a href="#119">rhs</a>));
                 }
             }
             Rvalue::Aggregate(kind, operands) =&gt; {
@@ -984,7 +992,7 @@
                     // Using invalid values is UB, so we are allowed to perform the assignment
                     // without extra flooding.
                     </span><span class="kw">let </span>enum_ty = <a href="#108">target</a>.ty(<a class="self" href="#107">self</a>.local_decls, <a class="self" href="#107">self</a>.tcx).ty;
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(discr_val) = <a class="self" href="#107">self</a>.<a href="#497-504">eval_discriminant</a>(<a href="#164">enum_ty</a>, <a href="#156">variant_index</a>) {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(discr_val) = <a class="self" href="#107">self</a>.<a href="#505-512">eval_discriminant</a>(<a href="#164">enum_ty</a>, <a href="#156">variant_index</a>) {
                         <a href="#110">state</a>.insert_value_idx(<a href="#157">discr_idx</a>, FlatSet::Elem(<a href="#165">discr_val</a>), <span class="kw-2">&amp;</span><a class="self" href="#107">self</a>.map);
                     }
                 }
@@ -999,7 +1007,7 @@
                 <span class="kw">let </span>overflow_target = <a class="self" href="#107">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>().apply(<a href="#174">target</a>, TrackElem::Field(<span class="number">1_u32</span>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()));
 
                 <span class="kw">if </span>value_target.is_some() || overflow_target.is_some() {
-                    <span class="kw">let </span>(val, overflow) = <a class="self" href="#107">self</a>.<a href="#427-474">binary_op</a>(<a href="#110">state</a>, <span class="kw-2">*</span><a href="#170">op</a>, <a href="#170">left</a>, <a href="#170">right</a>);
+                    <span class="kw">let </span>(val, overflow) = <a class="self" href="#107">self</a>.<a href="#433-482">binary_op</a>(<a href="#110">state</a>, <span class="kw-2">*</span><a href="#170">op</a>, <a href="#170">left</a>, <a href="#170">right</a>);
 
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(value_target) = <a href="#176">value_target</a> {
                         <span class="comment">// We have flooded `target` earlier.
@@ -1028,7 +1036,7 @@
                     &amp;&amp; <span class="kw">let </span>operand_ty = <a href="#199">operand</a>.ty(<a class="self" href="#107">self</a>.local_decls, <a class="self" href="#107">self</a>.tcx)
                     &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(operand_ty) = <a href="#206">operand_ty</a>.builtin_deref(<span class="bool-val">true</span>)
                     &amp;&amp; <span class="kw">let </span>ty::Array(<span class="kw">_</span>, len) = <a href="#207">operand_ty</a>.ty.kind()
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(len) = ConstantKind::Ty(<span class="kw-2">*</span><a href="#208">len</a>).try_eval_scalar_int(<a class="self" href="#107">self</a>.tcx, <a class="self" href="#107">self</a>.param_env)
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(len) = Const::Ty(<span class="kw-2">*</span><a href="#208">len</a>).try_eval_scalar_int(<a class="self" href="#107">self</a>.tcx, <a class="self" href="#107">self</a>.param_env)
                 {
                     <a href="#110">state</a>.insert_value_idx(<a href="#205">target_len</a>, FlatSet::Elem(<a href="#209">len</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()), <a class="self" href="#107">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>());
                 }
@@ -1046,7 +1054,7 @@
             Rvalue::Len(place) =&gt; {
                 <span class="kw">let </span>place_ty = <a href="#224">place</a>.ty(<a class="self" href="#219">self</a>.local_decls, <a class="self" href="#219">self</a>.tcx);
                 <span class="kw">if let </span>ty::Array(<span class="kw">_</span>, len) = <a href="#225">place_ty</a>.ty.kind() {
-                    ConstantKind::Ty(<span class="kw-2">*</span><a href="#226">len</a>)
+                    Const::Ty(<span class="kw-2">*</span><a href="#226">len</a>)
                         .try_eval_scalar(<a class="self" href="#219">self</a>.tcx, <a class="self" href="#219">self</a>.param_env)
                         .map_or(FlatSet::Top, FlatSet::Elem)
                 } <span class="kw">else if let </span>[ProjectionElem::Deref] = <a href="#224">place</a>.projection[..] {
@@ -1056,60 +1064,66 @@
                 }
             }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) =&gt; {
-                <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#476-495">eval_operand</a>(<a href="#236">operand</a>, <a href="#221">state</a>) {
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(layout) = <a class="self" href="#219">self</a>.tcx.layout_of(<a class="self" href="#219">self</a>.param_env.and(<span class="kw-2">*</span><a href="#236">ty</a>)) <span class="kw">else </span>{
+                    <span class="kw">return </span>ValueOrPlace::Value(FlatSet::Top);
+                };
+                <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#484-503">eval_operand</a>(<a href="#236">operand</a>, <a href="#221">state</a>) {
                     FlatSet::Elem(op) =&gt; <span class="self"><a href="#219">self</a>
                         </span>.ecx
-                        .int_to_int_or_float(<span class="kw-2">&amp;</span><a href="#238">op</a>, <span class="kw-2">*</span><a href="#236">ty</a>)
-                        .map_or(FlatSet::Top, |result| <a class="self" href="#219">self</a>.<a href="#506-512">wrap_immediate</a>(<a href="#241">result</a>)),
+                        .int_to_int_or_float(<span class="kw-2">&amp;</span><a href="#241">op</a>, <a href="#237">layout</a>)
+                        .map_or(FlatSet::Top, |result| <a class="self" href="#219">self</a>.<a href="#514-520">wrap_immediate</a>(<span class="kw-2">*</span><a href="#244">result</a>)),
                     FlatSet::Bottom =&gt; FlatSet::Bottom,
                     FlatSet::Top =&gt; FlatSet::Top,
                 }
             }
             Rvalue::Cast(CastKind::FloatToInt | CastKind::FloatToFloat, operand, ty) =&gt; {
-                <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#476-495">eval_operand</a>(<a href="#246">operand</a>, <a href="#221">state</a>) {
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(layout) = <a class="self" href="#219">self</a>.tcx.layout_of(<a class="self" href="#219">self</a>.param_env.and(<span class="kw-2">*</span><a href="#249">ty</a>)) <span class="kw">else </span>{
+                    <span class="kw">return </span>ValueOrPlace::Value(FlatSet::Top);
+                };
+                <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#484-503">eval_operand</a>(<a href="#249">operand</a>, <a href="#221">state</a>) {
                     FlatSet::Elem(op) =&gt; <span class="self"><a href="#219">self</a>
                         </span>.ecx
-                        .float_to_float_or_int(<span class="kw-2">&amp;</span><a href="#248">op</a>, <span class="kw-2">*</span><a href="#246">ty</a>)
-                        .map_or(FlatSet::Top, |result| <a class="self" href="#219">self</a>.<a href="#506-512">wrap_immediate</a>(<a href="#251">result</a>)),
+                        .float_to_float_or_int(<span class="kw-2">&amp;</span><a href="#254">op</a>, <a href="#250">layout</a>)
+                        .map_or(FlatSet::Top, |result| <a class="self" href="#219">self</a>.<a href="#514-520">wrap_immediate</a>(<span class="kw-2">*</span><a href="#257">result</a>)),
                     FlatSet::Bottom =&gt; FlatSet::Bottom,
                     FlatSet::Top =&gt; FlatSet::Top,
                 }
             }
             Rvalue::Cast(CastKind::Transmute, operand, <span class="kw">_</span>) =&gt; {
-                <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#476-495">eval_operand</a>(<a href="#256">operand</a>, <a href="#221">state</a>) {
-                    FlatSet::Elem(op) =&gt; <a class="self" href="#219">self</a>.<a href="#506-512">wrap_immediate</a>(<span class="kw-2">*</span><a href="#258">op</a>),
+                <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#484-503">eval_operand</a>(<a href="#262">operand</a>, <a href="#221">state</a>) {
+                    FlatSet::Elem(op) =&gt; <a class="self" href="#219">self</a>.<a href="#514-520">wrap_immediate</a>(<span class="kw-2">*</span><a href="#264">op</a>),
                     FlatSet::Bottom =&gt; FlatSet::Bottom,
                     FlatSet::Top =&gt; FlatSet::Top,
                 }
             }
             Rvalue::BinaryOp(op, <span class="kw">box </span>(left, right)) =&gt; {
                 <span class="comment">// Overflows must be ignored here.
-                </span><span class="kw">let </span>(val, _overflow) = <a class="self" href="#219">self</a>.<a href="#427-474">binary_op</a>(<a href="#221">state</a>, <span class="kw-2">*</span><a href="#263">op</a>, <a href="#263">left</a>, <a href="#263">right</a>);
-                <a href="#265">val</a>
+                </span><span class="kw">let </span>(val, _overflow) = <a class="self" href="#219">self</a>.<a href="#433-482">binary_op</a>(<a href="#221">state</a>, <span class="kw-2">*</span><a href="#269">op</a>, <a href="#269">left</a>, <a href="#269">right</a>);
+                <a href="#271">val</a>
             }
-            Rvalue::UnaryOp(op, operand) =&gt; <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#476-495">eval_operand</a>(<a href="#268">operand</a>, <a href="#221">state</a>) {
+            Rvalue::UnaryOp(op, operand) =&gt; <span class="kw">match </span><a class="self" href="#219">self</a>.<a href="#484-503">eval_operand</a>(<a href="#274">operand</a>, <a href="#221">state</a>) {
                 FlatSet::Elem(value) =&gt; <span class="self"><a href="#219">self</a>
                     </span>.ecx
-                    .unary_op(<span class="kw-2">*</span><a href="#268">op</a>, <span class="kw-2">&amp;</span><a href="#269">value</a>)
-                    .map_or(FlatSet::Top, |val| <a class="self" href="#219">self</a>.<a href="#506-512">wrap_immediate</a>(<span class="kw-2">*</span><a href="#272">val</a>)),
+                    .wrapping_unary_op(<span class="kw-2">*</span><a href="#274">op</a>, <span class="kw-2">&amp;</span><a href="#275">value</a>)
+                    .map_or(FlatSet::Top, |val| <a class="self" href="#219">self</a>.<a href="#514-520">wrap_immediate</a>(<span class="kw-2">*</span><a href="#278">val</a>)),
                 FlatSet::Bottom =&gt; FlatSet::Bottom,
                 FlatSet::Top =&gt; FlatSet::Top,
             },
             Rvalue::NullaryOp(null_op, ty) =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>(layout) = <a class="self" href="#219">self</a>.tcx.layout_of(<a class="self" href="#219">self</a>.param_env.and(<span class="kw-2">*</span><a href="#276">ty</a>)) <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(layout) = <a class="self" href="#219">self</a>.tcx.layout_of(<a class="self" href="#219">self</a>.param_env.and(<span class="kw-2">*</span><a href="#282">ty</a>)) <span class="kw">else </span>{
                     <span class="kw">return </span>ValueOrPlace::Value(FlatSet::Top);
                 };
-                <span class="kw">let </span>val = <span class="kw">match </span><a href="#276">null_op</a> {
-                    NullOp::SizeOf <span class="kw">if </span><a href="#277">layout</a>.is_sized() =&gt; <a href="#277">layout</a>.size.bytes(),
-                    NullOp::AlignOf <span class="kw">if </span><a href="#277">layout</a>.is_sized() =&gt; <a href="#277">layout</a>.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) =&gt; <a href="#277">layout</a>
-                        .offset_of_subfield(<span class="kw-2">&amp;</span><a class="self" href="#219">self</a>.ecx, <a href="#283">fields</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| <a href="#284">f</a>.index()))
+                <span class="kw">let </span>val = <span class="kw">match </span><a href="#282">null_op</a> {
+                    NullOp::SizeOf <span class="kw">if </span><a href="#283">layout</a>.is_sized() =&gt; <a href="#283">layout</a>.size.bytes(),
+                    NullOp::AlignOf <span class="kw">if </span><a href="#283">layout</a>.is_sized() =&gt; <a href="#283">layout</a>.align.abi.bytes(),
+                    NullOp::OffsetOf(fields) =&gt; <a href="#283">layout</a>
+                        .offset_of_subfield(<span class="kw-2">&amp;</span><a class="self" href="#219">self</a>.ecx, <a href="#289">fields</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| <a href="#290">f</a>.index()))
                         .bytes(),
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span>ValueOrPlace::Value(FlatSet::Top),
                 };
-                FlatSet::Elem(Scalar::from_target_usize(<a href="#280">val</a>, <span class="kw-2">&amp;</span><a class="self" href="#219">self</a>.tcx))
+                FlatSet::Elem(Scalar::from_target_usize(<a href="#286">val</a>, <span class="kw-2">&amp;</span><a class="self" href="#219">self</a>.tcx))
             }
-            Rvalue::Discriminant(place) =&gt; <a href="#221">state</a>.get_discr(<a href="#290">place</a>.as_ref(), <a class="self" href="#219">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>()),
+            Rvalue::Discriminant(place) =&gt; <a href="#221">state</a>.get_discr(<a href="#296">place</a>.as_ref(), <a class="self" href="#219">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>()),
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><a class="self" href="#219">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">super_rvalue</a>(<a href="#220">rvalue</a>, <a href="#221">state</a>),
         };
         ValueOrPlace::Value(<a href="#223">val</a>)
@@ -1117,47 +1131,47 @@
 
     <span class="kw">fn </span>handle_constant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        constant: <span class="kw-2">&amp;</span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        constant: <span class="kw-2">&amp;</span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         _state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; <span class="self">Self</span>::Value {
-        <a href="#298">constant</a>
-            .literal
-            .try_eval_scalar(<a class="self" href="#297">self</a>.tcx, <a class="self" href="#297">self</a>.param_env)
+        <a href="#304">constant</a>
+            .const_
+            .try_eval_scalar(<a class="self" href="#303">self</a>.tcx, <a class="self" href="#303">self</a>.param_env)
             .map_or(FlatSet::Top, FlatSet::Elem)
     }
 
     <span class="kw">fn </span>handle_switch_int&lt;<span class="lifetime">&#39;mir</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         discr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/terminator/struct.SwitchTargets.html">SwitchTargets</a>,
+        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>value = <span class="kw">match </span><a class="self" href="#308">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">handle_operand</a>(<a href="#309">discr</a>, <a href="#311">state</a>) {
-            ValueOrPlace::Value(value) =&gt; <a href="#314">value</a>,
-            ValueOrPlace::Place(place) =&gt; <a href="#311">state</a>.get_idx(<a href="#315">place</a>, <a class="self" href="#308">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>()),
+        <span class="kw">let </span>value = <span class="kw">match </span><a class="self" href="#314">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">handle_operand</a>(<a href="#315">discr</a>, <a href="#317">state</a>) {
+            ValueOrPlace::Value(value) =&gt; <a href="#320">value</a>,
+            ValueOrPlace::Place(place) =&gt; <a href="#317">state</a>.get_idx(<a href="#321">place</a>, <a class="self" href="#314">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">map</a>()),
         };
-        <span class="kw">match </span><a href="#313">value</a> {
+        <span class="kw">match </span><a href="#319">value</a> {
             <span class="comment">// We are branching on uninitialized data, this is UB, treat it as unreachable.
             // This allows the set of visited edges to grow monotonically with the lattice.
             </span>FlatSet::Bottom =&gt; TerminatorEdges::None,
             FlatSet::Elem(scalar) =&gt; {
-                <span class="kw">let </span>choice = <a href="#321">scalar</a>.assert_bits(<a href="#321">scalar</a>.size());
-                TerminatorEdges::Single(<a href="#310">targets</a>.target_for_value(<a href="#322">choice</a>))
+                <span class="kw">let </span>choice = <a href="#327">scalar</a>.assert_bits(<a href="#327">scalar</a>.size());
+                TerminatorEdges::Single(<a href="#316">targets</a>.target_for_value(<a href="#328">choice</a>))
             }
-            FlatSet::Top =&gt; <a href="../../rustc_middle/mir/terminator/enum.TerminatorEdges.html">TerminatorEdges::SwitchInt</a> { <a href="#309">discr</a>, <a href="#310">targets</a> },
+            FlatSet::Top =&gt; <a href="../../rustc_middle/mir/terminator/enum.TerminatorEdges.html">TerminatorEdges::SwitchInt</a> { <a href="#315">discr</a>, <a href="#316">targets</a> },
         }
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; ConstAnalysis&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>new(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;, map: <a href="../../rustc_mir_dataflow/value_analysis/struct.Map.html">Map</a>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>param_env = <a href="#331">tcx</a>.param_env_reveal_all_normalized(<a href="#331">body</a>.source.def_id());
+        <span class="kw">let </span>param_env = <a href="#337">tcx</a>.param_env_reveal_all_normalized(<a href="#337">body</a>.source.def_id());
         <span class="self">Self </span>{
-            <a href="#331">map</a>,
-            <a href="#331">tcx</a>,
-            local_decls: <span class="kw-2">&amp;</span><a href="#331">body</a>.local_decls,
-            ecx: InterpCx::new(<a href="#331">tcx</a>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#332">param_env</a>, <a href="#696">DummyMachine</a>),
-            param_env: <a href="#332">param_env</a>,
+            <a href="#337">map</a>,
+            <a href="#337">tcx</a>,
+            local_decls: <span class="kw-2">&amp;</span><a href="#337">body</a>.local_decls,
+            ecx: InterpCx::new(<a href="#337">tcx</a>, <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#338">param_env</a>, <a href="#704">DummyMachine</a>),
+            param_env: <a href="#338">param_env</a>,
         }
     }
 
@@ -1168,22 +1182,22 @@
         place: <a href="../../rustc_mir_dataflow/value_analysis/struct.PlaceIndex.html">PlaceIndex</a>,
         operand: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) {
-        <span class="kw">match </span><a href="#347">operand</a> {
+        <span class="kw">match </span><a href="#353">operand</a> {
             Operand::Copy(rhs) | Operand::Move(rhs) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(rhs) = <a class="self" href="#344">self</a>.map.find(<a href="#350">rhs</a>.as_ref()) {
-                    <a href="#345">state</a>.insert_place_idx(<a href="#346">place</a>, <a href="#351">rhs</a>, <span class="kw-2">&amp;</span><a class="self" href="#344">self</a>.map);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(rhs) = <a class="self" href="#350">self</a>.map.find(<a href="#356">rhs</a>.as_ref()) {
+                    <a href="#351">state</a>.insert_place_idx(<a href="#352">place</a>, <a href="#357">rhs</a>, <span class="kw-2">&amp;</span><a class="self" href="#350">self</a>.map);
                 } <span class="kw">else if </span>rhs.projection.first() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>PlaceElem::Deref)
-                    &amp;&amp; <span class="kw">let </span>FlatSet::Elem(pointer) = <a href="#345">state</a>.get(<a href="#350">rhs</a>.local.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <span class="kw-2">&amp;</span><a class="self" href="#344">self</a>.map)
-                    &amp;&amp; <span class="kw">let </span>rhs_ty = <a class="self" href="#344">self</a>.local_decls[<a href="#350">rhs</a>.local].ty
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(rhs_layout) = <a class="self" href="#344">self</a>.tcx.layout_of(<a class="self" href="#344">self</a>.param_env.and(<a href="#355">rhs_ty</a>))
+                    &amp;&amp; <span class="kw">let </span>FlatSet::Elem(pointer) = <a href="#351">state</a>.get(<a href="#356">rhs</a>.local.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <span class="kw-2">&amp;</span><a class="self" href="#350">self</a>.map)
+                    &amp;&amp; <span class="kw">let </span>rhs_ty = <a class="self" href="#350">self</a>.local_decls[<a href="#356">rhs</a>.local].ty
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(rhs_layout) = <a class="self" href="#350">self</a>.tcx.layout_of(<a class="self" href="#350">self</a>.param_env.and(<a href="#361">rhs_ty</a>))
                 {
-                    <span class="kw">let </span>op = ImmTy::from_scalar(<a href="#354">pointer</a>, <a href="#356">rhs_layout</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
-                    <a class="self" href="#344">self</a>.<a href="#373">assign_constant</a>(<a href="#345">state</a>, <a href="#346">place</a>, <a href="#358">op</a>, <span class="kw-2">&amp;</span><a href="#350">rhs</a>.projection);
+                    <span class="kw">let </span>op = ImmTy::from_scalar(<a href="#360">pointer</a>, <a href="#362">rhs_layout</a>).<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
+                    <a class="self" href="#350">self</a>.<a href="#379">assign_constant</a>(<a href="#351">state</a>, <a href="#352">place</a>, <a href="#364">op</a>, <span class="kw-2">&amp;</span><a href="#356">rhs</a>.projection);
                 }
             }
             Operand::Constant(<span class="kw">box </span>constant) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Ok</span>(constant) = <a class="self" href="#344">self</a>.ecx.eval_mir_constant(<span class="kw-2">&amp;</span><a href="#362">constant</a>.literal, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>) {
-                    <a class="self" href="#344">self</a>.<a href="#373">assign_constant</a>(<a href="#345">state</a>, <a href="#346">place</a>, <a href="#363">constant</a>, <span class="kw-2">&amp;</span>[]);
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(constant) = <a class="self" href="#350">self</a>.ecx.eval_mir_constant(<span class="kw-2">&amp;</span><a href="#368">constant</a>.const_, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>) {
+                    <a class="self" href="#350">self</a>.<a href="#379">assign_constant</a>(<a href="#351">state</a>, <a href="#352">place</a>, <a href="#369">constant</a>, <span class="kw-2">&amp;</span>[]);
                 }
             }
         }
@@ -1253,40 +1267,42 @@
         left: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         right: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; (FlatSet&lt;<a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>&gt;, FlatSet&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>&gt;) {
-        <span class="kw">let </span>left = <a class="self" href="#428">self</a>.<a href="#476-495">eval_operand</a>(<a href="#431">left</a>, <a href="#429">state</a>);
-        <span class="kw">let </span>right = <a class="self" href="#428">self</a>.<a href="#476-495">eval_operand</a>(<a href="#432">right</a>, <a href="#429">state</a>);
+        <span class="kw">let </span>left = <a class="self" href="#434">self</a>.<a href="#484-503">eval_operand</a>(<a href="#437">left</a>, <a href="#435">state</a>);
+        <span class="kw">let </span>right = <a class="self" href="#434">self</a>.<a href="#484-503">eval_operand</a>(<a href="#438">right</a>, <a href="#435">state</a>);
 
-        <span class="kw">match </span>(<a href="#434">left</a>, <a href="#435">right</a>) {
+        <span class="kw">match </span>(<a href="#440">left</a>, <a href="#441">right</a>) {
             (FlatSet::Bottom, <span class="kw">_</span>) | (<span class="kw">_</span>, FlatSet::Bottom) =&gt; (FlatSet::Bottom, FlatSet::Bottom),
             <span class="comment">// Both sides are known, do the actual computation.
             </span>(FlatSet::Elem(left), FlatSet::Elem(right)) =&gt; {
-                <span class="kw">match </span><a class="self" href="#428">self</a>.ecx.overflowing_binary_op(<a href="#430">op</a>, <span class="kw-2">&amp;</span><a href="#440">left</a>, <span class="kw-2">&amp;</span><a href="#440">right</a>) {
-                    <span class="prelude-val">Ok</span>((val, overflow, <span class="kw">_</span>)) =&gt; (FlatSet::Elem(<a href="#442">val</a>), FlatSet::Elem(<a href="#442">overflow</a>)),
+                <span class="kw">match </span><a class="self" href="#434">self</a>.ecx.overflowing_binary_op(<a href="#436">op</a>, <span class="kw-2">&amp;</span><a href="#446">left</a>, <span class="kw-2">&amp;</span><a href="#446">right</a>) {
+                    <span class="prelude-val">Ok</span>((val, overflow)) =&gt; {
+                        (FlatSet::Elem(<a href="#448">val</a>.to_scalar()), FlatSet::Elem(<a href="#448">overflow</a>))
+                    }
                     <span class="kw">_ </span>=&gt; (FlatSet::Top, FlatSet::Top),
                 }
             }
             <span class="comment">// Exactly one side is known, attempt some algebraic simplifications.
             </span>(FlatSet::Elem(const_arg), <span class="kw">_</span>) | (<span class="kw">_</span>, FlatSet::Elem(const_arg)) =&gt; {
-                <span class="kw">let </span>layout = <a href="#447">const_arg</a>.layout;
+                <span class="kw">let </span>layout = <a href="#455">const_arg</a>.layout;
                 <span class="kw">if </span>!<span class="macro">matches!</span>(layout.abi, rustc_target::abi::Abi::Scalar(..)) {
                     <span class="kw">return </span>(FlatSet::Top, FlatSet::Top);
                 }
 
-                <span class="kw">let </span>arg_scalar = <a href="#447">const_arg</a>.to_scalar();
-                <span class="kw">let </span><span class="prelude-val">Ok</span>(arg_value) = <a href="#453">arg_scalar</a>.to_bits(<a href="#448">layout</a>.size) <span class="kw">else </span>{
+                <span class="kw">let </span>arg_scalar = <a href="#455">const_arg</a>.to_scalar();
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(arg_value) = <a href="#461">arg_scalar</a>.to_bits(<a href="#456">layout</a>.size) <span class="kw">else </span>{
                     <span class="kw">return </span>(FlatSet::Top, FlatSet::Top);
                 };
 
-                <span class="kw">match </span><a href="#430">op</a> {
-                    BinOp::BitAnd <span class="kw">if </span><a href="#454">arg_value</a> == <span class="number">0 </span>=&gt; (FlatSet::Elem(<a href="#453">arg_scalar</a>), FlatSet::Bottom),
+                <span class="kw">match </span><a href="#436">op</a> {
+                    BinOp::BitAnd <span class="kw">if </span><a href="#462">arg_value</a> == <span class="number">0 </span>=&gt; (FlatSet::Elem(<a href="#461">arg_scalar</a>), FlatSet::Bottom),
                     BinOp::BitOr
-                        <span class="kw">if </span><a href="#454">arg_value</a> == <a href="#448">layout</a>.size.truncate(u128::MAX)
-                            || (<a href="#448">layout</a>.ty.is_bool() &amp;&amp; <a href="#454">arg_value</a> == <span class="number">1</span>) =&gt;
+                        <span class="kw">if </span><a href="#462">arg_value</a> == <a href="#456">layout</a>.size.truncate(u128::MAX)
+                            || (<a href="#456">layout</a>.ty.is_bool() &amp;&amp; <a href="#462">arg_value</a> == <span class="number">1</span>) =&gt;
                     {
-                        (FlatSet::Elem(<a href="#453">arg_scalar</a>), FlatSet::Bottom)
+                        (FlatSet::Elem(<a href="#461">arg_scalar</a>), FlatSet::Bottom)
                     }
-                    BinOp::Mul <span class="kw">if </span><a href="#448">layout</a>.ty.is_integral() &amp;&amp; <a href="#454">arg_value</a> == <span class="number">0 </span>=&gt; {
-                        (FlatSet::Elem(<a href="#453">arg_scalar</a>), FlatSet::Elem(<span class="bool-val">false</span>))
+                    BinOp::Mul <span class="kw">if </span><a href="#456">layout</a>.ty.is_integral() &amp;&amp; <a href="#462">arg_value</a> == <span class="number">0 </span>=&gt; {
+                        (FlatSet::Elem(<a href="#461">arg_scalar</a>), FlatSet::Elem(<span class="bool-val">false</span>))
                     }
                     <span class="kw">_ </span>=&gt; (FlatSet::Top, FlatSet::Top),
                 }
@@ -1300,34 +1316,34 @@
         op: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         state: <span class="kw-2">&amp;mut </span>State&lt;FlatSet&lt;<a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>&gt;&gt;,
     ) -&gt; FlatSet&lt;ImmTy&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">let </span>value = <span class="kw">match </span><a class="self" href="#477">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">handle_operand</a>(<a href="#478">op</a>, <a href="#479">state</a>) {
-            ValueOrPlace::Value(value) =&gt; <a href="#482">value</a>,
-            ValueOrPlace::Place(place) =&gt; <a href="#479">state</a>.get_idx(<a href="#483">place</a>, <span class="kw-2">&amp;</span><a class="self" href="#477">self</a>.map),
+        <span class="kw">let </span>value = <span class="kw">match </span><a class="self" href="#485">self</a>.<a href="../../rustc_mir_dataflow/value_analysis/trait.ValueAnalysis.html">handle_operand</a>(<a href="#486">op</a>, <a href="#487">state</a>) {
+            ValueOrPlace::Value(value) =&gt; <a href="#490">value</a>,
+            ValueOrPlace::Place(place) =&gt; <a href="#487">state</a>.get_idx(<a href="#491">place</a>, <span class="kw-2">&amp;</span><a class="self" href="#485">self</a>.map),
         };
-        <span class="kw">match </span><a href="#481">value</a> {
+        <span class="kw">match </span><a href="#489">value</a> {
             FlatSet::Top =&gt; FlatSet::Top,
             FlatSet::Elem(scalar) =&gt; {
-                <span class="kw">let </span>ty = <a href="#478">op</a>.ty(<a class="self" href="#477">self</a>.local_decls, <a class="self" href="#477">self</a>.tcx);
-                <a class="self" href="#477">self</a>.tcx.layout_of(<a class="self" href="#477">self</a>.param_env.and(<a href="#488">ty</a>)).map_or(FlatSet::Top, |layout| {
-                    FlatSet::Elem(ImmTy::from_scalar(<a href="#487">scalar</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <a href="#489">layout</a>))
+                <span class="kw">let </span>ty = <a href="#486">op</a>.ty(<a class="self" href="#485">self</a>.local_decls, <a class="self" href="#485">self</a>.tcx);
+                <a class="self" href="#485">self</a>.tcx.layout_of(<a class="self" href="#485">self</a>.param_env.and(<a href="#496">ty</a>)).map_or(FlatSet::Top, |layout| {
+                    FlatSet::Elem(ImmTy::from_scalar(<a href="#495">scalar</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <a href="#497">layout</a>))
                 })
             }
             FlatSet::Bottom =&gt; FlatSet::Bottom,
         }
     }
 
-    <span class="kw">fn </span>eval_discriminant(<span class="kw-2">&amp;</span><span class="self">self</span>, enum_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, variant_index: <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>&gt; {
+    <span class="kw">fn </span>eval_discriminant(<span class="kw-2">&amp;</span><span class="self">self</span>, enum_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, variant_index: <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>&gt; {
         <span class="kw">if </span>!enum_ty.is_enum() {
             <span class="kw">return </span><span class="prelude-val">None</span>;
         }
         <span class="kw">let </span>enum_ty_layout = <span class="self">self</span>.tcx.layout_of(<span class="self">self</span>.param_env.and(enum_ty)).ok()<span class="question-mark">?</span>;
         <span class="kw">let </span>discr_value = <span class="self">self</span>.ecx.discriminant_for_variant(enum_ty_layout, variant_index).ok()<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(<a href="#502">discr_value</a>.to_scalar())
+        <span class="prelude-val">Some</span>(<a href="#510">discr_value</a>.to_scalar())
     }
 
     <span class="kw">fn </span>wrap_immediate(<span class="kw-2">&amp;</span><span class="self">self</span>, imm: <a href="../../rustc_const_eval/interpret/operand/enum.Immediate.html">Immediate</a>) -&gt; FlatSet&lt;<a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>&gt; {
-        <span class="kw">match </span><a href="#506">imm</a> {
-            Immediate::Scalar(scalar) =&gt; FlatSet::Elem(<a href="#508">scalar</a>),
+        <span class="kw">match </span><a href="#514">imm</a> {
+            Immediate::Scalar(scalar) =&gt; FlatSet::Elem(<a href="#516">scalar</a>),
             Immediate::Uninit =&gt; FlatSet::Bottom,
             <span class="kw">_ </span>=&gt; FlatSet::Top,
         }
@@ -1340,19 +1356,19 @@
     <span class="doccomment">/// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
     /// properly captured. (This may become UB soon, but it is currently emitted even by safe code.)
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) before_effect: FxHashMap&lt;(<a href="../../rustc_middle/mir/struct.Location.html">Location</a>, Place&lt;<span class="lifetime">&#39;tcx</span>&gt;), ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) before_effect: FxHashMap&lt;(<a href="../../rustc_middle/mir/struct.Location.html">Location</a>, Place&lt;<span class="lifetime">&#39;tcx</span>&gt;), Const&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 
     <span class="doccomment">/// Stores the assigned values for assignments where the Rvalue is constant.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) assignments: FxHashMap&lt;<a href="../../rustc_middle/mir/struct.Location.html">Location</a>, ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) assignments: FxHashMap&lt;<a href="../../rustc_middle/mir/struct.Location.html">Location</a>, Const&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Patch&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ <a href="#528">tcx</a>, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
+        <span class="self">Self </span>{ <a href="#536">tcx</a>, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
-    <span class="kw">fn </span>make_operand(<span class="kw-2">&amp;</span><span class="self">self</span>, literal: ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Operand&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        Operand::Constant(Box::new(<a href="../../rustc_middle/mir/struct.Constant.html">Constant</a> { span: <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, user_ty: <span class="prelude-val">None</span>, <a href="#532">literal</a> }))
+    <span class="kw">fn </span>make_operand(<span class="kw-2">&amp;</span><span class="self">self</span>, const_: Const&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Operand&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+        Operand::Constant(Box::new(<a href="../../rustc_middle/mir/syntax/struct.ConstOperand.html">ConstOperand</a> { span: <a href="../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, user_ty: <span class="prelude-val">None</span>, <a href="#540">const_</a> }))
     }
 }
 
@@ -1363,7 +1379,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>, <span class="lifetime">&#39;locals</span>&gt; Collector&lt;<span class="lifetime">&#39;tcx</span>, <span class="lifetime">&#39;locals</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, local_decls: <span class="kw-2">&amp;</span><span class="lifetime">&#39;locals </span>LocalDecls&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ patch: Patch::new(<a href="#543">tcx</a>), <a href="#543">local_decls</a> }
+        <span class="self">Self </span>{ patch: Patch::new(<a href="#551">tcx</a>), <a href="#551">local_decls</a> }
     }
 
     <span class="kw">fn </span>try_make_constant(
@@ -1371,12 +1387,12 @@
         place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         state: <span class="kw-2">&amp;</span>State&lt;FlatSet&lt;<a href="../../rustc_middle/mir/interpret/value/enum.Scalar.html">Scalar</a>&gt;&gt;,
         map: <span class="kw-2">&amp;</span><a href="../../rustc_mir_dataflow/value_analysis/struct.Map.html">Map</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">let </span>FlatSet::Elem(Scalar::Int(value)) = <a href="#550">state</a>.get(<a href="#549">place</a>.as_ref(), <span class="kw-2">&amp;</span><a href="#551">map</a>) <span class="kw">else </span>{
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;Const&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
+        <span class="kw">let </span>FlatSet::Elem(Scalar::Int(value)) = <a href="#558">state</a>.get(<a href="#557">place</a>.as_ref(), <span class="kw-2">&amp;</span><a href="#559">map</a>) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">None</span>;
         };
-        <span class="kw">let </span>ty = <a href="#549">place</a>.ty(<a class="self" href="#548">self</a>.local_decls, <a class="self" href="#548">self</a>.patch.tcx).ty;
-        <span class="prelude-val">Some</span>(ConstantKind::Val(ConstValue::Scalar(<a href="#553">value</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()), <a href="#556">ty</a>))
+        <span class="kw">let </span>ty = <a href="#557">place</a>.ty(<a class="self" href="#556">self</a>.local_decls, <a class="self" href="#556">self</a>.patch.tcx).ty;
+        <span class="prelude-val">Some</span>(Const::Val(ConstValue::Scalar(<a href="#561">value</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()), <a href="#564">ty</a>))
     }
 }
 
@@ -1393,10 +1409,10 @@
         statement: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
     ) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#571">statement</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#579">statement</a>.kind {
             StatementKind::Assign(<span class="kw">box </span>(<span class="kw">_</span>, rvalue)) =&gt; {
-                <a href="#663-667">OperandCollector</a> { <a href="#570">state</a>, visitor: <a class="self" href="#568">self</a>, map: <span class="kw-2">&amp;</span><a href="#569">results</a>.analysis.<span class="number">0</span>.map }
-                    .<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_rvalue</a>(<a href="#575">rvalue</a>, <a href="#572">location</a>);
+                <a href="#671-675">OperandCollector</a> { <a href="#578">state</a>, visitor: <a class="self" href="#576">self</a>, map: <span class="kw-2">&amp;</span><a href="#577">results</a>.analysis.<span class="number">0</span>.map }
+                    .<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_rvalue</a>(<a href="#583">rvalue</a>, <a href="#580">location</a>);
             }
             <span class="kw">_ </span>=&gt; (),
         }
@@ -1409,13 +1425,13 @@
         statement: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
     ) {
-        <span class="kw">match </span><a href="#587">statement</a>.kind {
+        <span class="kw">match </span><a href="#595">statement</a>.kind {
             StatementKind::Assign(<span class="kw">box </span>(<span class="kw">_</span>, Rvalue::Use(Operand::Constant(<span class="kw">_</span>)))) =&gt; {
                 <span class="comment">// Don&#39;t overwrite the assignment if it already uses a constant (to keep the span).
             </span>}
             StatementKind::Assign(<span class="kw">box </span>(place, <span class="kw">_</span>)) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#584">self</a>.<a href="#547-558">try_make_constant</a>(<a href="#594">place</a>, <a href="#586">state</a>, <span class="kw-2">&amp;</span><a href="#585">results</a>.analysis.<span class="number">0</span>.map) {
-                    <a class="self" href="#584">self</a>.patch.assignments.insert(<a href="#588">location</a>, <a href="#595">value</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#592">self</a>.<a href="#555-566">try_make_constant</a>(<a href="#602">place</a>, <a href="#594">state</a>, <span class="kw-2">&amp;</span><a href="#593">results</a>.analysis.<span class="number">0</span>.map) {
+                    <a class="self" href="#592">self</a>.patch.assignments.insert(<a href="#596">location</a>, <a href="#603">value</a>);
                 }
             }
             <span class="kw">_ </span>=&gt; (),
@@ -1429,36 +1445,36 @@
         terminator: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
     ) {
-        <a href="#663-667">OperandCollector</a> { <a href="#606">state</a>, visitor: <a class="self" href="#604">self</a>, map: <span class="kw-2">&amp;</span><a href="#605">results</a>.analysis.<span class="number">0</span>.map }
-            .<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_terminator</a>(<a href="#607">terminator</a>, <a href="#608">location</a>);
+        <a href="#671-675">OperandCollector</a> { <a href="#614">state</a>, visitor: <a class="self" href="#612">self</a>, map: <span class="kw-2">&amp;</span><a href="#613">results</a>.analysis.<span class="number">0</span>.map }
+            .<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_terminator</a>(<a href="#615">terminator</a>, <a href="#616">location</a>);
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MutVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>Patch&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>tcx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#616">self</a>.tcx
+        <a class="self" href="#624">self</a>.tcx
     }
 
     <span class="kw">fn </span>visit_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, statement: <span class="kw-2">&amp;mut </span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#620">self</a>.assignments.get(<span class="kw-2">&amp;</span><a href="#620">location</a>) {
-            <span class="kw">match </span><span class="kw-2">&amp;mut </span><a href="#620">statement</a>.kind {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#628">self</a>.assignments.get(<span class="kw-2">&amp;</span><a href="#628">location</a>) {
+            <span class="kw">match </span><span class="kw-2">&amp;mut </span><a href="#628">statement</a>.kind {
                 StatementKind::Assign(<span class="kw">box </span>(<span class="kw">_</span>, rvalue)) =&gt; {
-                    <span class="kw-2">*</span><a href="#623">rvalue</a> = Rvalue::Use(<a class="self" href="#620">self</a>.<a href="#532-534">make_operand</a>(<span class="kw-2">*</span><a href="#621">value</a>));
+                    <span class="kw-2">*</span><a href="#631">rvalue</a> = Rvalue::Use(<a class="self" href="#628">self</a>.<a href="#540-542">make_operand</a>(<span class="kw-2">*</span><a href="#629">value</a>));
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;found assignment info for non-assign statement&quot;</span>),
             }
         } <span class="kw">else </span>{
-            <a class="self" href="#620">self</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">super_statement</a>(<a href="#620">statement</a>, <a href="#620">location</a>);
+            <a class="self" href="#628">self</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">super_statement</a>(<a href="#628">statement</a>, <a href="#628">location</a>);
         }
     }
 
     <span class="kw">fn </span>visit_operand(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operand: <span class="kw-2">&amp;mut </span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">match </span><a href="#633">operand</a> {
+        <span class="kw">match </span><a href="#641">operand</a> {
             Operand::Copy(place) | Operand::Move(place) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#633">self</a>.before_effect.get(<span class="kw-2">&amp;</span>(<a href="#633">location</a>, <span class="kw-2">*</span><a href="#635">place</a>)) {
-                    <span class="kw-2">*</span><a href="#633">operand</a> = <a class="self" href="#633">self</a>.<a href="#532-534">make_operand</a>(<span class="kw-2">*</span><a href="#636">value</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#641">self</a>.before_effect.get(<span class="kw-2">&amp;</span>(<a href="#641">location</a>, <span class="kw-2">*</span><a href="#643">place</a>)) {
+                    <span class="kw-2">*</span><a href="#641">operand</a> = <a class="self" href="#641">self</a>.<a href="#540-542">make_operand</a>(<span class="kw-2">*</span><a href="#644">value</a>);
                 } <span class="kw">else if </span>!place.projection.is_empty() {
-                    <a class="self" href="#633">self</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">super_operand</a>(<a href="#633">operand</a>, <a href="#633">location</a>)
+                    <a class="self" href="#641">self</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">super_operand</a>(<a href="#641">operand</a>, <a href="#641">location</a>)
                 }
             }
             Operand::Constant(<span class="kw">_</span>) =&gt; {}
@@ -1470,12 +1486,12 @@
         elem: PlaceElem&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;PlaceElem&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">if let </span>PlaceElem::Index(local) = <a href="#648">elem</a> {
+        <span class="kw">if let </span>PlaceElem::Index(local) = <a href="#656">elem</a> {
             <span class="kw">let </span>offset = <span class="self">self</span>.before_effect.get(<span class="kw-2">&amp;</span>(location, local.into()))<span class="question-mark">?</span>;
             <span class="kw">let </span>offset = offset.try_to_scalar()<span class="question-mark">?</span>;
             <span class="kw">let </span>offset = offset.to_target_usize(<span class="kw-2">&amp;</span><span class="self">self</span>.tcx).ok()<span class="question-mark">?</span>;
             <span class="kw">let </span>min_length = offset.checked_add(<span class="number">1</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Some</span>(PlaceElem::ConstantIndex { <a href="#654">offset</a>, <a href="#655">min_length</a>, from_end: <span class="bool-val">false </span>})
+            <span class="prelude-val">Some</span>(PlaceElem::ConstantIndex { <a href="#662">offset</a>, <a href="#663">min_length</a>, from_end: <span class="bool-val">false </span>})
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
@@ -1496,20 +1512,20 @@
         <span class="kw">_</span>: <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>,
         location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>,
     ) {
-        <span class="kw">if let </span>PlaceElem::Index(local) = <a href="#673">elem</a>
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#671">self</a>.visitor.<a href="#547-558">try_make_constant</a>(<a href="#677">local</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <a class="self" href="#671">self</a>.state, <a class="self" href="#671">self</a>.map)
+        <span class="kw">if let </span>PlaceElem::Index(local) = <a href="#681">elem</a>
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#679">self</a>.visitor.<a href="#555-566">try_make_constant</a>(<a href="#685">local</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <a class="self" href="#679">self</a>.state, <a class="self" href="#679">self</a>.map)
         {
-            <a class="self" href="#671">self</a>.visitor.patch.before_effect.insert((<a href="#675">location</a>, <a href="#677">local</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()), <a href="#678">value</a>);
+            <a class="self" href="#679">self</a>.visitor.patch.before_effect.insert((<a href="#683">location</a>, <a href="#685">local</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()), <a href="#686">value</a>);
         }
     }
 
     <span class="kw">fn </span>visit_operand(<span class="kw-2">&amp;mut </span><span class="self">self</span>, operand: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(place) = <a href="#684">operand</a>.place() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#684">self</a>.visitor.<a href="#547-558">try_make_constant</a>(<a href="#685">place</a>, <a class="self" href="#684">self</a>.state, <a class="self" href="#684">self</a>.map) {
-                <a class="self" href="#684">self</a>.visitor.patch.before_effect.insert((<a href="#684">location</a>, <a href="#685">place</a>), <a href="#686">value</a>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(place) = <a href="#692">operand</a>.place() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a class="self" href="#692">self</a>.visitor.<a href="#555-566">try_make_constant</a>(<a href="#693">place</a>, <a class="self" href="#692">self</a>.state, <a class="self" href="#692">self</a>.map) {
+                <a class="self" href="#692">self</a>.visitor.patch.before_effect.insert((<a href="#692">location</a>, <a href="#693">place</a>), <a href="#694">value</a>);
             } <span class="kw">else if </span>!place.projection.is_empty() {
                 <span class="comment">// Try to propagate into `Index` projections.
-                </span><a class="self" href="#684">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#684">operand</a>, <a href="#684">location</a>)
+                </span><a class="self" href="#692">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#692">operand</a>, <a href="#692">location</a>)
             }
         }
     }
@@ -1517,7 +1533,7 @@
 
 <span class="kw">struct </span><a href="../../rustc_mir_transform/dataflow_const_prop/struct.DummyMachine.html">DummyMachine</a>;
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;mir</span>&gt; rustc_const_eval::interpret::Machine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#696">DummyMachine</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;mir</span>&gt; rustc_const_eval::interpret::Machine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#704">DummyMachine</a> {
     <a class="macro" href="../../rustc_const_eval/interpret/machine/macro.compile_time_machine.html">rustc_const_eval::interpret::compile_time_machine!</a>(&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;);
     <span class="kw">type </span>MemoryKind = !;
     <span class="kw">const </span>PANIC_ON_ALLOC_FAIL: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> = <span class="bool-val">true</span>;
@@ -1605,8 +1621,8 @@
         _bin_op: <a href="../../rustc_middle/mir/syntax/enum.BinOp.html">BinOp</a>,
         _left: <span class="kw-2">&amp;</span>rustc_const_eval::interpret::ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>::Provenance&gt;,
         _right: <span class="kw-2">&amp;</span>rustc_const_eval::interpret::ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>::Provenance&gt;,
-    ) -&gt; interpret::InterpResult&lt;<span class="lifetime">&#39;tcx</span>, (Scalar&lt;<span class="self">Self</span>::Provenance&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
-        <a class="macro" href="../../rustc_middle/rustc_middle/macro.throw_unsup.html">throw_unsup!</a>(Unsupported(<span class="string">&quot;&quot;</span>.into()))
+    ) -&gt; interpret::InterpResult&lt;<span class="lifetime">&#39;tcx</span>, (ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <span class="self">Self</span>::Provenance&gt;, <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>)&gt; {
+        <a class="macro" href="const_prop.rs.html#36-59">crate::const_prop::throw_machine_stop_str!</a>(<span class="string">&quot;can&#39;t do pointer arithmetic&quot;</span>);
     }
 
     <span class="kw">fn </span>expose_ptr(

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AttrTokenTree","Spacing","TokenTree"],"mod":["size_asserts"],"struct":["AttrTokenStream","AttributesData","DelimSpan","LazyAttrTokenStream","RefTokenTreeCursor","TokenStream","TokenTreeCursor"],"trait":["ToAttrTokenStream"]};
+window.SIDEBAR_ITEMS = {"enum":["AttrTokenTree","Spacing","TokenTree"],"struct":["AttrTokenStream","AttributesData","DelimSpan","LazyAttrTokenStream","RefTokenTreeCursor","TokenStream","TokenTreeCursor"],"trait":["ToAttrTokenStream"]};

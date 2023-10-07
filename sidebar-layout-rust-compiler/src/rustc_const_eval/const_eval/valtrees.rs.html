@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/const_eval/valtrees.rs`."><title>valtrees.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/const_eval/valtrees.rs`."><title>valtrees.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -386,26 +386,27 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::eval_queries::{<a href="eval_queries.rs.html#93-106">mk_eval_cx</a>, <a href="eval_queries.rs.html#109">op_to_const</a>};
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::eval_queries::{<a href="eval_queries.rs.html#92-105">mk_eval_cx</a>, <a href="eval_queries.rs.html#108">op_to_const</a>};
 <span class="kw">use </span><a href="machine.rs.html#162-163"><span class="kw">super</span>::machine::CompileTimeEvalContext</a>;
-<span class="kw">use super</span>::{<a href="mod.rs.html#39-43">ValTreeCreationError</a>, <a href="mod.rs.html#44">ValTreeCreationResult</a>, <a href="mod.rs.html#37">VALTREE_MAX_NODES</a>};
+<span class="kw">use super</span>::{<a href="mod.rs.html#40-44">ValTreeCreationError</a>, <a href="mod.rs.html#45">ValTreeCreationResult</a>, <a href="mod.rs.html#38">VALTREE_MAX_NODES</a>};
 <span class="kw">use </span><a href="machine.rs.html#87-90"><span class="kw">crate</span>::const_eval::CanAccessStatics</a>;
-<span class="kw">use </span><a href="../interpret/place.rs.html#108-116"><span class="kw">crate</span>::interpret::MPlaceTy</a>;
+<span class="kw">use </span><a href="../interpret/place.rs.html#107-115"><span class="kw">crate</span>::interpret::MPlaceTy</a>;
 <span class="kw">use </span><span class="kw">crate</span>::interpret::{
-    <a href="../interpret/intern.rs.html#325">intern_const_alloc_recursive</a>, <a href="../../../rustc_const_eval/interpret/enum.ConstValue.html">ConstValue</a>, <a href="../interpret/operand.rs.html#91-94">ImmTy</a>, <a href="../interpret/operand.rs.html#29-37">Immediate</a>, <a href="../interpret/intern.rs.html#313-319">InternKind</a>, <a href="../interpret/place.rs.html#26-31">MemPlaceMeta</a>,
-    <a href="../interpret/memory.rs.html#31-38">MemoryKind</a>, <a href="../interpret/place.rs.html#229-237">PlaceTy</a>, <a href="../interpret/projection.rs.html#23-89">Projectable</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>,
+    <a href="../interpret/intern.rs.html#325">intern_const_alloc_recursive</a>, <a href="../interpret/operand.rs.html#96-99">ImmTy</a>, <a href="../interpret/operand.rs.html#28-36">Immediate</a>, <a href="../interpret/intern.rs.html#313-319">InternKind</a>, <a href="../interpret/place.rs.html#25-30">MemPlaceMeta</a>, <a href="../interpret/memory.rs.html#31-38">MemoryKind</a>, <a href="../interpret/place.rs.html#228-236">PlaceTy</a>,
+    <a href="../interpret/projection.rs.html#23-89">Projectable</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>,
 };
+<span class="kw">use </span><a href="../../../rustc_middle/mir/index.html">rustc_middle::mir</a>;
 <span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../rustc_middle/ty/layout/struct.LayoutCx.html">LayoutCx</a>, <a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/type.TyAndLayout.html">TyAndLayout</a>};
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/consts/int/struct.ScalarInt.html">ScalarInt</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">rustc_span::source_map::DUMMY_SP</a>;
-<span class="kw">use </span><a href="../../../rustc_abi/struct.VariantIdx.html">rustc_target::abi::VariantIdx</a>;
+<span class="kw">use </span><a href="../../../rustc_target/abi/struct.VariantIdx.html">rustc_target::abi::VariantIdx</a>;
 
 <span class="attr">#[instrument(skip(ecx), level = <span class="string">&quot;debug&quot;</span>)]
 </span><span class="kw">fn </span><a href="../../../rustc_const_eval/const_eval/valtrees/fn.branches.html">branches</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     ecx: <span class="kw-2">&amp;</span>CompileTimeEvalContext&lt;<span class="lifetime">&#39;tcx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     place: <span class="kw-2">&amp;</span>MPlaceTy&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     n: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
-    variant: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>&gt;,
+    variant: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>&gt;,
     num_nodes: <span class="kw-2">&amp;mut </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
 ) -&gt; ValTreeCreationResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">let </span>place = <span class="kw">match </span>variant {
@@ -539,7 +540,7 @@
         <span class="comment">// FIXME(oli-obk): we can probably encode closures just like structs
         </span>| ty::Closure(..)
         | ty::Generator(..)
-        | ty::GeneratorWitness(..) |ty::GeneratorWitnessMIR(..)=&gt; <span class="prelude-val">Err</span>(ValTreeCreationError::NonSupportedType),
+        | ty::GeneratorWitness(..) =&gt; <span class="prelude-val">Err</span>(ValTreeCreationError::NonSupportedType),
     }
 }
 
@@ -549,31 +550,31 @@
     layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     valtree: ty::ValTree&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <a href="../interpret/place.rs.html#26-31">MemPlaceMeta</a> {
+) -&gt; <a href="../interpret/place.rs.html#25-30">MemPlaceMeta</a> {
     <span class="kw">if </span>layout.is_sized() {
-        <span class="kw">return </span><a href="../interpret/place.rs.html#30">MemPlaceMeta::None</a>;
+        <span class="kw">return </span><a href="../interpret/place.rs.html#29">MemPlaceMeta::None</a>;
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>last_valtree = <a href="#162">valtree</a>;
+    <span class="kw">let </span><span class="kw-2">mut </span>last_valtree = <a href="#163">valtree</a>;
     <span class="comment">// Traverse the type, and update `last_valtree` as we go.
-    </span><span class="kw">let </span>tail = <a href="#163">tcx</a>.struct_tail_with_normalize(
-        <a href="#161">layout</a>.ty,
-        |ty| <a href="#173">ty</a>,
+    </span><span class="kw">let </span>tail = <a href="#164">tcx</a>.struct_tail_with_normalize(
+        <a href="#162">layout</a>.ty,
+        |ty| <a href="#174">ty</a>,
         || {
-            <span class="kw">let </span>branches = <a href="#169">last_valtree</a>.unwrap_branch();
-            <a href="#169">last_valtree</a> = <span class="kw-2">*</span><a href="#175">branches</a>.last().unwrap();
+            <span class="kw">let </span>branches = <a href="#170">last_valtree</a>.unwrap_branch();
+            <a href="#170">last_valtree</a> = <span class="kw-2">*</span><a href="#176">branches</a>.last().unwrap();
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>branches, <span class="question-mark">?</span>last_valtree);
         },
     );
     <span class="comment">// Sanity-check that we got a tail we support.
-    </span><span class="kw">match </span><a href="#171">tail</a>.kind() {
+    </span><span class="kw">match </span><a href="#172">tail</a>.kind() {
         ty::Slice(..) | ty::Str =&gt; {}
         <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unsized tail of a valtree must be Slice or Str&quot;</span>),
     };
 
     <span class="comment">// Get the number of elements in the unsized field.
-    </span><span class="kw">let </span>num_elems = <a href="#169">last_valtree</a>.unwrap_branch().len();
-    <a href="../interpret/place.rs.html#28">MemPlaceMeta::Meta</a>(Scalar::from_target_usize(<a href="#187">num_elems</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>, <span class="kw-2">&amp;</span><a href="#163">tcx</a>))
+    </span><span class="kw">let </span>num_elems = <a href="#170">last_valtree</a>.unwrap_branch().len();
+    <a href="../interpret/place.rs.html#27">MemPlaceMeta::Meta</a>(Scalar::from_target_usize(<a href="#188">num_elems</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a>, <span class="kw-2">&amp;</span><a href="#164">tcx</a>))
 }
 
 <span class="attr">#[instrument(skip(ecx), level = <span class="string">&quot;debug&quot;</span>, ret)]
@@ -594,7 +595,7 @@
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     param_env_ty: ty::ParamEnvAnd&lt;<span class="lifetime">&#39;tcx</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     valtree: ty::ValTree&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; ConstValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
+) -&gt; mir::ConstValue&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="comment">// Basic idea: We directly construct `Scalar` values from trivial `ValTree`s
     // (those for constants with type bool, int, uint, float or char).
     // For all other types we create an `MPlace` and fill that by walking
@@ -607,10 +608,10 @@
     <span class="kw">match </span>ty.kind() {
         ty::FnDef(..) =&gt; {
             <span class="macro">assert!</span>(valtree.unwrap_branch().is_empty());
-            ConstValue::ZeroSized
+            mir::ConstValue::ZeroSized
         }
         ty::Bool | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) | ty::Float(<span class="kw">_</span>) | ty::Char =&gt; <span class="kw">match </span>valtree {
-            ty::ValTree::Leaf(scalar_int) =&gt; ConstValue::Scalar(Scalar::Int(scalar_int)),
+            ty::ValTree::Leaf(scalar_int) =&gt; mir::ConstValue::Scalar(Scalar::Int(scalar_int)),
             ty::ValTree::Branch(<span class="kw">_</span>) =&gt; <span class="macro">bug!</span>(
                 <span class="string">&quot;ValTrees for Bool, Int, Uint, Float or Char should have the form ValTree::Leaf&quot;
             </span>),
@@ -625,7 +626,7 @@
             <span class="kw">let </span>layout = tcx.layout_of(param_env_ty).unwrap();
             <span class="kw">if </span>layout.is_zst() {
                 <span class="comment">// Fast path to avoid some allocations.
-                </span><span class="kw">return </span>ConstValue::ZeroSized;
+                </span><span class="kw">return </span>mir::ConstValue::ZeroSized;
             }
             <span class="kw">if </span>layout.abi.is_scalar()
                 &amp;&amp; (<span class="macro">matches!</span>(ty.kind(), ty::Tuple(<span class="kw">_</span>))
@@ -667,7 +668,6 @@
         | ty::Closure(..)
         | ty::Generator(..)
         | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
         | ty::FnPtr(<span class="kw">_</span>)
         | ty::RawPtr(<span class="kw">_</span>)
         | ty::Str
@@ -681,15 +681,15 @@
     ecx: <span class="kw-2">&amp;mut </span>CompileTimeEvalContext&lt;<span class="lifetime">&#39;tcx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     valtree: ty::ValTree&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     pointee_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <a href="../interpret/operand.rs.html#29-37">Immediate</a> {
-    <span class="kw">let </span>pointee_place = <a href="#191">create_valtree_place</a>(<a href="#293">ecx</a>, <a href="#293">ecx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#295">pointee_ty</a>).unwrap(), <a href="#294">valtree</a>);
+) -&gt; <a href="../interpret/operand.rs.html#28-36">Immediate</a> {
+    <span class="kw">let </span>pointee_place = <a href="#192">create_valtree_place</a>(<a href="#293">ecx</a>, <a href="#293">ecx</a>.<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(<a href="#295">pointee_ty</a>).unwrap(), <a href="#294">valtree</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>pointee_place);
 
     <a href="#307">valtree_into_mplace</a>(<a href="#293">ecx</a>, <span class="kw-2">&amp;</span><a href="#297">pointee_place</a>, <a href="#294">valtree</a>);
     <a href="#386-388">dump_place</a>(<a href="#293">ecx</a>, <span class="kw-2">&amp;</span><a href="#297">pointee_place</a>);
     <a href="../interpret/intern.rs.html#325">intern_const_alloc_recursive</a>(<a href="#293">ecx</a>, <a href="../interpret/intern.rs.html#317">InternKind::Constant</a>, <span class="kw-2">&amp;</span><a href="#297">pointee_place</a>).unwrap();
 
-    <a href="#297">pointee_place</a>.<a href="../interpret/place.rs.html#174-176">to_ref</a>(<span class="kw-2">&amp;</span><a href="#293">ecx</a>.tcx)
+    <a href="#297">pointee_place</a>.<a href="../interpret/place.rs.html#173-175">to_ref</a>(<span class="kw-2">&amp;</span><a href="#293">ecx</a>.tcx)
 }
 
 <span class="attr">#[instrument(skip(ecx), level = <span class="string">&quot;debug&quot;</span>)]

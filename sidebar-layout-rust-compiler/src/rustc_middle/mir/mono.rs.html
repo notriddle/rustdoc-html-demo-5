@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/mir/mono.rs`."><title>mono.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/mir/mono.rs`."><title>mono.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -552,8 +552,8 @@
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
 <a href="#554" id="554">554</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::dep_graph::{<a href="../dep_graph/dep_node.rs.html#178">DepNode</a>, <a href="../../../rustc_middle/dep_graph/struct.WorkProduct.html">WorkProduct</a>, <a href="../../../rustc_middle/dep_graph/struct.WorkProductId.html">WorkProductId</a>};
-<span class="kw">use </span><span class="kw">crate</span>::ty::{<a href="../ty/generic_args.rs.html#245">GenericArgs</a>, <a href="../ty/instance.rs.html#26-29">Instance</a>, <a href="../ty/instance.rs.html#33-114">InstanceDef</a>, <a href="../ty/mod.rs.html#2724-2727">SymbolName</a>, <a href="../ty/context.rs.html#510-512">TyCtxt</a>};
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::dep_graph::{<a href="../../../rustc_middle/dep_graph/struct.DepNode.html">DepNode</a>, <a href="../../../rustc_middle/dep_graph/struct.WorkProduct.html">WorkProduct</a>, <a href="../../../rustc_middle/dep_graph/struct.WorkProductId.html">WorkProductId</a>};
+<span class="kw">use </span><span class="kw">crate</span>::ty::{<a href="../ty/generic_args.rs.html#245">GenericArgs</a>, <a href="../ty/instance.rs.html#26-29">Instance</a>, <a href="../ty/instance.rs.html#33-114">InstanceDef</a>, <a href="../ty/mod.rs.html#2686-2689">SymbolName</a>, <a href="../ty/context.rs.html#510-512">TyCtxt</a>};
 <span class="kw">use </span><a href="../../../rustc_attr/builtin/enum.InlineAttr.html">rustc_attr::InlineAttr</a>;
 <span class="kw">use </span><a href="../../../rustc_data_structures/base_n/index.html">rustc_data_structures::base_n</a>;
 <span class="kw">use </span><a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">rustc_data_structures::fingerprint::Fingerprint</a>;
@@ -619,7 +619,7 @@
                     <span class="comment">// &quot;Normal&quot; functions size estimate: the number of
                     // statements, plus one for the terminator.
                     </span><a href="../ty/instance.rs.html#40">InstanceDef::Item</a>(..) | <a href="../ty/instance.rs.html#98">InstanceDef::DropGlue</a>(..) =&gt; {
-                        <span class="kw">let </span>mir = <a href="#61">tcx</a>.<a href="../ty/mod.rs.html#2353">instance_mir</a>(<a href="#63">instance</a>.def);
+                        <span class="kw">let </span>mir = <a href="#61">tcx</a>.<a href="../ty/mod.rs.html#2315">instance_mir</a>(<a href="#63">instance</a>.def);
                         <a href="#68">mir</a>.basic_blocks.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|bb| <a href="#69">bb</a>.statements.len() + <span class="number">1</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>()
                     }
                     <span class="comment">// Other compiler-generated shims size estimate: 1
@@ -643,8 +643,8 @@
 
     <span class="kw">pub fn </span>symbol_name(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; SymbolName&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">match </span><span class="kw-2">*</span><span class="self"><a href="#90">self</a> </span>{
-            <a href="#45">MonoItem::Fn</a>(instance) =&gt; <a href="#90">tcx</a>.<a href="../query/mod.rs.html#2217">symbol_name</a>(<a href="#92">instance</a>),
-            <a href="#46">MonoItem::Static</a>(def_id) =&gt; <a href="#90">tcx</a>.<a href="../query/mod.rs.html#2217">symbol_name</a>(Instance::mono(<a href="#90">tcx</a>, <a href="#93">def_id</a>)),
+            <a href="#45">MonoItem::Fn</a>(instance) =&gt; <a href="#90">tcx</a>.<a href="../query/mod.rs.html#2207">symbol_name</a>(<a href="#92">instance</a>),
+            <a href="#46">MonoItem::Static</a>(def_id) =&gt; <a href="#90">tcx</a>.<a href="../query/mod.rs.html#2207">symbol_name</a>(Instance::mono(<a href="#90">tcx</a>, <a href="#93">def_id</a>)),
             <a href="#47">MonoItem::GlobalAsm</a>(item_id) =&gt; {
                 SymbolName::new(<a href="#90">tcx</a>, <span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;global_asm_{:?}&quot;</span>, item_id.owner_id))
             }
@@ -662,7 +662,7 @@
 
         <span class="kw">match </span><span class="kw-2">*</span><span class="self"><a href="#100">self</a> </span>{
             <a href="#45">MonoItem::Fn</a>(<span class="kw-2">ref </span>instance) =&gt; {
-                <span class="kw">let </span>entry_def_id = <a href="#100">tcx</a>.<a href="../query/mod.rs.html#2217">entry_fn</a>(()).map(|(id, <span class="kw">_</span>)| <a href="#111">id</a>);
+                <span class="kw">let </span>entry_def_id = <a href="#100">tcx</a>.<a href="../query/mod.rs.html#2207">entry_fn</a>(()).map(|(id, <span class="kw">_</span>)| <a href="#111">id</a>);
                 <span class="comment">// If this function isn&#39;t inlined or otherwise has an extern
                 // indicator, then we&#39;ll be creating a globally shared version.
                 </span><span class="kw">if </span>tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
@@ -684,7 +684,7 @@
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                </span><span class="kw">match </span><a href="#100">tcx</a>.<a href="../query/mod.rs.html#2217">codegen_fn_attrs</a>(<a href="#110">instance</a>.<a href="../ty/instance.rs.html#363-365">def_id</a>()).inline {
+                </span><span class="kw">match </span><a href="#100">tcx</a>.<a href="../query/mod.rs.html#2207">codegen_fn_attrs</a>(<a href="#110">instance</a>.<a href="../ty/instance.rs.html#363-365">def_id</a>()).inline {
                     InlineAttr::Always =&gt; <a href="#40">InstantiationMode::LocalCopy</a>,
                     <span class="kw">_ </span>=&gt; <a href="#23-36">InstantiationMode::GloballyShared</a> { may_conflict: <span class="bool-val">true </span>},
                 }
@@ -702,7 +702,7 @@
             <a href="#47">MonoItem::GlobalAsm</a>(..) =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
         };
 
-        <span class="kw">let </span>codegen_fn_attrs = <a href="#144">tcx</a>.<a href="../query/mod.rs.html#2217">codegen_fn_attrs</a>(<a href="#145">def_id</a>);
+        <span class="kw">let </span>codegen_fn_attrs = <a href="#144">tcx</a>.<a href="../query/mod.rs.html#2207">codegen_fn_attrs</a>(<a href="#145">def_id</a>);
         <a href="#151">codegen_fn_attrs</a>.linkage
     }
 
@@ -740,7 +740,7 @@
             </span><a href="#47">MonoItem::GlobalAsm</a>(..) =&gt; <span class="kw">return </span><span class="bool-val">true</span>,
         };
 
-        !<a href="#180">tcx</a>.<a href="../query/mod.rs.html#2217">subst_and_check_impossible_predicates</a>((<a href="#182">def_id</a>, <span class="kw-2">&amp;</span><a href="#182">args</a>))
+        !<a href="#180">tcx</a>.<a href="../query/mod.rs.html#2207">subst_and_check_impossible_predicates</a>((<a href="#182">def_id</a>, <span class="kw-2">&amp;</span><a href="#182">args</a>))
     }
 
     <span class="kw">pub fn </span>local_span(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt; {
@@ -749,12 +749,12 @@
             <a href="#46">MonoItem::Static</a>(def_id) =&gt; <a href="#195">def_id</a>.as_local(),
             <a href="#47">MonoItem::GlobalAsm</a>(item_id) =&gt; <span class="prelude-val">Some</span>(<a href="#196">item_id</a>.owner_id.def_id),
         }
-        .map(|def_id| <a href="#192">tcx</a>.<a href="../query/mod.rs.html#2217">def_span</a>(<a href="#198">def_id</a>))
+        .map(|def_id| <a href="#192">tcx</a>.<a href="../query/mod.rs.html#2207">def_span</a>(<a href="#198">def_id</a>))
     }
 
     <span class="comment">// Only used by rustc_codegen_cranelift
-    </span><span class="kw">pub fn </span>codegen_dep_node(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../dep_graph/dep_node.rs.html#178">DepNode</a> {
-        <a href="../dep_graph/dep_node.rs.html#171-176"><span class="kw">crate</span>::dep_graph::make_compile_mono_item</a>(<a href="#202">tcx</a>, <a class="self" href="#202">self</a>)
+    </span><span class="kw">pub fn </span>codegen_dep_node(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../../rustc_middle/dep_graph/struct.DepNode.html">DepNode</a> {
+        <a href="../dep_graph/dep_node.rs.html#153-158"><span class="kw">crate</span>::dep_graph::make_compile_mono_item</a>(<a href="#202">tcx</a>, <a class="self" href="#202">self</a>)
     }
 
     <span class="doccomment">/// Returns the item&#39;s `CrateNum`
@@ -974,8 +974,8 @@
         <a href="#418">items</a>
     }
 
-    <span class="kw">pub fn </span>codegen_dep_node(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../dep_graph/dep_node.rs.html#178">DepNode</a> {
-        <a href="../dep_graph/dep_node.rs.html#165-167"><span class="kw">crate</span>::dep_graph::make_compile_codegen_unit</a>(<a href="#423">tcx</a>, <a class="self" href="#423">self</a>.<a href="#303-305">name</a>())
+    <span class="kw">pub fn </span>codegen_dep_node(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../../rustc_middle/dep_graph/struct.DepNode.html">DepNode</a> {
+        <a href="../dep_graph/dep_node.rs.html#147-149"><span class="kw">crate</span>::dep_graph::make_compile_codegen_unit</a>(<a href="#423">tcx</a>, <a class="self" href="#423">self</a>.<a href="#303-305">name</a>())
     }
 }
 
@@ -1080,13 +1080,13 @@
             // local crate&#39;s ID. Otherwise there can be collisions between CGUs
             // instantiating stuff for upstream crates.
             </span><span class="kw">let </span>local_crate_id = <span class="kw">if </span>cnum != LOCAL_CRATE {
-                <span class="kw">let </span>local_stable_crate_id = <a href="#523">tcx</a>.<a href="../ty/context.rs.html#852-858">stable_crate_id</a>(<a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a>);
+                <span class="kw">let </span>local_stable_crate_id = <a href="#523">tcx</a>.<a href="../ty/context.rs.html#858-864">stable_crate_id</a>(<a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a>);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;-in-{}.{:08x}&quot;</span>, tcx.crate_name(LOCAL_CRATE), local_stable_crate_id)
             } <span class="kw">else </span>{
                 String::new()
             };
 
-            <span class="kw">let </span>stable_crate_id = <a href="#523">tcx</a>.<a href="../ty/context.rs.html#852-858">stable_crate_id</a>(<a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a>);
+            <span class="kw">let </span>stable_crate_id = <a href="#523">tcx</a>.<a href="../ty/context.rs.html#858-864">stable_crate_id</a>(<a href="../../../rustc_span/def_id/constant.LOCAL_CRATE.html">LOCAL_CRATE</a>);
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{}.{:08x}{}&quot;</span>, tcx.crate_name(cnum), stable_crate_id, local_crate_id)
         });
 

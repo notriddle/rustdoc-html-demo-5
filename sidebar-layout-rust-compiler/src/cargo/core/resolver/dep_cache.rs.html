@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cargo/core/resolver/dep_cache.rs`."><title>dep_cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="cargo" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/cargo/core/resolver/dep_cache.rs`."><title>dep_cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="cargo" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -584,7 +584,6 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! There are 2 sources of facts for the resolver:
 //!
 //! - The `Registry` tells us for a `Dependency` what versions are available to fulfil it.
@@ -718,9 +717,8 @@
                 .iter()
                 .filter(|(spec, <span class="kw">_</span>)| spec.matches(summary.package_id()));
 
-            <span class="kw">let </span>(spec, dep) = <span class="kw">match </span>potential_matches.next() {
-                <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
-                <span class="prelude-val">Some</span>(replacement) =&gt; replacement,
+            <span class="kw">let </span><span class="prelude-val">Some</span>((spec, dep)) = potential_matches.next() <span class="kw">else </span>{
+                <span class="kw">continue</span>;
             };
             <span class="macro">debug!</span>(
                 <span class="string">&quot;found an override for {} {}&quot;</span>,
@@ -803,13 +801,13 @@
         };
         <span class="kw">let </span>first_version = <a href="#109">first_minimal_version</a>;
         <a class="self" href="#107">self</a>.version_prefs
-            .<a href="version_prefs.rs.html#45-77">sort_summaries</a>(<span class="kw-2">&amp;mut </span><a href="#116">ret</a>, <a href="#212">ordering</a>, <a href="#217">first_version</a>);
+            .<a href="version_prefs.rs.html#45-77">sort_summaries</a>(<span class="kw-2">&amp;mut </span><a href="#116">ret</a>, <a href="#211">ordering</a>, <a href="#216">first_version</a>);
 
         <span class="kw">let </span>out = Poll::Ready(Rc::new(<a href="#116">ret</a>));
 
-        <a class="self" href="#107">self</a>.registry_cache.insert(<a href="#111">registry_cache_key</a>, <a href="#221">out</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
+        <a class="self" href="#107">self</a>.registry_cache.insert(<a href="#111">registry_cache_key</a>, <a href="#220">out</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
 
-        <a href="#221">out</a>.map(Result::Ok)
+        <a href="#220">out</a>.map(Result::Ok)
     }
 
     <span class="doccomment">/// Find out what dependencies will be added by activating `candidate`,
@@ -826,11 +824,11 @@
     ) -&gt; ActivateResult&lt;Rc&lt;(HashSet&lt;<a href="../../util/interning.rs.html#19-21">InternedString</a>&gt;, Rc&lt;Vec&lt;<a href="types.rs.html#266">DepInfo</a>&gt;&gt;)&gt;&gt; {
         <span class="comment">// if we have calculated a result before, then we can just return it,
         // as it is a &quot;pure&quot; query of its arguments.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(out) = <span class="self"><a href="#233">self</a>
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(out) = <span class="self"><a href="#232">self</a>
             </span>.summary_cache
-            .get(<span class="kw-2">&amp;</span>(<a href="#235">parent</a>, <a href="#236">candidate</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#237">opts</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()))
+            .get(<span class="kw-2">&amp;</span>(<a href="#234">parent</a>, <a href="#235">candidate</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#236">opts</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()))
         {
-            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#242">out</a>.<span class="number">0</span>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#241">out</a>.<span class="number">0</span>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
         }
         <span class="comment">// First, figure out our set of dependencies based on the requested set
         // of features. This also calculates what features we&#39;re going to enable
@@ -866,18 +864,18 @@
         // dependencies with more candidates. This way if the dependency with
         // only one candidate can&#39;t be resolved we don&#39;t have to do a bunch of
         // work before we figure that out.
-        </span><a href="#256">deps</a>.sort_by_key(|(<span class="kw">_</span>, a, <span class="kw">_</span>)| <a href="#282">a</a>.len());
+        </span><a href="#255">deps</a>.sort_by_key(|(<span class="kw">_</span>, a, <span class="kw">_</span>)| <a href="#281">a</a>.len());
 
-        <span class="kw">let </span>out = Rc::new((<a href="#251">used_features</a>, Rc::new(<a href="#256">deps</a>)));
+        <span class="kw">let </span>out = Rc::new((<a href="#250">used_features</a>, Rc::new(<a href="#255">deps</a>)));
 
         <span class="comment">// If we succeed we add the result to the cache so we can use it again next time.
         // We don&#39;t cache the failure cases as they don&#39;t impl Clone.
-        </span><a class="self" href="#233">self</a>.summary_cache.insert(
-            (<a href="#235">parent</a>, <a href="#236">candidate</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#237">opts</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
-            (<a href="#284">out</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#255">all_ready</a>),
+        </span><a class="self" href="#232">self</a>.summary_cache.insert(
+            (<a href="#234">parent</a>, <a href="#235">candidate</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#236">opts</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()),
+            (<a href="#283">out</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#254">all_ready</a>),
         );
 
-        <span class="prelude-val">Ok</span>(<a href="#284">out</a>)
+        <span class="prelude-val">Ok</span>(<a href="#283">out</a>)
     }
 }
 
@@ -889,8 +887,8 @@
     opts: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="types.rs.html#139-147">ResolveOpts</a>,
 ) -&gt; ActivateResult&lt;(HashSet&lt;<a href="../../util/interning.rs.html#19-21">InternedString</a>&gt;, Vec&lt;(<a href="../dependency.rs.html#20-22">Dependency</a>, <a href="types.rs.html#104">FeaturesSet</a>)&gt;)&gt; {
     <span class="comment">// First, filter by dev-dependencies.
-    </span><span class="kw">let </span>deps = <a href="#301">s</a>.<a href="../summary.rs.html#77-79">dependencies</a>();
-    <span class="kw">let </span>deps = <a href="#305">deps</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|d| <a href="#306">d</a>.<a href="../dependency.rs.html#378-383">is_transitive</a>() || <a href="#302">opts</a>.dev_deps);
+    </span><span class="kw">let </span>deps = <a href="#300">s</a>.<a href="../summary.rs.html#77-79">dependencies</a>();
+    <span class="kw">let </span>deps = <a href="#304">deps</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|d| <a href="#305">d</a>.<a href="../dependency.rs.html#378-383">is_transitive</a>() || <a href="#301">opts</a>.dev_deps);
 
     <span class="kw">let </span>reqs = build_requirements(parent, s, opts)<span class="question-mark">?</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>ret = Vec::new();
@@ -930,7 +928,7 @@
         }
     }
 
-    <span class="prelude-val">Ok</span>((<a href="#308">reqs</a>.<a href="#444-446">into_features</a>(), <a href="#309">ret</a>))
+    <span class="prelude-val">Ok</span>((<a href="#307">reqs</a>.<a href="#443-445">into_features</a>(), <a href="#308">ret</a>))
 }
 
 <span class="doccomment">/// Takes requested features for a single package from the input `ResolveOpts` and
@@ -941,18 +939,18 @@
     s: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../summary.rs.html#18-20">Summary</a>,
     opts: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="types.rs.html#139-147">ResolveOpts</a>,
 ) -&gt; ActivateResult&lt;Requirements&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>reqs = Requirements::new(<a href="#354">s</a>);
+    <span class="kw">let </span><span class="kw-2">mut </span>reqs = Requirements::new(<a href="#353">s</a>);
 
     <span class="kw">let </span>handle_default = |uses_default_features, reqs: <span class="kw-2">&amp;mut </span>Requirements&lt;<span class="lifetime">&#39;_</span>&gt;| {
         <span class="kw">if </span>uses_default_features &amp;&amp; s.features().contains_key(<span class="string">&quot;default&quot;</span>) {
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <a href="#359">reqs</a>.<a href="#479-498">require_feature</a>(InternedString::new(<span class="string">&quot;default&quot;</span>)) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#361">e</a>.<a href="#518-586">into_activate_error</a>(<a href="#353">parent</a>, <a href="#354">s</a>));
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <a href="#358">reqs</a>.<a href="#478-497">require_feature</a>(InternedString::new(<span class="string">&quot;default&quot;</span>)) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#360">e</a>.<a href="#517-585">into_activate_error</a>(<a href="#352">parent</a>, <a href="#353">s</a>));
             }
         }
         <span class="prelude-val">Ok</span>(())
     };
 
-    <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#355">opts</a>.features {
+    <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#354">opts</a>.features {
         <a href="features.rs.html#240">RequestedFeatures::CliFeatures</a>(<a href="features.rs.html#252-259">CliFeatures</a> {
             features,
             all_features,
@@ -986,7 +984,7 @@
         }
     }
 
-    <span class="prelude-val">Ok</span>(<a href="#357">reqs</a>)
+    <span class="prelude-val">Ok</span>(<a href="#356">reqs</a>)
 }
 
 <span class="doccomment">/// Set of feature and dependency requirements for a package.
@@ -1021,15 +1019,15 @@
 
 <span class="kw">impl </span>Requirements&lt;<span class="lifetime">&#39;_</span>&gt; {
     <span class="kw">fn </span>new(summary: <span class="kw-2">&amp;</span><a href="../summary.rs.html#18-20">Summary</a>) -&gt; Requirements&lt;<span class="lifetime">&#39;_</span>&gt; {
-        <a href="#407-417">Requirements</a> {
-            <a href="#436">summary</a>,
+        <a href="#406-416">Requirements</a> {
+            <a href="#435">summary</a>,
             deps: HashMap::new(),
             features: HashSet::new(),
         }
     }
 
     <span class="kw">fn </span>into_features(<span class="self">self</span>) -&gt; HashSet&lt;<a href="../../util/interning.rs.html#19-21">InternedString</a>&gt; {
-        <a class="self" href="#444">self</a>.features
+        <a class="self" href="#443">self</a>.features
     }
 
     <span class="kw">fn </span>require_dep_feature(
@@ -1037,7 +1035,7 @@
         package: <a href="../../util/interning.rs.html#19-21">InternedString</a>,
         feat: <a href="../../util/interning.rs.html#19-21">InternedString</a>,
         weak: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="#423-433">RequirementError</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="#422-432">RequirementError</a>&gt; {
         <span class="comment">// If `package` is indeed an optional dependency then we activate the
         // feature named `package`, but otherwise if `package` is a required
         // dependency then there&#39;s no feature associated with it.
@@ -1055,22 +1053,22 @@
                 <span class="self">self</span>.require_feature(package)<span class="question-mark">?</span>;
             }
         }
-        <a class="self" href="#449">self</a>.deps.entry(<a href="#450">package</a>).or_default().insert(<a href="#451">feat</a>);
+        <a class="self" href="#448">self</a>.deps.entry(<a href="#449">package</a>).or_default().insert(<a href="#450">feat</a>);
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn </span>require_dependency(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pkg: <a href="../../util/interning.rs.html#19-21">InternedString</a>) {
-        <a class="self" href="#475">self</a>.deps.entry(<a href="#475">pkg</a>).or_default();
+        <a class="self" href="#474">self</a>.deps.entry(<a href="#474">pkg</a>).or_default();
     }
 
-    <span class="kw">fn </span>require_feature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, feat: <a href="../../util/interning.rs.html#19-21">InternedString</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="#423-433">RequirementError</a>&gt; {
+    <span class="kw">fn </span>require_feature(<span class="kw-2">&amp;mut </span><span class="self">self</span>, feat: <a href="../../util/interning.rs.html#19-21">InternedString</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="#422-432">RequirementError</a>&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.features.insert(feat) {
             <span class="comment">// Already seen this feature.
             </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
 
-        <span class="kw">let </span><span class="prelude-val">Some</span>(fvs) = <a class="self" href="#479">self</a>.summary.<a href="../summary.rs.html#80-82">features</a>().get(<span class="kw-2">&amp;</span><a href="#479">feat</a>) <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#425">RequirementError::MissingFeature</a>(<a href="#479">feat</a>));
+        <span class="kw">let </span><span class="prelude-val">Some</span>(fvs) = <a class="self" href="#478">self</a>.summary.<a href="../summary.rs.html#80-82">features</a>().get(<span class="kw-2">&amp;</span><a href="#478">feat</a>) <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#424">RequirementError::MissingFeature</a>(<a href="#478">feat</a>));
         };
 
         <span class="kw">for </span>fv <span class="kw">in </span>fvs {
@@ -1084,10 +1082,10 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>require_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fv: <span class="kw-2">&amp;</span><a href="../summary.rs.html#362-376">FeatureValue</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="#423-433">RequirementError</a>&gt; {
-        <span class="kw">match </span><a href="#500">fv</a> {
+    <span class="kw">fn </span>require_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fv: <span class="kw-2">&amp;</span><a href="../summary.rs.html#362-376">FeatureValue</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="#422-432">RequirementError</a>&gt; {
+        <span class="kw">match </span><a href="#499">fv</a> {
             <a href="../summary.rs.html#364">FeatureValue::Feature</a>(feat) =&gt; <span class="self">self</span>.require_feature(<span class="kw-2">*</span>feat)<span class="question-mark">?</span>,
-            <a href="../summary.rs.html#366">FeatureValue::Dep</a> { dep_name } =&gt; <a class="self" href="#500">self</a>.<a href="#475-477">require_dependency</a>(<span class="kw-2">*</span><a href="#503">dep_name</a>),
+            <a href="../summary.rs.html#366">FeatureValue::Dep</a> { dep_name } =&gt; <a class="self" href="#499">self</a>.<a href="#474-476">require_dependency</a>(<span class="kw-2">*</span><a href="#502">dep_name</a>),
             <a href="../summary.rs.html#368-375">FeatureValue::DepFeature</a> {
                 dep_name,
                 dep_feature,
@@ -1101,29 +1099,29 @@
     }
 }
 
-<span class="kw">impl </span><a href="#423-433">RequirementError</a> {
+<span class="kw">impl </span><a href="#422-432">RequirementError</a> {
     <span class="kw">fn </span>into_activate_error(<span class="self">self</span>, parent: <span class="prelude-ty">Option</span>&lt;<a href="../package_id.rs.html#21-23">PackageId</a>&gt;, summary: <span class="kw-2">&amp;</span><a href="../summary.rs.html#18-20">Summary</a>) -&gt; <a href="errors.rs.html#55-58">ActivateError</a> {
-        <span class="kw">match </span><span class="self"><a href="#518">self</a> </span>{
-            <a href="#425">RequirementError::MissingFeature</a>(feat) =&gt; {
-                <span class="kw">let </span>deps: Vec&lt;<span class="kw">_</span>&gt; = <a href="#518">summary</a>
+        <span class="kw">match </span><span class="self"><a href="#517">self</a> </span>{
+            <a href="#424">RequirementError::MissingFeature</a>(feat) =&gt; {
+                <span class="kw">let </span>deps: Vec&lt;<span class="kw">_</span>&gt; = <a href="#517">summary</a>
                     .<a href="../summary.rs.html#77-79">dependencies</a>()
                     .iter()
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|dep| <a href="#524">dep</a>.<a href="../dependency.rs.html#209-211">name_in_toml</a>() == <a href="#520">feat</a>)
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|dep| <a href="#523">dep</a>.<a href="../dependency.rs.html#209-211">name_in_toml</a>() == <a href="#519">feat</a>)
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                 <span class="kw">if </span>deps.is_empty() {
-                    <span class="kw">return match </span><a href="#518">parent</a> {
+                    <span class="kw">return match </span><a href="#517">parent</a> {
                         <span class="prelude-val">None </span>=&gt; <a href="errors.rs.html#56">ActivateError::Fatal</a>(<a class="macro" href="https://docs.rs/anyhow/1.0.75/anyhow/macro.anyhow.html">anyhow::format_err!</a>(
                             <span class="string">&quot;Package `{}` does not have the feature `{}`&quot;</span>,
                             summary.package_id(),
                             feat
                         )),
                         <span class="prelude-val">Some</span>(p) =&gt; {
-                            <a href="errors.rs.html#57">ActivateError::Conflict</a>(<a href="#533">p</a>, <a href="types.rs.html#288">ConflictReason::MissingFeatures</a>(<a href="#520">feat</a>))
+                            <a href="errors.rs.html#57">ActivateError::Conflict</a>(<a href="#532">p</a>, <a href="types.rs.html#288">ConflictReason::MissingFeatures</a>(<a href="#519">feat</a>))
                         }
                     };
                 }
                 <span class="kw">if </span>deps.iter().any(|dep| dep.is_optional()) {
-                    <span class="kw">match </span><a href="#518">parent</a> {
+                    <span class="kw">match </span><a href="#517">parent</a> {
                         <span class="prelude-val">None </span>=&gt; <a href="errors.rs.html#56">ActivateError::Fatal</a>(<a class="macro" href="https://docs.rs/anyhow/1.0.75/anyhow/macro.anyhow.html">anyhow::format_err!</a>(
                             <span class="string">&quot;Package `{}` does not have feature `{}`. It has an optional dependency \
                              with that name, but that dependency uses the \&quot;dep:\&quot; \
@@ -1132,12 +1130,12 @@
                             feat
                         )),
                         <span class="prelude-val">Some</span>(p) =&gt; <a href="errors.rs.html#57">ActivateError::Conflict</a>(
-                            <a href="#547">p</a>,
-                            <a href="types.rs.html#298">ConflictReason::NonImplicitDependencyAsFeature</a>(<a href="#520">feat</a>),
+                            <a href="#546">p</a>,
+                            <a href="types.rs.html#298">ConflictReason::NonImplicitDependencyAsFeature</a>(<a href="#519">feat</a>),
                         ),
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">match </span><a href="#518">parent</a> {
+                    <span class="kw">match </span><a href="#517">parent</a> {
                         <span class="prelude-val">None </span>=&gt; <a href="errors.rs.html#56">ActivateError::Fatal</a>(<a class="macro" href="https://docs.rs/anyhow/1.0.75/anyhow/macro.anyhow.html">anyhow::format_err!</a>(
                             <span class="string">&quot;Package `{}` does not have feature `{}`. It has a required dependency \
                              with that name, but only optional dependencies can be used as features.&quot;</span>,
@@ -1145,14 +1143,14 @@
                             feat
                         )),
                         <span class="prelude-val">Some</span>(p) =&gt; <a href="errors.rs.html#57">ActivateError::Conflict</a>(
-                            <a href="#560">p</a>,
-                            <a href="types.rs.html#294">ConflictReason::RequiredDependencyAsFeature</a>(<a href="#520">feat</a>),
+                            <a href="#559">p</a>,
+                            <a href="types.rs.html#294">ConflictReason::RequiredDependencyAsFeature</a>(<a href="#519">feat</a>),
                         ),
                     }
                 }
             }
-            <a href="#427">RequirementError::MissingDependency</a>(dep_name) =&gt; {
-                <span class="kw">match </span><a href="#518">parent</a> {
+            <a href="#426">RequirementError::MissingDependency</a>(dep_name) =&gt; {
+                <span class="kw">match </span><a href="#517">parent</a> {
                     <span class="prelude-val">None </span>=&gt; <a href="errors.rs.html#56">ActivateError::Fatal</a>(<a class="macro" href="https://docs.rs/anyhow/1.0.75/anyhow/macro.anyhow.html">anyhow::format_err!</a>(
                         <span class="string">&quot;package `{}` does not have a dependency named `{}`&quot;</span>,
                         summary.package_id(),
@@ -1161,11 +1159,11 @@
                     <span class="comment">// This code path currently isn&#39;t used, since `foo/bar`
                     // and `dep:` syntax is not allowed in a dependency.
                     </span><span class="prelude-val">Some</span>(p) =&gt; {
-                        <a href="errors.rs.html#57">ActivateError::Conflict</a>(<a href="#576">p</a>, <a href="types.rs.html#288">ConflictReason::MissingFeatures</a>(<a href="#567">dep_name</a>))
+                        <a href="errors.rs.html#57">ActivateError::Conflict</a>(<a href="#575">p</a>, <a href="types.rs.html#288">ConflictReason::MissingFeatures</a>(<a href="#566">dep_name</a>))
                     }
                 }
             }
-            <a href="#432">RequirementError::Cycle</a>(feat) =&gt; <a href="errors.rs.html#56">ActivateError::Fatal</a>(<a class="macro" href="https://docs.rs/anyhow/1.0.75/anyhow/macro.anyhow.html">anyhow::format_err!</a>(
+            <a href="#431">RequirementError::Cycle</a>(feat) =&gt; <a href="errors.rs.html#56">ActivateError::Fatal</a>(<a class="macro" href="https://docs.rs/anyhow/1.0.75/anyhow/macro.anyhow.html">anyhow::format_err!</a>(
                 <span class="string">&quot;cyclic feature dependency: feature `{}` depends on itself&quot;</span>,
                 feat
             )),

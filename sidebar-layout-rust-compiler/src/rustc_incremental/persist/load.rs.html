@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_incremental/src/persist/load.rs`."><title>load.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_incremental" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_incremental/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_incremental"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_incremental/src/persist/load.rs`."><title>load.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_incremental" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_incremental/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_incremental"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -227,30 +227,24 @@
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
 <a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-<a href="#235" id="235">235</a>
-<a href="#236" id="236">236</a>
-<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Code to save/load the dep-graph from files.
 
 </span><span class="kw">use </span><a href="../lib.rs.html#20"><span class="kw">crate</span>::errors</a>;
 <span class="kw">use </span><a href="../../../rustc_data_structures/memmap/struct.Mmap.html">rustc_data_structures::memmap::Mmap</a>;
 <span class="kw">use </span><a href="../../../rustc_data_structures/unord/struct.UnordMap.html">rustc_data_structures::unord::UnordMap</a>;
-<span class="kw">use </span>rustc_middle::dep_graph::{<a href="../../../rustc_middle/dep_graph/type.SerializedDepGraph.html">SerializedDepGraph</a>, <a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a>};
+<span class="kw">use </span>rustc_middle::dep_graph::{<a href="../../../rustc_middle/dep_graph/type.DepGraph.html">DepGraph</a>, DepsType, <a href="../../../rustc_query_system/dep_graph/serialized/struct.SerializedDepGraph.html">SerializedDepGraph</a>, <a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a>};
 <span class="kw">use </span><a href="../../../rustc_middle/query/on_disk_cache/struct.OnDiskCache.html">rustc_middle::query::on_disk_cache::OnDiskCache</a>;
 <span class="kw">use </span><a href="../../../rustc_serialize/opaque/struct.MemDecoder.html">rustc_serialize::opaque::MemDecoder</a>;
 <span class="kw">use </span><a href="../../../rustc_serialize/serialize/trait.Decodable.html">rustc_serialize::Decodable</a>;
 <span class="kw">use </span><a href="../../../rustc_session/config/enum.IncrementalStateAssertion.html">rustc_session::config::IncrementalStateAssertion</a>;
-<span class="kw">use </span><a href="../../../rustc_session/session/struct.Session.html">rustc_session::Session</a>;
+<span class="kw">use </span>rustc_session::{<a href="../../../rustc_session/session/struct.Session.html">Session</a>, <a href="../../../rustc_span/def_id/struct.StableCrateId.html">StableCrateId</a>};
+<span class="kw">use </span>rustc_span::{<a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>, <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>};
 <span class="kw">use </span>std::path::{<a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>, <a href="https://doc.rust-lang.org/nightly/std/path/struct.PathBuf.html">PathBuf</a>};
 
 <span class="kw">use </span><a href="mod.rs.html#5"><span class="kw">super</span>::data</a>::<span class="kw-2">*</span>;
 <span class="kw">use </span><a href="mod.rs.html#7"><span class="kw">super</span>::file_format</a>;
 <span class="kw">use </span><a href="mod.rs.html#8"><span class="kw">super</span>::fs</a>::<span class="kw-2">*</span>;
+<span class="kw">use </span><a href="save.rs.html#150-184"><span class="kw">super</span>::save::build_dep_graph</a>;
 <span class="kw">use </span><a href="mod.rs.html#11"><span class="kw">super</span>::work_product</a>;
 
 <span class="attr">#[derive(Debug)]
@@ -273,114 +267,77 @@
     <span class="doccomment">/// Accesses the data returned in [`LoadResult::Ok`].
     </span><span class="kw">pub fn </span>open(<span class="self">self</span>, sess: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>) -&gt; T {
         <span class="comment">// Check for errors when using `-Zassert-incremental-state`
-        </span><span class="kw">match </span>(<a href="#37">sess</a>.opts.assert_incr_state, <span class="kw-2">&amp;</span><a class="self" href="#37">self</a>) {
-            (<span class="prelude-val">Some</span>(IncrementalStateAssertion::NotLoaded), <a href="#23-26">LoadResult::Ok</a> { .. }) =&gt; {
-                <a href="#37">sess</a>.emit_fatal(<a href="../errors.rs.html#303">errors::AssertNotLoaded</a>);
+        </span><span class="kw">match </span>(<a href="#39">sess</a>.opts.assert_incr_state, <span class="kw-2">&amp;</span><a class="self" href="#39">self</a>) {
+            (<span class="prelude-val">Some</span>(IncrementalStateAssertion::NotLoaded), <a href="#25-28">LoadResult::Ok</a> { .. }) =&gt; {
+                <a href="#39">sess</a>.emit_fatal(<a href="../errors.rs.html#303">errors::AssertNotLoaded</a>);
             }
             (
                 <span class="prelude-val">Some</span>(IncrementalStateAssertion::Loaded),
-                <a href="#30">LoadResult::LoadDepGraph</a>(..)
-                | <a href="#32">LoadResult::DecodeIncrCache</a>(..)
-                | <a href="#28">LoadResult::DataOutOfDate</a>,
+                <a href="#32">LoadResult::LoadDepGraph</a>(..)
+                | <a href="#34">LoadResult::DecodeIncrCache</a>(..)
+                | <a href="#30">LoadResult::DataOutOfDate</a>,
             ) =&gt; {
-                <a href="#37">sess</a>.emit_fatal(<a href="../errors.rs.html#307">errors::AssertLoaded</a>);
+                <a href="#39">sess</a>.emit_fatal(<a href="../errors.rs.html#307">errors::AssertLoaded</a>);
             }
             <span class="kw">_ </span>=&gt; {}
         };
 
-        <span class="kw">match </span><span class="self"><a href="#37">self</a> </span>{
-            <a href="#30">LoadResult::LoadDepGraph</a>(path, err) =&gt; {
-                <a href="#37">sess</a>.emit_warning(<a href="../errors.rs.html#318-321">errors::LoadDepGraph</a> { <a href="#55">path</a>, <a href="#55">err</a> });
+        <span class="kw">match </span><span class="self"><a href="#39">self</a> </span>{
+            <a href="#32">LoadResult::LoadDepGraph</a>(path, err) =&gt; {
+                <a href="#39">sess</a>.emit_warning(<a href="../errors.rs.html#318-321">errors::LoadDepGraph</a> { <a href="#57">path</a>, <a href="#57">err</a> });
                 <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>()
             }
-            <a href="#32">LoadResult::DecodeIncrCache</a>(err) =&gt; {
-                <a href="#37">sess</a>.emit_warning(<a href="../errors.rs.html#325-327">errors::DecodeIncrCache</a> { err: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{err:?}&quot;</span>) });
+            <a href="#34">LoadResult::DecodeIncrCache</a>(err) =&gt; {
+                <a href="#39">sess</a>.emit_warning(<a href="../errors.rs.html#325-327">errors::DecodeIncrCache</a> { err: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{err:?}&quot;</span>) });
                 <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>()
             }
-            <a href="#28">LoadResult::DataOutOfDate</a> =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a href="fs.rs.html#376-383">delete_all_session_dir_contents</a>(<a href="#37">sess</a>) {
-                    <a href="#37">sess</a>.emit_err(<a href="../errors.rs.html#311-314">errors::DeleteIncompatible</a> { path: <a href="fs.rs.html#139-141">dep_graph_path</a>(<a href="#37">sess</a>), <a href="#64">err</a> });
+            <a href="#30">LoadResult::DataOutOfDate</a> =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <a href="fs.rs.html#376-383">delete_all_session_dir_contents</a>(<a href="#39">sess</a>) {
+                    <a href="#39">sess</a>.emit_err(<a href="../errors.rs.html#311-314">errors::DeleteIncompatible</a> { path: <a href="fs.rs.html#139-141">dep_graph_path</a>(<a href="#39">sess</a>), <a href="#66">err</a> });
                 }
                 <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>()
             }
-            <a href="#23-26">LoadResult::Ok</a> { data } =&gt; <a href="#69">data</a>,
+            <a href="#25-28">LoadResult::Ok</a> { data } =&gt; <a href="#71">data</a>,
         }
     }
 }
 
 <span class="kw">fn </span><a href="../../../rustc_incremental/persist/load/fn.load_data.html">load_data</a>(path: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>, sess: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>) -&gt; LoadResult&lt;(<a href="../../../rustc_data_structures/memmap/struct.Mmap.html">Mmap</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt; {
-    <a href="#83-98">load_data_no_sess</a>(
-        <a href="#74">path</a>,
-        <a href="#74">sess</a>.opts.unstable_opts.incremental_info,
-        <a href="#74">sess</a>.is_nightly_build(),
-        <a href="#74">sess</a>.cfg_version,
-    )
-}
-
-<span class="kw">fn </span><a href="../../../rustc_incremental/persist/load/fn.load_data_no_sess.html">load_data_no_sess</a>(
-    path: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/path/struct.Path.html">Path</a>,
-    report_incremental_info: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    is_nightly_build: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    cfg_version: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
-) -&gt; LoadResult&lt;(<a href="../../../rustc_data_structures/memmap/struct.Mmap.html">Mmap</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)&gt; {
-    <span class="kw">match </span><a href="file_format.rs.html#98-160">file_format::read_file</a>(<a href="#84">path</a>, <a href="#85">report_incremental_info</a>, <a href="#86">is_nightly_build</a>, <a href="#87">cfg_version</a>) {
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(data_and_pos)) =&gt; <a href="#23-26">LoadResult::Ok</a> { data: <a href="#90">data_and_pos</a> },
+    <span class="kw">match </span><a href="file_format.rs.html#98-160">file_format::read_file</a>(
+        <a href="#76">path</a>,
+        <a href="#76">sess</a>.opts.unstable_opts.incremental_info,
+        <a href="#76">sess</a>.is_nightly_build(),
+        <a href="#76">sess</a>.cfg_version,
+    ) {
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(data_and_pos)) =&gt; <a href="#25-28">LoadResult::Ok</a> { data: <a href="#83">data_and_pos</a> },
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
             <span class="comment">// The file either didn&#39;t exist or was produced by an incompatible
             // compiler version. Neither is an error.
-            </span><a href="#28">LoadResult::DataOutOfDate</a>
+            </span><a href="#30">LoadResult::DataOutOfDate</a>
         }
-        <span class="prelude-val">Err</span>(err) =&gt; <a href="#30">LoadResult::LoadDepGraph</a>(<a href="#84">path</a>.to_path_buf(), <a href="#96">err</a>),
+        <span class="prelude-val">Err</span>(err) =&gt; <a href="#32">LoadResult::LoadDepGraph</a>(<a href="#76">path</a>.to_path_buf(), <a href="#89">err</a>),
     }
 }
 
 <span class="kw">fn </span><a href="../../../rustc_incremental/persist/load/fn.delete_dirty_work_product.html">delete_dirty_work_product</a>(sess: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>, swp: <a href="data.rs.html#7-13">SerializedWorkProduct</a>) {
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;delete_dirty_work_product({:?})&quot;</span>, swp);
-    <a href="work_product.rs.html#48-55">work_product::delete_workproduct_files</a>(<a href="#100">sess</a>, <span class="kw-2">&amp;</span><a href="#100">swp</a>.work_product);
+    <a href="work_product.rs.html#48-55">work_product::delete_workproduct_files</a>(<a href="#93">sess</a>, <span class="kw-2">&amp;</span><a href="#93">swp</a>.work_product);
 }
 
-<span class="doccomment">/// Either a result that has already be computed or a
-/// handle that will let us wait until it is computed
-/// by a background thread.
-</span><span class="kw">pub enum </span><a href="../../../rustc_incremental/persist/load/enum.MaybeAsync.html">MaybeAsync</a>&lt;T&gt; {
-    Sync(T),
-    Async(std::thread::JoinHandle&lt;T&gt;),
-}
-
-<span class="kw">impl</span>&lt;T&gt; MaybeAsync&lt;LoadResult&lt;T&gt;&gt; {
-    <span class="doccomment">/// Accesses the data returned in [`LoadResult::Ok`] in an asynchronous way if possible.
-    </span><span class="kw">pub fn </span>open(<span class="self">self</span>) -&gt; LoadResult&lt;T&gt; {
-        <span class="kw">match </span><span class="self"><a href="#115">self</a> </span>{
-            <a href="#109">MaybeAsync::Sync</a>(result) =&gt; <a href="#117">result</a>,
-            <a href="#110">MaybeAsync::Async</a>(handle) =&gt; {
-                <a href="#118">handle</a>.join().unwrap_or_else(|e| <a href="#32">LoadResult::DecodeIncrCache</a>(<a href="#119">e</a>))
-            }
-        }
-    }
-}
-
-<span class="doccomment">/// An asynchronous type for computing the dependency graph.
-</span><span class="kw">pub type </span><a href="../../../rustc_incremental/persist/load/type.DepGraphFuture.html">DepGraphFuture</a> = MaybeAsync&lt;LoadResult&lt;(<a href="../../../rustc_middle/dep_graph/type.SerializedDepGraph.html">SerializedDepGraph</a>, <a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a>)&gt;&gt;;
-
-<span class="doccomment">/// Launch a thread and load the dependency graph in the background.
-</span><span class="kw">pub fn </span><a href="../../../rustc_incremental/persist/load/fn.load_dep_graph.html">load_dep_graph</a>(sess: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>) -&gt; <a href="#126">DepGraphFuture</a> {
-    <span class="comment">// Since `sess` isn&#39;t `Sync`, we perform all accesses to `sess`
-    // before we fire the background thread.
-
-    </span><span class="kw">let </span>prof = <a href="#129">sess</a>.prof.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+<span class="kw">fn </span><a href="../../../rustc_incremental/persist/load/fn.load_dep_graph.html">load_dep_graph</a>(sess: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>) -&gt; LoadResult&lt;(<a href="../../../rustc_query_system/dep_graph/serialized/struct.SerializedDepGraph.html">SerializedDepGraph</a>, <a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a>)&gt; {
+    <span class="kw">let </span>prof = <a href="#98">sess</a>.prof.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
 
     <span class="kw">if </span>sess.opts.incremental.is_none() {
         <span class="comment">// No incremental compilation.
-        </span><span class="kw">return </span><a href="#109">MaybeAsync::Sync</a>(<a href="#23-26">LoadResult::Ok</a> { data: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>() });
+        </span><span class="kw">return </span><a href="#25-28">LoadResult::Ok</a> { data: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>() };
     }
 
-    <span class="kw">let </span>_timer = <a href="#129">sess</a>.prof.generic_activity(<span class="string">&quot;incr_comp_prepare_load_dep_graph&quot;</span>);
+    <span class="kw">let </span>_timer = <a href="#98">sess</a>.prof.generic_activity(<span class="string">&quot;incr_comp_prepare_load_dep_graph&quot;</span>);
 
     <span class="comment">// Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn&#39;t the case.
-    </span><span class="kw">let </span>path = <a href="fs.rs.html#139-141">dep_graph_path</a>(<span class="kw-2">&amp;</span><a href="#129">sess</a>);
-    <span class="kw">let </span>report_incremental_info = <a href="#129">sess</a>.opts.unstable_opts.incremental_info;
-    <span class="kw">let </span>expected_hash = <a href="#129">sess</a>.opts.dep_tracking_hash(<span class="bool-val">false</span>);
+    </span><span class="kw">let </span>path = <a href="fs.rs.html#139-141">dep_graph_path</a>(<span class="kw-2">&amp;</span><a href="#98">sess</a>);
+    <span class="kw">let </span>expected_hash = <a href="#98">sess</a>.opts.dep_tracking_hash(<span class="bool-val">false</span>);
 
     <span class="kw">let </span><span class="kw-2">mut </span>prev_work_products = UnordMap::default();
 
@@ -388,14 +345,14 @@
     // incr. comp. session directory, we skip this. Otherwise we&#39;d fail
     // when trying to load work products.
     </span><span class="kw">if </span>sess.incr_comp_session_dir_opt().is_some() {
-        <span class="kw">let </span>work_products_path = <a href="fs.rs.html#149-151">work_products_path</a>(<a href="#129">sess</a>);
-        <span class="kw">let </span>load_result = <a href="#74-81">load_data</a>(<span class="kw-2">&amp;</span><a href="#154">work_products_path</a>, <a href="#129">sess</a>);
+        <span class="kw">let </span>work_products_path = <a href="fs.rs.html#149-151">work_products_path</a>(<a href="#98">sess</a>);
+        <span class="kw">let </span>load_result = <a href="#76-91">load_data</a>(<span class="kw-2">&amp;</span><a href="#119">work_products_path</a>, <a href="#98">sess</a>);
 
-        <span class="kw">if let </span><a href="#23-26">LoadResult::Ok</a> { data: (work_products_data, start_pos) } = <a href="#155">load_result</a> {
+        <span class="kw">if let </span><a href="#25-28">LoadResult::Ok</a> { data: (work_products_data, start_pos) } = <a href="#120">load_result</a> {
             <span class="comment">// Decode the list of work_products
-            </span><span class="kw">let </span><span class="kw-2">mut </span>work_product_decoder = MemDecoder::new(<span class="kw-2">&amp;</span><a href="#157">work_products_data</a>[..], <a href="#157">start_pos</a>);
+            </span><span class="kw">let </span><span class="kw-2">mut </span>work_product_decoder = MemDecoder::new(<span class="kw-2">&amp;</span><a href="#122">work_products_data</a>[..], <a href="#122">start_pos</a>);
             <span class="kw">let </span>work_products: Vec&lt;<a href="data.rs.html#7-13">SerializedWorkProduct</a>&gt; =
-                <a href="../../../rustc_serialize/serialize/trait.Decodable.html">Decodable::decode</a>(<span class="kw-2">&amp;mut </span><a href="#159">work_product_decoder</a>);
+                <a href="../../../rustc_serialize/serialize/trait.Decodable.html">Decodable::decode</a>(<span class="kw-2">&amp;mut </span><a href="#124">work_product_decoder</a>);
 
             <span class="kw">for </span>swp <span class="kw">in </span>work_products {
                 <span class="kw">let </span>all_files_exist = swp.work_product.saved_files.items().all(|(<span class="kw">_</span>, path)| {
@@ -417,40 +374,35 @@
         }
     }
 
-    <span class="kw">let </span>is_nightly_build = <a href="#129">sess</a>.is_nightly_build();
-    <span class="kw">let </span>cfg_version = <a href="#129">sess</a>.cfg_version;
+    <span class="kw">let </span>_prof_timer = <a href="#99">prof</a>.generic_activity(<span class="string">&quot;incr_comp_load_dep_graph&quot;</span>);
 
-    <a href="#110">MaybeAsync::Async</a>(std::thread::spawn(<span class="kw">move </span>|| {
-        <span class="kw">let </span>_prof_timer = <a href="#133">prof</a>.generic_activity(<span class="string">&quot;incr_comp_load_dep_graph&quot;</span>);
+    <span class="kw">match </span><a href="#76-91">load_data</a>(<span class="kw-2">&amp;</span><a href="#110">path</a>, <a href="#98">sess</a>) {
+        <a href="#30">LoadResult::DataOutOfDate</a> =&gt; <a href="#30">LoadResult::DataOutOfDate</a>,
+        <a href="#32">LoadResult::LoadDepGraph</a>(path, err) =&gt; <a href="#32">LoadResult::LoadDepGraph</a>(<a href="#152">path</a>, <a href="#152">err</a>),
+        <a href="#34">LoadResult::DecodeIncrCache</a>(err) =&gt; <a href="#34">LoadResult::DecodeIncrCache</a>(<a href="#153">err</a>),
+        <a href="#25-28">LoadResult::Ok</a> { data: (bytes, start_pos) } =&gt; {
+            <span class="kw">let </span><span class="kw-2">mut </span>decoder = MemDecoder::new(<span class="kw-2">&amp;</span><a href="#154">bytes</a>, <a href="#154">start_pos</a>);
+            <span class="kw">let </span>prev_commandline_args_hash = u64::decode(<span class="kw-2">&amp;mut </span><a href="#155">decoder</a>);
 
-        <span class="kw">match </span><a href="#83-98">load_data_no_sess</a>(<span class="kw-2">&amp;</span><a href="#144">path</a>, <a href="#145">report_incremental_info</a>, <a href="#183">is_nightly_build</a>, <a href="#184">cfg_version</a>) {
-            <a href="#28">LoadResult::DataOutOfDate</a> =&gt; <a href="#28">LoadResult::DataOutOfDate</a>,
-            <a href="#30">LoadResult::LoadDepGraph</a>(path, err) =&gt; <a href="#30">LoadResult::LoadDepGraph</a>(<a href="#191">path</a>, <a href="#191">err</a>),
-            <a href="#32">LoadResult::DecodeIncrCache</a>(err) =&gt; <a href="#32">LoadResult::DecodeIncrCache</a>(<a href="#192">err</a>),
-            <a href="#23-26">LoadResult::Ok</a> { data: (bytes, start_pos) } =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>decoder = MemDecoder::new(<span class="kw-2">&amp;</span><a href="#193">bytes</a>, <a href="#193">start_pos</a>);
-                <span class="kw">let </span>prev_commandline_args_hash = u64::decode(<span class="kw-2">&amp;mut </span><a href="#194">decoder</a>);
-
-                <span class="kw">if </span>prev_commandline_args_hash != expected_hash {
-                    <span class="kw">if </span>report_incremental_info {
-                        <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.eprintln.html">eprintln!</a>(
-                            <span class="string">&quot;[incremental] completely ignoring cache because of \
+            <span class="kw">if </span>prev_commandline_args_hash != expected_hash {
+                <span class="kw">if </span>sess.opts.unstable_opts.incremental_info {
+                    <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.eprintln.html">eprintln!</a>(
+                        <span class="string">&quot;[incremental] completely ignoring cache because of \
                                     differing commandline arguments&quot;
-                        </span>);
-                    }
-                    <span class="comment">// We can&#39;t reuse the cache, purge it.
-                    </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;load_dep_graph_new: differing commandline arg hashes&quot;</span>);
-
-                    <span class="comment">// No need to do any further work
-                    </span><span class="kw">return </span><a href="#28">LoadResult::DataOutOfDate</a>;
+                    </span>);
                 }
+                <span class="comment">// We can&#39;t reuse the cache, purge it.
+                </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;load_dep_graph_new: differing commandline arg hashes&quot;</span>);
 
-                <span class="kw">let </span>dep_graph = SerializedDepGraph::decode(<span class="kw-2">&amp;mut </span><a href="#194">decoder</a>);
-
-                <a href="#23-26">LoadResult::Ok</a> { data: (<a href="#211">dep_graph</a>, <a href="#148">prev_work_products</a>) }
+                <span class="comment">// No need to do any further work
+                </span><span class="kw">return </span><a href="#30">LoadResult::DataOutOfDate</a>;
             }
+
+            <span class="kw">let </span>dep_graph = SerializedDepGraph::decode::&lt;<a href="../../../rustc_middle/dep_graph/struct.DepsType.html">DepsType</a>&gt;(<span class="kw-2">&amp;mut </span><a href="#155">decoder</a>);
+
+            <a href="#25-28">LoadResult::Ok</a> { data: (<a href="#172">dep_graph</a>, <a href="#113">prev_work_products</a>) }
         }
-    }))
+    }
 }
 
 <span class="doccomment">/// Attempts to load the query result cache from disk
@@ -463,13 +415,45 @@
         <span class="kw">return </span><span class="prelude-val">None</span>;
     }
 
-    <span class="kw">let </span>_prof_timer = <a href="#224">sess</a>.prof.generic_activity(<span class="string">&quot;incr_comp_load_query_result_cache&quot;</span>);
+    <span class="kw">let </span>_prof_timer = <a href="#184">sess</a>.prof.generic_activity(<span class="string">&quot;incr_comp_load_query_result_cache&quot;</span>);
 
-    <span class="kw">match </span><a href="#74-81">load_data</a>(<span class="kw-2">&amp;</span><a href="fs.rs.html#153-155">query_cache_path</a>(<a href="#224">sess</a>), <a href="#224">sess</a>) {
-        <a href="#23-26">LoadResult::Ok</a> { data: (bytes, start_pos) } =&gt; {
-            <span class="prelude-val">Some</span>(OnDiskCache::new(<a href="#224">sess</a>, <a href="#232">bytes</a>, <a href="#232">start_pos</a>))
+    <span class="kw">match </span><a href="#76-91">load_data</a>(<span class="kw-2">&amp;</span><a href="fs.rs.html#153-155">query_cache_path</a>(<a href="#184">sess</a>), <a href="#184">sess</a>) {
+        <a href="#25-28">LoadResult::Ok</a> { data: (bytes, start_pos) } =&gt; {
+            <span class="prelude-val">Some</span>(OnDiskCache::new(<a href="#184">sess</a>, <a href="#192">bytes</a>, <a href="#192">start_pos</a>))
         }
-        <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(OnDiskCache::new_empty(<a href="#224">sess</a>.source_map())),
+        <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(OnDiskCache::new_empty(<a href="#184">sess</a>.source_map())),
     }
+}
+
+<span class="doccomment">/// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
+/// new graph to an incremental session directory.
+</span><span class="kw">pub fn </span><a href="../../../rustc_incremental/persist/load/fn.setup_dep_graph.html">setup_dep_graph</a>(
+    sess: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>,
+    crate_name: <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>,
+    stable_crate_id: <a href="../../../rustc_span/def_id/struct.StableCrateId.html">StableCrateId</a>,
+) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../../rustc_middle/dep_graph/type.DepGraph.html">DepGraph</a>, <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
+    <span class="comment">// `load_dep_graph` can only be called after `prepare_session_directory`.
+    </span>prepare_session_directory(sess, crate_name, stable_crate_id)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>res = <a href="#202">sess</a>.opts.build_dep_graph().then(|| <a href="#98-177">load_dep_graph</a>(<a href="#202">sess</a>));
+
+    <span class="kw">if </span>sess.opts.incremental.is_some() {
+        <a href="#202">sess</a>.time(<span class="string">&quot;incr_comp_garbage_collect_session_directories&quot;</span>, || {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <a href="fs.rs.html#624-842">garbage_collect_session_directories</a>(<a href="#202">sess</a>) {
+                <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.warn.html">warn!</a>(
+                    <span class="string">&quot;Error while trying to garbage collect incremental \
+                     compilation cache directory: {}&quot;</span>,
+                    e
+                );
+            }
+        });
+    }
+
+    <span class="prelude-val">Ok</span>(<a href="#209">res</a>
+        .and_then(|result| {
+            <span class="kw">let </span>(prev_graph, prev_work_products) = <a href="#224">result</a>.<a href="#39-73">open</a>(<a href="#202">sess</a>);
+            <a href="save.rs.html#150-184">build_dep_graph</a>(<a href="#202">sess</a>, <a href="#225">prev_graph</a>, <a href="#225">prev_work_products</a>)
+        })
+        .unwrap_or_else(DepGraph::new_disabled))
 }
 </code></pre></div></section></main></body></html>

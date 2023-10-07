@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/error_reporting/suggest.rs`."><title>suggest.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_infer/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/error_reporting/suggest.rs`."><title>suggest.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_infer/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -832,10 +832,10 @@
 <span class="kw">use </span>rustc_span::{<a href="../../../../rustc_span/symbol/sym/index.html">sym</a>, BytePos, <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>};
 
 <span class="kw">use </span><span class="kw">crate</span>::errors::{
-    <a href="../../errors/mod.rs.html#1043-1077">ConsiderAddingAwait</a>, <a href="../../errors/mod.rs.html#1244-1246">FnConsiderCasting</a>, <a href="../../errors/mod.rs.html#1236">FnItemsAreDistinct</a>, <a href="../../errors/mod.rs.html#1240">FnUniqTypes</a>,
-    <a href="../../errors/mod.rs.html#1149-1232">FunctionPointerSuggestion</a>, <a href="../../errors/mod.rs.html#1249-1274">SuggestAccessingField</a>, <a href="../../errors/mod.rs.html#1277-1292">SuggestBoxingForReturnImplTrait</a>,
-    <a href="../../errors/mod.rs.html#999-1040">SuggestRemoveSemiOrReturnBinding</a>, <a href="../../errors/mod.rs.html#1304-1308">SuggestTuplePatternMany</a>, <a href="../../errors/mod.rs.html#1296-1302">SuggestTuplePatternOne</a>,
-    <a href="../../errors/mod.rs.html#1331-1396">TypeErrorAdditionalDiags</a>,
+    <a href="../../errors/mod.rs.html#1032-1066">ConsiderAddingAwait</a>, <a href="../../errors/mod.rs.html#1233-1235">FnConsiderCasting</a>, <a href="../../errors/mod.rs.html#1225">FnItemsAreDistinct</a>, <a href="../../errors/mod.rs.html#1229">FnUniqTypes</a>,
+    <a href="../../errors/mod.rs.html#1138-1221">FunctionPointerSuggestion</a>, <a href="../../errors/mod.rs.html#1238-1263">SuggestAccessingField</a>, <a href="../../errors/mod.rs.html#1266-1281">SuggestBoxingForReturnImplTrait</a>,
+    <a href="../../errors/mod.rs.html#988-1029">SuggestRemoveSemiOrReturnBinding</a>, <a href="../../errors/mod.rs.html#1293-1297">SuggestTuplePatternMany</a>, <a href="../../errors/mod.rs.html#1285-1291">SuggestTuplePatternOne</a>,
+    <a href="../../errors/mod.rs.html#1320-1385">TypeErrorAdditionalDiags</a>,
 };
 
 <span class="kw">use </span><a href="mod.rs.html#122-131"><span class="kw">super</span>::TypeErrCtxt</a>;
@@ -855,7 +855,7 @@
         second_id: <span class="prelude-ty">Option</span>&lt;<a href="../../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>&gt;,
         second_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         second_span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../errors/mod.rs.html#999-1040">SuggestRemoveSemiOrReturnBinding</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../errors/mod.rs.html#988-1029">SuggestRemoveSemiOrReturnBinding</a>&gt; {
         <span class="kw">let </span>remove_semicolon = [
             (<a href="#32">first_id</a>, <a class="self" href="#31">self</a>.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#36">second_ty</a>)),
             (<a href="#35">second_id</a>, <a class="self" href="#31">self</a>.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#33">first_ty</a>)),
@@ -867,7 +867,7 @@
         });
         <span class="kw">match </span><a href="#39">remove_semicolon</a> {
             <span class="prelude-val">Some</span>((sp, StatementAsExpression::NeedsBoxing)) =&gt; {
-                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1001-1012">SuggestRemoveSemiOrReturnBinding::RemoveAndBox</a> {
+                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#990-1001">SuggestRemoveSemiOrReturnBinding::RemoveAndBox</a> {
                     first_lo: <a href="#34">first_span</a>.shrink_to_lo(),
                     first_hi: <a href="#34">first_span</a>.shrink_to_hi(),
                     second_lo: <a href="#37">second_span</a>.shrink_to_lo(),
@@ -876,7 +876,7 @@
                 })
             }
             <span class="prelude-val">Some</span>((sp, StatementAsExpression::CorrectType)) =&gt; {
-                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1019-1022">SuggestRemoveSemiOrReturnBinding::Remove</a> { <a href="#58">sp</a> })
+                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1008-1011">SuggestRemoveSemiOrReturnBinding::Remove</a> { <a href="#58">sp</a> })
             }
             <span class="prelude-val">None </span>=&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>ret = <span class="prelude-val">None</span>;
@@ -900,7 +900,7 @@
         return_sp: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         arm_spans: <span class="kw">impl </span>Iterator&lt;Item = <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;,
     ) {
-        <span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1279-1284">SuggestBoxingForReturnImplTrait::ChangeReturnType</a> {
+        <span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1268-1273">SuggestBoxingForReturnImplTrait::ChangeReturnType</a> {
             start_sp: <a href="#80">return_sp</a>.with_hi(<a href="#80">return_sp</a>.lo() + BytePos(<span class="number">4</span>)),
             end_sp: <a href="#80">return_sp</a>.shrink_to_hi(),
         };
@@ -912,7 +912,7 @@
             starts.push(span.shrink_to_lo());
             ends.push(span.shrink_to_hi());
         }
-        <span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1286-1291">SuggestBoxingForReturnImplTrait::BoxReturnExpr</a> { <a href="#89">starts</a>, <a href="#90">ends</a> };
+        <span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1275-1280">SuggestBoxingForReturnImplTrait::BoxReturnExpr</a> { <a href="#89">starts</a>, <a href="#90">ends</a> };
         <a href="#79">err</a>.subdiagnostic(<a href="#95">sugg</a>);
     }
 
@@ -953,7 +953,7 @@
                 <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#109">compatible_variants</a>[..] {
                     [] =&gt; {}
                     [variant] =&gt; {
-                        <span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1296-1302">SuggestTuplePatternOne</a> {
+                        <span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1285-1291">SuggestTuplePatternOne</a> {
                             variant: <a href="#135">variant</a>.<a href="https://doc.rust-lang.org/nightly/alloc/borrow/trait.ToOwned.html">to_owned</a>(),
                             span_low: <a href="#101">cause</a>.span.shrink_to_lo(),
                             span_high: <a href="#101">cause</a>.span.shrink_to_hi(),
@@ -962,7 +962,7 @@
                     }
                     <span class="kw">_ </span>=&gt; {
                         <span class="comment">// More than one matching variant.
-                        </span><span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1304-1308">SuggestTuplePatternMany</a> {
+                        </span><span class="kw">let </span>sugg = <a href="../../errors/mod.rs.html#1293-1297">SuggestTuplePatternMany</a> {
                             path: <a class="self" href="#100">self</a>.tcx.def_path_str(<a href="#108">expected_adt</a>.did()),
                             cause_span: <a href="#101">cause</a>.span,
                             <a href="#109">compatible_variants</a>,
@@ -1009,15 +1009,15 @@
         }
 
         <span class="kw">let </span>subdiag = <span class="kw">match </span>(
-            <a class="self" href="#176">self</a>.<a href="mod.rs.html#397-431">get_impl_future_output_ty</a>(<a href="#179">exp_found</a>.expected),
-            <a class="self" href="#176">self</a>.<a href="mod.rs.html#397-431">get_impl_future_output_ty</a>(<a href="#179">exp_found</a>.found),
+            <a class="self" href="#176">self</a>.<a href="mod.rs.html#390-424">get_impl_future_output_ty</a>(<a href="#179">exp_found</a>.expected),
+            <a class="self" href="#176">self</a>.<a href="mod.rs.html#390-424">get_impl_future_output_ty</a>(<a href="#179">exp_found</a>.found),
         ) {
-            (<span class="prelude-val">Some</span>(exp), <span class="prelude-val">Some</span>(found)) <span class="kw">if </span><a class="self" href="#176">self</a>.<a href="mod.rs.html#2756-2759">same_type_modulo_infer</a>(<a href="#195">exp</a>, <a href="#195">found</a>) =&gt; <span class="kw">match </span><a href="#177">cause</a>
+            (<span class="prelude-val">Some</span>(exp), <span class="prelude-val">Some</span>(found)) <span class="kw">if </span><a class="self" href="#176">self</a>.<a href="mod.rs.html#2746-2749">same_type_modulo_infer</a>(<a href="#195">exp</a>, <a href="#195">found</a>) =&gt; <span class="kw">match </span><a href="#177">cause</a>
                 .code()
             {
                 ObligationCauseCode::IfExpression(<span class="kw">box </span><a href="../../../../rustc_infer/traits/struct.IfExpressionCause.html">IfExpressionCause</a> { then_id, .. }) =&gt; {
-                    <span class="kw">let </span>then_span = <a class="self" href="#176">self</a>.<a href="mod.rs.html#3097-3105">find_block_span_from_hir_id</a>(<span class="kw-2">*</span><a href="#198">then_id</a>);
-                    <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1047-1052">ConsiderAddingAwait::BothFuturesSugg</a> {
+                    <span class="kw">let </span>then_span = <a class="self" href="#176">self</a>.<a href="mod.rs.html#3093-3101">find_block_span_from_hir_id</a>(<span class="kw-2">*</span><a href="#198">then_id</a>);
+                    <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1036-1041">ConsiderAddingAwait::BothFuturesSugg</a> {
                         first: <a href="#199">then_span</a>.shrink_to_hi(),
                         second: <a href="#178">exp_span</a>.shrink_to_hi(),
                     })
@@ -1027,37 +1027,37 @@
                     ..
                 }) =&gt; {
                     <span class="kw">if let </span>[.., arm_span] = <span class="kw-2">&amp;</span><a href="#206">prior_arms</a>[..] {
-                        <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1047-1052">ConsiderAddingAwait::BothFuturesSugg</a> {
+                        <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1036-1041">ConsiderAddingAwait::BothFuturesSugg</a> {
                             first: <a href="#209">arm_span</a>.shrink_to_hi(),
                             second: <a href="#178">exp_span</a>.shrink_to_hi(),
                         })
                     } <span class="kw">else </span>{
-                        <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1045">ConsiderAddingAwait::BothFuturesHelp</a>)
+                        <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1034">ConsiderAddingAwait::BothFuturesHelp</a>)
                     }
                 }
-                <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1045">ConsiderAddingAwait::BothFuturesHelp</a>),
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1034">ConsiderAddingAwait::BothFuturesHelp</a>),
             },
-            (<span class="kw">_</span>, <span class="prelude-val">Some</span>(ty)) <span class="kw">if </span><a class="self" href="#176">self</a>.<a href="mod.rs.html#2756-2759">same_type_modulo_infer</a>(<a href="#179">exp_found</a>.expected, <a href="#220">ty</a>) =&gt; {
+            (<span class="kw">_</span>, <span class="prelude-val">Some</span>(ty)) <span class="kw">if </span><a class="self" href="#176">self</a>.<a href="mod.rs.html#2746-2749">same_type_modulo_infer</a>(<a href="#179">exp_found</a>.expected, <a href="#220">ty</a>) =&gt; {
                 <span class="comment">// FIXME: Seems like we can&#39;t have a suggestion and a note with different spans in a single subdiagnostic
-                </span><a href="#180">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1059-1062">ConsiderAddingAwait::FutureSugg</a> {
+                </span><a href="#180">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1048-1051">ConsiderAddingAwait::FutureSugg</a> {
                     span: <a href="#178">exp_span</a>.shrink_to_hi(),
                 });
-                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1064-1067">ConsiderAddingAwait::FutureSuggNote</a> { span: <a href="#178">exp_span</a> })
+                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1053-1056">ConsiderAddingAwait::FutureSuggNote</a> { span: <a href="#178">exp_span</a> })
             }
-            (<span class="prelude-val">Some</span>(ty), <span class="kw">_</span>) <span class="kw">if </span><a class="self" href="#176">self</a>.<a href="mod.rs.html#2756-2759">same_type_modulo_infer</a>(<a href="#227">ty</a>, <a href="#179">exp_found</a>.found) =&gt; <span class="kw">match </span><a href="#177">cause</a>.code()
+            (<span class="prelude-val">Some</span>(ty), <span class="kw">_</span>) <span class="kw">if </span><a class="self" href="#176">self</a>.<a href="mod.rs.html#2746-2749">same_type_modulo_infer</a>(<a href="#227">ty</a>, <a href="#179">exp_found</a>.found) =&gt; <span class="kw">match </span><a href="#177">cause</a>.code()
             {
                 <a href="../../../../rustc_infer/traits/enum.ObligationCauseCode.html">ObligationCauseCode::Pattern</a> { span: <span class="prelude-val">Some</span>(then_span), .. } =&gt; {
-                    <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1059-1062">ConsiderAddingAwait::FutureSugg</a> { span: <a href="#229">then_span</a>.shrink_to_hi() })
+                    <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1048-1051">ConsiderAddingAwait::FutureSugg</a> { span: <a href="#229">then_span</a>.shrink_to_hi() })
                 }
                 ObligationCauseCode::IfExpression(<span class="kw">box </span><a href="../../../../rustc_infer/traits/struct.IfExpressionCause.html">IfExpressionCause</a> { then_id, .. }) =&gt; {
-                    <span class="kw">let </span>then_span = <a class="self" href="#176">self</a>.<a href="mod.rs.html#3097-3105">find_block_span_from_hir_id</a>(<span class="kw-2">*</span><a href="#232">then_id</a>);
-                    <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1059-1062">ConsiderAddingAwait::FutureSugg</a> { span: <a href="#233">then_span</a>.shrink_to_hi() })
+                    <span class="kw">let </span>then_span = <a class="self" href="#176">self</a>.<a href="mod.rs.html#3093-3101">find_block_span_from_hir_id</a>(<span class="kw-2">*</span><a href="#232">then_id</a>);
+                    <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1048-1051">ConsiderAddingAwait::FutureSugg</a> { span: <a href="#233">then_span</a>.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(<span class="kw">box </span><a href="../../../../rustc_infer/traits/struct.MatchExpressionArmCause.html">MatchExpressionArmCause</a> {
                     <span class="kw-2">ref </span>prior_arms,
                     ..
                 }) =&gt; <span class="prelude-val">Some</span>({
-                    <a href="../../errors/mod.rs.html#1073-1076">ConsiderAddingAwait::FutureSuggMultiple</a> {
+                    <a href="../../errors/mod.rs.html#1062-1065">ConsiderAddingAwait::FutureSuggMultiple</a> {
                         spans: <a href="#237">prior_arms</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arm| <a href="#241">arm</a>.shrink_to_hi()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(),
                     }
                 }),
@@ -1091,14 +1091,14 @@
                 .iter()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|field| <a href="#272">field</a>.vis.is_accessible_from(<a href="#272">field</a>.did, <a class="self" href="#254">self</a>.tcx))
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|field| (<a href="#273">field</a>.name, <a href="#273">field</a>.ty(<a class="self" href="#254">self</a>.tcx, <a href="#263">expected_args</a>)))
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|(<span class="kw">_</span>, ty)| <a class="self" href="#254">self</a>.<a href="mod.rs.html#2756-2759">same_type_modulo_infer</a>(<span class="kw-2">*</span><a href="#274">ty</a>, <a href="#256">exp_found</a>.found))
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|(<span class="kw">_</span>, ty)| <a class="self" href="#254">self</a>.<a href="mod.rs.html#2746-2749">same_type_modulo_infer</a>(<span class="kw-2">*</span><a href="#274">ty</a>, <a href="#256">exp_found</a>.found))
             {
                 <span class="kw">if let </span><a href="../../../../rustc_infer/traits/enum.ObligationCauseCode.html">ObligationCauseCode::Pattern</a> { span: <span class="prelude-val">Some</span>(span), .. } = <span class="kw-2">*</span><a href="#255">cause</a>.code() {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a class="self" href="#254">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#276">span</a>) {
                         <span class="kw">let </span>suggestion = <span class="kw">if </span>expected_def.is_struct() {
-                            <a href="../../errors/mod.rs.html#1255-1261">SuggestAccessingField::Safe</a> { <a href="#276">span</a>, <a href="#277">snippet</a>, <a href="#268">name</a>, <a href="#268">ty</a> }
+                            <a href="../../errors/mod.rs.html#1244-1250">SuggestAccessingField::Safe</a> { <a href="#276">span</a>, <a href="#277">snippet</a>, <a href="#268">name</a>, <a href="#268">ty</a> }
                         } <span class="kw">else if </span>expected_def.is_union() {
-                            <a href="../../errors/mod.rs.html#1267-1273">SuggestAccessingField::Unsafe</a> { <a href="#276">span</a>, <a href="#277">snippet</a>, <a href="#268">name</a>, <a href="#268">ty</a> }
+                            <a href="../../errors/mod.rs.html#1256-1262">SuggestAccessingField::Unsafe</a> { <a href="#276">span</a>, <a href="#277">snippet</a>, <a href="#268">name</a>, <a href="#268">ty</a> }
                         } <span class="kw">else </span>{
                             <span class="kw">return</span>;
                         };
@@ -1139,15 +1139,15 @@
                 }
 
                 <span class="kw">let </span>sugg = <span class="kw">match </span>(<a href="#300">expected</a>.is_ref(), <a href="#300">found</a>.is_ref()) {
-                    (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; <a href="../../errors/mod.rs.html#1156-1161">FunctionPointerSuggestion::UseRef</a> { <a href="#295">span</a>, <a href="#312">fn_name</a> },
-                    (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; <a href="../../errors/mod.rs.html#1168-1173">FunctionPointerSuggestion::RemoveRef</a> { <a href="#295">span</a>, <a href="#312">fn_name</a> },
+                    (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; <a href="../../errors/mod.rs.html#1145-1150">FunctionPointerSuggestion::UseRef</a> { <a href="#295">span</a>, <a href="#312">fn_name</a> },
+                    (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; <a href="../../errors/mod.rs.html#1157-1162">FunctionPointerSuggestion::RemoveRef</a> { <a href="#295">span</a>, <a href="#312">fn_name</a> },
                     (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; {
-                        <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1236">FnItemsAreDistinct</a>);
-                        <a href="../../errors/mod.rs.html#1180-1187">FunctionPointerSuggestion::CastRef</a> { <a href="#295">span</a>, <a href="#312">fn_name</a>, sig: <span class="kw-2">*</span><a href="#307">sig</a> }
+                        <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1225">FnItemsAreDistinct</a>);
+                        <a href="../../errors/mod.rs.html#1169-1176">FunctionPointerSuggestion::CastRef</a> { <a href="#295">span</a>, <a href="#312">fn_name</a>, sig: <span class="kw-2">*</span><a href="#307">sig</a> }
                     }
                     (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; {
-                        <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1236">FnItemsAreDistinct</a>);
-                        <a href="../../errors/mod.rs.html#1194-1201">FunctionPointerSuggestion::Cast</a> { <a href="#295">span</a>, <a href="#312">fn_name</a>, sig: <span class="kw-2">*</span><a href="#307">sig</a> }
+                        <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1225">FnItemsAreDistinct</a>);
+                        <a href="../../errors/mod.rs.html#1183-1190">FunctionPointerSuggestion::Cast</a> { <a href="#295">span</a>, <a href="#312">fn_name</a>, sig: <span class="kw-2">*</span><a href="#307">sig</a> }
                     }
                 };
                 <a href="#297">diag</a>.subdiagnostic(<a href="#321">sugg</a>);
@@ -1159,7 +1159,7 @@
                     <span class="kw-2">&amp;</span>(<a class="self" href="#293">self</a>.normalize_fn_sig)(<a class="self" href="#293">self</a>.tcx.fn_sig(<span class="kw-2">*</span><a href="#335">did2</a>).instantiate(<a class="self" href="#293">self</a>.tcx, <a href="#335">args2</a>));
 
                 <span class="kw">if </span><span class="self">self</span>.same_type_modulo_infer(<span class="kw-2">*</span>expected_sig, <span class="kw-2">*</span>found_sig) {
-                    <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1240">FnUniqTypes</a>);
+                    <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1229">FnUniqTypes</a>);
                 }
 
                 <span class="kw">if </span>!<span class="self">self</span>.same_type_modulo_infer(<span class="kw-2">*</span>found_sig, <span class="kw-2">*</span>expected_sig)
@@ -1173,14 +1173,14 @@
 
                 <span class="kw">let </span>fn_name = <a class="self" href="#293">self</a>.tcx.def_path_str_with_args(<span class="kw-2">*</span><a href="#335">did2</a>, <a href="#335">args2</a>);
                 <span class="kw">let </span>sug = <span class="kw">if </span>found.is_ref() {
-                    <a href="../../errors/mod.rs.html#1223-1231">FunctionPointerSuggestion::CastBothRef</a> {
+                    <a href="../../errors/mod.rs.html#1212-1220">FunctionPointerSuggestion::CastBothRef</a> {
                         <a href="#295">span</a>,
                         <a href="#354">fn_name</a>,
                         found_sig: <span class="kw-2">*</span><a href="#338">found_sig</a>,
                         expected_sig: <span class="kw-2">*</span><a href="#336">expected_sig</a>,
                     }
                 } <span class="kw">else </span>{
-                    <a href="../../errors/mod.rs.html#1208-1216">FunctionPointerSuggestion::CastBoth</a> {
+                    <a href="../../errors/mod.rs.html#1197-1205">FunctionPointerSuggestion::CastBoth</a> {
                         <a href="#295">span</a>,
                         <a href="#354">fn_name</a>,
                         found_sig: <span class="kw-2">*</span><a href="#338">found_sig</a>,
@@ -1207,7 +1207,7 @@
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{fn_name} as {found_sig}&quot;</span>)
                 };
 
-                <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1244-1246">FnConsiderCasting</a> { <a href="#384">casting</a> });
+                <a href="#297">diag</a>.subdiagnostic(<a href="../../errors/mod.rs.html#1233-1235">FnConsiderCasting</a> { <a href="#384">casting</a> });
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">return</span>;
@@ -1282,7 +1282,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cause: <span class="kw-2">&amp;</span>ObligationCause&lt;<span class="lifetime">&#39;_</span>&gt;,
         span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../errors/mod.rs.html#1331-1396">TypeErrorAdditionalDiags</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../errors/mod.rs.html#1320-1385">TypeErrorAdditionalDiags</a>&gt; {
         <span class="kw">let </span>hir = <a class="self" href="#462">self</a>.tcx.hir();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(body_id) = <a class="self" href="#462">self</a>.tcx.hir().maybe_body_owned_by(<a href="#463">cause</a>.body_id) {
             <span class="kw">let </span>body = <a href="#466">hir</a>.body(<a href="#467">body_id</a>);
@@ -1328,7 +1328,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#471-475">IfVisitor</a> { err_span: <a href="#464">span</a>, found_if: <span class="bool-val">false</span>, result: <span class="bool-val">false </span>};
             <a href="#508">visitor</a>.<a href="../../../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<span class="kw-2">&amp;</span><a href="#468">body</a>);
             <span class="kw">if </span>visitor.result {
-                <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1392-1395">TypeErrorAdditionalDiags::AddLetForLetChains</a> {
+                <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1381-1384">TypeErrorAdditionalDiags::AddLetForLetChains</a> {
                     span: <a href="#464">span</a>.shrink_to_lo(),
                 });
             }
@@ -1443,7 +1443,7 @@
         <span class="kw">let </span>last_expr_ty = <span class="self">self</span>.typeck_results.as_ref()<span class="question-mark">?</span>.expr_ty_opt(<span class="kw-2">*</span>last_expr)<span class="question-mark">?</span>;
         <span class="kw">let </span>needs_box = <span class="kw">match </span>(<a href="#623">last_expr_ty</a>.kind(), <a href="#612">expected_ty</a>.kind()) {
             <span class="kw">_ if </span><a href="#623">last_expr_ty</a>.<a href="../../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">references_error</a>() =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
-            <span class="kw">_ if </span><a class="self" href="#610">self</a>.<a href="mod.rs.html#2756-2759">same_type_modulo_infer</a>(<a href="#623">last_expr_ty</a>, <a href="#612">expected_ty</a>) =&gt; {
+            <span class="kw">_ if </span><a class="self" href="#610">self</a>.<a href="mod.rs.html#2746-2749">same_type_modulo_infer</a>(<a href="#623">last_expr_ty</a>, <a href="#612">expected_ty</a>) =&gt; {
                 StatementAsExpression::CorrectType
             }
             (
@@ -1513,7 +1513,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         blk: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Block&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../errors/mod.rs.html#999-1040">SuggestRemoveSemiOrReturnBinding</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../errors/mod.rs.html#988-1029">SuggestRemoveSemiOrReturnBinding</a>&gt; {
         <span class="kw">let </span>blk = <a href="#694">blk</a>.innermost_block();
         <span class="comment">// Do not suggest if we have a tail expr.
         </span><span class="kw">if </span>blk.expr.is_some() {
@@ -1612,11 +1612,11 @@
                         <a href="#782">sugg</a>,
                     )
                 };
-                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1029-1034">SuggestRemoveSemiOrReturnBinding::Add</a> { sp: <a href="#771">span</a>, code: <a href="#771">sugg</a>, ident: <span class="kw-2">*</span><a href="#769">ident</a> })
+                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1018-1023">SuggestRemoveSemiOrReturnBinding::Add</a> { sp: <a href="#771">span</a>, code: <a href="#771">sugg</a>, ident: <span class="kw-2">*</span><a href="#769">ident</a> })
             }
             values <span class="kw">if </span>(<span class="number">1</span>..<span class="number">3</span>).contains(<span class="kw-2">&amp;</span><a href="#797">values</a>.len()) =&gt; {
                 <span class="kw">let </span>spans = <a href="#797">values</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(ident, <span class="kw">_</span>)| <a href="#798">ident</a>.span).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1036-1039">SuggestRemoveSemiOrReturnBinding::AddOne</a> { spans: <a href="#798">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() })
+                <span class="prelude-val">Some</span>(<a href="../../errors/mod.rs.html#1025-1028">SuggestRemoveSemiOrReturnBinding::AddOne</a> { spans: <a href="#798">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() })
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }

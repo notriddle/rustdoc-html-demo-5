@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -472,8 +472,8 @@
 <span class="kw">use </span><a href="../../../rustc_abi/struct.Size.html">rustc_target::abi::Size</a>;
 
 <span class="kw">use crate</span>::<span class="kw-2">*</span>;
-<span class="kw">pub mod </span><a href="stacked_borrows/mod.rs.html#1-1037">stacked_borrows</a>;
-<span class="kw">pub mod </span><a href="tree_borrows/mod.rs.html#1-584">tree_borrows</a>;
+<span class="kw">pub mod </span><a href="stacked_borrows/mod.rs.html#1-1038">stacked_borrows</a>;
+<span class="kw">pub mod </span><a href="tree_borrows/mod.rs.html#1-592">tree_borrows</a>;
 
 <span class="kw">pub type </span><a href="../../../miri/borrow_tracker/type.CallId.html">CallId</a> = <a href="https://doc.rust-lang.org/nightly/core/num/nonzero/struct.NonZeroU64.html">NonZeroU64</a>;
 
@@ -749,8 +749,8 @@
         <span class="kw">let </span>this = <a class="self" href="#283">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>method = <a href="#287">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         <span class="kw">match </span><a href="#288">method</a> {
-            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#287">this</a>.<a href="stacked_borrows/mod.rs.html#848-861">sb_retag_ptr_value</a>(<a href="#284">kind</a>, <a href="#285">val</a>),
-            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#287">this</a>.<a href="tree_borrows/mod.rs.html#348-364">tb_retag_ptr_value</a>(<a href="#284">kind</a>, <a href="#285">val</a>),
+            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#287">this</a>.<a href="stacked_borrows/mod.rs.html#849-862">sb_retag_ptr_value</a>(<a href="#284">kind</a>, <a href="#285">val</a>),
+            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#287">this</a>.<a href="tree_borrows/mod.rs.html#356-372">tb_retag_ptr_value</a>(<a href="#284">kind</a>, <a href="#285">val</a>),
         }
     }
 
@@ -762,8 +762,8 @@
         <span class="kw">let </span>this = <a class="self" href="#296">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>method = <a href="#300">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         <span class="kw">match </span><a href="#301">method</a> {
-            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#300">this</a>.<a href="stacked_borrows/mod.rs.html#863-968">sb_retag_place_contents</a>(<a href="#297">kind</a>, <a href="#298">place</a>),
-            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#300">this</a>.<a href="tree_borrows/mod.rs.html#367-482">tb_retag_place_contents</a>(<a href="#297">kind</a>, <a href="#298">place</a>),
+            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#300">this</a>.<a href="stacked_borrows/mod.rs.html#864-969">sb_retag_place_contents</a>(<a href="#297">kind</a>, <a href="#298">place</a>),
+            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#300">this</a>.<a href="tree_borrows/mod.rs.html#375-490">tb_retag_place_contents</a>(<a href="#297">kind</a>, <a href="#298">place</a>),
         }
     }
 
@@ -771,8 +771,8 @@
         <span class="kw">let </span>this = <a class="self" href="#308">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>method = <a href="#309">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         <span class="kw">match </span><a href="#310">method</a> {
-            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#309">this</a>.<a href="stacked_borrows/mod.rs.html#974-994">sb_protect_place</a>(<a href="#308">place</a>),
-            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#309">this</a>.<a href="tree_borrows/mod.rs.html#488-504">tb_protect_place</a>(<a href="#308">place</a>),
+            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#309">this</a>.<a href="stacked_borrows/mod.rs.html#975-995">sb_protect_place</a>(<a href="#308">place</a>),
+            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#309">this</a>.<a href="tree_borrows/mod.rs.html#496-512">tb_protect_place</a>(<a href="#308">place</a>),
         }
     }
 
@@ -780,8 +780,8 @@
         <span class="kw">let </span>this = <a class="self" href="#317">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>method = <a href="#318">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         <span class="kw">match </span><a href="#319">method</a> {
-            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#318">this</a>.<a href="stacked_borrows/mod.rs.html#997-1018">sb_expose_tag</a>(<a href="#317">alloc_id</a>, <a href="#317">tag</a>),
-            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#318">this</a>.<a href="tree_borrows/mod.rs.html#507-528">tb_expose_tag</a>(<a href="#317">alloc_id</a>, <a href="#317">tag</a>),
+            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#318">this</a>.<a href="stacked_borrows/mod.rs.html#998-1019">sb_expose_tag</a>(<a href="#317">alloc_id</a>, <a href="#317">tag</a>),
+            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#318">this</a>.<a href="tree_borrows/mod.rs.html#515-536">tb_expose_tag</a>(<a href="#317">alloc_id</a>, <a href="#317">tag</a>),
         }
     }
 
@@ -799,7 +799,7 @@
                 <span class="prelude-val">Ok</span>(())
             }
             <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt;
-                <a href="#332">this</a>.<a href="tree_borrows/mod.rs.html#542-559">tb_give_pointer_debug_name</a>(<a href="#328">ptr</a>, <a href="#329">nth_parent</a>, <a href="#330">name</a>),
+                <a href="#332">this</a>.<a href="tree_borrows/mod.rs.html#550-567">tb_give_pointer_debug_name</a>(<a href="#328">ptr</a>, <a href="#329">nth_parent</a>, <a href="#330">name</a>),
         }
     }
 
@@ -807,8 +807,8 @@
         <span class="kw">let </span>this = <a class="self" href="#344">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>method = <a href="#345">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         <span class="kw">match </span><a href="#346">method</a> {
-            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#345">this</a>.<a href="stacked_borrows/mod.rs.html#1020-1036">print_stacks</a>(<a href="#344">alloc_id</a>),
-            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#345">this</a>.<a href="tree_borrows/mod.rs.html#531-537">print_tree</a>(<a href="#344">alloc_id</a>, <a href="#344">show_unnamed</a>),
+            <a href="#242">BorrowTrackerMethod::StackedBorrows</a> =&gt; <a href="#345">this</a>.<a href="stacked_borrows/mod.rs.html#1021-1037">print_stacks</a>(<a href="#344">alloc_id</a>),
+            <a href="#244">BorrowTrackerMethod::TreeBorrows</a> =&gt; <a href="#345">this</a>.<a href="tree_borrows/mod.rs.html#539-545">print_tree</a>(<a href="#344">alloc_id</a>, <a href="#344">show_unnamed</a>),
         }
     }
 }
@@ -819,7 +819,7 @@
     <span class="doccomment">/// Data corresponding to Stacked Borrows
     </span>StackedBorrows(Box&lt;RefCell&lt;<a href="stacked_borrows/mod.rs.html#29">stacked_borrows::AllocState</a>&gt;&gt;),
     <span class="doccomment">/// Data corresponding to Tree Borrows
-    </span>TreeBorrows(Box&lt;RefCell&lt;<a href="tree_borrows/mod.rs.html#21">tree_borrows::AllocState</a>&gt;&gt;),
+    </span>TreeBorrows(Box&lt;RefCell&lt;<a href="tree_borrows/mod.rs.html#25">tree_borrows::AllocState</a>&gt;&gt;),
 }
 
 <span class="kw">impl </span>machine::AllocExtra&lt;<span class="lifetime">&#39;_</span>&gt; {
@@ -840,7 +840,7 @@
     }
 
     <span class="attr">#[track_caller]
-    </span><span class="kw">pub fn </span>borrow_tracker_tb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>RefCell&lt;<a href="tree_borrows/mod.rs.html#21">tree_borrows::AllocState</a>&gt; {
+    </span><span class="kw">pub fn </span>borrow_tracker_tb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>RefCell&lt;<a href="tree_borrows/mod.rs.html#25">tree_borrows::AllocState</a>&gt; {
         <span class="kw">match </span><a class="self" href="#381">self</a>.borrow_tracker {
             <span class="prelude-val">Some</span>(<a href="#360">AllocState::TreeBorrows</a>(<span class="kw-2">ref </span>tb)) =&gt; <a href="#383">tb</a>,
             <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.panic.html">panic!</a>(<span class="string">&quot;expected Tree Borrows borrow tracking, got something else&quot;</span>),
@@ -858,9 +858,9 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">match </span><span class="self"><a href="#391">self</a> </span>{
             <a href="#358">AllocState::StackedBorrows</a>(sb) =&gt;
-                <a href="#398">sb</a>.borrow_mut().<a href="stacked_borrows/mod.rs.html#538-559">before_memory_read</a>(<a href="#392">alloc_id</a>, <a href="#393">prov_extra</a>, <a href="#394">range</a>, <a href="#395">machine</a>),
+                <a href="#398">sb</a>.borrow_mut().<a href="stacked_borrows/mod.rs.html#539-560">before_memory_read</a>(<a href="#392">alloc_id</a>, <a href="#393">prov_extra</a>, <a href="#394">range</a>, <a href="#395">machine</a>),
             <a href="#360">AllocState::TreeBorrows</a>(tb) =&gt;
-                <a href="#400">tb</a>.borrow_mut().<a href="tree_borrows/mod.rs.html#39-70">before_memory_access</a>(
+                <a href="#400">tb</a>.borrow_mut().<a href="tree_borrows/mod.rs.html#43-74">before_memory_access</a>(
                     <a href="#126">AccessKind::Read</a>,
                     <a href="#392">alloc_id</a>,
                     <a href="#393">prov_extra</a>,
@@ -879,9 +879,9 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">match </span><span class="self"><a href="#412">self</a> </span>{
             <a href="#358">AllocState::StackedBorrows</a>(sb) =&gt;
-                <a href="#419">sb</a>.get_mut().<a href="stacked_borrows/mod.rs.html#562-580">before_memory_write</a>(<a href="#413">alloc_id</a>, <a href="#414">prov_extra</a>, <a href="#415">range</a>, <a href="#416">machine</a>),
+                <a href="#419">sb</a>.get_mut().<a href="stacked_borrows/mod.rs.html#563-581">before_memory_write</a>(<a href="#413">alloc_id</a>, <a href="#414">prov_extra</a>, <a href="#415">range</a>, <a href="#416">machine</a>),
             <a href="#360">AllocState::TreeBorrows</a>(tb) =&gt;
-                <a href="#421">tb</a>.get_mut().<a href="tree_borrows/mod.rs.html#39-70">before_memory_access</a>(
+                <a href="#421">tb</a>.get_mut().<a href="tree_borrows/mod.rs.html#43-74">before_memory_access</a>(
                     <a href="#127">AccessKind::Write</a>,
                     <a href="#413">alloc_id</a>,
                     <a href="#414">prov_extra</a>,
@@ -900,16 +900,16 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">match </span><span class="self"><a href="#433">self</a> </span>{
             <a href="#358">AllocState::StackedBorrows</a>(sb) =&gt;
-                <a href="#440">sb</a>.get_mut().<a href="stacked_borrows/mod.rs.html#583-597">before_memory_deallocation</a>(<a href="#434">alloc_id</a>, <a href="#435">prov_extra</a>, <a href="#436">range</a>, <a href="#437">machine</a>),
+                <a href="#440">sb</a>.get_mut().<a href="stacked_borrows/mod.rs.html#584-598">before_memory_deallocation</a>(<a href="#434">alloc_id</a>, <a href="#435">prov_extra</a>, <a href="#436">range</a>, <a href="#437">machine</a>),
             <a href="#360">AllocState::TreeBorrows</a>(tb) =&gt;
-                <a href="#442">tb</a>.get_mut().<a href="tree_borrows/mod.rs.html#73-89">before_memory_deallocation</a>(<a href="#434">alloc_id</a>, <a href="#435">prov_extra</a>, <a href="#436">range</a>, <a href="#437">machine</a>),
+                <a href="#442">tb</a>.get_mut().<a href="tree_borrows/mod.rs.html#77-93">before_memory_deallocation</a>(<a href="#434">alloc_id</a>, <a href="#435">prov_extra</a>, <a href="#436">range</a>, <a href="#437">machine</a>),
         }
     }
 
     <span class="kw">pub fn </span>remove_unreachable_tags(<span class="kw-2">&amp;</span><span class="self">self</span>, tags: <span class="kw-2">&amp;</span>FxHashSet&lt;<a href="#20">BorTag</a>&gt;) {
         <span class="kw">match </span><span class="self"><a href="#447">self</a> </span>{
-            <a href="#358">AllocState::StackedBorrows</a>(sb) =&gt; <a href="#449">sb</a>.borrow_mut().<a href="stacked_borrows/mod.rs.html#452-461">remove_unreachable_tags</a>(<a href="#447">tags</a>),
-            <a href="#360">AllocState::TreeBorrows</a>(tb) =&gt; <a href="#450">tb</a>.borrow_mut().<a href="tree_borrows/tree.rs.html#561-569">remove_unreachable_tags</a>(<a href="#447">tags</a>),
+            <a href="#358">AllocState::StackedBorrows</a>(sb) =&gt; <a href="#449">sb</a>.borrow_mut().<a href="stacked_borrows/mod.rs.html#452-462">remove_unreachable_tags</a>(<a href="#447">tags</a>),
+            <a href="#360">AllocState::TreeBorrows</a>(tb) =&gt; <a href="#450">tb</a>.borrow_mut().<a href="tree_borrows/tree.rs.html#590-598">remove_unreachable_tags</a>(<a href="#447">tags</a>),
         }
     }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/expr_use_visitor.rs`."><title>expr_use_visitor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/expr_use_visitor.rs`."><title>expr_use_visitor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -921,6 +921,8 @@
 <a href="#921" id="921">921</a>
 <a href="#922" id="922">922</a>
 <a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A different sort of visitor for walking fn bodies. Unlike the
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
@@ -941,10 +943,10 @@
 <span class="kw">use </span><a href="../../rustc_middle/hir/place/enum.ProjectionKind.html">rustc_middle::hir::place::ProjectionKind</a>;
 <span class="kw">use </span><a href="../../rustc_middle/mir/syntax/enum.FakeReadCause.html">rustc_middle::mir::FakeReadCause</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/adjustment/index.html">adjustment</a>, <a href="../../rustc_middle/ty/adt/enum.AdtKind.html">AdtKind</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
-<span class="kw">use </span><a href="../../rustc_abi/constant.FIRST_VARIANT.html">rustc_target::abi::FIRST_VARIANT</a>;
+<span class="kw">use </span><a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">rustc_target::abi::FIRST_VARIANT</a>;
 <span class="kw">use </span>ty::BorrowKind::ImmBorrow;
 
-<span class="kw">use </span><a href="lib.rs.html#38"><span class="kw">crate</span>::mem_categorization</a> <span class="kw">as </span>mc;
+<span class="kw">use </span><a href="lib.rs.html#36"><span class="kw">crate</span>::mem_categorization</a> <span class="kw">as </span>mc;
 
 <span class="doccomment">/// This trait defines the callbacks you can expect to receive when
 /// employing the ExprUseVisitor.
@@ -1078,7 +1080,7 @@
     }
 
     <span class="kw">fn </span>delegate_consume(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place_with_id: <span class="kw-2">&amp;</span>PlaceWithHirId&lt;<span class="lifetime">&#39;tcx</span>&gt;, diag_expr_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) {
-        <a href="#890-904">delegate_consume</a>(<span class="kw-2">&amp;</span><a class="self" href="#157">self</a>.mc, <a class="self" href="#157">self</a>.delegate, <a href="#157">place_with_id</a>, <a href="#157">diag_expr_id</a>)
+        <a href="#892-906">delegate_consume</a>(<span class="kw-2">&amp;</span><a class="self" href="#157">self</a>.mc, <a class="self" href="#157">self</a>.delegate, <a href="#157">place_with_id</a>, <a href="#157">diag_expr_id</a>)
     }
 
     <span class="kw">fn </span>consume_exprs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, exprs: <span class="kw-2">&amp;</span>[hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;]) {
@@ -1280,7 +1282,7 @@
             }
 
             hir::ExprKind::Closure(closure) =&gt; {
-                <a class="self" href="#194">self</a>.<a href="#765-874">walk_captures</a>(<a href="#359">closure</a>);
+                <a class="self" href="#194">self</a>.<a href="#767-876">walk_captures</a>(<a href="#359">closure</a>);
             }
 
             hir::ExprKind::Yield(value, <span class="kw">_</span>) =&gt; {
@@ -1428,7 +1430,7 @@
             ));
             <a class="self" href="#488">self</a>.<a href="#513-523">walk_block</a>(<a href="#499">els</a>)
         }
-        <a class="self" href="#488">self</a>.<a href="#678-690">walk_irrefutable_pat</a>(<span class="kw-2">&amp;</span><a href="#497">expr_place</a>, <span class="kw-2">&amp;</span><a href="#490">pat</a>);
+        <a class="self" href="#488">self</a>.<a href="#680-692">walk_irrefutable_pat</a>(<span class="kw-2">&amp;</span><a href="#497">expr_place</a>, <span class="kw-2">&amp;</span><a href="#490">pat</a>);
     }
 
     <span class="doccomment">/// Indicates that the value of `blk` will be consumed, meaning either copied or moved
@@ -1585,12 +1587,14 @@
             FakeReadCause::ForMatchedPlace(<a href="#655">closure_def_id</a>),
             <a href="#654">discr_place</a>.hir_id,
         );
-        <a class="self" href="#654">self</a>.<a href="#693-744">walk_pat</a>(<a href="#654">discr_place</a>, <a href="#654">arm</a>.pat, <a href="#654">arm</a>.guard.is_some());
+        <a class="self" href="#654">self</a>.<a href="#695-746">walk_pat</a>(<a href="#654">discr_place</a>, <a href="#654">arm</a>.pat, <a href="#654">arm</a>.guard.is_some());
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(hir::Guard::If(e)) = <a href="#654">arm</a>.guard {
-            <a class="self" href="#654">self</a>.<a href="#167-173">consume_expr</a>(<a href="#667">e</a>)
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(hir::Guard::IfLet(<span class="kw-2">ref </span>l)) = <a href="#654">arm</a>.guard {
-            <a class="self" href="#654">self</a>.<a href="#167-173">consume_expr</a>(<a href="#669">l</a>.init)
+        <span class="kw">match </span><a href="#654">arm</a>.guard {
+            <span class="prelude-val">Some</span>(hir::Guard::If(<span class="kw-2">ref </span>e)) =&gt; <a class="self" href="#654">self</a>.<a href="#167-173">consume_expr</a>(<a href="#668">e</a>),
+            <span class="prelude-val">Some</span>(hir::Guard::IfLet(<span class="kw-2">ref </span>l)) =&gt; {
+                <a class="self" href="#654">self</a>.<a href="#487-509">walk_local</a>(<a href="#669">l</a>.init, <a href="#669">l</a>.pat, <span class="prelude-val">None</span>, |t| <a href="#670">t</a>.<a href="#181-188">borrow_expr</a>(<a href="#669">l</a>.init, ty::ImmBorrow))
+            }
+            <span class="prelude-val">None </span>=&gt; {}
         }
 
         <a class="self" href="#654">self</a>.<a href="#167-173">consume_expr</a>(<a href="#654">arm</a>.body);
@@ -1599,17 +1603,17 @@
     <span class="doccomment">/// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
     </span><span class="kw">fn </span>walk_irrefutable_pat(<span class="kw-2">&amp;mut </span><span class="self">self</span>, discr_place: <span class="kw-2">&amp;</span>PlaceWithHirId&lt;<span class="lifetime">&#39;tcx</span>&gt;, pat: <span class="kw-2">&amp;</span>hir::Pat&lt;<span class="lifetime">&#39;_</span>&gt;) {
-        <span class="kw">let </span>closure_def_id = <span class="kw">match </span><a href="#678">discr_place</a>.place.base {
-            PlaceBase::Upvar(upvar_id) =&gt; <span class="prelude-val">Some</span>(<a href="#680">upvar_id</a>.closure_expr_id),
+        <span class="kw">let </span>closure_def_id = <span class="kw">match </span><a href="#680">discr_place</a>.place.base {
+            PlaceBase::Upvar(upvar_id) =&gt; <span class="prelude-val">Some</span>(<a href="#682">upvar_id</a>.closure_expr_id),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         };
 
-        <a class="self" href="#678">self</a>.delegate.<a href="#75-80">fake_read</a>(
-            <a href="#678">discr_place</a>,
-            FakeReadCause::ForLet(<a href="#679">closure_def_id</a>),
-            <a href="#678">discr_place</a>.hir_id,
+        <a class="self" href="#680">self</a>.delegate.<a href="#75-80">fake_read</a>(
+            <a href="#680">discr_place</a>,
+            FakeReadCause::ForLet(<a href="#681">closure_def_id</a>),
+            <a href="#680">discr_place</a>.hir_id,
         );
-        <a class="self" href="#678">self</a>.<a href="#693-744">walk_pat</a>(<a href="#678">discr_place</a>, <a href="#678">pat</a>, <span class="bool-val">false</span>);
+        <a class="self" href="#680">self</a>.<a href="#695-746">walk_pat</a>(<a href="#680">discr_place</a>, <a href="#680">pat</a>, <span class="bool-val">false</span>);
     }
 
     <span class="doccomment">/// The core driver for walking a pattern
@@ -1621,8 +1625,8 @@
     ) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})&quot;</span>, discr_place, pat, has_guard);
 
-        <span class="kw">let </span>tcx = <a class="self" href="#694">self</a>.<a href="#153-155">tcx</a>();
-        <span class="kw">let </span><a href="#94-98">ExprUseVisitor</a> { <span class="kw-2">ref </span>mc, body_owner: <span class="kw">_</span>, <span class="kw-2">ref mut </span>delegate } = <span class="kw-2">*</span><a class="self" href="#694">self</a>;
+        <span class="kw">let </span>tcx = <a class="self" href="#696">self</a>.<a href="#153-155">tcx</a>();
+        <span class="kw">let </span><a href="#94-98">ExprUseVisitor</a> { <span class="kw-2">ref </span>mc, body_owner: <span class="kw">_</span>, <span class="kw-2">ref mut </span>delegate } = <span class="kw-2">*</span><a class="self" href="#696">self</a>;
         <a class="macro" href="#107-117">return_if_err!</a>(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             <span class="kw">if let </span>PatKind::Binding(<span class="kw">_</span>, canonical_id, ..) = pat.kind {
                 <span class="macro">debug!</span>(<span class="string">&quot;walk_pat: binding place={:?} pat={:?}&quot;</span>, place, pat);
@@ -1691,21 +1695,21 @@
             upvar_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
             body_owner_is_closure: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
         ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-            <a href="#767">upvars</a>.map(|upvars| !<a href="#771">upvars</a>.contains_key(<span class="kw-2">&amp;</span><a href="#768">upvar_id</a>)).unwrap_or(<a href="#769">body_owner_is_closure</a>)
+            <a href="#769">upvars</a>.map(|upvars| !<a href="#773">upvars</a>.contains_key(<span class="kw-2">&amp;</span><a href="#770">upvar_id</a>)).unwrap_or(<a href="#771">body_owner_is_closure</a>)
         }
 
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;walk_captures({:?})&quot;</span>, closure_expr);
 
-        <span class="kw">let </span>tcx = <a class="self" href="#765">self</a>.<a href="#153-155">tcx</a>();
-        <span class="kw">let </span>closure_def_id = <a href="#765">closure_expr</a>.def_id;
-        <span class="kw">let </span>upvars = <a href="#776">tcx</a>.upvars_mentioned(<a class="self" href="#765">self</a>.body_owner);
+        <span class="kw">let </span>tcx = <a class="self" href="#767">self</a>.<a href="#153-155">tcx</a>();
+        <span class="kw">let </span>closure_def_id = <a href="#767">closure_expr</a>.def_id;
+        <span class="kw">let </span>upvars = <a href="#778">tcx</a>.upvars_mentioned(<a class="self" href="#767">self</a>.body_owner);
 
         <span class="comment">// For purposes of this function, generator and closures are equivalent.
         </span><span class="kw">let </span>body_owner_is_closure =
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(tcx.hir().body_owner_kind(<span class="self">self</span>.body_owner), hir::BodyOwnerKind::Closure,);
 
         <span class="comment">// If we have a nested closure, we want to include the fake reads present in the nested closure.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(fake_reads) = <a class="self" href="#765">self</a>.mc.typeck_results.closure_fake_reads.get(<span class="kw-2">&amp;</span><a href="#777">closure_def_id</a>) {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(fake_reads) = <a class="self" href="#767">self</a>.mc.typeck_results.closure_fake_reads.get(<span class="kw-2">&amp;</span><a href="#779">closure_def_id</a>) {
             <span class="kw">for </span>(fake_read, cause, hir_id) <span class="kw">in </span>fake_reads.iter() {
                 <span class="kw">match </span>fake_read.base {
                     PlaceBase::Upvar(upvar_id) =&gt; {
@@ -1748,7 +1752,7 @@
             }
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(min_captures) = <a class="self" href="#765">self</a>.mc.typeck_results.closure_min_captures.get(<span class="kw-2">&amp;</span><a href="#777">closure_def_id</a>)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(min_captures) = <a class="self" href="#767">self</a>.mc.typeck_results.closure_min_captures.get(<span class="kw-2">&amp;</span><a href="#779">closure_def_id</a>)
         {
             <span class="kw">for </span>(var_hir_id, min_list) <span class="kw">in </span>min_captures.iter() {
                 <span class="kw">if </span>upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
@@ -1818,28 +1822,28 @@
 ) {
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;delegate_consume(place_with_id={:?})&quot;</span>, place_with_id);
 
-    <span class="kw">let </span>mode = <a href="#877-886">copy_or_move</a>(<a href="#891">mc</a>, <a href="#893">place_with_id</a>);
+    <span class="kw">let </span>mode = <a href="#879-888">copy_or_move</a>(<a href="#893">mc</a>, <a href="#895">place_with_id</a>);
 
-    <span class="kw">match </span><a href="#898">mode</a> {
-        <a href="#88">ConsumeMode::Move</a> =&gt; <a href="#892">delegate</a>.<a href="#42">consume</a>(<a href="#893">place_with_id</a>, <a href="#894">diag_expr_id</a>),
-        <a href="#86">ConsumeMode::Copy</a> =&gt; <a href="#892">delegate</a>.<a href="#55-59">copy</a>(<a href="#893">place_with_id</a>, <a href="#894">diag_expr_id</a>),
+    <span class="kw">match </span><a href="#900">mode</a> {
+        <a href="#88">ConsumeMode::Move</a> =&gt; <a href="#894">delegate</a>.<a href="#42">consume</a>(<a href="#895">place_with_id</a>, <a href="#896">diag_expr_id</a>),
+        <a href="#86">ConsumeMode::Copy</a> =&gt; <a href="#894">delegate</a>.<a href="#55-59">copy</a>(<a href="#895">place_with_id</a>, <a href="#896">diag_expr_id</a>),
     }
 }
 
 <span class="kw">fn </span><a href="../../rustc_hir_typeck/expr_use_visitor/fn.is_multivariant_adt.html">is_multivariant_adt</a>(ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-    <span class="kw">if let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#906">ty</a>.kind() {
+    <span class="kw">if let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#908">ty</a>.kind() {
         <span class="comment">// Note that if a non-exhaustive SingleVariant is defined in another crate, we need
         // to assume that more cases will be added to the variant in the future. This mean
         // that we should handle non-exhaustive SingleVariant the same way we would handle
         // a MultiVariant.
         // If the variant is not local it must be defined in another crate.
-        </span><span class="kw">let </span>is_non_exhaustive = <span class="kw">match </span><a href="#907">def</a>.adt_kind() {
+        </span><span class="kw">let </span>is_non_exhaustive = <span class="kw">match </span><a href="#909">def</a>.adt_kind() {
             AdtKind::Struct | AdtKind::Union =&gt; {
-                <a href="#907">def</a>.non_enum_variant().is_field_list_non_exhaustive()
+                <a href="#909">def</a>.non_enum_variant().is_field_list_non_exhaustive()
             }
-            AdtKind::Enum =&gt; <a href="#907">def</a>.is_variant_list_non_exhaustive(),
+            AdtKind::Enum =&gt; <a href="#909">def</a>.is_variant_list_non_exhaustive(),
         };
-        <a href="#907">def</a>.variants().len() &gt; <span class="number">1 </span>|| (!<a href="#907">def</a>.did().is_local() &amp;&amp; <a href="#913">is_non_exhaustive</a>)
+        <a href="#909">def</a>.variants().len() &gt; <span class="number">1 </span>|| (!<a href="#909">def</a>.did().is_local() &amp;&amp; <a href="#915">is_non_exhaustive</a>)
     } <span class="kw">else </span>{
         <span class="bool-val">false
     </span>}

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/collect/resolve_bound_vars.rs`."><title>resolve_bound_vars.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/collect/resolve_bound_vars.rs`."><title>resolve_bound_vars.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2108,6 +2108,36 @@
 <a href="#2108" id="2108">2108</a>
 <a href="#2109" id="2109">2109</a>
 <a href="#2110" id="2110">2110</a>
+<a href="#2111" id="2111">2111</a>
+<a href="#2112" id="2112">2112</a>
+<a href="#2113" id="2113">2113</a>
+<a href="#2114" id="2114">2114</a>
+<a href="#2115" id="2115">2115</a>
+<a href="#2116" id="2116">2116</a>
+<a href="#2117" id="2117">2117</a>
+<a href="#2118" id="2118">2118</a>
+<a href="#2119" id="2119">2119</a>
+<a href="#2120" id="2120">2120</a>
+<a href="#2121" id="2121">2121</a>
+<a href="#2122" id="2122">2122</a>
+<a href="#2123" id="2123">2123</a>
+<a href="#2124" id="2124">2124</a>
+<a href="#2125" id="2125">2125</a>
+<a href="#2126" id="2126">2126</a>
+<a href="#2127" id="2127">2127</a>
+<a href="#2128" id="2128">2128</a>
+<a href="#2129" id="2129">2129</a>
+<a href="#2130" id="2130">2130</a>
+<a href="#2131" id="2131">2131</a>
+<a href="#2132" id="2132">2132</a>
+<a href="#2133" id="2133">2133</a>
+<a href="#2134" id="2134">2134</a>
+<a href="#2135" id="2135">2135</a>
+<a href="#2136" id="2136">2136</a>
+<a href="#2137" id="2137">2137</a>
+<a href="#2138" id="2138">2138</a>
+<a href="#2139" id="2139">2139</a>
+<a href="#2140" id="2140">2140</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Resolution of early vs late bound lifetimes.
 //!
 //! Name resolution for lifetimes is performed on the AST and embedded into HIR. From this
@@ -2220,7 +2250,7 @@
         /// for diagnostics.
         </span>bound_vars: FxIndexMap&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>&gt;,
 
-        scope_type: <a href="#176-189">BinderScopeType</a>,
+        scope_type: <a href="#177-190">BinderScopeType</a>,
 
         <span class="doccomment">/// The late bound vars for a given item are stored by `HirId` to be
         /// queried later. However, if we enter an elision scope, we have to
@@ -2268,13 +2298,14 @@
         s: ScopeRef&lt;<span class="lifetime">&#39;a</span>&gt;,
     },
 
-    <span class="doccomment">/// Disallows capturing non-lifetime binders from parent scopes.
+    <span class="doccomment">/// Disallows capturing late-bound vars from parent scopes.
     ///
     /// This is necessary for something like `for&lt;T&gt; [(); { /* references T */ }]:`,
     /// since we don&#39;t do something more correct like replacing any captured
     /// late-bound vars with early-bound params in the const&#39;s own generics.
-    </span>AnonConstBoundary {
+    </span>LateBoundary {
         s: ScopeRef&lt;<span class="lifetime">&#39;a</span>&gt;,
+        what: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
     },
 
     Root {
@@ -2303,32 +2334,34 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">fmt::Debug</a> <span class="kw">for </span>TruncatedScopeDebug&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">fmt::Result</a> {
-        <span class="kw">match </span><a class="self" href="#195">self</a>.<span class="number">0 </span>{
-            <a href="#108-129">Scope::Binder</a> { bound_vars, scope_type, hir_id, where_bound_origin, s: <span class="kw">_ </span>} =&gt; <a href="#195">f</a>
+        <span class="kw">match </span><a class="self" href="#196">self</a>.<span class="number">0 </span>{
+            <a href="#108-129">Scope::Binder</a> { bound_vars, scope_type, hir_id, where_bound_origin, s: <span class="kw">_ </span>} =&gt; <a href="#196">f</a>
                 .debug_struct(<span class="string">&quot;Binder&quot;</span>)
-                .field(<span class="string">&quot;bound_vars&quot;</span>, <a href="#197">bound_vars</a>)
-                .field(<span class="string">&quot;scope_type&quot;</span>, <a href="#197">scope_type</a>)
-                .field(<span class="string">&quot;hir_id&quot;</span>, <a href="#197">hir_id</a>)
-                .field(<span class="string">&quot;where_bound_origin&quot;</span>, <a href="#197">where_bound_origin</a>)
+                .field(<span class="string">&quot;bound_vars&quot;</span>, <a href="#198">bound_vars</a>)
+                .field(<span class="string">&quot;scope_type&quot;</span>, <a href="#198">scope_type</a>)
+                .field(<span class="string">&quot;hir_id&quot;</span>, <a href="#198">hir_id</a>)
+                .field(<span class="string">&quot;where_bound_origin&quot;</span>, <a href="#198">where_bound_origin</a>)
                 .field(<span class="string">&quot;s&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;..&quot;</span>)
                 .finish(),
             <a href="#135-138">Scope::Body</a> { id, s: <span class="kw">_ </span>} =&gt; {
-                <a href="#195">f</a>.debug_struct(<span class="string">&quot;Body&quot;</span>).field(<span class="string">&quot;id&quot;</span>, <a href="#205">id</a>).field(<span class="string">&quot;s&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;..&quot;</span>).finish()
+                <a href="#196">f</a>.debug_struct(<span class="string">&quot;Body&quot;</span>).field(<span class="string">&quot;id&quot;</span>, <a href="#206">id</a>).field(<span class="string">&quot;s&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;..&quot;</span>).finish()
             }
-            <a href="#143-146">Scope::ObjectLifetimeDefault</a> { lifetime, s: <span class="kw">_ </span>} =&gt; <a href="#195">f</a>
+            <a href="#143-146">Scope::ObjectLifetimeDefault</a> { lifetime, s: <span class="kw">_ </span>} =&gt; <a href="#196">f</a>
                 .debug_struct(<span class="string">&quot;ObjectLifetimeDefault&quot;</span>)
-                .field(<span class="string">&quot;lifetime&quot;</span>, <a href="#208">lifetime</a>)
+                .field(<span class="string">&quot;lifetime&quot;</span>, <a href="#209">lifetime</a>)
                 .field(<span class="string">&quot;s&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;..&quot;</span>)
                 .finish(),
-            <a href="#152-155">Scope::Supertrait</a> { bound_vars, s: <span class="kw">_ </span>} =&gt; <a href="#195">f</a>
+            <a href="#152-155">Scope::Supertrait</a> { bound_vars, s: <span class="kw">_ </span>} =&gt; <a href="#196">f</a>
                 .debug_struct(<span class="string">&quot;Supertrait&quot;</span>)
-                .field(<span class="string">&quot;bound_vars&quot;</span>, <a href="#213">bound_vars</a>)
+                .field(<span class="string">&quot;bound_vars&quot;</span>, <a href="#214">bound_vars</a>)
                 .field(<span class="string">&quot;s&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;..&quot;</span>)
                 .finish(),
-            <a href="#157-159">Scope::TraitRefBoundary</a> { s: <span class="kw">_ </span>} =&gt; <a href="#195">f</a>.debug_struct(<span class="string">&quot;TraitRefBoundary&quot;</span>).finish(),
-            <a href="#166-168">Scope::AnonConstBoundary</a> { s: <span class="kw">_ </span>} =&gt; <a href="#195">f</a>.debug_struct(<span class="string">&quot;AnonConstBoundary&quot;</span>).finish(),
-            <a href="#170-172">Scope::Root</a> { opt_parent_item } =&gt; {
-                <a href="#195">f</a>.debug_struct(<span class="string">&quot;Root&quot;</span>).field(<span class="string">&quot;opt_parent_item&quot;</span>, <span class="kw-2">&amp;</span><a href="#220">opt_parent_item</a>).finish()
+            <a href="#157-159">Scope::TraitRefBoundary</a> { s: <span class="kw">_ </span>} =&gt; <a href="#196">f</a>.debug_struct(<span class="string">&quot;TraitRefBoundary&quot;</span>).finish(),
+            <a href="#166-169">Scope::LateBoundary</a> { s: <span class="kw">_</span>, what } =&gt; {
+                <a href="#196">f</a>.debug_struct(<span class="string">&quot;LateBoundary&quot;</span>).field(<span class="string">&quot;what&quot;</span>, <a href="#220">what</a>).finish()
+            }
+            <a href="#171-173">Scope::Root</a> { opt_parent_item } =&gt; {
+                <a href="#196">f</a>.debug_struct(<span class="string">&quot;Root&quot;</span>).field(<span class="string">&quot;opt_parent_item&quot;</span>, <span class="kw-2">&amp;</span><a href="#223">opt_parent_item</a>).finish()
             }
         }
     }
@@ -2337,15 +2370,15 @@
 <span class="kw">type </span><a href="../../../rustc_hir_analysis/collect/resolve_bound_vars/type.ScopeRef.html">ScopeRef</a>&lt;<span class="lifetime">&#39;a</span>&gt; = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Scope&lt;<span class="lifetime">&#39;a</span>&gt;;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span><a href="../../../rustc_hir_analysis/collect/resolve_bound_vars/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../../rustc_middle/query/struct.Providers.html">Providers</a>) {
-    <span class="kw-2">*</span><a href="#229">providers</a> = <a href="../../../rustc_middle/query/struct.Providers.html">Providers</a> {
-        <a href="#245">resolve_bound_vars</a>,
+    <span class="kw-2">*</span><a href="#232">providers</a> = <a href="../../../rustc_middle/query/struct.Providers.html">Providers</a> {
+        <a href="#248">resolve_bound_vars</a>,
 
-        named_variable_map: |tcx, id| <a href="#233">tcx</a>.resolve_bound_vars(<a href="#233">id</a>).defs.get(<span class="kw-2">&amp;</span><a href="#233">id</a>),
-        <a href="#1871-2076">is_late_bound_map</a>,
-        <a href="#1000-1050">object_lifetime_default</a>,
-        late_bound_vars_map: |tcx, id| <a href="#236">tcx</a>.resolve_bound_vars(<a href="#236">id</a>).late_bound_vars.get(<span class="kw-2">&amp;</span><a href="#236">id</a>),
+        named_variable_map: |tcx, id| <a href="#236">tcx</a>.resolve_bound_vars(<a href="#236">id</a>).defs.get(<span class="kw-2">&amp;</span><a href="#236">id</a>),
+        <a href="#1901-2106">is_late_bound_map</a>,
+        <a href="#1005-1055">object_lifetime_default</a>,
+        late_bound_vars_map: |tcx, id| <a href="#239">tcx</a>.resolve_bound_vars(<a href="#239">id</a>).late_bound_vars.get(<span class="kw-2">&amp;</span><a href="#239">id</a>),
 
-        ..<span class="kw-2">*</span><a href="#229">providers</a>
+        ..<span class="kw-2">*</span><a href="#232">providers</a>
     };
 }
 
@@ -2400,15 +2433,15 @@
     arg: <span class="kw-2">&amp;</span><a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>,
     param: <span class="kw-2">&amp;</span>GenericParam&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="../../../rustc_middle/ty/sty/enum.BoundVariableKind.html">ty::BoundVariableKind</a> {
-    <span class="kw">match </span><a href="#290">arg</a> {
+    <span class="kw">match </span><a href="#293">arg</a> {
         ResolvedArg::LateBound(<span class="kw">_</span>, <span class="kw">_</span>, def_id) =&gt; {
-            <span class="kw">let </span>name = <a href="#289">tcx</a>.hir().name(<a href="#289">tcx</a>.hir().local_def_id_to_hir_id(<a href="#294">def_id</a>.expect_local()));
-            <span class="kw">match </span><a href="#291">param</a>.kind {
+            <span class="kw">let </span>name = <a href="#292">tcx</a>.hir().name(<a href="#292">tcx</a>.hir().local_def_id_to_hir_id(<a href="#297">def_id</a>.expect_local()));
+            <span class="kw">match </span><a href="#294">param</a>.kind {
                 <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Lifetime</a> { .. } =&gt; {
-                    ty::BoundVariableKind::Region(ty::BrNamed(<span class="kw-2">*</span><a href="#294">def_id</a>, <a href="#295">name</a>))
+                    ty::BoundVariableKind::Region(ty::BrNamed(<span class="kw-2">*</span><a href="#297">def_id</a>, <a href="#298">name</a>))
                 }
                 <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Type</a> { .. } =&gt; {
-                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(<span class="kw-2">*</span><a href="#294">def_id</a>, <a href="#295">name</a>))
+                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(<span class="kw-2">*</span><a href="#297">def_id</a>, <a href="#298">name</a>))
                 }
                 <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Const</a> { .. } =&gt; ty::BoundVariableKind::Const,
             }
@@ -2419,22 +2452,22 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; BoundVarContext&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="doccomment">/// Returns the binders in scope and the type of `Binder` that should be created for a poly trait ref.
-    </span><span class="kw">fn </span>poly_trait_ref_binder_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; (Vec&lt;<a href="../../../rustc_middle/ty/sty/enum.BoundVariableKind.html">ty::BoundVariableKind</a>&gt;, <a href="#176-189">BinderScopeType</a>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#312">self</a>.scope;
+    </span><span class="kw">fn </span>poly_trait_ref_binder_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; (Vec&lt;<a href="../../../rustc_middle/ty/sty/enum.BoundVariableKind.html">ty::BoundVariableKind</a>&gt;, <a href="#177-190">BinderScopeType</a>) {
+        <span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#315">self</a>.scope;
         <span class="kw">let </span><span class="kw-2">mut </span>supertrait_bound_vars = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
         <span class="kw">loop </span>{
-            <span class="kw">match </span><a href="#313">scope</a> {
-                <a href="#135-138">Scope::Body</a> { .. } | <a href="#170-172">Scope::Root</a> { .. } =&gt; {
-                    <span class="kw">break </span>(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <a href="#178">BinderScopeType::Normal</a>);
+            <span class="kw">match </span><a href="#316">scope</a> {
+                <a href="#135-138">Scope::Body</a> { .. } | <a href="#171-173">Scope::Root</a> { .. } =&gt; {
+                    <span class="kw">break </span>(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <a href="#179">BinderScopeType::Normal</a>);
                 }
 
-                <a href="#143-146">Scope::ObjectLifetimeDefault</a> { s, .. } | <a href="#166-168">Scope::AnonConstBoundary</a> { s } =&gt; {
-                    <a href="#313">scope</a> = <a href="#321">s</a>;
+                <a href="#143-146">Scope::ObjectLifetimeDefault</a> { s, .. } | <a href="#166-169">Scope::LateBoundary</a> { s, .. } =&gt; {
+                    <a href="#316">scope</a> = <a href="#324">s</a>;
                 }
 
                 <a href="#152-155">Scope::Supertrait</a> { s, bound_vars } =&gt; {
-                    <a href="#314">supertrait_bound_vars</a> = <a href="#325">bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
-                    <a href="#313">scope</a> = <a href="#325">s</a>;
+                    <a href="#317">supertrait_bound_vars</a> = <a href="#328">bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+                    <a href="#316">scope</a> = <a href="#328">s</a>;
                 }
 
                 <a href="#157-159">Scope::TraitRefBoundary</a> { .. } =&gt; {
@@ -2442,7 +2475,7 @@
                     // though this may happen when we call `poly_trait_ref_binder_info` with
                     // an (erroneous, #113423) associated return type bound in an impl header.
                     </span><span class="kw">if </span>!supertrait_bound_vars.is_empty() {
-                        <a class="self" href="#312">self</a>.tcx.sess.delay_span_bug(
+                        <a class="self" href="#315">self</a>.tcx.sess.delay_span_bug(
                             <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                                 <span class="string">&quot;found supertrait lifetimes without a binder to append \
@@ -2450,15 +2483,15 @@
                             </span>),
                         );
                     }
-                    <span class="kw">break </span>(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <a href="#178">BinderScopeType::Normal</a>);
+                    <span class="kw">break </span>(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <a href="#179">BinderScopeType::Normal</a>);
                 }
 
                 <a href="#108-129">Scope::Binder</a> { hir_id, .. } =&gt; {
                     <span class="comment">// Nested poly trait refs have the binders concatenated
                     </span><span class="kw">let </span><span class="kw-2">mut </span>full_binders =
-                        <a class="self" href="#312">self</a>.map.late_bound_vars.entry(<span class="kw-2">*</span><a href="#346">hir_id</a>).or_default().<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
-                    <a href="#348">full_binders</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#314">supertrait_bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>());
-                    <span class="kw">break </span>(<a href="#348">full_binders</a>, <a href="#188">BinderScopeType::Concatenating</a>);
+                        <a class="self" href="#315">self</a>.map.late_bound_vars.entry(<span class="kw-2">*</span><a href="#349">hir_id</a>).or_default().<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+                    <a href="#351">full_binders</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#317">supertrait_bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>());
+                    <span class="kw">break </span>(<a href="#351">full_binders</a>, <a href="#189">BinderScopeType::Concatenating</a>);
                 }
             }
         }
@@ -2467,44 +2500,44 @@
     <span class="kw">fn </span>visit_poly_trait_ref_inner(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         trait_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::PolyTraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        non_lifetime_binder_allowed: <a href="#402-405">NonLifetimeBinderAllowed</a>,
+        non_lifetime_binder_allowed: <a href="#405-408">NonLifetimeBinderAllowed</a>,
     ) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;visit_poly_trait_ref(trait_ref={:?})&quot;</span>, trait_ref);
 
-        <span class="kw">let </span>(<span class="kw-2">mut </span>binders, scope_type) = <a class="self" href="#358">self</a>.<a href="#312-355">poly_trait_ref_binder_info</a>();
+        <span class="kw">let </span>(<span class="kw-2">mut </span>binders, scope_type) = <a class="self" href="#361">self</a>.<a href="#315-358">poly_trait_ref_binder_info</a>();
 
-        <span class="kw">let </span>initial_bound_vars = <a href="#364">binders</a>.len() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>;
+        <span class="kw">let </span>initial_bound_vars = <a href="#367">binders</a>.len() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>;
         <span class="kw">let </span><span class="kw-2">mut </span>bound_vars: FxIndexMap&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>&gt; = FxIndexMap::default();
         <span class="kw">let </span>binders_iter =
-            <a href="#359">trait_ref</a>.bound_generic_params.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(late_bound_idx, param)| {
-                <span class="kw">let </span>pair = ResolvedArg::late(<a href="#366">initial_bound_vars</a> + <a href="#369">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#369">param</a>);
-                <span class="kw">let </span>r = <a href="#288-308">late_arg_as_bound_arg</a>(<a class="self" href="#358">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#370">pair</a>.<span class="number">1</span>, <a href="#369">param</a>);
-                <a href="#367">bound_vars</a>.insert(<a href="#370">pair</a>.<span class="number">0</span>, <a href="#370">pair</a>.<span class="number">1</span>);
-                <a href="#371">r</a>
+            <a href="#362">trait_ref</a>.bound_generic_params.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(late_bound_idx, param)| {
+                <span class="kw">let </span>pair = ResolvedArg::late(<a href="#369">initial_bound_vars</a> + <a href="#372">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#372">param</a>);
+                <span class="kw">let </span>r = <a href="#291-311">late_arg_as_bound_arg</a>(<a class="self" href="#361">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#373">pair</a>.<span class="number">1</span>, <a href="#372">param</a>);
+                <a href="#370">bound_vars</a>.insert(<a href="#373">pair</a>.<span class="number">0</span>, <a href="#373">pair</a>.<span class="number">1</span>);
+                <a href="#374">r</a>
             });
-        <a href="#364">binders</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#368">binders_iter</a>);
+        <a href="#367">binders</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#371">binders_iter</a>);
 
-        <span class="kw">if let </span><a href="#403">NonLifetimeBinderAllowed::Deny</a>(where_) = <a href="#360">non_lifetime_binder_allowed</a> {
-            <a href="#2078-2110">deny_non_region_late_bound</a>(<a class="self" href="#358">self</a>.tcx, <span class="kw-2">&amp;mut </span><a href="#367">bound_vars</a>, <a href="#377">where_</a>);
+        <span class="kw">if let </span><a href="#406">NonLifetimeBinderAllowed::Deny</a>(where_) = <a href="#363">non_lifetime_binder_allowed</a> {
+            <a href="#2108-2140">deny_non_region_late_bound</a>(<a class="self" href="#361">self</a>.tcx, <span class="kw-2">&amp;mut </span><a href="#370">bound_vars</a>, <a href="#380">where_</a>);
         }
 
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>binders);
-        <a class="self" href="#358">self</a>.<a href="#1066-1073">record_late_bound_vars</a>(<a href="#359">trait_ref</a>.trait_ref.hir_ref_id, <a href="#364">binders</a>);
+        <a class="self" href="#361">self</a>.<a href="#1071-1078">record_late_bound_vars</a>(<a href="#362">trait_ref</a>.trait_ref.hir_ref_id, <a href="#367">binders</a>);
 
         <span class="comment">// Always introduce a scope here, even if this is in a where clause and
         // we introduced the binders around the bounded Ty. In that case, we
         // just reuse the concatenation functionality also present in nested trait
         // refs.
         </span><span class="kw">let </span>scope = <a href="#108-129">Scope::Binder</a> {
-            hir_id: <a href="#359">trait_ref</a>.trait_ref.hir_ref_id,
-            <a href="#367">bound_vars</a>,
-            s: <a class="self" href="#358">self</a>.scope,
-            <a href="#364">scope_type</a>,
+            hir_id: <a href="#362">trait_ref</a>.trait_ref.hir_ref_id,
+            <a href="#370">bound_vars</a>,
+            s: <a class="self" href="#361">self</a>.scope,
+            <a href="#367">scope_type</a>,
             where_bound_origin: <span class="prelude-val">None</span>,
         };
-        <a class="self" href="#358">self</a>.<a href="#1053-1064">with</a>(<a href="#388">scope</a>, |this| {
+        <a class="self" href="#361">self</a>.<a href="#1058-1069">with</a>(<a href="#391">scope</a>, |this| {
             <a class="macro" href="../../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_generic_param, trait_ref.bound_generic_params);
-            <a href="#395">this</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_trait_ref</a>(<span class="kw-2">&amp;</span><a href="#359">trait_ref</a>.trait_ref);
+            <a href="#398">this</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_trait_ref</a>(<span class="kw-2">&amp;</span><a href="#362">trait_ref</a>.trait_ref);
         });
     }
 }
@@ -2518,90 +2551,90 @@
     <span class="kw">type </span>NestedFilter = <a href="../../../rustc_middle/hir/nested_filter/struct.OnlyBodies.html">nested_filter::OnlyBodies</a>;
 
     <span class="kw">fn </span>nested_visit_map(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Map {
-        <a class="self" href="#410">self</a>.tcx.hir()
+        <a class="self" href="#413">self</a>.tcx.hir()
     }
 
     <span class="kw">fn </span>visit_nested_body(<span class="kw-2">&amp;mut </span><span class="self">self</span>, body: <a href="../../../rustc_hir/hir/struct.BodyId.html">hir::BodyId</a>) {
-        <span class="kw">let </span>body = <a class="self" href="#414">self</a>.tcx.hir().body(<a href="#414">body</a>);
-        <a class="self" href="#414">self</a>.<a href="#1053-1064">with</a>(<a href="#135-138">Scope::Body</a> { id: <a href="#415">body</a>.id(), s: <a class="self" href="#414">self</a>.scope }, |this| {
-            <a href="#416">this</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#415">body</a>);
+        <span class="kw">let </span>body = <a class="self" href="#417">self</a>.tcx.hir().body(<a href="#417">body</a>);
+        <a class="self" href="#417">self</a>.<a href="#1058-1069">with</a>(<a href="#135-138">Scope::Body</a> { id: <a href="#418">body</a>.id(), s: <a class="self" href="#417">self</a>.scope }, |this| {
+            <a href="#419">this</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#418">body</a>);
         });
     }
 
     <span class="kw">fn </span>visit_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, e: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="kw">if let </span>hir::ExprKind::Closure(<a href="../../../rustc_hir/hir/struct.Closure.html">hir::Closure</a> {
             binder, bound_generic_params, fn_decl, ..
-        }) = <a href="#421">e</a>.kind
+        }) = <a href="#424">e</a>.kind
         {
-            <span class="kw">if let </span><span class="kw-2">&amp;</span><a href="../../../rustc_hir/hir/enum.ClosureBinder.html">hir::ClosureBinder::For</a> { span: for_sp, .. } = <a href="#423">binder</a> {
+            <span class="kw">if let </span><span class="kw-2">&amp;</span><a href="../../../rustc_hir/hir/enum.ClosureBinder.html">hir::ClosureBinder::For</a> { span: for_sp, .. } = <a href="#426">binder</a> {
                 <span class="kw">fn </span>span_of_infer(ty: <span class="kw-2">&amp;</span>hir::Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt; {
                     <span class="kw">struct </span>V(<span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;);
 
-                    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;v</span>&gt; Visitor&lt;<span class="lifetime">&#39;v</span>&gt; <span class="kw">for </span><a href="#428">V</a> {
+                    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;v</span>&gt; Visitor&lt;<span class="lifetime">&#39;v</span>&gt; <span class="kw">for </span><a href="#431">V</a> {
                         <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: <span class="kw-2">&amp;</span><span class="lifetime">&#39;v </span>hir::Ty&lt;<span class="lifetime">&#39;v</span>&gt;) {
-                            <span class="kw">match </span><a href="#431">t</a>.kind {
-                                <span class="kw">_ if </span><a class="self" href="#431">self</a>.<span class="number">0</span>.is_some() =&gt; (),
+                            <span class="kw">match </span><a href="#434">t</a>.kind {
+                                <span class="kw">_ if </span><a class="self" href="#434">self</a>.<span class="number">0</span>.is_some() =&gt; (),
                                 hir::TyKind::Infer =&gt; {
-                                    <a class="self" href="#431">self</a>.<span class="number">0 </span>= <span class="prelude-val">Some</span>(<a href="#431">t</a>.span);
+                                    <a class="self" href="#434">self</a>.<span class="number">0 </span>= <span class="prelude-val">Some</span>(<a href="#434">t</a>.span);
                                 }
-                                <span class="kw">_ </span>=&gt; intravisit::walk_ty(<a class="self" href="#431">self</a>, <a href="#431">t</a>),
+                                <span class="kw">_ </span>=&gt; intravisit::walk_ty(<a class="self" href="#434">self</a>, <a href="#434">t</a>),
                             }
                         }
                     }
 
-                    <span class="kw">let </span><span class="kw-2">mut </span>v = <a href="#428">V</a>(<span class="prelude-val">None</span>);
-                    <a href="#442">v</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#427">ty</a>);
-                    <a href="#442">v</a>.<span class="number">0
+                    <span class="kw">let </span><span class="kw-2">mut </span>v = <a href="#431">V</a>(<span class="prelude-val">None</span>);
+                    <a href="#445">v</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#430">ty</a>);
+                    <a href="#445">v</a>.<span class="number">0
                 </span>}
 
-                <span class="kw">let </span>infer_in_rt_sp = <span class="kw">match </span><a href="#423">fn_decl</a>.output {
-                    hir::FnRetTy::DefaultReturn(sp) =&gt; <span class="prelude-val">Some</span>(<a href="#448">sp</a>),
-                    hir::FnRetTy::Return(ty) =&gt; <a href="#427-445">span_of_infer</a>(<a href="#449">ty</a>),
+                <span class="kw">let </span>infer_in_rt_sp = <span class="kw">match </span><a href="#426">fn_decl</a>.output {
+                    hir::FnRetTy::DefaultReturn(sp) =&gt; <span class="prelude-val">Some</span>(<a href="#451">sp</a>),
+                    hir::FnRetTy::Return(ty) =&gt; <a href="#430-448">span_of_infer</a>(<a href="#452">ty</a>),
                 };
 
-                <span class="kw">let </span>infer_spans = <a href="#423">fn_decl</a>
+                <span class="kw">let </span>infer_spans = <a href="#426">fn_decl</a>
                     .inputs
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(<a href="#427-445">span_of_infer</a>)
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#447">infer_in_rt_sp</a>)
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(<a href="#430-448">span_of_infer</a>)
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#450">infer_in_rt_sp</a>)
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
                 <span class="kw">if </span>!infer_spans.is_empty() {
-                    <a class="self" href="#421">self</a>.tcx
+                    <a class="self" href="#424">self</a>.tcx
                         .sess
-                        .emit_err(<a href="../errors.rs.html#820-825">errors::ClosureImplicitHrtb</a> { spans: <a href="#452">infer_spans</a>, <a href="#426">for_sp</a> });
+                        .emit_err(<a href="../errors.rs.html#830-835">errors::ClosureImplicitHrtb</a> { spans: <a href="#455">infer_spans</a>, <a href="#429">for_sp</a> });
                 }
             }
 
             <span class="kw">let </span>(<span class="kw-2">mut </span>bound_vars, binders): (FxIndexMap&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>&gt;, Vec&lt;<span class="kw">_</span>&gt;) =
-                <a href="#423">bound_generic_params</a>
+                <a href="#426">bound_generic_params</a>
                     .iter()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(late_bound_idx, param)| {
-                        <span class="kw">let </span>pair = ResolvedArg::late(<a href="#470">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#470">param</a>);
-                        <span class="kw">let </span>r = <a href="#288-308">late_arg_as_bound_arg</a>(<a class="self" href="#421">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#471">pair</a>.<span class="number">1</span>, <a href="#470">param</a>);
-                        (<a href="#471">pair</a>, <a href="#472">r</a>)
+                        <span class="kw">let </span>pair = ResolvedArg::late(<a href="#473">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#473">param</a>);
+                        <span class="kw">let </span>r = <a href="#291-311">late_arg_as_bound_arg</a>(<a class="self" href="#424">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#474">pair</a>.<span class="number">1</span>, <a href="#473">param</a>);
+                        (<a href="#474">pair</a>, <a href="#475">r</a>)
                     })
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">unzip</a>();
 
-            <a href="#2078-2110">deny_non_region_late_bound</a>(<a class="self" href="#421">self</a>.tcx, <span class="kw-2">&amp;mut </span><a href="#466">bound_vars</a>, <span class="string">&quot;closures&quot;</span>);
+            <a href="#2108-2140">deny_non_region_late_bound</a>(<a class="self" href="#424">self</a>.tcx, <span class="kw-2">&amp;mut </span><a href="#469">bound_vars</a>, <span class="string">&quot;closures&quot;</span>);
 
-            <a class="self" href="#421">self</a>.<a href="#1066-1073">record_late_bound_vars</a>(<a href="#421">e</a>.hir_id, <a href="#466">binders</a>);
+            <a class="self" href="#424">self</a>.<a href="#1071-1078">record_late_bound_vars</a>(<a href="#424">e</a>.hir_id, <a href="#469">binders</a>);
             <span class="kw">let </span>scope = <a href="#108-129">Scope::Binder</a> {
-                hir_id: <a href="#421">e</a>.hir_id,
-                <a href="#466">bound_vars</a>,
-                s: <a class="self" href="#421">self</a>.scope,
-                scope_type: <a href="#178">BinderScopeType::Normal</a>,
+                hir_id: <a href="#424">e</a>.hir_id,
+                <a href="#469">bound_vars</a>,
+                s: <a class="self" href="#424">self</a>.scope,
+                scope_type: <a href="#179">BinderScopeType::Normal</a>,
                 where_bound_origin: <span class="prelude-val">None</span>,
             };
 
-            <a class="self" href="#421">self</a>.<a href="#1053-1064">with</a>(<a href="#480">scope</a>, |this| {
+            <a class="self" href="#424">self</a>.<a href="#1058-1069">with</a>(<a href="#483">scope</a>, |this| {
                 <span class="comment">// a closure has no bounds, so everything
                 // contained within is scoped within its binder.
-                </span>intravisit::walk_expr(<a href="#488">this</a>, <a href="#421">e</a>)
+                </span>intravisit::walk_expr(<a href="#491">this</a>, <a href="#424">e</a>)
             });
         } <span class="kw">else </span>{
-            intravisit::walk_expr(<a class="self" href="#421">self</a>, <a href="#421">e</a>)
+            intravisit::walk_expr(<a class="self" href="#424">self</a>, <a href="#424">e</a>)
         }
     }
 
@@ -2706,17 +2739,17 @@
     }
 
     <span class="kw">fn </span>visit_foreign_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::ForeignItem&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">match </span><a href="#598">item</a>.kind {
+        <span class="kw">match </span><a href="#601">item</a>.kind {
             hir::ForeignItemKind::Fn(<span class="kw">_</span>, <span class="kw">_</span>, generics) =&gt; {
-                <a class="self" href="#598">self</a>.<a href="#1093-1143">visit_early_late</a>(<a href="#598">item</a>.hir_id(), <a href="#600">generics</a>, |this| {
-                    intravisit::walk_foreign_item(<a href="#601">this</a>, <a href="#598">item</a>);
+                <a class="self" href="#601">self</a>.<a href="#1098-1148">visit_early_late</a>(<a href="#601">item</a>.hir_id(), <a href="#603">generics</a>, |this| {
+                    intravisit::walk_foreign_item(<a href="#604">this</a>, <a href="#601">item</a>);
                 })
             }
             hir::ForeignItemKind::Static(..) =&gt; {
-                intravisit::walk_foreign_item(<a class="self" href="#598">self</a>, <a href="#598">item</a>);
+                intravisit::walk_foreign_item(<a class="self" href="#601">self</a>, <a href="#601">item</a>);
             }
             hir::ForeignItemKind::Type =&gt; {
-                intravisit::walk_foreign_item(<a class="self" href="#598">self</a>, <a href="#598">item</a>);
+                intravisit::walk_foreign_item(<a class="self" href="#601">self</a>, <a href="#601">item</a>);
             }
         }
     }
@@ -2807,9 +2840,12 @@
                     }) =&gt; {
                         intravisit::walk_ty(<span class="self">self</span>, ty);
 
-                        <span class="comment">// Elided lifetimes are not allowed in non-return
-                        // position impl Trait
-                        </span><span class="kw">let </span>scope = Scope::TraitRefBoundary { s: <span class="self">self</span>.scope };
+                        <span class="comment">// Elided lifetimes and late-bound lifetimes (from the parent)
+                        // are not allowed in non-return position impl Trait
+                        </span><span class="kw">let </span>scope = Scope::LateBoundary {
+                            s: <span class="kw-2">&amp;</span>Scope::TraitRefBoundary { s: <span class="self">self</span>.scope },
+                            what: <span class="string">&quot;type alias impl trait&quot;</span>,
+                        };
                         <span class="self">self</span>.with(scope, |this| intravisit::walk_item(this, opaque_ty));
 
                         <span class="kw">return</span>;
@@ -2934,8 +2970,8 @@
                 <span class="self">self</span>.visit_segment_args(path.res, depth, args);
             }
         }
-        <span class="kw">if let </span>Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = <a href="#820">path</a>.res {
-            <a class="self" href="#820">self</a>.<a href="#1337-1459">resolve_type_ref</a>(<a href="#827">param_def_id</a>.expect_local(), <a href="#820">hir_id</a>);
+        <span class="kw">if let </span>Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = <a href="#826">path</a>.res {
+            <a class="self" href="#826">self</a>.<a href="#1363-1489">resolve_type_ref</a>(<a href="#833">param_def_id</a>.expect_local(), <a href="#826">hir_id</a>);
         }
     }
 
@@ -2947,41 +2983,25 @@
         <span class="kw">_</span>: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         <span class="kw">_</span>: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     ) {
-        <span class="kw">let </span>output = <span class="kw">match </span><a href="#835">fd</a>.output {
+        <span class="kw">let </span>output = <span class="kw">match </span><a href="#841">fd</a>.output {
             hir::FnRetTy::DefaultReturn(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
-            hir::FnRetTy::Return(ty) =&gt; <span class="prelude-val">Some</span>(<a href="#842">ty</a>),
+            hir::FnRetTy::Return(ty) =&gt; <span class="prelude-val">Some</span>(<a href="#848">ty</a>),
         };
-        <a class="self" href="#833">self</a>.<a href="#1786">visit_fn_like_elision</a>(<span class="kw-2">&amp;</span><a href="#835">fd</a>.inputs, <a href="#840">output</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(fk, intravisit::FnKind::Closure));
-        intravisit::walk_fn_kind(<a class="self" href="#833">self</a>, <a href="#834">fk</a>);
-        <a class="self" href="#833">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_nested_body</a>(<a href="#836">body_id</a>)
+        <a class="self" href="#839">self</a>.<a href="#1816">visit_fn_like_elision</a>(<span class="kw-2">&amp;</span><a href="#841">fd</a>.inputs, <a href="#846">output</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(fk, intravisit::FnKind::Closure));
+        intravisit::walk_fn_kind(<a class="self" href="#839">self</a>, <a href="#840">fk</a>);
+        <a class="self" href="#839">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_nested_body</a>(<a href="#842">body_id</a>)
     }
 
     <span class="kw">fn </span>visit_generics(<span class="kw-2">&amp;mut </span><span class="self">self</span>, generics: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Generics&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">let </span>scope = <a href="#157-159">Scope::TraitRefBoundary</a> { s: <a class="self" href="#849">self</a>.scope };
-        <a class="self" href="#849">self</a>.<a href="#1053-1064">with</a>(<a href="#850">scope</a>, |this| {
+        <span class="kw">let </span>scope = <a href="#157-159">Scope::TraitRefBoundary</a> { s: <a class="self" href="#855">self</a>.scope };
+        <a class="self" href="#855">self</a>.<a href="#1058-1069">with</a>(<a href="#856">scope</a>, |this| {
             <a class="macro" href="../../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_generic_param, generics.params);
-            <span class="kw">for </span>param <span class="kw">in </span>generics.params {
-                <span class="kw">match </span>param.kind {
-                    GenericParamKind::Lifetime { .. } =&gt; {}
-                    GenericParamKind::Type { default, .. } =&gt; {
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = default {
-                            this.visit_ty(ty);
-                        }
-                    }
-                    GenericParamKind::Const { ty, default } =&gt; {
-                        this.visit_ty(ty);
-                        <span class="kw">if let </span><span class="prelude-val">Some</span>(default) = default {
-                            this.visit_body(this.tcx.hir().body(default.body));
-                        }
-                    }
-                }
-            }
             <a class="macro" href="../../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_where_predicate, generics.predicates);
         })
     }
 
     <span class="kw">fn </span>visit_where_predicate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, predicate: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::WherePredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">match </span><a href="#873">predicate</a> {
+        <span class="kw">match </span><a href="#863">predicate</a> {
             <span class="kw-2">&amp;</span>hir::WherePredicate::BoundPredicate(<a href="../../../rustc_hir/hir/struct.WhereBoundPredicate.html">hir::WhereBoundPredicate</a> {
                 hir_id,
                 bounded_ty,
@@ -2991,30 +3011,30 @@
                 ..
             }) =&gt; {
                 <span class="kw">let </span>(bound_vars, binders): (FxIndexMap&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>&gt;, Vec&lt;<span class="kw">_</span>&gt;) =
-                    <a href="#879">bound_generic_params</a>
+                    <a href="#869">bound_generic_params</a>
                         .iter()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(late_bound_idx, param)| {
-                            <span class="kw">let </span>pair = ResolvedArg::late(<a href="#887">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#887">param</a>);
-                            <span class="kw">let </span>r = <a href="#288-308">late_arg_as_bound_arg</a>(<a class="self" href="#873">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#888">pair</a>.<span class="number">1</span>, <a href="#887">param</a>);
-                            (<a href="#888">pair</a>, <a href="#889">r</a>)
+                            <span class="kw">let </span>pair = ResolvedArg::late(<a href="#877">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#877">param</a>);
+                            <span class="kw">let </span>r = <a href="#291-311">late_arg_as_bound_arg</a>(<a class="self" href="#863">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#878">pair</a>.<span class="number">1</span>, <a href="#877">param</a>);
+                            (<a href="#878">pair</a>, <a href="#879">r</a>)
                         })
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">unzip</a>();
-                <a class="self" href="#873">self</a>.<a href="#1066-1073">record_late_bound_vars</a>(<a href="#876">hir_id</a>, <a href="#883">binders</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
+                <a class="self" href="#863">self</a>.<a href="#1071-1078">record_late_bound_vars</a>(<a href="#866">hir_id</a>, <a href="#873">binders</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
                 <span class="comment">// Even if there are no lifetimes defined here, we still wrap it in a binder
                 // scope. If there happens to be a nested poly trait ref (an error), that
                 // will be `Concatenating` anyways, so we don&#39;t have to worry about the depth
                 // being wrong.
                 </span><span class="kw">let </span>scope = <a href="#108-129">Scope::Binder</a> {
-                    <a href="#876">hir_id</a>,
-                    <a href="#883">bound_vars</a>,
-                    s: <a class="self" href="#873">self</a>.scope,
-                    scope_type: <a href="#178">BinderScopeType::Normal</a>,
-                    where_bound_origin: <span class="prelude-val">Some</span>(<a href="#880">origin</a>),
+                    <a href="#866">hir_id</a>,
+                    <a href="#873">bound_vars</a>,
+                    s: <a class="self" href="#863">self</a>.scope,
+                    scope_type: <a href="#179">BinderScopeType::Normal</a>,
+                    where_bound_origin: <span class="prelude-val">Some</span>(<a href="#870">origin</a>),
                 };
-                <a class="self" href="#873">self</a>.<a href="#1053-1064">with</a>(<a href="#898">scope</a>, |this| {
+                <a class="self" href="#863">self</a>.<a href="#1058-1069">with</a>(<a href="#888">scope</a>, |this| {
                     <a class="macro" href="../../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_generic_param, bound_generic_params);
-                    <a href="#905">this</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<span class="kw-2">&amp;</span><a href="#877">bounded_ty</a>);
+                    <a href="#895">this</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<span class="kw-2">&amp;</span><a href="#867">bounded_ty</a>);
                     <a class="macro" href="../../../rustc_ast/macro.walk_list.html">walk_list!</a>(this, visit_param_bound, bounds);
                 })
             }
@@ -3023,7 +3043,7 @@
                 bounds,
                 ..
             }) =&gt; {
-                <a class="self" href="#873">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_lifetime</a>(<a href="#912">lifetime</a>);
+                <a class="self" href="#863">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_lifetime</a>(<a href="#902">lifetime</a>);
                 <a class="macro" href="../../../rustc_ast/macro.walk_list.html">walk_list!</a>(<span class="self">self</span>, visit_param_bound, bounds);
 
                 <span class="kw">if </span>lifetime.res != hir::LifetimeName::Static {
@@ -3052,77 +3072,92 @@
                 }
             }
             <span class="kw-2">&amp;</span>hir::WherePredicate::EqPredicate(<a href="../../../rustc_hir/hir/struct.WhereEqPredicate.html">hir::WhereEqPredicate</a> { lhs_ty, rhs_ty, .. }) =&gt; {
-                <a class="self" href="#873">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#944">lhs_ty</a>);
-                <a class="self" href="#873">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#944">rhs_ty</a>);
+                <a class="self" href="#863">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#934">lhs_ty</a>);
+                <a class="self" href="#863">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#934">rhs_ty</a>);
             }
         }
     }
 
     <span class="kw">fn </span>visit_param_bound(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bound: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::GenericBound&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">match </span><a href="#951">bound</a> {
+        <span class="kw">match </span><a href="#941">bound</a> {
             hir::GenericBound::LangItemTrait(<span class="kw">_</span>, <span class="kw">_</span>, hir_id, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// FIXME(jackh726): This is pretty weird. `LangItemTrait` doesn&#39;t go
                 // through the regular poly trait ref code, so we don&#39;t get another
                 // chance to introduce a binder. For now, I&#39;m keeping the existing logic
                 // of &quot;if there isn&#39;t a Binder scope above us, add one&quot;, but I
                 // imagine there&#39;s a better way to go about this.
-                </span><span class="kw">let </span>(binders, scope_type) = <a class="self" href="#951">self</a>.<a href="#312-355">poly_trait_ref_binder_info</a>();
+                </span><span class="kw">let </span>(binders, scope_type) = <a class="self" href="#941">self</a>.<a href="#315-358">poly_trait_ref_binder_info</a>();
 
-                <a class="self" href="#951">self</a>.<a href="#1066-1073">record_late_bound_vars</a>(<span class="kw-2">*</span><a href="#953">hir_id</a>, <a href="#959">binders</a>);
+                <a class="self" href="#941">self</a>.<a href="#1071-1078">record_late_bound_vars</a>(<span class="kw-2">*</span><a href="#943">hir_id</a>, <a href="#949">binders</a>);
                 <span class="kw">let </span>scope = <a href="#108-129">Scope::Binder</a> {
-                    hir_id: <span class="kw-2">*</span><a href="#953">hir_id</a>,
+                    hir_id: <span class="kw-2">*</span><a href="#943">hir_id</a>,
                     bound_vars: FxIndexMap::default(),
-                    s: <a class="self" href="#951">self</a>.scope,
-                    <a href="#959">scope_type</a>,
+                    s: <a class="self" href="#941">self</a>.scope,
+                    <a href="#949">scope_type</a>,
                     where_bound_origin: <span class="prelude-val">None</span>,
                 };
-                <a class="self" href="#951">self</a>.<a href="#1053-1064">with</a>(<a href="#962">scope</a>, |this| {
-                    intravisit::walk_param_bound(<a href="#969">this</a>, <a href="#951">bound</a>);
+                <a class="self" href="#941">self</a>.<a href="#1058-1069">with</a>(<a href="#952">scope</a>, |this| {
+                    intravisit::walk_param_bound(<a href="#959">this</a>, <a href="#941">bound</a>);
                 });
             }
-            <span class="kw">_ </span>=&gt; intravisit::walk_param_bound(<a class="self" href="#951">self</a>, <a href="#951">bound</a>),
+            <span class="kw">_ </span>=&gt; intravisit::walk_param_bound(<a class="self" href="#941">self</a>, <a href="#941">bound</a>),
         }
     }
 
     <span class="kw">fn </span>visit_poly_trait_ref(<span class="kw-2">&amp;mut </span><span class="self">self</span>, trait_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::PolyTraitRef&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a class="self" href="#977">self</a>.<a href="#357-399">visit_poly_trait_ref_inner</a>(<a href="#977">trait_ref</a>, <a href="#404">NonLifetimeBinderAllowed::Allow</a>);
+        <a class="self" href="#967">self</a>.<a href="#360-402">visit_poly_trait_ref_inner</a>(<a href="#967">trait_ref</a>, <a href="#407">NonLifetimeBinderAllowed::Allow</a>);
     }
 
     <span class="kw">fn </span>visit_anon_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../../rustc_hir/hir/struct.AnonConst.html">hir::AnonConst</a>) {
-        <a class="self" href="#981">self</a>.<a href="#1053-1064">with</a>(<a href="#166-168">Scope::AnonConstBoundary</a> { s: <a class="self" href="#981">self</a>.scope }, |this| {
-            intravisit::walk_anon_const(<a href="#982">this</a>, <a href="#981">c</a>);
+        <a class="self" href="#971">self</a>.<a href="#1058-1069">with</a>(<a href="#166-169">Scope::LateBoundary</a> { s: <a class="self" href="#971">self</a>.scope, what: <span class="string">&quot;constant&quot; </span>}, |this| {
+            intravisit::walk_anon_const(<a href="#972">this</a>, <a href="#971">c</a>);
         });
     }
 
     <span class="kw">fn </span>visit_generic_param(<span class="kw-2">&amp;mut </span><span class="self">self</span>, p: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>GenericParam&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">match </span><a href="#987">p</a>.kind {
+        <span class="kw">match </span><a href="#977">p</a>.kind {
             <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Type</a> { .. } | <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Const</a> { .. } =&gt; {
-                <a class="self" href="#987">self</a>.<a href="#1337-1459">resolve_type_ref</a>(<a href="#987">p</a>.def_id, <a href="#987">p</a>.hir_id);
+                <a class="self" href="#977">self</a>.<a href="#1363-1489">resolve_type_ref</a>(<a href="#977">p</a>.def_id, <a href="#977">p</a>.hir_id);
             }
             <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Lifetime</a> { .. } =&gt; {
                 <span class="comment">// No need to resolve lifetime params, we don&#39;t use them for things
                 // like implicit `?Sized` or const-param-has-ty predicates.
             </span>}
         }
+
+        <span class="kw">match </span><a href="#977">p</a>.kind {
+            <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Lifetime</a> { .. } =&gt; {}
+            <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Type</a> { default, .. } =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a href="#990">default</a> {
+                    <a class="self" href="#977">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#991">ty</a>);
+                }
+            }
+            <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Const</a> { ty, default } =&gt; {
+                <a class="self" href="#977">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#995">ty</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(default) = <a href="#995">default</a> {
+                    <a class="self" href="#977">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a class="self" href="#977">self</a>.tcx.hir().body(<a href="#997">default</a>.body));
+                }
+            }
+        }
     }
 }
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/collect/resolve_bound_vars/fn.object_lifetime_default.html">object_lifetime_default</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, param_def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ObjectLifetimeDefault.html">ObjectLifetimeDefault</a> {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert_eq.html">debug_assert_eq!</a>(tcx.def_kind(param_def_id), DefKind::TyParam);
-    <span class="kw">let </span>hir::Node::GenericParam(param) = <a href="#1000">tcx</a>.hir().get_by_def_id(<a href="#1000">param_def_id</a>) <span class="kw">else </span>{
+    <span class="kw">let </span>hir::Node::GenericParam(param) = <a href="#1005">tcx</a>.hir().get_by_def_id(<a href="#1005">param_def_id</a>) <span class="kw">else </span>{
         <a class="macro" href="../../../rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;expected GenericParam for object_lifetime_default&quot;</span>);
     };
-    <span class="kw">match </span><a href="#1002">param</a>.source {
+    <span class="kw">match </span><a href="#1007">param</a>.source {
         hir::GenericParamSource::Generics =&gt; {
-            <span class="kw">let </span>parent_def_id = <a href="#1000">tcx</a>.local_parent(<a href="#1000">param_def_id</a>);
-            <span class="kw">let </span>generics = <a href="#1000">tcx</a>.hir().get_generics(<a href="#1007">parent_def_id</a>).unwrap();
-            <span class="kw">let </span>param_hir_id = <a href="#1000">tcx</a>.local_def_id_to_hir_id(<a href="#1000">param_def_id</a>);
-            <span class="kw">let </span>param = <a href="#1008">generics</a>.params.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|p| <a href="#1010">p</a>.hir_id == <a href="#1009">param_hir_id</a>).unwrap();
+            <span class="kw">let </span>parent_def_id = <a href="#1005">tcx</a>.local_parent(<a href="#1005">param_def_id</a>);
+            <span class="kw">let </span>generics = <a href="#1005">tcx</a>.hir().get_generics(<a href="#1012">parent_def_id</a>).unwrap();
+            <span class="kw">let </span>param_hir_id = <a href="#1005">tcx</a>.local_def_id_to_hir_id(<a href="#1005">param_def_id</a>);
+            <span class="kw">let </span>param = <a href="#1013">generics</a>.params.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|p| <a href="#1015">p</a>.hir_id == <a href="#1014">param_hir_id</a>).unwrap();
 
             <span class="comment">// Scan the bounds and where-clauses on parameters to extract bounds
             // of the form `T:&#39;a` so as to determine the `ObjectLifetimeDefault`
             // for each type parameter.
-            </span><span class="kw">match </span><a href="#1010">param</a>.kind {
+            </span><span class="kw">match </span><a href="#1015">param</a>.kind {
                 <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Type</a> { .. } =&gt; {
                     <span class="kw">let </span><span class="kw-2">mut </span>set = Set1::Empty;
 
@@ -3141,11 +3176,11 @@
                         }
                     }
 
-                    <span class="kw">match </span><a href="#1017">set</a> {
+                    <span class="kw">match </span><a href="#1022">set</a> {
                         Set1::Empty =&gt; ObjectLifetimeDefault::Empty,
                         Set1::One(hir::LifetimeName::Static) =&gt; ObjectLifetimeDefault::Static,
                         Set1::One(hir::LifetimeName::Param(param_def_id)) =&gt; {
-                            ObjectLifetimeDefault::Param(<a href="#1037">param_def_id</a>.to_def_id())
+                            ObjectLifetimeDefault::Param(<a href="#1042">param_def_id</a>.to_def_id())
                         }
                         <span class="kw">_ </span>=&gt; ObjectLifetimeDefault::Ambiguous,
                     }
@@ -3164,17 +3199,17 @@
     <span class="kw">where
         </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;b</span>&gt; FnOnce(<span class="kw-2">&amp;mut </span>BoundVarContext&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;tcx</span>&gt;),
     {
-        <span class="kw">let </span><a href="#96-100">BoundVarContext</a> { tcx, map, .. } = <a class="self" href="#1053">self</a>;
-        <span class="kw">let </span><span class="kw-2">mut </span>this = <a href="#96-100">BoundVarContext</a> { tcx: <span class="kw-2">*</span><a href="#1057">tcx</a>, <a href="#1057">map</a>, scope: <span class="kw-2">&amp;</span><a href="#1053">wrap_scope</a> };
+        <span class="kw">let </span><a href="#96-100">BoundVarContext</a> { tcx, map, .. } = <a class="self" href="#1058">self</a>;
+        <span class="kw">let </span><span class="kw-2">mut </span>this = <a href="#96-100">BoundVarContext</a> { tcx: <span class="kw-2">*</span><a href="#1062">tcx</a>, <a href="#1062">map</a>, scope: <span class="kw-2">&amp;</span><a href="#1058">wrap_scope</a> };
         <span class="kw">let </span>span = <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug_span.html">debug_span!</a>(<span class="string">&quot;scope&quot;</span>, scope = <span class="question-mark">?</span>TruncatedScopeDebug(<span class="kw-2">&amp;</span>this.scope));
         {
-            <span class="kw">let </span>_enter = <a href="#1059">span</a>.enter();
-            <a href="#1053">f</a>(<span class="kw-2">&amp;mut </span><a href="#1058">this</a>);
+            <span class="kw">let </span>_enter = <a href="#1064">span</a>.enter();
+            <a href="#1058">f</a>(<span class="kw-2">&amp;mut </span><a href="#1063">this</a>);
         }
     }
 
     <span class="kw">fn </span>record_late_bound_vars(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hir_id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>, binder: Vec&lt;<a href="../../../rustc_middle/ty/sty/enum.BoundVariableKind.html">ty::BoundVariableKind</a>&gt;) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(old) = <a class="self" href="#1066">self</a>.map.late_bound_vars.insert(<a href="#1066">hir_id</a>, <a href="#1066">binder</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(old) = <a class="self" href="#1071">self</a>.map.late_bound_vars.insert(<a href="#1071">hir_id</a>, <a href="#1071">binder</a>) {
             <a class="macro" href="../../../rustc_middle/macro.bug.html">bug!</a>(
                 <span class="string">&quot;overwrote bound vars for {hir_id:?}:\nold={old:?}\nnew={:?}&quot;</span>,
                 <span class="self">self</span>.map.late_bound_vars[<span class="kw-2">&amp;</span>hir_id]
@@ -3209,65 +3244,65 @@
         </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>&gt; FnOnce(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="kw-2">mut </span>BoundVarContext&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;tcx</span>&gt;),
     {
         <span class="kw">let </span><span class="kw-2">mut </span>named_late_bound_vars = <span class="number">0</span>;
-        <span class="kw">let </span>bound_vars: FxIndexMap&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>&gt; = <a href="#1096">generics</a>
+        <span class="kw">let </span>bound_vars: FxIndexMap&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>&gt; = <a href="#1101">generics</a>
             .params
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|param| <span class="kw">match </span><a href="#1105">param</a>.kind {
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|param| <span class="kw">match </span><a href="#1110">param</a>.kind {
                 <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Lifetime</a> { .. } =&gt; {
                     <span class="kw">if </span><span class="self">self</span>.tcx.is_late_bound(param.hir_id) {
-                        <span class="kw">let </span>late_bound_idx = <a href="#1101">named_late_bound_vars</a>;
-                        <a href="#1101">named_late_bound_vars</a> += <span class="number">1</span>;
-                        ResolvedArg::late(<a href="#1108">late_bound_idx</a>, <a href="#1105">param</a>)
+                        <span class="kw">let </span>late_bound_idx = <a href="#1106">named_late_bound_vars</a>;
+                        <a href="#1106">named_late_bound_vars</a> += <span class="number">1</span>;
+                        ResolvedArg::late(<a href="#1113">late_bound_idx</a>, <a href="#1110">param</a>)
                     } <span class="kw">else </span>{
-                        ResolvedArg::early(<a href="#1105">param</a>)
+                        ResolvedArg::early(<a href="#1110">param</a>)
                     }
                 }
                 <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Type</a> { .. } | <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Const</a> { .. } =&gt; {
-                    ResolvedArg::early(<a href="#1105">param</a>)
+                    ResolvedArg::early(<a href="#1110">param</a>)
                 }
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-        <span class="kw">let </span>binders: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1096">generics</a>
+        <span class="kw">let </span>binders: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1101">generics</a>
             .params
             .iter()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|param| {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(param.kind, GenericParamKind::Lifetime { .. })
-                    &amp;&amp; <a class="self" href="#1094">self</a>.tcx.is_late_bound(<a href="#1124">param</a>.hir_id)
+                    &amp;&amp; <a class="self" href="#1099">self</a>.tcx.is_late_bound(<a href="#1129">param</a>.hir_id)
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(late_bound_idx, param)| {
-                <span class="kw">let </span>pair = ResolvedArg::late(<a href="#1129">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#1129">param</a>);
-                <a href="#288-308">late_arg_as_bound_arg</a>(<a class="self" href="#1094">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#1130">pair</a>.<span class="number">1</span>, <a href="#1129">param</a>)
+                <span class="kw">let </span>pair = ResolvedArg::late(<a href="#1134">late_bound_idx</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="#1134">param</a>);
+                <a href="#291-311">late_arg_as_bound_arg</a>(<a class="self" href="#1099">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#1135">pair</a>.<span class="number">1</span>, <a href="#1134">param</a>)
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <a class="self" href="#1094">self</a>.<a href="#1066-1073">record_late_bound_vars</a>(<a href="#1095">hir_id</a>, <a href="#1121">binders</a>);
+        <a class="self" href="#1099">self</a>.<a href="#1071-1078">record_late_bound_vars</a>(<a href="#1100">hir_id</a>, <a href="#1126">binders</a>);
         <span class="kw">let </span>scope = <a href="#108-129">Scope::Binder</a> {
-            <a href="#1095">hir_id</a>,
-            <a href="#1102">bound_vars</a>,
-            s: <a class="self" href="#1094">self</a>.scope,
-            scope_type: <a href="#178">BinderScopeType::Normal</a>,
+            <a href="#1100">hir_id</a>,
+            <a href="#1107">bound_vars</a>,
+            s: <a class="self" href="#1099">self</a>.scope,
+            scope_type: <a href="#179">BinderScopeType::Normal</a>,
             where_bound_origin: <span class="prelude-val">None</span>,
         };
-        <a class="self" href="#1094">self</a>.<a href="#1053-1064">with</a>(<a href="#1135">scope</a>, <a href="#1097">walk</a>);
+        <a class="self" href="#1099">self</a>.<a href="#1058-1069">with</a>(<a href="#1140">scope</a>, <a href="#1102">walk</a>);
     }
 
     <span class="kw">fn </span>visit_early&lt;F&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hir_id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>, generics: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Generics&lt;<span class="lifetime">&#39;tcx</span>&gt;, walk: F)
     <span class="kw">where
         </span>F: <span class="kw">for</span>&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>&gt; FnOnce(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="kw-2">mut </span>BoundVarContext&lt;<span class="lifetime">&#39;c</span>, <span class="lifetime">&#39;tcx</span>&gt;),
     {
-        <span class="kw">let </span>bound_vars = <a href="#1145">generics</a>.params.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(ResolvedArg::early).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <a class="self" href="#1145">self</a>.<a href="#1066-1073">record_late_bound_vars</a>(<a href="#1145">hir_id</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[]);
+        <span class="kw">let </span>bound_vars = <a href="#1150">generics</a>.params.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(ResolvedArg::early).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        <a class="self" href="#1150">self</a>.<a href="#1071-1078">record_late_bound_vars</a>(<a href="#1150">hir_id</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[]);
         <span class="kw">let </span>scope = <a href="#108-129">Scope::Binder</a> {
-            <a href="#1145">hir_id</a>,
-            <a href="#1149">bound_vars</a>,
-            s: <a class="self" href="#1145">self</a>.scope,
-            scope_type: <a href="#178">BinderScopeType::Normal</a>,
+            <a href="#1150">hir_id</a>,
+            <a href="#1154">bound_vars</a>,
+            s: <a class="self" href="#1150">self</a>.scope,
+            scope_type: <a href="#179">BinderScopeType::Normal</a>,
             where_bound_origin: <span class="prelude-val">None</span>,
         };
-        <a class="self" href="#1145">self</a>.<a href="#1053-1064">with</a>(<a href="#1151">scope</a>, |this| {
-            <span class="kw">let </span>scope = <a href="#157-159">Scope::TraitRefBoundary</a> { s: <a href="#1158">this</a>.scope };
-            <a href="#1158">this</a>.<a href="#1053-1064">with</a>(<a href="#1159">scope</a>, <a href="#1145">walk</a>)
+        <a class="self" href="#1150">self</a>.<a href="#1058-1069">with</a>(<a href="#1156">scope</a>, |this| {
+            <span class="kw">let </span>scope = <a href="#157-159">Scope::TraitRefBoundary</a> { s: <a href="#1163">this</a>.scope };
+            <a href="#1163">this</a>.<a href="#1058-1069">with</a>(<a href="#1164">scope</a>, <a href="#1150">walk</a>)
         });
     }
 
@@ -3284,6 +3319,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>late_depth = <span class="number">0</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>scope = <span class="self">self</span>.scope;
         <span class="kw">let </span><span class="kw-2">mut </span>outermost_body = <span class="prelude-val">None</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>crossed_late_boundary = <span class="prelude-val">None</span>;
         <span class="kw">let </span>result = <span class="kw">loop </span>{
             <span class="kw">match </span><span class="kw-2">*</span>scope {
                 Scope::Body { id, s } =&gt; {
@@ -3316,7 +3352,7 @@
                         &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(generics) = <span class="self">self</span>.tcx.hir().get_generics(<span class="self">self</span>.tcx.local_parent(param_id))
                         &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         &amp;&amp; param.is_elided_lifetime()
-                        &amp;&amp; <span class="kw">let </span>hir::IsAsync::NotAsync = <span class="self">self</span>.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
+                        &amp;&amp; !<span class="self">self</span>.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         &amp;&amp; !<span class="self">self</span>.tcx.features().anonymous_lifetime_in_impl_trait
                     {
                         <span class="kw">let </span><span class="kw-2">mut </span>diag =  rustc_session::parse::feature_err(
@@ -3368,8 +3404,12 @@
 
                 Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. }
-                | Scope::AnonConstBoundary { s } =&gt; {
+                | Scope::TraitRefBoundary { s, .. } =&gt; {
+                    scope = s;
+                }
+
+                Scope::LateBoundary { s, what } =&gt; {
+                    crossed_late_boundary = <span class="prelude-val">Some</span>(what);
                     scope = s;
                 }
             }
@@ -3378,7 +3418,23 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>def) = result {
             <span class="kw">if let </span>ResolvedArg::EarlyBound(..) = def {
                 <span class="comment">// Do not free early-bound regions, only late-bound ones.
-            </span>} <span class="kw">else if let </span><span class="prelude-val">Some</span>(body_id) = outermost_body {
+            </span>} <span class="kw">else if let </span>ResolvedArg::LateBound(<span class="kw">_</span>, <span class="kw">_</span>, param_def_id) = def
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(what) = crossed_late_boundary
+            {
+                <span class="kw">let </span>use_span = lifetime_ref.ident.span;
+                <span class="kw">let </span>def_span = <span class="self">self</span>.tcx.def_span(param_def_id);
+                <span class="kw">let </span>guar = <span class="kw">match </span><span class="self">self</span>.tcx.def_kind(param_def_id) {
+                    DefKind::LifetimeParam =&gt; {
+                        <span class="self">self</span>.tcx.sess.emit_err(errors::CannotCaptureLateBound::Lifetime {
+                            use_span,
+                            def_span,
+                            what,
+                        })
+                    }
+                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                };
+                def = ResolvedArg::Error(guar);
+            } <span class="kw">else if let </span><span class="prelude-val">Some</span>(body_id) = outermost_body {
                 <span class="kw">let </span>fn_id = <span class="self">self</span>.tcx.hir().body_owner(body_id);
                 <span class="kw">match </span><span class="self">self</span>.tcx.hir().get(fn_id) {
                     Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn(..), .. })
@@ -3432,7 +3488,7 @@
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::Supertrait { s, .. }
                 | Scope::TraitRefBoundary { s, .. }
-                | Scope::AnonConstBoundary { s } =&gt; {
+                | Scope::LateBoundary { s, .. } =&gt; {
                     scope = s;
                 }
             }
@@ -3450,71 +3506,75 @@
         // given name or we run out of scopes.
         // search.
         </span><span class="kw">let </span><span class="kw-2">mut </span>late_depth = <span class="number">0</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#1337">self</a>.scope;
-        <span class="kw">let </span><span class="kw-2">mut </span>crossed_anon_const = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#1363">self</a>.scope;
+        <span class="kw">let </span><span class="kw-2">mut </span>crossed_late_boundary = <span class="prelude-val">None</span>;
 
         <span class="kw">let </span>result = <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="kw-2">*</span><a href="#1343">scope</a> {
+            <span class="kw">match </span><span class="kw-2">*</span><a href="#1369">scope</a> {
                 <a href="#135-138">Scope::Body</a> { s, .. } =&gt; {
-                    <a href="#1343">scope</a> = <a href="#1348">s</a>;
+                    <a href="#1369">scope</a> = <a href="#1374">s</a>;
                 }
 
-                <a href="#170-172">Scope::Root</a> { opt_parent_item } =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_item) = <a href="#1352">opt_parent_item</a>
-                        &amp;&amp; <span class="kw">let </span>parent_generics = <a class="self" href="#1337">self</a>.tcx.generics_of(<a href="#1353">parent_item</a>)
+                <a href="#171-173">Scope::Root</a> { opt_parent_item } =&gt; {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(parent_item) = <a href="#1378">opt_parent_item</a>
+                        &amp;&amp; <span class="kw">let </span>parent_generics = <a class="self" href="#1363">self</a>.tcx.generics_of(<a href="#1379">parent_item</a>)
                         &amp;&amp; parent_generics.param_def_id_to_index(<span class="self">self</span>.tcx, param_def_id.to_def_id()).is_some()
                     {
-                        <span class="kw">break </span><span class="prelude-val">Some</span>(ResolvedArg::EarlyBound(<a href="#1337">param_def_id</a>.to_def_id()));
+                        <span class="kw">break </span><span class="prelude-val">Some</span>(ResolvedArg::EarlyBound(<a href="#1363">param_def_id</a>.to_def_id()));
                     }
                     <span class="kw">break </span><span class="prelude-val">None</span>;
                 }
 
                 <a href="#108-129">Scope::Binder</a> { <span class="kw-2">ref </span>bound_vars, scope_type, s, .. } =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>def) = <a href="#1362">bound_vars</a>.get(<span class="kw-2">&amp;</span><a href="#1337">param_def_id</a>) {
-                        <span class="kw">break </span><span class="prelude-val">Some</span>(<a href="#1363">def</a>.<a href="#37">shifted</a>(<a href="#1342">late_depth</a>));
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>def) = <a href="#1388">bound_vars</a>.get(<span class="kw-2">&amp;</span><a href="#1363">param_def_id</a>) {
+                        <span class="kw">break </span><span class="prelude-val">Some</span>(<a href="#1389">def</a>.<a href="#37">shifted</a>(<a href="#1368">late_depth</a>));
                     }
-                    <span class="kw">match </span><a href="#1362">scope_type</a> {
-                        <a href="#178">BinderScopeType::Normal</a> =&gt; <a href="#1342">late_depth</a> += <span class="number">1</span>,
-                        <a href="#188">BinderScopeType::Concatenating</a> =&gt; {}
+                    <span class="kw">match </span><a href="#1388">scope_type</a> {
+                        <a href="#179">BinderScopeType::Normal</a> =&gt; <a href="#1368">late_depth</a> += <span class="number">1</span>,
+                        <a href="#189">BinderScopeType::Concatenating</a> =&gt; {}
                     }
-                    <a href="#1343">scope</a> = <a href="#1362">s</a>;
+                    <a href="#1369">scope</a> = <a href="#1388">s</a>;
                 }
 
                 <a href="#143-146">Scope::ObjectLifetimeDefault</a> { s, .. }
                 | <a href="#152-155">Scope::Supertrait</a> { s, .. }
                 | <a href="#157-159">Scope::TraitRefBoundary</a> { s, .. } =&gt; {
-                    <a href="#1343">scope</a> = <a href="#1373">s</a>;
+                    <a href="#1369">scope</a> = <a href="#1399">s</a>;
                 }
 
-                <a href="#166-168">Scope::AnonConstBoundary</a> { s } =&gt; {
-                    <a href="#1344">crossed_anon_const</a> = <span class="bool-val">true</span>;
-                    <a href="#1343">scope</a> = <a href="#1379">s</a>;
+                <a href="#166-169">Scope::LateBoundary</a> { s, what } =&gt; {
+                    <a href="#1370">crossed_late_boundary</a> = <span class="prelude-val">Some</span>(<a href="#1405">what</a>);
+                    <a href="#1369">scope</a> = <a href="#1405">s</a>;
                 }
             }
         };
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(def) = <a href="#1346">result</a> {
-            <span class="kw">if let </span>ResolvedArg::LateBound(..) = <a href="#1386">def</a> &amp;&amp; crossed_anon_const {
-                <span class="kw">let </span>use_span = <a class="self" href="#1337">self</a>.tcx.hir().span(<a href="#1337">hir_id</a>);
-                <span class="kw">let </span>def_span = <a class="self" href="#1337">self</a>.tcx.def_span(<a href="#1337">param_def_id</a>);
-                <span class="kw">let </span>guar = <span class="kw">match </span><a class="self" href="#1337">self</a>.tcx.def_kind(<a href="#1337">param_def_id</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(def) = <a href="#1372">result</a> {
+            <span class="kw">if let </span>ResolvedArg::LateBound(..) = <a href="#1412">def</a>
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(what) = <a href="#1370">crossed_late_boundary</a>
+            {
+                <span class="kw">let </span>use_span = <a class="self" href="#1363">self</a>.tcx.hir().span(<a href="#1363">hir_id</a>);
+                <span class="kw">let </span>def_span = <a class="self" href="#1363">self</a>.tcx.def_span(<a href="#1363">param_def_id</a>);
+                <span class="kw">let </span>guar = <span class="kw">match </span><a class="self" href="#1363">self</a>.tcx.def_kind(<a href="#1363">param_def_id</a>) {
                     DefKind::ConstParam =&gt; {
-                        <a class="self" href="#1337">self</a>.tcx.sess.emit_err(<a href="../errors.rs.html#442-447">errors::CannotCaptureLateBoundInAnonConst::Const</a> {
-                            <a href="#1388">use_span</a>,
-                            <a href="#1389">def_span</a>,
+                        <a class="self" href="#1363">self</a>.tcx.sess.emit_err(<a href="../errors.rs.html#443-449">errors::CannotCaptureLateBound::Const</a> {
+                            <a href="#1416">use_span</a>,
+                            <a href="#1417">def_span</a>,
+                            <a href="#1414">what</a>,
                         })
                     }
                     DefKind::TyParam =&gt; {
-                        <a class="self" href="#1337">self</a>.tcx.sess.emit_err(<a href="../errors.rs.html#435-440">errors::CannotCaptureLateBoundInAnonConst::Type</a> {
-                            <a href="#1388">use_span</a>,
-                            <a href="#1389">def_span</a>,
+                        <a class="self" href="#1363">self</a>.tcx.sess.emit_err(<a href="../errors.rs.html#435-441">errors::CannotCaptureLateBound::Type</a> {
+                            <a href="#1416">use_span</a>,
+                            <a href="#1417">def_span</a>,
+                            <a href="#1414">what</a>,
                         })
                     }
                     <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                 };
-                <a class="self" href="#1337">self</a>.map.defs.insert(<a href="#1337">hir_id</a>, ResolvedArg::Error(<a href="#1390">guar</a>));
+                <a class="self" href="#1363">self</a>.map.defs.insert(<a href="#1363">hir_id</a>, ResolvedArg::Error(<a href="#1418">guar</a>));
             } <span class="kw">else </span>{
-                <a class="self" href="#1337">self</a>.map.defs.insert(<a href="#1337">hir_id</a>, <a href="#1386">def</a>);
+                <a class="self" href="#1363">self</a>.map.defs.insert(<a href="#1363">hir_id</a>, <a href="#1412">def</a>);
             }
             <span class="kw">return</span>;
         }
@@ -3528,42 +3588,42 @@
         // ```
         //
         // In such case, walk back the binders to diagnose it properly.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#1337">self</a>.scope;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#1363">self</a>.scope;
         <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="kw-2">*</span><a href="#1421">scope</a> {
+            <span class="kw">match </span><span class="kw-2">*</span><a href="#1451">scope</a> {
                 <a href="#108-129">Scope::Binder</a> {
                     where_bound_origin: <span class="prelude-val">Some</span>(hir::PredicateOrigin::ImplTrait), ..
                 } =&gt; {
-                    <span class="kw">let </span>guar = <a class="self" href="#1337">self</a>.tcx.sess.emit_err(<span class="kw">match </span><a class="self" href="#1337">self</a>.tcx.def_kind(<a href="#1337">param_def_id</a>) {
-                        DefKind::TyParam =&gt; <a href="../errors.rs.html#892-897">errors::LateBoundInApit::Type</a> {
-                            span: <a class="self" href="#1337">self</a>.tcx.hir().span(<a href="#1337">hir_id</a>),
-                            param_span: <a class="self" href="#1337">self</a>.tcx.def_span(<a href="#1337">param_def_id</a>),
+                    <span class="kw">let </span>guar = <a class="self" href="#1363">self</a>.tcx.sess.emit_err(<span class="kw">match </span><a class="self" href="#1363">self</a>.tcx.def_kind(<a href="#1363">param_def_id</a>) {
+                        DefKind::TyParam =&gt; <a href="../errors.rs.html#902-907">errors::LateBoundInApit::Type</a> {
+                            span: <a class="self" href="#1363">self</a>.tcx.hir().span(<a href="#1363">hir_id</a>),
+                            param_span: <a class="self" href="#1363">self</a>.tcx.def_span(<a href="#1363">param_def_id</a>),
                         },
-                        DefKind::ConstParam =&gt; <a href="../errors.rs.html#899-904">errors::LateBoundInApit::Const</a> {
-                            span: <a class="self" href="#1337">self</a>.tcx.hir().span(<a href="#1337">hir_id</a>),
-                            param_span: <a class="self" href="#1337">self</a>.tcx.def_span(<a href="#1337">param_def_id</a>),
+                        DefKind::ConstParam =&gt; <a href="../errors.rs.html#909-914">errors::LateBoundInApit::Const</a> {
+                            span: <a class="self" href="#1363">self</a>.tcx.hir().span(<a href="#1363">hir_id</a>),
+                            param_span: <a class="self" href="#1363">self</a>.tcx.def_span(<a href="#1363">param_def_id</a>),
                         },
                         kind =&gt; {
                             <a class="macro" href="../../../rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unexpected def-kind: {}&quot;</span>, kind.descr(param_def_id.to_def_id()))
                         }
                     });
-                    <a class="self" href="#1337">self</a>.map.defs.insert(<a href="#1337">hir_id</a>, ResolvedArg::Error(<a href="#1427">guar</a>));
+                    <a class="self" href="#1363">self</a>.map.defs.insert(<a href="#1363">hir_id</a>, ResolvedArg::Error(<a href="#1457">guar</a>));
                     <span class="kw">return</span>;
                 }
-                <a href="#170-172">Scope::Root</a> { .. } =&gt; <span class="kw">break</span>,
+                <a href="#171-173">Scope::Root</a> { .. } =&gt; <span class="kw">break</span>,
                 <a href="#108-129">Scope::Binder</a> { s, .. }
                 | <a href="#135-138">Scope::Body</a> { s, .. }
                 | <a href="#143-146">Scope::ObjectLifetimeDefault</a> { s, .. }
                 | <a href="#152-155">Scope::Supertrait</a> { s, .. }
                 | <a href="#157-159">Scope::TraitRefBoundary</a> { s, .. }
-                | <a href="#166-168">Scope::AnonConstBoundary</a> { s } =&gt; {
-                    <a href="#1421">scope</a> = <a href="#1444">s</a>;
+                | <a href="#166-169">Scope::LateBoundary</a> { s, .. } =&gt; {
+                    <a href="#1451">scope</a> = <a href="#1474">s</a>;
                 }
             }
         }
 
-        <a class="self" href="#1337">self</a>.tcx.sess.delay_span_bug(
-            <a class="self" href="#1337">self</a>.tcx.hir().span(<a href="#1337">hir_id</a>),
+        <a class="self" href="#1363">self</a>.tcx.sess.delay_span_bug(
+            <a class="self" href="#1363">self</a>.tcx.hir().span(<a href="#1363">hir_id</a>),
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;could not resolve {param_def_id:?}&quot;</span>),
         );
     }
@@ -3599,7 +3659,7 @@
                 DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
-                | DefKind::TyAlias { .. }
+                | DefKind::TyAlias
                 | DefKind::Trait,
                 def_id,
             ) <span class="kw">if </span>depth == <span class="number">0 </span>=&gt; <span class="prelude-val">Some</span>(def_id),
@@ -3636,7 +3696,7 @@
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::Supertrait { s, .. }
                         | Scope::TraitRefBoundary { s, .. }
-                        | Scope::AnonConstBoundary { s } =&gt; {
+                        | Scope::LateBoundary { s, .. } =&gt; {
                             scope = s;
                         }
                     }
@@ -3846,11 +3906,11 @@
         assoc_kind: <a href="../../../rustc_middle/ty/assoc/enum.AssocKind.html">ty::AssocKind</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(Vec&lt;<a href="../../../rustc_middle/ty/sty/enum.BoundVariableKind.html">ty::BoundVariableKind</a>&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../../rustc_middle/ty/assoc/struct.AssocItem.html">ty::AssocItem</a>)&gt; {
         <span class="kw">let </span>trait_defines_associated_item_named = |trait_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>| {
-            <a href="#1733">tcx</a>.associated_items(<a href="#1738">trait_def_id</a>).find_by_name_and_kind(
-                <a href="#1733">tcx</a>,
-                <a href="#1735">assoc_name</a>,
-                <a href="#1736">assoc_kind</a>,
-                <a href="#1738">trait_def_id</a>,
+            <a href="#1763">tcx</a>.associated_items(<a href="#1768">trait_def_id</a>).find_by_name_and_kind(
+                <a href="#1763">tcx</a>,
+                <a href="#1765">assoc_name</a>,
+                <a href="#1766">assoc_kind</a>,
+                <a href="#1768">trait_def_id</a>,
             )
         };
 
@@ -3859,37 +3919,37 @@
             <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[(def_id, <span class="macro">smallvec!</span>[])];
         <span class="kw">let </span><span class="kw-2">mut </span>visited: FxHashSet&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt; = FxHashSet::default();
         <span class="kw">loop </span>{
-            <span class="kw">let </span><span class="prelude-val">Some</span>((def_id, bound_vars)) = <a href="#1748">stack</a>.pop() <span class="kw">else </span>{
+            <span class="kw">let </span><span class="prelude-val">Some</span>((def_id, bound_vars)) = <a href="#1778">stack</a>.pop() <span class="kw">else </span>{
                 <span class="kw">break </span><span class="prelude-val">None</span>;
             };
             <span class="comment">// See issue #83753. If someone writes an associated type on a non-trait, just treat it as
             // there being no supertrait HRTBs.
-            </span><span class="kw">match </span><a href="#1733">tcx</a>.def_kind(<a href="#1752">def_id</a>) {
+            </span><span class="kw">match </span><a href="#1763">tcx</a>.def_kind(<a href="#1782">def_id</a>) {
                 DefKind::Trait | DefKind::TraitAlias | <a href="../../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { .. } =&gt; {}
                 <span class="kw">_ </span>=&gt; <span class="kw">break </span><span class="prelude-val">None</span>,
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(assoc_item) = <a href="#1738">trait_defines_associated_item_named</a>(<a href="#1752">def_id</a>) {
-                <span class="kw">break </span><span class="prelude-val">Some</span>((<a href="#1752">bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(), <a href="#1762">assoc_item</a>));
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(assoc_item) = <a href="#1768">trait_defines_associated_item_named</a>(<a href="#1782">def_id</a>) {
+                <span class="kw">break </span><span class="prelude-val">Some</span>((<a href="#1782">bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(), <a href="#1792">assoc_item</a>));
             }
-            <span class="kw">let </span>predicates = <a href="#1733">tcx</a>.super_predicates_that_define_assoc_item((<a href="#1752">def_id</a>, <a href="#1735">assoc_name</a>));
-            <span class="kw">let </span>obligations = <a href="#1765">predicates</a>.predicates.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|<span class="kw-2">&amp;</span>(pred, <span class="kw">_</span>)| {
-                <span class="kw">let </span>bound_predicate = <a href="#1766">pred</a>.kind();
-                <span class="kw">match </span><a href="#1767">bound_predicate</a>.skip_binder() {
+            <span class="kw">let </span>predicates = <a href="#1763">tcx</a>.super_predicates_that_define_assoc_item((<a href="#1782">def_id</a>, <a href="#1765">assoc_name</a>));
+            <span class="kw">let </span>obligations = <a href="#1795">predicates</a>.predicates.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|<span class="kw-2">&amp;</span>(pred, <span class="kw">_</span>)| {
+                <span class="kw">let </span>bound_predicate = <a href="#1796">pred</a>.kind();
+                <span class="kw">match </span><a href="#1797">bound_predicate</a>.skip_binder() {
                     ty::ClauseKind::Trait(data) =&gt; {
                         <span class="comment">// The order here needs to match what we would get from `subst_supertrait`
-                        </span><span class="kw">let </span>pred_bound_vars = <a href="#1767">bound_predicate</a>.bound_vars();
-                        <span class="kw">let </span><span class="kw-2">mut </span>all_bound_vars = <a href="#1752">bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
-                        <a href="#1772">all_bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1771">pred_bound_vars</a>.iter());
-                        <span class="kw">let </span>super_def_id = <a href="#1769">data</a>.trait_ref.def_id;
-                        <span class="prelude-val">Some</span>((<a href="#1774">super_def_id</a>, <a href="#1772">all_bound_vars</a>))
+                        </span><span class="kw">let </span>pred_bound_vars = <a href="#1797">bound_predicate</a>.bound_vars();
+                        <span class="kw">let </span><span class="kw-2">mut </span>all_bound_vars = <a href="#1782">bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+                        <a href="#1802">all_bound_vars</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1801">pred_bound_vars</a>.iter());
+                        <span class="kw">let </span>super_def_id = <a href="#1799">data</a>.trait_ref.def_id;
+                        <span class="prelude-val">Some</span>((<a href="#1804">super_def_id</a>, <a href="#1802">all_bound_vars</a>))
                     }
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 }
             });
 
-            <span class="kw">let </span>obligations = <a href="#1766">obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|o| <a href="#1750">visited</a>.insert(<a href="#1781">o</a>.<span class="number">0</span>));
-            <a href="#1748">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1781">obligations</a>);
+            <span class="kw">let </span>obligations = <a href="#1796">obligations</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|o| <a href="#1780">visited</a>.insert(<a href="#1811">o</a>.<span class="number">0</span>));
+            <a href="#1778">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1811">obligations</a>);
         }
     }
 
@@ -3922,31 +3982,31 @@
     <span class="kw">fn </span>resolve_object_lifetime_default(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lifetime_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../../rustc_hir/hir/struct.Lifetime.html">hir::Lifetime</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;resolve_object_lifetime_default(lifetime_ref={:?})&quot;</span>, lifetime_ref);
         <span class="kw">let </span><span class="kw-2">mut </span>late_depth = <span class="number">0</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#1812">self</a>.scope;
+        <span class="kw">let </span><span class="kw-2">mut </span>scope = <a class="self" href="#1842">self</a>.scope;
         <span class="kw">let </span>lifetime = <span class="kw">loop </span>{
-            <span class="kw">match </span><span class="kw-2">*</span><a href="#1815">scope</a> {
+            <span class="kw">match </span><span class="kw-2">*</span><a href="#1845">scope</a> {
                 <a href="#108-129">Scope::Binder</a> { s, scope_type, .. } =&gt; {
-                    <span class="kw">match </span><a href="#1818">scope_type</a> {
-                        <a href="#178">BinderScopeType::Normal</a> =&gt; <a href="#1814">late_depth</a> += <span class="number">1</span>,
-                        <a href="#188">BinderScopeType::Concatenating</a> =&gt; {}
+                    <span class="kw">match </span><a href="#1848">scope_type</a> {
+                        <a href="#179">BinderScopeType::Normal</a> =&gt; <a href="#1844">late_depth</a> += <span class="number">1</span>,
+                        <a href="#189">BinderScopeType::Concatenating</a> =&gt; {}
                     }
-                    <a href="#1815">scope</a> = <a href="#1818">s</a>;
+                    <a href="#1845">scope</a> = <a href="#1848">s</a>;
                 }
 
-                <a href="#170-172">Scope::Root</a> { .. } =&gt; <span class="kw">break </span>ResolvedArg::StaticLifetime,
+                <a href="#171-173">Scope::Root</a> { .. } =&gt; <span class="kw">break </span>ResolvedArg::StaticLifetime,
 
                 <a href="#135-138">Scope::Body</a> { .. } | <a href="#143-146">Scope::ObjectLifetimeDefault</a> { lifetime: <span class="prelude-val">None</span>, .. } =&gt; <span class="kw">return</span>,
 
-                <a href="#143-146">Scope::ObjectLifetimeDefault</a> { lifetime: <span class="prelude-val">Some</span>(l), .. } =&gt; <span class="kw">break </span><a href="#1830">l</a>,
+                <a href="#143-146">Scope::ObjectLifetimeDefault</a> { lifetime: <span class="prelude-val">Some</span>(l), .. } =&gt; <span class="kw">break </span><a href="#1860">l</a>,
 
                 <a href="#152-155">Scope::Supertrait</a> { s, .. }
                 | <a href="#157-159">Scope::TraitRefBoundary</a> { s, .. }
-                | <a href="#166-168">Scope::AnonConstBoundary</a> { s } =&gt; {
-                    <a href="#1815">scope</a> = <a href="#1832">s</a>;
+                | <a href="#166-169">Scope::LateBoundary</a> { s, .. } =&gt; {
+                    <a href="#1845">scope</a> = <a href="#1862">s</a>;
                 }
             }
         };
-        <a class="self" href="#1812">self</a>.<a href="#1842">insert_lifetime</a>(<a href="#1812">lifetime_ref</a>, <a href="#1816">lifetime</a>.<a href="#37">shifted</a>(<a href="#1814">late_depth</a>));
+        <a class="self" href="#1842">self</a>.<a href="#1872">insert_lifetime</a>(<a href="#1842">lifetime_ref</a>, <a href="#1846">lifetime</a>.<a href="#37">shifted</a>(<a href="#1844">late_depth</a>));
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(<span class="self">self</span>))]
@@ -3963,7 +4023,7 @@
         lifetime_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span><a href="../../../rustc_hir/hir/struct.Lifetime.html">hir::Lifetime</a>,
         bad_def: <a href="../../../rustc_middle/middle/resolve_bound_vars/enum.ResolvedArg.html">ResolvedArg</a>,
     ) {
-        <span class="kw">let </span>old_value = <a class="self" href="#1852">self</a>.map.defs.remove(<span class="kw-2">&amp;</span><a href="#1853">lifetime_ref</a>.hir_id);
+        <span class="kw">let </span>old_value = <a class="self" href="#1882">self</a>.map.defs.remove(<span class="kw-2">&amp;</span><a href="#1883">lifetime_ref</a>.hir_id);
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(old_value, <span class="prelude-val">Some</span>(bad_def));
     }
 }
@@ -3987,13 +4047,13 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>late_bound = FxIndexSet::default();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>constrained_by_input = <a href="#1984-1987">ConstrainedCollector</a> { regions: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(), <a href="#1872">tcx</a> };
+    <span class="kw">let </span><span class="kw-2">mut </span>constrained_by_input = <a href="#2014-2017">ConstrainedCollector</a> { regions: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(), <a href="#1902">tcx</a> };
     <span class="kw">for </span>arg_ty <span class="kw">in </span>decl.inputs {
         constrained_by_input.visit_ty(arg_ty);
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>appears_in_output = AllCollector::default();
-    intravisit::walk_fn_ret_ty(<span class="kw-2">&amp;mut </span><a href="#1885">appears_in_output</a>, <span class="kw-2">&amp;</span><a href="#1875">decl</a>.output);
+    intravisit::walk_fn_ret_ty(<span class="kw-2">&amp;mut </span><a href="#1915">appears_in_output</a>, <span class="kw-2">&amp;</span><a href="#1905">decl</a>.output);
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>constrained_by_input.regions);
 
@@ -4002,7 +4062,7 @@
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
     </span><span class="kw">let </span><span class="kw-2">mut </span>appears_in_where_clause = AllCollector::default();
-    <a href="#1894">appears_in_where_clause</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_generics</a>(<a href="#1876">generics</a>);
+    <a href="#1924">appears_in_where_clause</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_generics</a>(<a href="#1906">generics</a>);
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>appears_in_where_clause.regions);
 
     <span class="comment">// Late bound regions are those that:
@@ -4036,7 +4096,7 @@
     }
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>late_bound);
-    <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#1872">tcx</a>.arena.alloc(<a href="#1878">late_bound</a>));
+    <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#1902">tcx</a>.arena.alloc(<a href="#1908">late_bound</a>));
 
     <span class="doccomment">/// Visits a `ty::Ty` collecting information about what generic parameters are constrained.
     ///
@@ -4065,16 +4125,16 @@
 
     <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/ops/control_flow/enum.ControlFlow.html">std::ops::ControlFlow</a>;
     <span class="kw">use </span><a href="../../../rustc_middle/ty/struct.Ty.html">ty::Ty</a>;
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeVisitor&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span><a href="#1952-1954">ConstrainedCollectorPostAstConv</a> {
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeVisitor&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span><a href="#1982-1984">ConstrainedCollectorPostAstConv</a> {
         <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;!&gt; {
-            <span class="kw">match </span><a href="#1959">t</a>.kind() {
+            <span class="kw">match </span><a href="#1989">t</a>.kind() {
                 ty::Param(param_ty) =&gt; {
-                    <a class="self" href="#1959">self</a>.arg_is_constrained[<a href="#1961">param_ty</a>.index <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>] = <span class="bool-val">true</span>;
+                    <a class="self" href="#1989">self</a>.arg_is_constrained[<a href="#1991">param_ty</a>.index <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>] = <span class="bool-val">true</span>;
                 }
                 ty::Alias(ty::Projection | ty::Inherent, <span class="kw">_</span>) =&gt; <span class="kw">return </span>ControlFlow::Continue(()),
                 <span class="kw">_ </span>=&gt; (),
             }
-            <a href="#1959">t</a>.<a href="../../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">super_visit_with</a>(<a class="self" href="#1959">self</a>)
+            <a href="#1989">t</a>.<a href="../../../rustc_type_ir/visit/trait.TypeSuperVisitable.html">super_visit_with</a>(<a class="self" href="#1989">self</a>)
         }
 
         <span class="kw">fn </span>visit_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw">_</span>: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;!&gt; {
@@ -4083,8 +4143,8 @@
 
         <span class="kw">fn </span>visit_region(<span class="kw-2">&amp;mut </span><span class="self">self</span>, r: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ControlFlow&lt;!&gt; {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;r={:?}&quot;</span>, r.kind());
-            <span class="kw">if let </span>ty::RegionKind::ReEarlyBound(region) = <a href="#1974">r</a>.kind() {
-                <a class="self" href="#1974">self</a>.arg_is_constrained[<a href="#1976">region</a>.index <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>] = <span class="bool-val">true</span>;
+            <span class="kw">if let </span>ty::RegionKind::ReEarlyBound(region) = <a href="#2004">r</a>.kind() {
+                <a class="self" href="#2004">self</a>.arg_is_constrained[<a href="#2006">region</a>.index <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>] = <span class="bool-val">true</span>;
             }
 
             ControlFlow::Continue(())
@@ -4098,7 +4158,7 @@
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;v</span>&gt; Visitor&lt;<span class="lifetime">&#39;v</span>&gt; <span class="kw">for </span>ConstrainedCollector&lt;<span class="lifetime">&#39;_</span>&gt; {
         <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: <span class="kw-2">&amp;</span><span class="lifetime">&#39;v </span>hir::Ty&lt;<span class="lifetime">&#39;v</span>&gt;) {
-            <span class="kw">match </span><a href="#1990">ty</a>.kind {
+            <span class="kw">match </span><a href="#2020">ty</a>.kind {
                 hir::TyKind::Path(
                     hir::QPath::Resolved(<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="kw">_</span>) | hir::QPath::TypeRelative(..),
                 ) =&gt; {
@@ -4109,19 +4169,19 @@
 
                 hir::TyKind::Path(hir::QPath::Resolved(
                     <span class="prelude-val">None</span>,
-                    <a href="../../../rustc_hir/hir/struct.Path.html">hir::Path</a> { res: Res::Def(<a href="../../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { .. }, alias_def), segments, span },
+                    <a href="../../../rustc_hir/hir/struct.Path.html">hir::Path</a> { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
                 )) =&gt; {
                     <span class="comment">// See comments on `ConstrainedCollectorPostAstConv` for why this arm does not just consider
                     // args to be unconstrained.
-                    </span><span class="kw">let </span>generics = <a class="self" href="#1990">self</a>.tcx.generics_of(<a href="#2002">alias_def</a>);
-                    <span class="kw">let </span><span class="kw-2">mut </span>walker = <a href="#1952-1954">ConstrainedCollectorPostAstConv</a> {
+                    </span><span class="kw">let </span>generics = <a class="self" href="#2020">self</a>.tcx.generics_of(<a href="#2032">alias_def</a>);
+                    <span class="kw">let </span><span class="kw-2">mut </span>walker = <a href="#1982-1984">ConstrainedCollectorPostAstConv</a> {
                         arg_is_constrained: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[<span class="bool-val">false</span>; generics.params.len()].into_boxed_slice(),
                     };
-                    <a href="#2007">walker</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitor.html">visit_ty</a>(<a class="self" href="#1990">self</a>.tcx.type_of(<a href="#2002">alias_def</a>).instantiate_identity());
+                    <a href="#2037">walker</a>.<a href="../../../rustc_type_ir/visit/trait.TypeVisitor.html">visit_ty</a>(<a class="self" href="#2020">self</a>.tcx.type_of(<a href="#2032">alias_def</a>).instantiate_identity());
 
-                    <span class="kw">match </span><a href="#2002">segments</a>.last() {
+                    <span class="kw">match </span><a href="#2032">segments</a>.last() {
                         <span class="prelude-val">Some</span>(<a href="../../../rustc_hir/hir/struct.PathSegment.html">hir::PathSegment</a> { args: <span class="prelude-val">Some</span>(args), .. }) =&gt; {
-                            <span class="kw">let </span>tcx = <a class="self" href="#1990">self</a>.tcx;
+                            <span class="kw">let </span>tcx = <a class="self" href="#2020">self</a>.tcx;
                             <span class="kw">for </span>constrained_arg <span class="kw">in
                                 </span>args.args.iter().enumerate().flat_map(|(n, arg)| {
                                     <span class="kw">match </span>walker.arg_is_constrained.get(n) {
@@ -4153,20 +4213,20 @@
                     // valid to have them elsewhere, but even if it
                     // is, those would be potentially inputs to
                     // projections
-                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_segment) = <a href="#2040">path</a>.segments.last() {
-                        <a class="self" href="#1990">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_path_segment</a>(<a href="#2046">last_segment</a>);
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_segment) = <a href="#2070">path</a>.segments.last() {
+                        <a class="self" href="#2020">self</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_path_segment</a>(<a href="#2076">last_segment</a>);
                     }
                 }
 
                 <span class="kw">_ </span>=&gt; {
-                    intravisit::walk_ty(<a class="self" href="#1990">self</a>, <a href="#1990">ty</a>);
+                    intravisit::walk_ty(<a class="self" href="#2020">self</a>, <a href="#2020">ty</a>);
                 }
             }
         }
 
         <span class="kw">fn </span>visit_lifetime(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lifetime_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;v </span><a href="../../../rustc_hir/hir/struct.Lifetime.html">hir::Lifetime</a>) {
-            <span class="kw">if let </span>hir::LifetimeName::Param(def_id) = <a href="#2057">lifetime_ref</a>.res {
-                <a class="self" href="#2057">self</a>.regions.insert(<a href="#2058">def_id</a>);
+            <span class="kw">if let </span>hir::LifetimeName::Param(def_id) = <a href="#2087">lifetime_ref</a>.res {
+                <a class="self" href="#2087">self</a>.regions.insert(<a href="#2088">def_id</a>);
             }
         }
     }
@@ -4176,10 +4236,10 @@
         regions: FxHashSet&lt;<a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>&gt;,
     }
 
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;v</span>&gt; Visitor&lt;<span class="lifetime">&#39;v</span>&gt; <span class="kw">for </span><a href="#2065-2067">AllCollector</a> {
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;v</span>&gt; Visitor&lt;<span class="lifetime">&#39;v</span>&gt; <span class="kw">for </span><a href="#2095-2097">AllCollector</a> {
         <span class="kw">fn </span>visit_lifetime(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lifetime_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;v </span><a href="../../../rustc_hir/hir/struct.Lifetime.html">hir::Lifetime</a>) {
-            <span class="kw">if let </span>hir::LifetimeName::Param(def_id) = <a href="#2070">lifetime_ref</a>.res {
-                <a class="self" href="#2070">self</a>.regions.insert(<a href="#2071">def_id</a>);
+            <span class="kw">if let </span>hir::LifetimeName::Param(def_id) = <a href="#2100">lifetime_ref</a>.res {
+                <a class="self" href="#2100">self</a>.regions.insert(<a href="#2101">def_id</a>);
             }
         }
     }

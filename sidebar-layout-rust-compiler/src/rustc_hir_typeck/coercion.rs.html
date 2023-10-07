@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/coercion.rs`."><title>coercion.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/coercion.rs`."><title>coercion.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1935,7 +1935,7 @@
 <span class="kw">use </span>rustc_span::{<a class="self" href="../../rustc_span/index.html">self</a>, <a href="../../rustc_span/hygiene/enum.DesugaringKind.html">DesugaringKind</a>};
 <span class="kw">use </span><a href="../../rustc_target/spec/abi/enum.Abi.html">rustc_target::spec::abi::Abi</a>;
 <span class="kw">use </span><a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">rustc_trait_selection::infer::InferCtxtExt</a> <span class="kw">as _</span>;
-<span class="kw">use </span><a href="../../rustc_trait_selection/traits/error_reporting/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a> <span class="kw">as _</span>;
+<span class="kw">use </span><a href="../../rustc_trait_selection/traits/error_reporting/type_err_ctxt_ext/trait.TypeErrCtxtExt.html">rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt</a> <span class="kw">as _</span>;
 <span class="kw">use </span><a href="../../rustc_trait_selection/traits/query/evaluate_obligation/trait.InferCtxtExt.html">rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt</a>;
 <span class="kw">use </span>rustc_trait_selection::traits::{
     <a class="self" href="../../rustc_trait_selection/traits/index.html">self</a>, <a href="../../rustc_trait_selection/traits/project/trait.NormalizeExt.html">NormalizeExt</a>, <a href="../../rustc_middle/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="../../rustc_middle/traits/enum.ObligationCauseCode.html">ObligationCauseCode</a>, <a href="../../rustc_trait_selection/traits/engine/struct.ObligationCtxt.html">ObligationCtxt</a>,
@@ -2888,9 +2888,9 @@
         allow_two_phase: <a href="../../rustc_middle/ty/adjustment/enum.AllowTwoPhase.html">AllowTwoPhase</a>,
         cause: <span class="prelude-ty">Option</span>&lt;ObligationCause&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; RelateResult&lt;<span class="lifetime">&#39;tcx</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">let </span>source = <a class="self" href="#1009">self</a>.<a href="fn_ctxt/_impl.rs.html#1483-1502">try_structurally_resolve_type</a>(<a href="#1010">expr</a>.span, <a href="#1011">expr_ty</a>);
+        <span class="kw">let </span>source = <a class="self" href="#1009">self</a>.<a href="fn_ctxt/_impl.rs.html#1468-1487">try_structurally_resolve_type</a>(<a href="#1010">expr</a>.span, <a href="#1011">expr_ty</a>);
         <span class="kw">if </span><span class="self">self</span>.next_trait_solver() {
-            <a href="#1012">target</a> = <a class="self" href="#1009">self</a>.<a href="fn_ctxt/_impl.rs.html#1483-1502">try_structurally_resolve_type</a>(
+            <a href="#1012">target</a> = <a class="self" href="#1009">self</a>.<a href="fn_ctxt/_impl.rs.html#1468-1487">try_structurally_resolve_type</a>(
                 <a href="#1014">cause</a>.as_ref().map_or(<a href="#1010">expr</a>.span, |cause| <a href="#1019">cause</a>.span),
                 <a href="#1012">target</a>,
             );
@@ -2981,8 +2981,8 @@
     <span class="kw">where
         </span>E: <a href="#1846-1848">AsCoercionSite</a>,
     {
-        <span class="kw">let </span>prev_ty = <a class="self" href="#1099">self</a>.<a href="fn_ctxt/_impl.rs.html#1483-1502">try_structurally_resolve_type</a>(<a href="#1100">cause</a>.span, <a href="#1102">prev_ty</a>);
-        <span class="kw">let </span>new_ty = <a class="self" href="#1099">self</a>.<a href="fn_ctxt/_impl.rs.html#1483-1502">try_structurally_resolve_type</a>(<a href="#1103">new</a>.span, <a href="#1104">new_ty</a>);
+        <span class="kw">let </span>prev_ty = <a class="self" href="#1099">self</a>.<a href="fn_ctxt/_impl.rs.html#1468-1487">try_structurally_resolve_type</a>(<a href="#1100">cause</a>.span, <a href="#1102">prev_ty</a>);
+        <span class="kw">let </span>new_ty = <a class="self" href="#1099">self</a>.<a href="fn_ctxt/_impl.rs.html#1468-1487">try_structurally_resolve_type</a>(<a href="#1103">new</a>.span, <a href="#1104">new_ty</a>);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
             <span class="string">&quot;coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)&quot;</span>,
             prev_ty,
@@ -3601,14 +3601,14 @@
             &amp;&amp; <span class="kw">let </span>hir::Node::Expr(<a href="../../rustc_hir/hir/struct.Expr.html">hir::Expr</a> { kind: hir::ExprKind::Closure(<span class="kw-2">&amp;</span><a href="../../rustc_hir/hir/struct.Closure.html">hir::Closure</a> { body, .. }), .. }) = <a href="#1724">parent</a>
             &amp;&amp; !<span class="macro">matches!</span>(fcx.tcx.hir().body(body).value.kind, hir::ExprKind::Block(..))
         {
-            <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#685-729">suggest_missing_semicolon</a>(<span class="kw-2">&amp;mut </span><a href="#1721">err</a>, <a href="#1725">expr</a>, <a href="#1713">expected</a>, <span class="bool-val">true</span>);
+            <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#689-733">suggest_missing_semicolon</a>(<span class="kw-2">&amp;mut </span><a href="#1721">err</a>, <a href="#1725">expr</a>, <a href="#1713">expected</a>, <span class="bool-val">true</span>);
         }
         <span class="comment">// Verify that this is a tail expression of a function, otherwise the
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
         </span><span class="kw">let </span>fn_decl = <span class="kw">if let </span>(<span class="prelude-val">Some</span>(expr), <span class="prelude-val">Some</span>(blk_id)) = (<a href="#1718">expression</a>, <a href="#1719">blk_id</a>) {
             <span class="kw">let </span>pointing_at_return_type =
-                <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#57-82">suggest_mismatched_types_on_tail</a>(<span class="kw-2">&amp;mut </span><a href="#1721">err</a>, <a href="#1734">expr</a>, <a href="#1713">expected</a>, <a href="#1714">found</a>, <a href="#1734">blk_id</a>);
+                <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#57-86">suggest_mismatched_types_on_tail</a>(<span class="kw-2">&amp;mut </span><a href="#1721">err</a>, <a href="#1734">expr</a>, <a href="#1713">expected</a>, <a href="#1714">found</a>, <a href="#1734">blk_id</a>);
             <span class="kw">if let </span>(<span class="prelude-val">Some</span>(cond_expr), <span class="bool-val">true</span>, <span class="bool-val">false</span>) = (
                 <a href="#1716">fcx</a>.tcx.hir().get_if_cause(<a href="#1734">expr</a>.hir_id),
                 <a href="#1713">expected</a>.is_unit(),
@@ -3631,15 +3631,15 @@
                     <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#41-50">suggest_semicolon_at_end</a>(<a href="#1737">cond_expr</a>.span, <span class="kw-2">&amp;mut </span><a href="#1721">err</a>);
                 }
             }
-            <a href="#1716">fcx</a>.<a href="fn_ctxt/_impl.rs.html#928-975">get_node_fn_decl</a>(<a href="#1724">parent</a>)
+            <a href="#1716">fcx</a>.<a href="fn_ctxt/_impl.rs.html#913-960">get_node_fn_decl</a>(<a href="#1724">parent</a>)
                 .map(|(fn_id, fn_decl, <span class="kw">_</span>, is_main)| (<a href="#1760">fn_id</a>, <a href="#1760">fn_decl</a>, <a href="#1760">is_main</a>))
         } <span class="kw">else </span>{
-            <a href="#1716">fcx</a>.<a href="fn_ctxt/_impl.rs.html#979-990">get_fn_decl</a>(<a href="#1723">parent_id</a>)
+            <a href="#1716">fcx</a>.<a href="fn_ctxt/_impl.rs.html#964-975">get_fn_decl</a>(<a href="#1723">parent_id</a>)
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>((fn_id, fn_decl, can_suggest)) = <a href="#1734">fn_decl</a> {
             <span class="kw">if </span>blk_id.is_none() {
-                <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#743">suggest_missing_return_type</a>(
+                <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#747">suggest_missing_return_type</a>(
                     <span class="kw-2">&amp;mut </span><a href="#1721">err</a>,
                     <span class="kw-2">&amp;</span><a href="#1765">fn_decl</a>,
                     <a href="#1713">expected</a>,
@@ -3654,9 +3654,9 @@
         <span class="kw">let </span>parent_item = <a href="#1716">fcx</a>.tcx.hir().get_by_def_id(<a href="#1778">parent_id</a>.def_id);
 
         <span class="kw">if let </span>(<span class="prelude-val">Some</span>(expr), <span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">Some</span>((fn_id, fn_decl, <span class="kw">_</span>, <span class="kw">_</span>))) =
-            (<a href="#1718">expression</a>, <a href="#1719">blk_id</a>, <a href="#1716">fcx</a>.<a href="fn_ctxt/_impl.rs.html#928-975">get_node_fn_decl</a>(<a href="#1779">parent_item</a>))
+            (<a href="#1718">expression</a>, <a href="#1719">blk_id</a>, <a href="#1716">fcx</a>.<a href="fn_ctxt/_impl.rs.html#913-960">get_node_fn_decl</a>(<a href="#1779">parent_item</a>))
         {
-            <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#940-1012">suggest_missing_break_or_return_expr</a>(
+            <a href="#1716">fcx</a>.<a href="fn_ctxt/suggestions.rs.html#942-1014">suggest_missing_break_or_return_expr</a>(
                 <span class="kw-2">&amp;mut </span><a href="#1721">err</a>, <a href="#1781">expr</a>, <a href="#1781">fn_decl</a>, <a href="#1713">expected</a>, <a href="#1714">found</a>, <a href="#1717">id</a>, <a href="#1781">fn_id</a>,
             );
         }

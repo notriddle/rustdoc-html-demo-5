@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/eval_context.rs`."><title>eval_context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/eval_context.rs`."><title>eval_context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1207,6 +1207,12 @@
 <a href="#1207" id="1207">1207</a>
 <a href="#1208" id="1208">1208</a>
 <a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cell/struct.Cell.html">std::cell::Cell</a>;
 <span class="kw">use </span>std::{<a href="https://doc.rust-lang.org/nightly/alloc/fmt/index.html">fmt</a>, <a href="https://doc.rust-lang.org/nightly/core/mem/index.html">mem</a>};
 
@@ -1222,20 +1228,20 @@
     <a class="self" href="../../../rustc_middle/ty/layout/index.html">self</a>, <a href="../../../rustc_middle/ty/layout/enum.FnAbiError.html">FnAbiError</a>, <a href="../../../rustc_middle/ty/layout/trait.FnAbiOfHelpers.html">FnAbiOfHelpers</a>, <a href="../../../rustc_middle/ty/layout/enum.FnAbiRequest.html">FnAbiRequest</a>, <a href="../../../rustc_middle/ty/layout/enum.LayoutError.html">LayoutError</a>, <a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/trait.LayoutOfHelpers.html">LayoutOfHelpers</a>,
     <a href="../../../rustc_middle/ty/layout/type.TyAndLayout.html">TyAndLayout</a>,
 };
-<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/generic_args/type.GenericArgsRef.html">GenericArgsRef</a>, <a href="../../../rustc_middle/ty/struct.ParamEnv.html">ParamEnv</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../rustc_type_ir/fold/trait.TypeFoldable.html">TypeFoldable</a>};
+<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/generic_args/type.GenericArgsRef.html">GenericArgsRef</a>, <a href="../../../rustc_middle/ty/struct.ParamEnv.html">ParamEnv</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../rustc_type_ir/fold/trait.TypeFoldable.html">TypeFoldable</a>, <a href="../../../rustc_type_ir/enum.Variance.html">Variance</a>};
 <span class="kw">use </span><a href="../../../rustc_mir_dataflow/storage/fn.always_storage_live_locals.html">rustc_mir_dataflow::storage::always_storage_live_locals</a>;
 <span class="kw">use </span>rustc_session::Limit;
 <span class="kw">use </span><a href="../../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
 <span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_target/abi/call/struct.FnAbi.html">call::FnAbi</a>, <a href="../../../rustc_abi/struct.Align.html">Align</a>, <a href="../../../rustc_abi/trait.HasDataLayout.html">HasDataLayout</a>, <a href="../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../../rustc_abi/struct.TargetDataLayout.html">TargetDataLayout</a>};
 
 <span class="kw">use super</span>::{
-    AllocId, <a href="../../../rustc_const_eval/interpret/struct.GlobalId.html">GlobalId</a>, <a href="operand.rs.html#29-37">Immediate</a>, <a href="../../../rustc_const_eval/interpret/struct.InterpErrorInfo.html">InterpErrorInfo</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#108-116">MPlaceTy</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="place.rs.html#54-61">MemPlace</a>,
-    <a href="place.rs.html#26-31">MemPlaceMeta</a>, <a href="memory.rs.html#93-114">Memory</a>, <a href="memory.rs.html#31-38">MemoryKind</a>, <a href="operand.rs.html#296-307">OpTy</a>, <a href="operand.rs.html#290-293">Operand</a>, <a href="place.rs.html#213-226">Place</a>, <a href="place.rs.html#229-237">PlaceTy</a>, <a href="../../../rustc_const_eval/interpret/struct.Pointer.html">Pointer</a>, <a href="../../../rustc_const_eval/interpret/trait.PointerArithmetic.html">PointerArithmetic</a>,
+    AllocId, <a href="../../../rustc_const_eval/interpret/struct.GlobalId.html">GlobalId</a>, <a href="operand.rs.html#28-36">Immediate</a>, <a href="../../../rustc_const_eval/interpret/struct.InterpErrorInfo.html">InterpErrorInfo</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="place.rs.html#107-115">MPlaceTy</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="place.rs.html#53-60">MemPlace</a>,
+    <a href="place.rs.html#25-30">MemPlaceMeta</a>, <a href="memory.rs.html#93-114">Memory</a>, <a href="memory.rs.html#31-38">MemoryKind</a>, <a href="operand.rs.html#315-326">OpTy</a>, <a href="operand.rs.html#309-312">Operand</a>, <a href="place.rs.html#212-225">Place</a>, <a href="place.rs.html#228-236">PlaceTy</a>, <a href="../../../rustc_const_eval/interpret/struct.Pointer.html">Pointer</a>, <a href="../../../rustc_const_eval/interpret/trait.PointerArithmetic.html">PointerArithmetic</a>,
     <a href="projection.rs.html#23-89">Projectable</a>, <a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>, <a href="machine.rs.html#27-37">StackPopJump</a>,
 };
 <span class="kw">use </span><a href="../lib.rs.html#32"><span class="kw">crate</span>::errors</a>;
 <span class="kw">use </span><a href="../lib.rs.html#35"><span class="kw">crate</span>::util</a>;
-<span class="kw">use crate</span>::{<a href="../lib.rs.html#44">fluent_generated</a> <span class="kw">as </span>fluent, <a href="../errors.rs.html#433-456">ReportErrorExt</a>};
+<span class="kw">use crate</span>::{<a href="../lib.rs.html#43">fluent_generated</a> <span class="kw">as </span>fluent, <a href="../errors.rs.html#433-456">ReportErrorExt</a>};
 
 <span class="kw">pub struct </span><a href="../../../rustc_const_eval/interpret/eval_context/struct.InterpCx.html">InterpCx</a>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M: Machine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; {
     <span class="doccomment">/// Stores the `Machine` instance.
@@ -1396,7 +1402,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>, Prov: <a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance</a>&gt; LocalState&lt;<span class="lifetime">&#39;tcx</span>, Prov&gt; {
     <span class="kw">pub fn </span>make_live_uninit(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <a class="self" href="#189">self</a>.value = <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#291">Operand::Immediate</a>(<a href="operand.rs.html#36">Immediate::Uninit</a>));
+        <a class="self" href="#189">self</a>.value = <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#310">Operand::Immediate</a>(<a href="operand.rs.html#35">Immediate::Uninit</a>));
     }
 
     <span class="doccomment">/// This is a hack because Miri needs a way to visit all the provenance in a `LocalState`
@@ -1407,8 +1413,8 @@
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Either&lt;(Pointer&lt;<span class="prelude-ty">Option</span>&lt;Prov&gt;&gt;, MemPlaceMeta&lt;Prov&gt;), Immediate&lt;Prov&gt;&gt;&gt; {
         <span class="kw">match </span><a class="self" href="#197">self</a>.value {
             <a href="#179">LocalValue::Dead</a> =&gt; <span class="prelude-val">None</span>,
-            <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#292">Operand::Indirect</a>(mplace)) =&gt; <span class="prelude-val">Some</span>(Left((<a href="#201">mplace</a>.ptr, <a href="#201">mplace</a>.meta))),
-            <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#291">Operand::Immediate</a>(imm)) =&gt; <span class="prelude-val">Some</span>(Right(<a href="#202">imm</a>)),
+            <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#311">Operand::Indirect</a>(mplace)) =&gt; <span class="prelude-val">Some</span>(Left((<a href="#201">mplace</a>.ptr, <a href="#201">mplace</a>.meta))),
+            <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#310">Operand::Immediate</a>(imm)) =&gt; <span class="prelude-val">Some</span>(Right(<a href="#202">imm</a>)),
         }
     }
 
@@ -1593,7 +1599,7 @@
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
     // differences.
-    </span><span class="kw">if </span>util::is_subtype(tcx, param_env, src.ty, dest.ty) {
+    </span><span class="kw">if </span>util::relate_types(tcx, param_env, Variance::Covariant, src.ty, dest.ty) {
         <span class="comment">// Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -1625,7 +1631,7 @@
                 <span class="kw">if </span>!mir_assign_valid_types(tcx.tcx, param_env, check_layout, known_layout) {
                     <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                         tcx.span,
-                        <span class="string">&quot;expected type differs from actual type.\nexpected: {:?}\nactual: {:?}&quot;</span>,
+                        <span class="string">&quot;expected type differs from actual type.\nexpected: {}\nactual: {}&quot;</span>,
                         known_layout.ty,
                         check_layout.ty,
                     );
@@ -1778,7 +1784,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;T, <a href="../../../rustc_const_eval/interpret/enum.ErrorHandled.html">ErrorHandled</a>&gt; {
         <a href="#567">frame</a>
             .instance
-            .try_subst_mir_and_normalize_erasing_regions(
+            .try_instantiate_mir_and_normalize_erasing_regions(
                 <span class="kw-2">*</span><a class="self" href="#566">self</a>.tcx,
                 <a class="self" href="#566">self</a>.param_env,
                 ty::EarlyBinder::bind(<a href="#568">value</a>),
@@ -1921,7 +1927,7 @@
 
             ty::Foreign(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
 
-            <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;size_and_align_of::&lt;{:?}&gt; not supported&quot;</span>, layout.ty),
+            <span class="kw">_ </span>=&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.cur_span(), <span class="string">&quot;size_and_align_of::&lt;{}&gt; not supported&quot;</span>, layout.ty),
         }
     }
     <span class="attr">#[inline]
@@ -1959,12 +1965,14 @@
 
         <span class="comment">// Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         </span><span class="kw">if </span>M::POST_MONO_CHECKS {
-            <span class="comment">// `ctfe_query` does some error message decoration that we want to be in effect here.
-            </span><span class="self">self</span>.ctfe_query(<span class="prelude-val">None</span>, |tcx| {
-                body.post_mono_checks(<span class="kw-2">*</span>tcx, <span class="self">self</span>.param_env, |c| {
-                    <span class="self">self</span>.subst_from_current_frame_and_normalize_erasing_regions(c)
-                })
-            })<span class="question-mark">?</span>;
+            <span class="kw">for </span><span class="kw-2">&amp;</span>const_ <span class="kw">in </span><span class="kw-2">&amp;</span>body.required_consts {
+                <span class="kw">let </span>c =
+                    <span class="self">self</span>.subst_from_current_frame_and_normalize_erasing_regions(const_.const_)<span class="question-mark">?</span>;
+                c.eval(<span class="kw-2">*</span><span class="self">self</span>.tcx, <span class="self">self</span>.param_env, <span class="prelude-val">Some</span>(const_.span)).map_err(|err| {
+                    err.emit_note(<span class="kw-2">*</span><span class="self">self</span>.tcx);
+                    err
+                })<span class="question-mark">?</span>;
+            }
         }
 
         <span class="comment">// done
@@ -1980,7 +1988,7 @@
     <span class="doccomment">/// Jump to the given block.
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>go_to_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>) {
-        <a class="self" href="#773">self</a>.<a href="#508-510">frame_mut</a>().loc = Left(<a href="../../../rustc_middle/mir/struct.Location.html">mir::Location</a> { block: <a href="#773">target</a>, statement_index: <span class="number">0 </span>});
+        <a class="self" href="#775">self</a>.<a href="#508-510">frame_mut</a>().loc = Left(<a href="../../../rustc_middle/mir/struct.Location.html">mir::Location</a> { block: <a href="#775">target</a>, statement_index: <span class="number">0 </span>});
     }
 
     <span class="doccomment">/// *Return* to the given `target` basic block.
@@ -1988,8 +1996,8 @@
     ///
     /// If `target` is `None`, that indicates the function cannot return, so we raise UB.
     </span><span class="kw">pub fn </span>return_to_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">mir::BasicBlock</a>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#781">target</a> {
-            <a class="self" href="#781">self</a>.<a href="#773-775">go_to_block</a>(<a href="#782">target</a>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#783">target</a> {
+            <a class="self" href="#783">self</a>.<a href="#775-777">go_to_block</a>(<a href="#784">target</a>);
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub.html">throw_ub!</a>(Unreachable)
@@ -2006,14 +2014,14 @@
     /// unwinding, and doing so is UB.
     </span><span class="attr">#[cold] </span><span class="comment">// usually we have normal returns, not unwinding
     </span><span class="kw">pub fn </span>unwind_to_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="../../../rustc_middle/mir/syntax/enum.UnwindAction.html">mir::UnwindAction</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#799">self</a>.<a href="#508-510">frame_mut</a>().loc = <span class="kw">match </span><a href="#799">target</a> {
-            mir::UnwindAction::Cleanup(block) =&gt; Left(<a href="../../../rustc_middle/mir/struct.Location.html">mir::Location</a> { <a href="#801">block</a>, statement_index: <span class="number">0 </span>}),
-            mir::UnwindAction::Continue =&gt; Right(<a class="self" href="#799">self</a>.<a href="#508-510">frame_mut</a>().body.span),
+        <a class="self" href="#801">self</a>.<a href="#508-510">frame_mut</a>().loc = <span class="kw">match </span><a href="#801">target</a> {
+            mir::UnwindAction::Cleanup(block) =&gt; Left(<a href="../../../rustc_middle/mir/struct.Location.html">mir::Location</a> { <a href="#803">block</a>, statement_index: <span class="number">0 </span>}),
+            mir::UnwindAction::Continue =&gt; Right(<a class="self" href="#801">self</a>.<a href="#508-510">frame_mut</a>().body.span),
             mir::UnwindAction::Unreachable =&gt; {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_unreachable_unwind);
             }
             mir::UnwindAction::Terminate(reason) =&gt; {
-                <a class="self" href="#799">self</a>.<a href="#508-510">frame_mut</a>().loc = Right(<a class="self" href="#799">self</a>.<a href="#508-510">frame_mut</a>().body.span);
+                <a class="self" href="#801">self</a>.<a href="#508-510">frame_mut</a>().loc = Right(<a class="self" href="#801">self</a>.<a href="#508-510">frame_mut</a>().body.span);
                 M::unwind_terminate(<span class="self">self</span>, reason)<span class="question-mark">?</span>;
                 <span class="comment">// This might have pushed a new stack frame, or it terminated execution.
                 // Either way, `loc` will not be updated.
@@ -2139,8 +2147,8 @@
     </span><span class="kw">pub fn </span>storage_live_for_always_live_locals(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="self">self</span>.storage_live(mir::RETURN_PLACE)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>body = <a class="self" href="#930">self</a>.<a href="#513-515">body</a>();
-        <span class="kw">let </span>always_live = <a href="../../../rustc_mir_dataflow/storage/fn.always_storage_live_locals.html">always_storage_live_locals</a>(<a href="#933">body</a>);
+        <span class="kw">let </span>body = <a class="self" href="#932">self</a>.<a href="#513-515">body</a>();
+        <span class="kw">let </span>always_live = <a href="../../../rustc_mir_dataflow/storage/fn.always_storage_live_locals.html">always_storage_live_locals</a>(<a href="#935">body</a>);
         <span class="kw">for </span>local <span class="kw">in </span>body.vars_and_temps_iter() {
             <span class="kw">if </span>always_live.contains(local) {
                 <span class="self">self</span>.storage_live(local)<span class="question-mark">?</span>;
@@ -2159,7 +2167,7 @@
         <span class="comment">// We avoid `ty.is_trivially_sized` since that (a) cannot assume WF, so it recurses through
         // all fields of a tuple, and (b) does something expensive for ADTs.
         </span><span class="kw">fn </span>is_very_trivially_sized(ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-            <span class="kw">match </span><a href="#952">ty</a>.kind() {
+            <span class="kw">match </span><a href="#954">ty</a>.kind() {
                 ty::Infer(ty::IntVar(<span class="kw">_</span>) | ty::FloatVar(<span class="kw">_</span>))
                 | ty::Uint(<span class="kw">_</span>)
                 | ty::Int(<span class="kw">_</span>)
@@ -2172,7 +2180,6 @@
                 | ty::Ref(..)
                 | ty::Generator(..)
                 | ty::GeneratorWitness(..)
-                | ty::GeneratorWitnessMIR(..)
                 | ty::Array(..)
                 | ty::Closure(..)
                 | ty::Never
@@ -2180,7 +2187,7 @@
 
                 ty::Str | ty::Slice(<span class="kw">_</span>) | ty::Dynamic(..) | ty::Foreign(..) =&gt; <span class="bool-val">false</span>,
 
-                ty::Tuple(tys) =&gt; <a href="#974">tys</a>.last().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|ty| <a href="#952-988">is_very_trivially_sized</a>(<span class="kw-2">**</span><a href="#974">ty</a>)),
+                ty::Tuple(tys) =&gt; <a href="#975">tys</a>.last().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|ty| <a href="#954-989">is_very_trivially_sized</a>(<span class="kw-2">**</span><a href="#975">ty</a>)),
 
                 <span class="comment">// We don&#39;t want to do any queries, so there is not much we can do with ADTs.
                 </span>ty::Adt(..) =&gt; <span class="bool-val">false</span>,
@@ -2191,7 +2198,7 @@
 
                 ty::Bound(..)
                 | ty::Infer(ty::FreshTy(<span class="kw">_</span>) | ty::FreshIntTy(<span class="kw">_</span>) | ty::FreshFloatTy(<span class="kw">_</span>)) =&gt; {
-                    <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;`is_very_trivially_sized` applied to unexpected type: {:?}&quot;</span>, ty)
+                    <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;`is_very_trivially_sized` applied to unexpected type: {}&quot;</span>, ty)
                 }
             }
         }
@@ -2203,16 +2210,16 @@
         </span>} <span class="kw">else </span>{
             <span class="comment">// We need the layout.
             </span><span class="kw">let </span>layout = <span class="self">self</span>.layout_of_local(<span class="self">self</span>.frame(), local, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-            <span class="kw">if </span>layout.is_sized() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(<a href="#996">layout</a>) }
+            <span class="kw">if </span>layout.is_sized() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(<a href="#997">layout</a>) }
         };
 
-        <span class="kw">let </span>local_val = <a href="#185">LocalValue::Live</a>(<span class="kw">if let </span><span class="prelude-val">Some</span>(layout) = <a href="#992">unsized_</a> {
+        <span class="kw">let </span>local_val = <a href="#185">LocalValue::Live</a>(<span class="kw">if let </span><span class="prelude-val">Some</span>(layout) = <a href="#993">unsized_</a> {
             <span class="kw">if </span>!meta.has_meta() {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_unsup.html">throw_unsup!</a>(UnsizedLocal);
             }
             <span class="comment">// Need to allocate some memory, since `Immediate::Uninit` cannot be unsized.
             </span><span class="kw">let </span>dest_place = <span class="self">self</span>.allocate_dyn(layout, MemoryKind::Stack, meta)<span class="question-mark">?</span>;
-            <a href="operand.rs.html#292">Operand::Indirect</a>(<span class="kw-2">*</span><a href="#1005">dest_place</a>.<a href="place.rs.html#164-166">mplace</a>())
+            <a href="operand.rs.html#311">Operand::Indirect</a>(<span class="kw-2">*</span><a href="#1006">dest_place</a>.<a href="place.rs.html#163-165">mplace</a>())
         } <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!meta.has_meta()); <span class="comment">// we&#39;re dropping the metadata
             // Just make this an efficient immediate.
@@ -2221,11 +2228,11 @@
             // which is a bit too late -- we should ideally notice this alreayd here, when the memory
             // is conceptually allocated. But given how rare that error is and that this is a hot function,
             // we accept this downside for now.
-            </span><a href="operand.rs.html#291">Operand::Immediate</a>(<a href="operand.rs.html#36">Immediate::Uninit</a>)
+            </span><a href="operand.rs.html#310">Operand::Immediate</a>(<a href="operand.rs.html#35">Immediate::Uninit</a>)
         });
 
         <span class="comment">// StorageLive expects the local to be dead, and marks it live.
-        </span><span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#944">self</a>.<a href="#508-510">frame_mut</a>().locals[<a href="#945">local</a>].value, <a href="#1000">local_val</a>);
+        </span><span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#946">self</a>.<a href="#508-510">frame_mut</a>().locals[<a href="#947">local</a>].value, <a href="#1001">local_val</a>);
         <span class="kw">if </span>!<span class="macro">matches!</span>(old, LocalValue::Dead) {
             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_custom.html">throw_ub_custom!</a>(fluent::const_eval_double_storage_live);
         }
@@ -2235,7 +2242,7 @@
     <span class="doccomment">/// Mark a storage as live, killing the previous content.
     </span><span class="attr">#[inline(always)]
     </span><span class="kw">pub fn </span>storage_live(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <a href="../../../rustc_middle/mir/struct.Local.html">mir::Local</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#1028">self</a>.<a href="#943-1024">storage_live_dyn</a>(<a href="#1028">local</a>, <a href="place.rs.html#30">MemPlaceMeta::None</a>)
+        <a class="self" href="#1029">self</a>.<a href="#945-1025">storage_live_dyn</a>(<a href="#1029">local</a>, <a href="place.rs.html#29">MemPlaceMeta::None</a>)
     }
 
     <span class="kw">pub fn </span>storage_dead(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <a href="../../../rustc_middle/mir/struct.Local.html">mir::Local</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -2243,7 +2250,7 @@
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;{:?} is now dead&quot;</span>, local);
 
         <span class="comment">// It is entirely okay for this local to be already dead (at least that&#39;s how we currently generate MIR)
-        </span><span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#1032">self</a>.<a href="#508-510">frame_mut</a>().locals[<a href="#1032">local</a>].value, <a href="#179">LocalValue::Dead</a>);
+        </span><span class="kw">let </span>old = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#1033">self</a>.<a href="#508-510">frame_mut</a>().locals[<a href="#1033">local</a>].value, <a href="#179">LocalValue::Dead</a>);
         <span class="self">self</span>.deallocate_local(old)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -2264,16 +2271,16 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Call a query that can return `ErrorHandled`. If `span` is `Some`, point to that span when an error occurs.
+    <span class="doccomment">/// Call a query that can return `ErrorHandled`. Should be used for statics and other globals.
+    /// (`mir::Const`/`ty::Const` have `eval` methods that can be used directly instead.)
     </span><span class="kw">pub fn </span>ctfe_query&lt;T&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        span: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;,
         query: <span class="kw">impl </span>FnOnce(TyCtxtAt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;T, <a href="../../../rustc_const_eval/interpret/enum.ErrorHandled.html">ErrorHandled</a>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;T, <a href="../../../rustc_const_eval/interpret/enum.ErrorHandled.html">ErrorHandled</a>&gt; {
         <span class="comment">// Use a precise span for better cycle errors.
-        </span><a href="#1062">query</a>(<a class="self" href="#1060">self</a>.tcx.at(<a href="#1061">span</a>.unwrap_or_else(|| <a class="self" href="#1060">self</a>.<a href="#447-451">cur_span</a>()))).map_err(|err| {
-            <a href="#1065">err</a>.emit_note(<span class="kw-2">*</span><a class="self" href="#1060">self</a>.tcx);
-            <a href="#1065">err</a>
+        </span><a href="#1063">query</a>(<a class="self" href="#1062">self</a>.tcx.at(<a class="self" href="#1062">self</a>.<a href="#447-451">cur_span</a>())).map_err(|err| {
+            <a href="#1066">err</a>.emit_note(<span class="kw-2">*</span><a class="self" href="#1062">self</a>.tcx);
+            <a href="#1066">err</a>
         })
     }
 
@@ -2281,7 +2288,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         instance: ty::Instance&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, MPlaceTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
-        <span class="kw">let </span>gid = <a href="../../../rustc_const_eval/interpret/struct.GlobalId.html">GlobalId</a> { <a href="#1073">instance</a>, promoted: <span class="prelude-val">None </span>};
+        <span class="kw">let </span>gid = <a href="../../../rustc_const_eval/interpret/struct.GlobalId.html">GlobalId</a> { <a href="#1074">instance</a>, promoted: <span class="prelude-val">None </span>};
         <span class="comment">// For statics we pick `ParamEnv::reveal_all`, because statics don&#39;t have generics
         // and thus don&#39;t care about the parameter environment. While we could just use
         // `self.param_env`, that would mean we invoke the query to evaluate the static
@@ -2290,20 +2297,25 @@
         </span><span class="kw">let </span>param_env = <span class="kw">if </span><span class="self">self</span>.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } <span class="kw">else </span>{
-            <a class="self" href="#1072">self</a>.param_env
+            <a class="self" href="#1073">self</a>.param_env
         };
-        <span class="kw">let </span>val = <span class="self">self</span>.ctfe_query(<span class="prelude-val">None</span>, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))<span class="question-mark">?</span>;
-        <a class="self" href="#1072">self</a>.<a href="place.rs.html#1038-1047">raw_const_to_mplace</a>(<a href="#1086">val</a>)
+        <span class="kw">let </span>val = <span class="self">self</span>.ctfe_query(|tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))<span class="question-mark">?</span>;
+        <a class="self" href="#1073">self</a>.<a href="place.rs.html#1042-1051">raw_const_to_mplace</a>(<a href="#1087">val</a>)
     }
 
     <span class="kw">pub fn </span>eval_mir_constant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        val: <span class="kw-2">&amp;</span>mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        val: <span class="kw-2">&amp;</span>mir::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         span: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;,
         layout: <span class="prelude-ty">Option</span>&lt;TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, OpTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
-        <span class="kw">let </span>const_val = <span class="self">self</span>.ctfe_query(span, |tcx| val.eval(<span class="kw-2">*</span>tcx, <span class="self">self</span>.param_env, span))<span class="question-mark">?</span>;
-        <a class="self" href="#1091">self</a>.<a href="operand.rs.html#703-741">const_val_to_op</a>(<a href="#1096">const_val</a>, <a href="#1092">val</a>.ty(), <a href="#1094">layout</a>)
+        <span class="kw">let </span>const_val = val.eval(<span class="kw-2">*</span><span class="self">self</span>.tcx, <span class="self">self</span>.param_env, span).map_err(|err| {
+            <span class="comment">// FIXME: somehow this is reachable even when POST_MONO_CHECKS is on.
+            // Are we not always populating `required_consts`?
+            </span>err.emit_note(<span class="kw-2">*</span><span class="self">self</span>.tcx);
+            err
+        })<span class="question-mark">?</span>;
+        <a class="self" href="#1092">self</a>.<a href="operand.rs.html#723-758">const_val_to_op</a>(<a href="#1097">const_val</a>, <a href="#1093">val</a>.ty(), <a href="#1095">layout</a>)
     }
 
     <span class="attr">#[must_use]
@@ -2311,7 +2323,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         place: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
     ) -&gt; PlacePrinter&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M&gt; {
-        <a href="#1144-1147">PlacePrinter</a> { ecx: <a class="self" href="#1102">self</a>, place: <span class="kw-2">*</span><a href="#1103">place</a>.<a href="place.rs.html#258-260">place</a>() }
+        <a href="#1150-1153">PlacePrinter</a> { ecx: <a class="self" href="#1108">self</a>, place: <span class="kw-2">*</span><a href="#1109">place</a>.<a href="place.rs.html#257-259">place</a>() }
     }
 
     <span class="attr">#[must_use]
@@ -2339,12 +2351,12 @@
             frames.push(FrameInfo { span, instance: frame.instance });
         }
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;generate stacktrace: {:#?}&quot;</span>, frames);
-        <a href="#1112">frames</a>
+        <a href="#1118">frames</a>
     }
 
     <span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>generate_stacktrace(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;FrameInfo&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="self">Self</span>::generate_stacktrace_from_stack(<a class="self" href="#1137">self</a>.<a href="#484-486">stack</a>())
+        <span class="self">Self</span>::generate_stacktrace_from_stack(<a class="self" href="#1143">self</a>.<a href="#484-486">stack</a>())
     }
 }
 
@@ -2359,11 +2371,11 @@
     <span class="kw">for </span>PlacePrinter&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M&gt;
 {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
-        <span class="kw">match </span><a class="self" href="#1152">self</a>.place {
-            <a href="place.rs.html#225">Place::Local</a> { frame, local, offset } =&gt; {
+        <span class="kw">match </span><a class="self" href="#1158">self</a>.place {
+            <a href="place.rs.html#224">Place::Local</a> { frame, local, offset } =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>allocs = Vec::new();
                 <span class="macro">write!</span>(fmt, <span class="string">&quot;{local:?}&quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(offset) = <a href="#1154">offset</a> {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(offset) = <a href="#1160">offset</a> {
                     <span class="macro">write!</span>(fmt, <span class="string">&quot;+{:#x}&quot;</span>, offset.bytes())<span class="question-mark">?</span>;
                 }
                 <span class="kw">if </span>frame != <span class="self">self</span>.ecx.frame_idx() {
@@ -2371,12 +2383,12 @@
                 }
                 <span class="macro">write!</span>(fmt, <span class="string">&quot;:&quot;</span>)<span class="question-mark">?</span>;
 
-                <span class="kw">match </span><a class="self" href="#1152">self</a>.ecx.<a href="#484-486">stack</a>()[<a href="#1154">frame</a>].locals[<a href="#1154">local</a>].value {
+                <span class="kw">match </span><a class="self" href="#1158">self</a>.ecx.<a href="#484-486">stack</a>()[<a href="#1160">frame</a>].locals[<a href="#1160">local</a>].value {
                     <a href="#179">LocalValue::Dead</a> =&gt; <span class="macro">write!</span>(fmt, <span class="string">&quot; is dead&quot;</span>)<span class="question-mark">?</span>,
-                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#291">Operand::Immediate</a>(<a href="operand.rs.html#36">Immediate::Uninit</a>)) =&gt; {
+                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#310">Operand::Immediate</a>(<a href="operand.rs.html#35">Immediate::Uninit</a>)) =&gt; {
                         <span class="macro">write!</span>(fmt, <span class="string">&quot; is uninitialized&quot;</span>)<span class="question-mark">?
                     </span>}
-                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#292">Operand::Indirect</a>(mplace)) =&gt; {
+                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#311">Operand::Indirect</a>(mplace)) =&gt; {
                         <span class="macro">write!</span>(
                             fmt,
                             <span class="string">&quot; by {} ref {:?}:&quot;</span>,
@@ -2386,32 +2398,32 @@
                             },
                             mplace.ptr,
                         )<span class="question-mark">?</span>;
-                        <a href="#1155">allocs</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1170">mplace</a>.ptr.provenance.map(<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance::get_alloc_id</a>));
+                        <a href="#1161">allocs</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1176">mplace</a>.ptr.provenance.map(<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance::get_alloc_id</a>));
                     }
-                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#291">Operand::Immediate</a>(<a href="operand.rs.html#31">Immediate::Scalar</a>(val))) =&gt; {
+                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#310">Operand::Immediate</a>(<a href="operand.rs.html#30">Immediate::Scalar</a>(val))) =&gt; {
                         <span class="macro">write!</span>(fmt, <span class="string">&quot; {val:?}&quot;</span>)<span class="question-mark">?</span>;
-                        <span class="kw">if let </span>Scalar::Ptr(ptr, _size) = <a href="#1182">val</a> {
-                            <a href="#1155">allocs</a>.push(<a href="#1184">ptr</a>.provenance.<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">get_alloc_id</a>());
+                        <span class="kw">if let </span>Scalar::Ptr(ptr, _size) = <a href="#1188">val</a> {
+                            <a href="#1161">allocs</a>.push(<a href="#1190">ptr</a>.provenance.<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">get_alloc_id</a>());
                         }
                     }
-                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#291">Operand::Immediate</a>(<a href="operand.rs.html#34">Immediate::ScalarPair</a>(val1, val2))) =&gt; {
+                    <a href="#185">LocalValue::Live</a>(<a href="operand.rs.html#310">Operand::Immediate</a>(<a href="operand.rs.html#33">Immediate::ScalarPair</a>(val1, val2))) =&gt; {
                         <span class="macro">write!</span>(fmt, <span class="string">&quot; ({val1:?}, {val2:?})&quot;</span>)<span class="question-mark">?</span>;
-                        <span class="kw">if let </span>Scalar::Ptr(ptr, _size) = <a href="#1188">val1</a> {
-                            <a href="#1155">allocs</a>.push(<a href="#1190">ptr</a>.provenance.<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">get_alloc_id</a>());
+                        <span class="kw">if let </span>Scalar::Ptr(ptr, _size) = <a href="#1194">val1</a> {
+                            <a href="#1161">allocs</a>.push(<a href="#1196">ptr</a>.provenance.<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">get_alloc_id</a>());
                         }
-                        <span class="kw">if let </span>Scalar::Ptr(ptr, _size) = <a href="#1188">val2</a> {
-                            <a href="#1155">allocs</a>.push(<a href="#1193">ptr</a>.provenance.<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">get_alloc_id</a>());
+                        <span class="kw">if let </span>Scalar::Ptr(ptr, _size) = <a href="#1194">val2</a> {
+                            <a href="#1161">allocs</a>.push(<a href="#1199">ptr</a>.provenance.<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">get_alloc_id</a>());
                         }
                     }
                 }
 
-                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1152">fmt</a>, <span class="string">&quot;: {:?}&quot;</span>, <span class="self">self</span>.ecx.dump_allocs(allocs.into_iter().flatten().collect()))
+                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1158">fmt</a>, <span class="string">&quot;: {:?}&quot;</span>, <span class="self">self</span>.ecx.dump_allocs(allocs.into_iter().flatten().collect()))
             }
-            <a href="place.rs.html#215">Place::Ptr</a>(mplace) =&gt; <span class="kw">match </span><a href="#1201">mplace</a>.ptr.provenance.and_then(<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance::get_alloc_id</a>) {
+            <a href="place.rs.html#214">Place::Ptr</a>(mplace) =&gt; <span class="kw">match </span><a href="#1207">mplace</a>.ptr.provenance.and_then(<a href="../../../rustc_const_eval/interpret/trait.Provenance.html">Provenance::get_alloc_id</a>) {
                 <span class="prelude-val">Some</span>(alloc_id) =&gt; {
-                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1152">fmt</a>, <span class="string">&quot;by ref {:?}: {:?}&quot;</span>, mplace.ptr, <span class="self">self</span>.ecx.dump_alloc(alloc_id))
+                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1158">fmt</a>, <span class="string">&quot;by ref {:?}: {:?}&quot;</span>, mplace.ptr, <span class="self">self</span>.ecx.dump_alloc(alloc_id))
                 }
-                ptr =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1152">fmt</a>, <span class="string">&quot; integral by ref: {ptr:?}&quot;</span>),
+                ptr =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1158">fmt</a>, <span class="string">&quot; integral by ref: {ptr:?}&quot;</span>),
             },
         }
     }

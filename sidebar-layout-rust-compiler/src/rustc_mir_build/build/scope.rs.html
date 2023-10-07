@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/build/scope.rs`."><title>scope.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/build/scope.rs`."><title>scope.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1603,7 +1603,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 </span><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
 
-<span class="kw">use </span><span class="kw">crate</span>::build::{<a href="mod.rs.html#408">BlockAnd</a>, <a href="mod.rs.html#410-413">BlockAndExtension</a>, <a href="mod.rs.html#108-140">BlockFrame</a>, <a href="mod.rs.html#162-227">Builder</a>, <a href="mod.rs.html#381-383">CFG</a>};
+<span class="kw">use </span><span class="kw">crate</span>::build::{<a href="mod.rs.html#407">BlockAnd</a>, <a href="mod.rs.html#409-412">BlockAndExtension</a>, <a href="mod.rs.html#107-139">BlockFrame</a>, <a href="mod.rs.html#161-226">Builder</a>, <a href="mod.rs.html#380-382">CFG</a>};
 <span class="kw">use </span>rustc_data_structures::fx::FxHashMap;
 <span class="kw">use </span><a href="../../../rustc_hir/hir_id/struct.HirId.html">rustc_hir::HirId</a>;
 <span class="kw">use </span>rustc_index::{<a href="../../../rustc_index/slice/struct.IndexSlice.html">IndexSlice</a>, <a href="../../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
@@ -1997,21 +1997,21 @@ that contains only loops and breakable blocks. It tracks where a `break`,
         }
         <span class="kw">match </span>(<a href="#470">normal_exit_block</a>, <a href="#473">break_block</a>) {
             (<span class="prelude-val">Some</span>(block), <span class="prelude-val">None</span>) | (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block)) =&gt; <a href="#479">block</a>,
-            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <a class="self" href="#453">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>().<a href="mod.rs.html#412">unit</a>(),
+            (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <a class="self" href="#453">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>().<a href="mod.rs.html#411">unit</a>(),
             (<span class="prelude-val">Some</span>(normal_block), <span class="prelude-val">Some</span>(exit_block)) =&gt; {
                 <span class="kw">let </span>target = <a class="self" href="#453">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>();
                 <span class="kw">let </span>source_info = <a class="self" href="#453">self</a>.<a href="#871-873">source_info</a>(<a href="#456">span</a>);
                 <a class="self" href="#453">self</a>.cfg.<a href="cfg.rs.html#104-118">terminate</a>(
-                    <a class="macro" href="mod.rs.html#427-438">unpack!</a>(normal_block),
+                    <a class="macro" href="mod.rs.html#426-437">unpack!</a>(normal_block),
                     <a href="#483">source_info</a>,
                     <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { <a href="#482">target</a> },
                 );
                 <a class="self" href="#453">self</a>.cfg.<a href="cfg.rs.html#104-118">terminate</a>(
-                    <a class="macro" href="mod.rs.html#427-438">unpack!</a>(exit_block),
+                    <a class="macro" href="mod.rs.html#426-437">unpack!</a>(exit_block),
                     <a href="#483">source_info</a>,
                     <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { <a href="#482">target</a> },
                 );
-                <a href="#482">target</a>.<a href="mod.rs.html#412">unit</a>()
+                <a href="#482">target</a>.<a href="mod.rs.html#411">unit</a>()
             }
         }
     }
@@ -2044,14 +2044,14 @@ that contains only loops and breakable blocks. It tracks where a `break`,
         <span class="kw">let </span>scope = <a href="#173-178">IfThenScope</a> { <a href="#517">region_scope</a>, else_drops: DropTree::new() };
         <span class="kw">let </span>previous_scope = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#516">self</a>.scopes.if_then_scope, <span class="prelude-val">Some</span>(<a href="#524">scope</a>));
 
-        <span class="kw">let </span>then_block = <a class="macro" href="mod.rs.html#427-438">unpack!</a>(f(<span class="self">self</span>));
+        <span class="kw">let </span>then_block = <a class="macro" href="mod.rs.html#426-437">unpack!</a>(f(<span class="self">self</span>));
 
         <span class="kw">let </span>if_then_scope = mem::replace(<span class="kw-2">&amp;mut </span><a class="self" href="#516">self</a>.scopes.if_then_scope, <a href="#525">previous_scope</a>).unwrap();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(if_then_scope.region_scope == region_scope);
 
         <span class="kw">let </span>else_block = <span class="self"><a href="#516">self</a>
             </span>.<a href="#1338-1382">build_exit_tree</a>(<a href="#529">if_then_scope</a>.else_drops, <a href="#517">region_scope</a>, <a href="#518">span</a>, <span class="prelude-val">None</span>)
-            .map_or_else(|| <a class="self" href="#516">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>(), |else_block_and| <a class="macro" href="mod.rs.html#427-438">unpack!</a>(else_block_and));
+            .map_or_else(|| <a class="self" href="#516">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>(), |else_block_and| <a class="macro" href="mod.rs.html#426-437">unpack!</a>(else_block_and));
 
         (<a href="#527">then_block</a>, <a href="#532">else_block</a>)
     }
@@ -2069,12 +2069,12 @@ that contains only loops and breakable blocks. It tracks where a `break`,
             <a class="self" href="#540">self</a>.<a href="#591-593">push_scope</a>(<a href="#548">region_scope</a>);
         }
         <span class="kw">let </span><span class="kw-2">mut </span>block;
-        <span class="kw">let </span>rv = <a class="macro" href="mod.rs.html#427-438">unpack!</a>(block = f(<span class="self">self</span>));
+        <span class="kw">let </span>rv = <a class="macro" href="mod.rs.html#426-437">unpack!</a>(block = f(<span class="self">self</span>));
         <span class="kw">if let </span><span class="prelude-val">Some</span>(region_scope) = <a href="#541">opt_scope</a> {
-            <a class="macro" href="mod.rs.html#427-438">unpack!</a>(block = <span class="self">self</span>.pop_scope(region_scope, block));
+            <a class="macro" href="mod.rs.html#426-437">unpack!</a>(block = <span class="self">self</span>.pop_scope(region_scope, block));
         }
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;in_scope: exiting opt_scope={:?} block={:?}&quot;</span>, opt_scope, block);
-        <a href="#551">block</a>.<a href="mod.rs.html#411">and</a>(<a href="#552">rv</a>)
+        <a href="#551">block</a>.<a href="mod.rs.html#410">and</a>(<a href="#552">rv</a>)
     }
 
     <span class="doccomment">/// Convenience wrapper that pushes a scope and then executes `f`
@@ -2126,7 +2126,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
         <a class="self" href="#599">self</a>.scopes.<a href="#426-430">pop_scope</a>(<a href="#600">region_scope</a>);
 
-        <a href="#601">block</a>.<a href="mod.rs.html#412">unit</a>()
+        <a href="#601">block</a>.<a href="mod.rs.html#411">unit</a>()
     }
 
     <span class="doccomment">/// Sets up the drops for breaking from `block` to `target`.
@@ -2169,9 +2169,9 @@ that contains only loops and breakable blocks. It tracks where a `break`,
         <span class="kw">match </span>(<a href="#630">destination</a>, <a href="#616">value</a>) {
             (<span class="prelude-val">Some</span>(destination), <span class="prelude-val">Some</span>(value)) =&gt; {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;stmt_expr Break val block_context.push(SubExpr)&quot;</span>);
-                <a class="self" href="#614">self</a>.block_context.<a href="mod.rs.html#252-254">push</a>(<a href="mod.rs.html#139">BlockFrame::SubExpr</a>);
-                <a class="macro" href="mod.rs.html#427-438">unpack!</a>(block = <span class="self">self</span>.expr_into_dest(destination, block, value));
-                <a class="self" href="#614">self</a>.block_context.<a href="mod.rs.html#255-257">pop</a>();
+                <a class="self" href="#614">self</a>.block_context.<a href="mod.rs.html#251-253">push</a>(<a href="mod.rs.html#138">BlockFrame::SubExpr</a>);
+                <a class="macro" href="mod.rs.html#426-437">unpack!</a>(block = <span class="self">self</span>.expr_into_dest(destination, block, value));
+                <a class="self" href="#614">self</a>.block_context.<a href="mod.rs.html#254-256">pop</a>();
             }
             (<span class="prelude-val">Some</span>(destination), <span class="prelude-val">None</span>) =&gt; {
                 <a class="self" href="#614">self</a>.cfg.<a href="cfg.rs.html#62-79">push_assign_unit</a>(<a href="#615">block</a>, <a href="#618">source_info</a>, <a href="#656">destination</a>, <a class="self" href="#614">self</a>.tcx)
@@ -2209,7 +2209,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
         // because MIR type checking will panic if it hasn&#39;t been overwritten.
         </span><a class="self" href="#614">self</a>.cfg.<a href="cfg.rs.html#104-118">terminate</a>(<a href="#615">block</a>, <a href="#618">source_info</a>, TerminatorKind::UnwindResume);
 
-        <a class="self" href="#614">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>().<a href="mod.rs.html#412">unit</a>()
+        <a class="self" href="#614">self</a>.cfg.<a href="cfg.rs.html#19-21">start_new_block</a>().<a href="mod.rs.html#411">unit</a>()
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>break_for_else(
@@ -2245,7 +2245,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
     <span class="comment">// Add a dummy `Assign` statement to the CFG, with the span for the source code&#39;s `continue`
     // statement.
     </span><span class="kw">fn </span>add_dummy_assignment(<span class="kw-2">&amp;mut </span><span class="self">self</span>, span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>, block: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, source_info: <a href="../../../rustc_middle/mir/struct.SourceInfo.html">SourceInfo</a>) {
-        <span class="kw">let </span>local_decl = LocalDecl::new(Ty::new_unit(<a class="self" href="#727">self</a>.tcx), <a href="#727">span</a>).internal();
+        <span class="kw">let </span>local_decl = LocalDecl::new(Ty::new_unit(<a class="self" href="#727">self</a>.tcx), <a href="#727">span</a>);
         <span class="kw">let </span>temp_place = Place::from(<a class="self" href="#727">self</a>.local_decls.push(<a href="#728">local_decl</a>));
         <a class="self" href="#727">self</a>.cfg.<a href="cfg.rs.html#62-79">push_assign_unit</a>(<a href="#727">block</a>, <a href="#727">source_info</a>, <a href="#729">temp_place</a>, <a class="self" href="#727">self</a>.tcx);
     }
@@ -2258,7 +2258,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
         <span class="kw">let </span>unwind_to = <span class="kw">if </span>needs_cleanup { <a class="self" href="#733">self</a>.<a href="#1079-1083">diverge_cleanup</a>() } <span class="kw">else </span>{ DropIdx::MAX };
 
         <span class="kw">let </span>scope = <a class="self" href="#733">self</a>.scopes.scopes.last().expect(<span class="string">&quot;leave_top_scope called with no scopes&quot;</span>);
-        <a class="macro" href="mod.rs.html#427-438">unpack!</a>(build_scope_drops(
+        <a class="macro" href="mod.rs.html#426-437">unpack!</a>(build_scope_drops(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.cfg,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.scopes.unwind_drops,
             scope,
@@ -2721,7 +2721,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
         );
         <a class="self" href="#1176">self</a>.<a href="#1122-1137">diverge_from</a>(<a href="#1177">block</a>);
 
-        <a href="#1185">assign</a>.<a href="mod.rs.html#412">unit</a>()
+        <a href="#1185">assign</a>.<a href="mod.rs.html#411">unit</a>()
     }
 
     <span class="doccomment">/// Creates an `Assert` terminator and return the success block.
@@ -2847,7 +2847,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
             }
         }
     }
-    <a href="#1256">block</a>.<a href="mod.rs.html#412">unit</a>()
+    <a href="#1256">block</a>.<a href="mod.rs.html#411">unit</a>()
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;a</span>&gt; Builder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {

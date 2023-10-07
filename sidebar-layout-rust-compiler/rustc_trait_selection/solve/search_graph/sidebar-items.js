@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cache"],"struct":["SearchGraph","StackDepth","StackEntry"]};
+window.SIDEBAR_ITEMS = {"struct":["SearchGraph","StackDepth","StackEntry"]};

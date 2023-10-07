@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/error_reporting/note_and_explain.rs`."><title>note_and_explain.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_infer/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/error_reporting/note_and_explain.rs`."><title>note_and_explain.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_infer/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -708,6 +708,10 @@
 <a href="#708" id="708">708</a>
 <a href="#709" id="709">709</a>
 <a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="mod.rs.html#122-131"><span class="kw">super</span>::TypeErrCtxt</a>;
 <span class="kw">use </span>rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 <span class="kw">use </span>rustc_errors::{<a href="../../../../rustc_lint_defs/macro.pluralize.html">pluralize</a>, <a href="../../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>, <a href="../../../../rustc_error_messages/struct.MultiSpan.html">MultiSpan</a>};
@@ -812,7 +816,7 @@
                             // FIXME: extract this logic for use in other diagnostics.
                             </span><span class="kw">let </span>(trait_ref, assoc_args) = <a href="#79">proj</a>.trait_ref_and_own_args(<a href="#27">tcx</a>);
                             <span class="kw">let </span>item_name = <a href="#27">tcx</a>.item_name(<a href="#79">proj</a>.def_id);
-                            <span class="kw">let </span>item_args = <a class="self" href="#17">self</a>.<a href="#704-709">format_generic_args</a>(<a href="#103">assoc_args</a>);
+                            <span class="kw">let </span>item_args = <a class="self" href="#17">self</a>.<a href="#708-713">format_generic_args</a>(<a href="#103">assoc_args</a>);
 
                             <span class="comment">// Here, we try to see if there&#39;s an existing
                             // trait implementation that matches the one that
@@ -1197,7 +1201,7 @@ fn foo(&amp;self) -&gt; Self::T { String::new() }
 
             <span class="kw">let </span>(trait_ref, assoc_args) = <a href="#474">proj_ty</a>.trait_ref_and_own_args(<a href="#477">tcx</a>);
 
-            <a class="self" href="#471">self</a>.<a href="#639-672">constrain_generic_bound_associated_type_structured_suggestion</a>(
+            <a class="self" href="#471">self</a>.<a href="#643-676">constrain_generic_bound_associated_type_structured_suggestion</a>(
                 <a href="#472">diag</a>,
                 <span class="kw-2">&amp;</span><a href="#488">trait_ref</a>,
                 <a href="#482">opaque_hir_ty</a>.bounds,
@@ -1326,9 +1330,13 @@ fn foo(&amp;self) -&gt; Self::T { String::new() }
                 <span class="kw">for </span>item <span class="kw">in </span><span class="kw-2">&amp;</span>items[..] {
                     <span class="kw">if let </span>hir::AssocItemKind::Type = item.kind {
                         <span class="kw">let </span>assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
-
-                        <span class="kw">if </span><span class="self">self</span>.infcx.can_eq(param_env, assoc_ty, found) {
-                            diag.span_label(item.span, <span class="string">&quot;expected this associated type&quot;</span>);
+                        <span class="kw">if let </span>hir::Defaultness::Default { has_value: <span class="bool-val">true </span>} = tcx.defaultness(item.id.owner_id)
+                            &amp;&amp; <span class="self">self</span>.infcx.can_eq(param_env, assoc_ty, found)
+                        {
+                            diag.span_label(
+                                item.span,
+                                <span class="string">&quot;associated type is `default` and may be overridden&quot;</span>,
+                            );
                             <span class="kw">return </span><span class="bool-val">true</span>;
                         }
                     }
@@ -1359,26 +1367,26 @@ fn foo(&amp;self) -&gt; Self::T { String::new() }
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="comment">// FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
 
-        </span><span class="kw">let </span>trait_bounds = <a href="#643">bounds</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|bound| <span class="kw">match </span><a href="#652">bound</a> {
-            hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) =&gt; <span class="prelude-val">Some</span>(<a href="#653">ptr</a>),
+        </span><span class="kw">let </span>trait_bounds = <a href="#647">bounds</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|bound| <span class="kw">match </span><a href="#656">bound</a> {
+            hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::None) =&gt; <span class="prelude-val">Some</span>(<a href="#657">ptr</a>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         });
 
-        <span class="kw">let </span>matching_trait_bounds = <a href="#652">trait_bounds</a>
+        <span class="kw">let </span>matching_trait_bounds = <a href="#656">trait_bounds</a>
             .<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|ptr| <a href="#659">ptr</a>.trait_ref.trait_def_id() == <span class="prelude-val">Some</span>(<a href="#642">trait_ref</a>.def_id))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|ptr| <a href="#663">ptr</a>.trait_ref.trait_def_id() == <span class="prelude-val">Some</span>(<a href="#646">trait_ref</a>.def_id))
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
-        <span class="kw">let </span>span = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#657">matching_trait_bounds</a>[..] {
-            <span class="kw-2">&amp;</span>[ptr] =&gt; <a href="#663">ptr</a>.span,
-            <span class="kw-2">&amp;</span>[] <span class="kw">if </span><a href="#648">is_bound_surely_present</a> =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#652">trait_bounds</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()[..] {
-                <span class="kw-2">&amp;</span>[ptr] =&gt; <a href="#665">ptr</a>.span,
+        <span class="kw">let </span>span = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#661">matching_trait_bounds</a>[..] {
+            <span class="kw-2">&amp;</span>[ptr] =&gt; <a href="#667">ptr</a>.span,
+            <span class="kw-2">&amp;</span>[] <span class="kw">if </span><a href="#652">is_bound_surely_present</a> =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#656">trait_bounds</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()[..] {
+                <span class="kw-2">&amp;</span>[ptr] =&gt; <a href="#669">ptr</a>.span,
                 <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
             },
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
         };
 
-        <a class="self" href="#640">self</a>.<a href="#676-702">constrain_associated_type_structured_suggestion</a>(<a href="#641">diag</a>, <a href="#662">span</a>, <a href="#644">assoc</a>, <a href="#645">assoc_args</a>, <a href="#646">ty</a>, <a href="#647">msg</a>)
+        <a class="self" href="#644">self</a>.<a href="#680-706">constrain_associated_type_structured_suggestion</a>(<a href="#645">diag</a>, <a href="#666">span</a>, <a href="#648">assoc</a>, <a href="#649">assoc_args</a>, <a href="#650">ty</a>, <a href="#651">msg</a>)
     }
 
     <span class="doccomment">/// Given a span corresponding to a bound, provide a structured suggestion to set an
@@ -1392,28 +1400,28 @@ fn foo(&amp;self) -&gt; Self::T { String::new() }
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         msg: <span class="kw">impl </span>Fn() -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>tcx = <a class="self" href="#677">self</a>.tcx;
+        <span class="kw">let </span>tcx = <a class="self" href="#681">self</a>.tcx;
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(has_params) =
-            <a href="#685">tcx</a>.sess.source_map().span_to_snippet(<a href="#679">span</a>).map(|snippet| <a href="#688">snippet</a>.ends_with(<span class="string">&#39;&gt;&#39;</span>))
+            <a href="#689">tcx</a>.sess.source_map().span_to_snippet(<a href="#683">span</a>).map(|snippet| <a href="#692">snippet</a>.ends_with(<span class="string">&#39;&gt;&#39;</span>))
         {
             <span class="kw">let </span>(span, sugg) = <span class="kw">if </span>has_params {
-                <span class="kw">let </span>pos = <a href="#679">span</a>.hi() - BytePos(<span class="number">1</span>);
-                <span class="kw">let </span>span = Span::new(<a href="#691">pos</a>, <a href="#691">pos</a>, <a href="#679">span</a>.ctxt(), <a href="#679">span</a>.parent());
-                (<a href="#692">span</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;, {} = {}&quot;</span>, assoc.ident(tcx), ty))
+                <span class="kw">let </span>pos = <a href="#683">span</a>.hi() - BytePos(<span class="number">1</span>);
+                <span class="kw">let </span>span = Span::new(<a href="#695">pos</a>, <a href="#695">pos</a>, <a href="#683">span</a>.ctxt(), <a href="#683">span</a>.parent());
+                (<a href="#696">span</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;, {} = {}&quot;</span>, assoc.ident(tcx), ty))
             } <span class="kw">else </span>{
-                <span class="kw">let </span>item_args = <a class="self" href="#677">self</a>.<a href="#704-709">format_generic_args</a>(<a href="#681">assoc_args</a>);
-                (<a href="#679">span</a>.shrink_to_hi(), <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&lt;{}{} = {}&gt;&quot;</span>, assoc.ident(tcx), item_args, ty))
+                <span class="kw">let </span>item_args = <a class="self" href="#681">self</a>.<a href="#708-713">format_generic_args</a>(<a href="#685">assoc_args</a>);
+                (<a href="#683">span</a>.shrink_to_hi(), <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&lt;{}{} = {}&gt;&quot;</span>, assoc.ident(tcx), item_args, ty))
             };
-            <a href="#678">diag</a>.span_suggestion_verbose(<a href="#690">span</a>, <a href="#683">msg</a>(), <a href="#690">sugg</a>, MaybeIncorrect);
+            <a href="#682">diag</a>.span_suggestion_verbose(<a href="#694">span</a>, <a href="#687">msg</a>(), <a href="#694">sugg</a>, MaybeIncorrect);
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
         <span class="bool-val">false
     </span>}
 
     <span class="kw">pub fn </span>format_generic_args(<span class="kw-2">&amp;</span><span class="self">self</span>, args: <span class="kw-2">&amp;</span>[ty::GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;]) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-        FmtPrinter::new(<a class="self" href="#704">self</a>.tcx, hir::def::Namespace::TypeNS)
-            .<a href="../../../../rustc_middle/ty/print/trait.Printer.html">path_generic_args</a>(<span class="prelude-val">Ok</span>, <a href="#704">args</a>)
+        FmtPrinter::new(<a class="self" href="#708">self</a>.tcx, hir::def::Namespace::TypeNS)
+            .<a href="../../../../rustc_middle/ty/print/trait.Printer.html">path_generic_args</a>(<span class="prelude-val">Ok</span>, <a href="#708">args</a>)
             .expect(<span class="string">&quot;could not write to `String`.&quot;</span>)
             .into_buffer()
     }

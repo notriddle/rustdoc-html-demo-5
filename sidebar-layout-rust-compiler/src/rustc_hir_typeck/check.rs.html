@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/check.rs`."><title>check.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -280,94 +280,25 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="coercion.rs.html#1361-1366"><span class="kw">crate</span>::coercion::CoerceMany</a>;
-<span class="kw">use </span><span class="kw">crate</span>::errors::{
-    <a href="errors.rs.html#243-247">LangStartIncorrectNumberArgs</a>, <a href="errors.rs.html#251-259">LangStartIncorrectParam</a>, <a href="errors.rs.html#263-270">LangStartIncorrectRetTy</a>,
-};
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html">std::cell::RefCell</a>;
+
+<span class="kw">use </span><a href="coercion.rs.html#1361-1366"><span class="kw">crate</span>::coercion::CoerceMany</a>;
 <span class="kw">use </span><a href="gather_locals.rs.html#58-64"><span class="kw">crate</span>::gather_locals::GatherLocalsVisitor</a>;
 <span class="kw">use </span><a href="fn_ctxt/mod.rs.html#40-114"><span class="kw">crate</span>::FnCtxt</a>;
-<span class="kw">use </span><a href="lib.rs.html#306-318"><span class="kw">crate</span>::GeneratorTypes</a>;
+<span class="kw">use </span><a href="lib.rs.html#304-316"><span class="kw">crate</span>::GeneratorTypes</a>;
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
 <span class="kw">use </span><a href="../../rustc_hir/def/enum.DefKind.html">rustc_hir::def::DefKind</a>;
 <span class="kw">use </span><a href="../../rustc_hir/intravisit/trait.Visitor.html">rustc_hir::intravisit::Visitor</a>;
 <span class="kw">use </span><a href="../../rustc_hir/lang_items/enum.LangItem.html">rustc_hir::lang_items::LangItem</a>;
-<span class="kw">use </span><a href="../../rustc_hir_analysis/check/fn.fn_maybe_err.html">rustc_hir_analysis::check::fn_maybe_err</a>;
+<span class="kw">use </span>rustc_hir_analysis::check::{<a href="../../rustc_hir_analysis/check/fn.check_function_signature.html">check_function_signature</a>, <a href="../../rustc_hir_analysis/check/fn.fn_maybe_err.html">fn_maybe_err</a>};
 <span class="kw">use </span>rustc_infer::infer::type_variable::{<a href="../../rustc_infer/infer/type_variable/struct.TypeVariableOrigin.html">TypeVariableOrigin</a>, <a href="../../rustc_infer/infer/type_variable/enum.TypeVariableOriginKind.html">TypeVariableOriginKind</a>};
 <span class="kw">use </span><a href="../../rustc_infer/infer/enum.RegionVariableOrigin.html">rustc_infer::infer::RegionVariableOrigin</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/sty/struct.Binder.html">Binder</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span><a href="../../rustc_span/def_id/struct.LocalDefId.html">rustc_span::def_id::LocalDefId</a>;
+<span class="kw">use </span><a href="../../rustc_span/symbol/sym/index.html">rustc_span::symbol::sym</a>;
 <span class="kw">use </span><a href="../../rustc_target/spec/abi/enum.Abi.html">rustc_target::spec::abi::Abi</a>;
 <span class="kw">use </span><a href="../../rustc_trait_selection/traits/index.html">rustc_trait_selection::traits</a>;
-<span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html">std::cell::RefCell</a>;
+<span class="kw">use </span>rustc_trait_selection::traits::{<a href="../../rustc_middle/traits/struct.ObligationCause.html">ObligationCause</a>, <a href="../../rustc_middle/traits/enum.ObligationCauseCode.html">ObligationCauseCode</a>};
 
 <span class="doccomment">/// Helper used for fns and closures. Does the grungy work of checking a function
 /// body and returns the function context used for that purpose, since in the case of a fn item
@@ -464,7 +395,11 @@
 
     fcx.typeck_results.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
 
-    fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+    <span class="kw">let </span>return_or_body_span = <span class="kw">match </span>decl.output {
+        hir::FnRetTy::DefaultReturn(<span class="kw">_</span>) =&gt; body.value.span,
+        hir::FnRetTy::Return(ty) =&gt; ty.span,
+    };
+    fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
     fcx.check_return_expr(<span class="kw-2">&amp;</span>body.value, <span class="bool-val">false</span>);
 
     <span class="comment">// We insert the deferred_generator_interiors entry after visiting the body.
@@ -517,187 +452,114 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(panic_impl_did) = tcx.lang_items().panic_impl()
         &amp;&amp; panic_impl_did == fn_def_id.to_def_id()
     {
-        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
+        check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig);
     }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(lang_start_defid) = tcx.lang_items().start_fn() &amp;&amp; lang_start_defid == fn_def_id.to_def_id() {
-        check_lang_start_fn(tcx, fn_sig, decl, fn_def_id);
+        check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
     gen_ty
 }
 
-<span class="kw">fn </span><a href="../../rustc_hir_typeck/check/fn.check_panic_info_fn.html">check_panic_info_fn</a>(
-    tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-    fn_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
-    fn_sig: ty::FnSig&lt;<span class="lifetime">&#39;_</span>&gt;,
-    decl: <span class="kw-2">&amp;</span>hir::FnDecl&lt;<span class="lifetime">&#39;_</span>&gt;,
-    declared_ret_ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;,
-) {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(panic_info_did) = <a href="#180">tcx</a>.lang_items().panic_info() <span class="kw">else </span>{
-        <a href="#180">tcx</a>.sess.err(<span class="string">&quot;language item required, but not found: `panic_info`&quot;</span>);
+<span class="kw">fn </span><a href="../../rustc_hir_typeck/check/fn.check_panic_info_fn.html">check_panic_info_fn</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, fn_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, fn_sig: ty::FnSig&lt;<span class="lifetime">&#39;_</span>&gt;) {
+    <span class="kw">let </span>DefKind::Fn = <a href="#183">tcx</a>.def_kind(<a href="#183">fn_id</a>) <span class="kw">else </span>{
+        <span class="kw">let </span>span = <a href="#183">tcx</a>.def_span(<a href="#183">fn_id</a>);
+        <a href="#183">tcx</a>.sess.span_err(<a href="#185">span</a>, <span class="string">&quot;should be a function&quot;</span>);
         <span class="kw">return</span>;
     };
 
-    <span class="kw">if </span><span class="kw-2">*</span>declared_ret_ty.kind() != ty::Never {
-        <a href="#180">tcx</a>.sess.span_err(<a href="#183">decl</a>.output.span(), <span class="string">&quot;return type should be `!`&quot;</span>);
-    }
-
-    <span class="kw">let </span>inputs = <a href="#182">fn_sig</a>.inputs();
-    <span class="kw">if </span>inputs.len() != <span class="number">1 </span>{
-        <a href="#180">tcx</a>.sess.span_err(<a href="#180">tcx</a>.def_span(<a href="#181">fn_id</a>), <span class="string">&quot;function should have one argument&quot;</span>);
-        <span class="kw">return</span>;
-    }
-
-    <span class="kw">let </span>arg_is_panic_info = <span class="kw">match </span><span class="kw-2">*</span><a href="#195">inputs</a>[<span class="number">0</span>].kind() {
-        ty::Ref(region, ty, mutbl) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#202">ty</a>.kind() {
-            ty::Adt(<span class="kw-2">ref </span>adt, <span class="kw">_</span>) =&gt; {
-                <a href="#203">adt</a>.did() == <a href="#186">panic_info_did</a> &amp;&amp; <a href="#202">mutbl</a>.is_not() &amp;&amp; !<a href="#202">region</a>.is_static()
-            }
-            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-        },
-        <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-    };
-
-    <span class="kw">if </span>!arg_is_panic_info {
-        <a href="#180">tcx</a>.sess.span_err(<a href="#183">decl</a>.inputs[<span class="number">0</span>].span, <span class="string">&quot;argument should be `&amp;PanicInfo`&quot;</span>);
-    }
-
-    <span class="kw">let </span>DefKind::Fn = <a href="#180">tcx</a>.def_kind(<a href="#181">fn_id</a>) <span class="kw">else </span>{
-        <span class="kw">let </span>span = <a href="#180">tcx</a>.def_span(<a href="#181">fn_id</a>);
-        <a href="#180">tcx</a>.sess.span_err(<a href="#216">span</a>, <span class="string">&quot;should be a function&quot;</span>);
-        <span class="kw">return</span>;
-    };
-
-    <span class="kw">let </span>generic_counts = <a href="#180">tcx</a>.generics_of(<a href="#181">fn_id</a>).own_counts();
+    <span class="kw">let </span>generic_counts = <a href="#183">tcx</a>.generics_of(<a href="#183">fn_id</a>).own_counts();
     <span class="kw">if </span>generic_counts.types != <span class="number">0 </span>{
-        <span class="kw">let </span>span = <a href="#180">tcx</a>.def_span(<a href="#181">fn_id</a>);
-        <a href="#180">tcx</a>.sess.span_err(<a href="#223">span</a>, <span class="string">&quot;should have no type parameters&quot;</span>);
+        <span class="kw">let </span>span = <a href="#183">tcx</a>.def_span(<a href="#183">fn_id</a>);
+        <a href="#183">tcx</a>.sess.span_err(<a href="#192">span</a>, <span class="string">&quot;should have no type parameters&quot;</span>);
     }
     <span class="kw">if </span>generic_counts.consts != <span class="number">0 </span>{
-        <span class="kw">let </span>span = <a href="#180">tcx</a>.def_span(<a href="#181">fn_id</a>);
-        <a href="#180">tcx</a>.sess.span_err(<a href="#227">span</a>, <span class="string">&quot;should have no const parameters&quot;</span>);
+        <span class="kw">let </span>span = <a href="#183">tcx</a>.def_span(<a href="#183">fn_id</a>);
+        <a href="#183">tcx</a>.sess.span_err(<a href="#196">span</a>, <span class="string">&quot;should have no const parameters&quot;</span>);
     }
+
+    <span class="kw">let </span><span class="prelude-val">Some</span>(panic_info_did) = <a href="#183">tcx</a>.lang_items().panic_info() <span class="kw">else </span>{
+        <a href="#183">tcx</a>.sess.err(<span class="string">&quot;language item required, but not found: `panic_info`&quot;</span>);
+        <span class="kw">return</span>;
+    };
+
+    <span class="comment">// build type `for&lt;&#39;a, &#39;b&gt; fn(&amp;&#39;a PanicInfo&lt;&#39;b&gt;) -&gt; !`
+    </span><span class="kw">let </span>panic_info_ty = <a href="#183">tcx</a>.type_of(<a href="#200">panic_info_did</a>).instantiate(
+        <a href="#183">tcx</a>,
+        <span class="kw-2">&amp;</span>[ty::GenericArg::from(ty::Region::new_late_bound(
+            <a href="#183">tcx</a>,
+            ty::INNERMOST,
+            <a href="../../rustc_middle/ty/sty/struct.BoundRegion.html">ty::BoundRegion</a> { var: ty::BoundVar::from_u32(<span class="number">1</span>), kind: ty::BrAnon },
+        ))],
+    );
+    <span class="kw">let </span>panic_info_ref_ty = Ty::new_imm_ref(
+        <a href="#183">tcx</a>,
+        ty::Region::new_late_bound(
+            <a href="#183">tcx</a>,
+            ty::INNERMOST,
+            <a href="../../rustc_middle/ty/sty/struct.BoundRegion.html">ty::BoundRegion</a> { var: ty::BoundVar::from_u32(<span class="number">0</span>), kind: ty::BrAnon },
+        ),
+        <a href="#206">panic_info_ty</a>,
+    );
+
+    <span class="kw">let </span>bounds = <a href="#183">tcx</a>.mk_bound_variable_kinds(<span class="kw-2">&amp;</span>[
+        ty::BoundVariableKind::Region(ty::BrAnon),
+        ty::BoundVariableKind::Region(ty::BrAnon),
+    ]);
+    <span class="kw">let </span>expected_sig = ty::Binder::bind_with_vars(
+        <a href="#183">tcx</a>.mk_fn_sig([<a href="#214">panic_info_ref_ty</a>], <a href="#183">tcx</a>.types.never, <span class="bool-val">false</span>, <a href="#183">fn_sig</a>.unsafety, Abi::Rust),
+        <a href="#224">bounds</a>,
+    );
+
+    <a href="../../rustc_hir_analysis/check/fn.check_function_signature.html">check_function_signature</a>(
+        <a href="#183">tcx</a>,
+        ObligationCause::new(
+            <a href="#183">tcx</a>.def_span(<a href="#183">fn_id</a>),
+            <a href="#183">fn_id</a>,
+            ObligationCauseCode::LangFunctionType(sym::panic_impl),
+        ),
+        <a href="#183">fn_id</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+        <a href="#228">expected_sig</a>,
+    );
 }
 
-<span class="kw">fn </span><a href="../../rustc_hir_typeck/check/fn.check_lang_start_fn.html">check_lang_start_fn</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
-    tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    fn_sig: ty::FnSig&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    decl: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::FnDecl&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
-) {
-    <span class="kw">let </span>inputs = <a href="#234">fn_sig</a>.inputs();
+<span class="kw">fn </span><a href="../../rustc_hir_typeck/check/fn.check_lang_start_fn.html">check_lang_start_fn</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, fn_sig: ty::FnSig&lt;<span class="lifetime">&#39;tcx</span>&gt;, def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) {
+    <span class="comment">// build type `fn(main: fn() -&gt; T, argc: isize, argv: *const *const u8, sigpipe: u8)`
 
-    <span class="kw">let </span>arg_count = <a href="#238">inputs</a>.len();
-    <span class="kw">if </span>arg_count != <span class="number">4 </span>{
-        <a href="#233">tcx</a>.sess.emit_err(<a href="errors.rs.html#243-247">LangStartIncorrectNumberArgs</a> {
-            params_span: <a href="#233">tcx</a>.def_span(<a href="#236">def_id</a>),
-            found_param_count: <a href="#240">arg_count</a>,
-        });
-    }
+    // make a Ty for the generic on the fn for diagnostics
+    // FIXME: make the lang item generic checks check for the right generic *kind*
+    // for example `start`&#39;s generic should be a type parameter
+    </span><span class="kw">let </span>generics = <a href="#245">tcx</a>.generics_of(<a href="#245">def_id</a>);
+    <span class="kw">let </span>fn_generic = <a href="#251">generics</a>.param_at(<span class="number">0</span>, <a href="#245">tcx</a>);
+    <span class="kw">let </span>generic_ty = Ty::new_param(<a href="#245">tcx</a>, <a href="#252">fn_generic</a>.index, <a href="#252">fn_generic</a>.name);
+    <span class="kw">let </span>main_fn_ty = Ty::new_fn_ptr(
+        <a href="#245">tcx</a>,
+        Binder::dummy(<a href="#245">tcx</a>.mk_fn_sig([], <a href="#253">generic_ty</a>, <span class="bool-val">false</span>, hir::Unsafety::Normal, Abi::Rust)),
+    );
 
-    <span class="comment">// only check args if they should exist by checking the count
-    // note: this does not handle args being shifted or their order swapped very nicely
-    // but it&#39;s a lang item, users shouldn&#39;t frequently encounter this
+    <span class="kw">let </span>expected_sig = ty::Binder::dummy(<a href="#245">tcx</a>.mk_fn_sig(
+        [
+            <a href="#254">main_fn_ty</a>,
+            <a href="#245">tcx</a>.types.isize,
+            Ty::new_imm_ptr(<a href="#245">tcx</a>, Ty::new_imm_ptr(<a href="#245">tcx</a>, <a href="#245">tcx</a>.types.u8)),
+            <a href="#245">tcx</a>.types.u8,
+        ],
+        <a href="#245">tcx</a>.types.isize,
+        <span class="bool-val">false</span>,
+        <a href="#245">fn_sig</a>.unsafety,
+        Abi::Rust,
+    ));
 
-    // first arg is `main: fn() -&gt; T`
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>main_arg) = <a href="#238">inputs</a>.get(<span class="number">0</span>) {
-        <span class="comment">// make a Ty for the generic on the fn for diagnostics
-        // FIXME: make the lang item generic checks check for the right generic *kind*
-        // for example `start`&#39;s generic should be a type parameter
-        </span><span class="kw">let </span>generics = <a href="#233">tcx</a>.generics_of(<a href="#236">def_id</a>);
-        <span class="kw">let </span>fn_generic = <a href="#257">generics</a>.param_at(<span class="number">0</span>, <a href="#233">tcx</a>);
-        <span class="kw">let </span>generic_ty = Ty::new_param(<a href="#233">tcx</a>, <a href="#258">fn_generic</a>.index, <a href="#258">fn_generic</a>.name);
-        <span class="kw">let </span>expected_fn_sig =
-            <a href="#233">tcx</a>.mk_fn_sig([], <a href="#259">generic_ty</a>, <span class="bool-val">false</span>, hir::Unsafety::Normal, Abi::Rust);
-        <span class="kw">let </span>expected_ty = Ty::new_fn_ptr(<a href="#233">tcx</a>, Binder::dummy(<a href="#260">expected_fn_sig</a>));
-
-        <span class="comment">// we emit the same error to suggest changing the arg no matter what&#39;s wrong with the arg
-        </span><span class="kw">let </span>emit_main_fn_arg_err = || {
-            <a href="#233">tcx</a>.sess.emit_err(<a href="errors.rs.html#251-259">LangStartIncorrectParam</a> {
-                param_span: <a href="#235">decl</a>.inputs[<span class="number">0</span>].span,
-                param_num: <span class="number">1</span>,
-                expected_ty: <a href="#262">expected_ty</a>,
-                found_ty: <a href="#253">main_arg</a>,
-            });
-        };
-
-        <span class="kw">if let </span>ty::FnPtr(main_fn_sig) = <a href="#253">main_arg</a>.kind() {
-            <span class="kw">let </span>main_fn_inputs = <a href="#274">main_fn_sig</a>.inputs();
-            <span class="kw">if </span>main_fn_inputs.iter().count() != <span class="number">0 </span>{
-                <a href="#265">emit_main_fn_arg_err</a>();
-            }
-
-            <span class="kw">let </span>output = <a href="#274">main_fn_sig</a>.output();
-            <a href="#280">output</a>.map_bound(|ret_ty| {
-                <span class="comment">// if the output ty is a generic, it&#39;s probably the right one
-                </span><span class="kw">if </span>!<span class="macro">matches!</span>(ret_ty.kind(), ty::Param(<span class="kw">_</span>)) {
-                    <a href="#265">emit_main_fn_arg_err</a>();
-                }
-            });
-        } <span class="kw">else </span>{
-            <a href="#265">emit_main_fn_arg_err</a>();
-        }
-    }
-
-    <span class="comment">// second arg is isize
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>argc_arg) = <a href="#238">inputs</a>.get(<span class="number">1</span>) {
-        <span class="kw">if </span>argc_arg != tcx.types.isize {
-            <a href="#233">tcx</a>.sess.emit_err(<a href="errors.rs.html#251-259">LangStartIncorrectParam</a> {
-                param_span: <a href="#235">decl</a>.inputs[<span class="number">1</span>].span,
-                param_num: <span class="number">2</span>,
-                expected_ty: <a href="#233">tcx</a>.types.isize,
-                found_ty: <a href="#293">argc_arg</a>,
-            });
-        }
-    }
-
-    <span class="comment">// third arg is `*const *const u8`
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>argv_arg) = <a href="#238">inputs</a>.get(<span class="number">2</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>argv_is_okay = <span class="bool-val">false</span>;
-        <span class="kw">if let </span>ty::RawPtr(outer_ptr) = <a href="#305">argv_arg</a>.kind() {
-            <span class="kw">if </span>outer_ptr.mutbl.is_not() {
-                <span class="kw">if let </span>ty::RawPtr(inner_ptr) = <a href="#307">outer_ptr</a>.ty.kind() {
-                    <span class="kw">if </span>inner_ptr.mutbl.is_not() &amp;&amp; inner_ptr.ty == tcx.types.u8 {
-                        <a href="#306">argv_is_okay</a> = <span class="bool-val">true</span>;
-                    }
-                }
-            }
-        }
-
-        <span class="kw">if </span>!argv_is_okay {
-            <span class="kw">let </span>inner_ptr_ty =
-                Ty::new_ptr(<a href="#233">tcx</a>, <a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { mutbl: hir::Mutability::Not, ty: <a href="#233">tcx</a>.types.u8 });
-            <span class="kw">let </span>expected_ty =
-                Ty::new_ptr(<a href="#233">tcx</a>, <a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { mutbl: hir::Mutability::Not, ty: <a href="#318">inner_ptr_ty</a> });
-            <a href="#233">tcx</a>.sess.emit_err(<a href="errors.rs.html#251-259">LangStartIncorrectParam</a> {
-                param_span: <a href="#235">decl</a>.inputs[<span class="number">2</span>].span,
-                param_num: <span class="number">3</span>,
-                <a href="#320">expected_ty</a>,
-                found_ty: <a href="#305">argv_arg</a>,
-            });
-        }
-    }
-
-    <span class="comment">// fourth arg is `sigpipe: u8`
-    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>sigpipe_arg) = <a href="#238">inputs</a>.get(<span class="number">3</span>) {
-        <span class="kw">if </span>sigpipe_arg != tcx.types.u8 {
-            <a href="#233">tcx</a>.sess.emit_err(<a href="errors.rs.html#251-259">LangStartIncorrectParam</a> {
-                param_span: <a href="#235">decl</a>.inputs[<span class="number">3</span>].span,
-                param_num: <span class="number">4</span>,
-                expected_ty: <a href="#233">tcx</a>.types.u8,
-                found_ty: <a href="#332">sigpipe_arg</a>,
-            });
-        }
-    }
-
-    <span class="comment">// output type is isize
-    </span><span class="kw">if </span>fn_sig.output() != tcx.types.isize {
-        <a href="#233">tcx</a>.sess.emit_err(<a href="errors.rs.html#263-270">LangStartIncorrectRetTy</a> {
-            ret_span: <a href="#235">decl</a>.output.span(),
-            expected_ty: <a href="#233">tcx</a>.types.isize,
-            found_ty: <a href="#234">fn_sig</a>.output(),
-        });
-    }
+    <a href="../../rustc_hir_analysis/check/fn.check_function_signature.html">check_function_signature</a>(
+        <a href="#245">tcx</a>,
+        ObligationCause::new(
+            <a href="#245">tcx</a>.def_span(<a href="#245">def_id</a>),
+            <a href="#245">def_id</a>,
+            ObligationCauseCode::LangFunctionType(sym::start),
+        ),
+        <a href="#245">def_id</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+        <a href="#259">expected_sig</a>,
+    );
 }
 </code></pre></div></section></main></body></html>

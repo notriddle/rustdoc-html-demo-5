@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/type_check/relate_tys.rs`."><title>relate_tys.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/type_check/relate_tys.rs`."><title>relate_tys.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -197,7 +197,6 @@
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_span/struct.ErrorGuaranteed.html">rustc_errors::ErrorGuaranteed</a>;
 <span class="kw">use </span>rustc_infer::infer::nll_relate::{<a href="../../../rustc_infer/infer/nll_relate/struct.TypeRelating.html">TypeRelating</a>, <a href="../../../rustc_infer/infer/nll_relate/trait.TypeRelatingDelegate.html">TypeRelatingDelegate</a>};
 <span class="kw">use </span><a href="../../../rustc_infer/infer/enum.NllRegionVariableOrigin.html">rustc_infer::infer::NllRegionVariableOrigin</a>;
@@ -211,8 +210,8 @@
 
 <span class="kw">use </span><a href="../constraints/mod.rs.html#79-107"><span class="kw">crate</span>::constraints::OutlivesConstraint</a>;
 <span class="kw">use </span><a href="../diagnostics/bound_region_errors.rs.html#31"><span class="kw">crate</span>::diagnostics::UniverseInfo</a>;
-<span class="kw">use </span><span class="kw">crate</span>::renumber::{<a href="../renumber.rs.html#33-36">BoundRegionInfo</a>, <a href="../renumber.rs.html#39-48">RegionCtxt</a>};
-<span class="kw">use </span><span class="kw">crate</span>::type_check::{<a href="mod.rs.html#2725-2729">InstantiateOpaqueType</a>, <a href="mod.rs.html#924-966">Locations</a>, <a href="mod.rs.html#834-846">TypeChecker</a>};
+<span class="kw">use </span><a href="../renumber.rs.html#32-41"><span class="kw">crate</span>::renumber::RegionCtxt</a>;
+<span class="kw">use </span><span class="kw">crate</span>::type_check::{<a href="mod.rs.html#2730-2734">InstantiateOpaqueType</a>, <a href="mod.rs.html#927-969">Locations</a>, <a href="mod.rs.html#837-849">TypeChecker</a>};
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; TypeChecker&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="doccomment">/// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
@@ -229,7 +228,7 @@
         a: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         v: <a href="../../../rustc_type_ir/enum.Variance.html">ty::Variance</a>,
         b: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        locations: <a href="mod.rs.html#924-966">Locations</a>,
+        locations: <a href="mod.rs.html#927-969">Locations</a>,
         category: ConstraintCategory&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="../../../rustc_middle/traits/query/struct.NoSolution.html">NoSolution</a>&gt; {
         TypeRelating::new(
@@ -246,7 +245,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         a: ty::GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         b: ty::GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        locations: <a href="mod.rs.html#924-966">Locations</a>,
+        locations: <a href="mod.rs.html#927-969">Locations</a>,
         category: ConstraintCategory&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), <a href="../../../rustc_middle/traits/query/struct.NoSolution.html">NoSolution</a>&gt; {
         TypeRelating::new(
@@ -263,7 +262,7 @@
     type_checker: <span class="kw-2">&amp;</span><span class="lifetime">&#39;me </span><span class="kw-2">mut </span>TypeChecker&lt;<span class="lifetime">&#39;bccx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
 
     <span class="doccomment">/// Where (and why) is this relation taking place?
-    </span>locations: <a href="mod.rs.html#924-966">Locations</a>,
+    </span>locations: <a href="mod.rs.html#927-969">Locations</a>,
 
     <span class="doccomment">/// What category do we assign the resulting `&#39;a: &#39;b` relationships?
     </span>category: ConstraintCategory&lt;<span class="lifetime">&#39;tcx</span>&gt;,
@@ -276,7 +275,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;me</span>, <span class="lifetime">&#39;bccx</span>, <span class="lifetime">&#39;tcx</span>&gt; NllTypeRelatingDelegate&lt;<span class="lifetime">&#39;me</span>, <span class="lifetime">&#39;bccx</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>new(
         type_checker: <span class="kw-2">&amp;</span><span class="lifetime">&#39;me </span><span class="kw-2">mut </span>TypeChecker&lt;<span class="lifetime">&#39;bccx</span>, <span class="lifetime">&#39;tcx</span>&gt;,
-        locations: <a href="mod.rs.html#924-966">Locations</a>,
+        locations: <a href="mod.rs.html#927-969">Locations</a>,
         category: ConstraintCategory&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         universe_info: UniverseInfo&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
@@ -286,7 +285,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeRelatingDelegate&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>NllTypeRelatingDelegate&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>span(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-        <a class="self" href="#88">self</a>.locations.<a href="mod.rs.html#977-982">span</a>(<a class="self" href="#88">self</a>.type_checker.body)
+        <a class="self" href="#88">self</a>.locations.<a href="mod.rs.html#980-985">span</a>(<a class="self" href="#88">self</a>.type_checker.body)
     }
 
     <span class="kw">fn </span>param_env(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -326,10 +325,9 @@
             .placeholder_region(<span class="self">self</span>.type_checker.infcx, placeholder);
 
         <span class="kw">let </span>reg_info = <span class="kw">match </span>placeholder.bound.kind {
-            ty::BoundRegionKind::BrAnon(<span class="prelude-val">Some</span>(span)) =&gt; BoundRegionInfo::Span(span),
-            ty::BoundRegionKind::BrAnon(..) =&gt; BoundRegionInfo::Name(sym::anon),
-            ty::BoundRegionKind::BrNamed(<span class="kw">_</span>, name) =&gt; BoundRegionInfo::Name(name),
-            ty::BoundRegionKind::BrEnv =&gt; BoundRegionInfo::Name(sym::env),
+            ty::BoundRegionKind::BrAnon =&gt; sym::anon,
+            ty::BoundRegionKind::BrNamed(<span class="kw">_</span>, name) =&gt; name,
+            ty::BoundRegionKind::BrEnv =&gt; sym::env,
         };
 
         <span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
@@ -366,16 +364,16 @@
         sub: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         info: ty::VarianceDiagInfo&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) {
-        <span class="kw">let </span>sub = <a class="self" href="#164">self</a>.type_checker.borrowck_context.universal_regions.<a href="../universal_regions.rs.html#323-325">to_region_vid</a>(<a href="#166">sub</a>);
-        <span class="kw">let </span>sup = <a class="self" href="#164">self</a>.type_checker.borrowck_context.universal_regions.<a href="../universal_regions.rs.html#323-325">to_region_vid</a>(<a href="#165">sup</a>);
-        <a class="self" href="#164">self</a>.type_checker.borrowck_context.constraints.outlives_constraints.<a href="../constraints/mod.rs.html#26-33">push</a>(
+        <span class="kw">let </span>sub = <a class="self" href="#163">self</a>.type_checker.borrowck_context.universal_regions.<a href="../universal_regions.rs.html#323-325">to_region_vid</a>(<a href="#165">sub</a>);
+        <span class="kw">let </span>sup = <a class="self" href="#163">self</a>.type_checker.borrowck_context.universal_regions.<a href="../universal_regions.rs.html#323-325">to_region_vid</a>(<a href="#164">sup</a>);
+        <a class="self" href="#163">self</a>.type_checker.borrowck_context.constraints.outlives_constraints.<a href="../constraints/mod.rs.html#26-33">push</a>(
             <a href="../constraints/mod.rs.html#79-107">OutlivesConstraint</a> {
-                <a href="#170">sup</a>,
-                <a href="#169">sub</a>,
-                locations: <a class="self" href="#164">self</a>.locations,
-                span: <a class="self" href="#164">self</a>.locations.<a href="mod.rs.html#977-982">span</a>(<a class="self" href="#164">self</a>.type_checker.body),
-                category: <a class="self" href="#164">self</a>.category,
-                variance_info: <a href="#167">info</a>,
+                <a href="#169">sup</a>,
+                <a href="#168">sub</a>,
+                locations: <a class="self" href="#163">self</a>.locations,
+                span: <a class="self" href="#163">self</a>.locations.<a href="mod.rs.html#980-985">span</a>(<a class="self" href="#163">self</a>.type_checker.body),
+                category: <a class="self" href="#163">self</a>.category,
+                variance_info: <a href="#166">info</a>,
                 from_closure: <span class="bool-val">false</span>,
             },
         );
@@ -386,11 +384,11 @@
     </span>}
 
     <span class="kw">fn </span>register_obligations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, obligations: PredicateObligations&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">let _</span>: <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; = <a class="self" href="#188">self</a>.type_checker.<a href="canonical.rs.html#27">fully_perform_op</a>(
-            <a class="self" href="#188">self</a>.locations,
-            <a class="self" href="#188">self</a>.category,
-            <a href="mod.rs.html#2725-2729">InstantiateOpaqueType</a> {
-                <a href="#188">obligations</a>,
+        <span class="kw">let _</span>: <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; = <a class="self" href="#187">self</a>.type_checker.<a href="canonical.rs.html#27">fully_perform_op</a>(
+            <a class="self" href="#187">self</a>.locations,
+            <a class="self" href="#187">self</a>.category,
+            <a href="mod.rs.html#2730-2734">InstantiateOpaqueType</a> {
+                <a href="#187">obligations</a>,
                 <span class="comment">// These fields are filled in during execution of the operation
                 </span>base_universe: <span class="prelude-val">None</span>,
                 region_constraints: <span class="prelude-val">None</span>,

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_parse/src/lexer/unescape_error_reporting.rs`."><title>unescape_error_reporting.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_parse" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_parse/src/lexer/unescape_error_reporting.rs`."><title>unescape_error_reporting.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_parse" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -289,7 +289,7 @@
 <span class="kw">use </span>rustc_lexer::unescape::{<a href="../../../rustc_lexer/unescape/enum.EscapeError.html">EscapeError</a>, <a href="../../../rustc_lexer/unescape/enum.Mode.html">Mode</a>};
 <span class="kw">use </span>rustc_span::{BytePos, <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>};
 
-<span class="kw">use </span><span class="kw">crate</span>::errors::{<a href="../errors.rs.html#2058-2073">MoreThanOneCharNote</a>, <a href="../errors.rs.html#2030-2055">MoreThanOneCharSugg</a>, <a href="../errors.rs.html#2076-2085">NoBraceUnicodeSub</a>, <a href="../errors.rs.html#1900-2027">UnescapeError</a>};
+<span class="kw">use </span><span class="kw">crate</span>::errors::{<a href="../errors.rs.html#2078-2093">MoreThanOneCharNote</a>, <a href="../errors.rs.html#2050-2075">MoreThanOneCharSugg</a>, <a href="../errors.rs.html#2096-2105">NoBraceUnicodeSub</a>, <a href="../errors.rs.html#1920-2047">UnescapeError</a>};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span><a href="../../../rustc_parse/lexer/unescape_error_reporting/fn.emit_unescape_error.html">emit_unescape_error</a>(
     handler: <span class="kw-2">&amp;</span><a href="../../../rustc_errors/struct.Handler.html">Handler</a>,
@@ -315,10 +315,10 @@
     };
     <span class="kw">match </span><a href="#23">error</a> {
         EscapeError::LoneSurrogateUnicodeEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1903-1908">UnescapeError::InvalidUnicodeEscape</a> { <a href="#19">span</a>, surrogate: <span class="bool-val">true </span>});
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1923-1928">UnescapeError::InvalidUnicodeEscape</a> { <a href="#19">span</a>, surrogate: <span class="bool-val">true </span>});
         }
         EscapeError::OutOfRangeUnicodeEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1903-1908">UnescapeError::InvalidUnicodeEscape</a> { <a href="#19">span</a>, surrogate: <span class="bool-val">false </span>});
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1923-1928">UnescapeError::InvalidUnicodeEscape</a> { <a href="#19">span</a>, surrogate: <span class="bool-val">false </span>});
         }
         EscapeError::MoreThanOneChar =&gt; {
             <span class="kw">use </span>unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
@@ -331,11 +331,11 @@
                 <span class="kw">let </span>normalized = <a href="#15">lit</a>.nfc().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
                 <span class="kw">if </span>normalized.chars().count() == <span class="number">1 </span>{
                     <span class="kw">let </span>ch = <a href="#49">normalized</a>.chars().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap().escape_default().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
-                    <a href="#43">sugg</a> = <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2036-2041">MoreThanOneCharSugg::NormalizedForm</a> { <a href="#19">span</a>, <a href="#51">ch</a>, <a href="#49">normalized</a> });
+                    <a href="#43">sugg</a> = <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2056-2061">MoreThanOneCharSugg::NormalizedForm</a> { <a href="#19">span</a>, <a href="#51">ch</a>, <a href="#49">normalized</a> });
                 }
                 <span class="kw">let </span>escaped_marks =
                     <a href="#47">rest</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|c| <a href="#55">c</a>.escape_default().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                <a href="#44">note</a> = <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2060-2066">MoreThanOneCharNote::AllCombining</a> {
+                <a href="#44">note</a> = <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2080-2086">MoreThanOneCharNote::AllCombining</a> {
                     <a href="#19">span</a>,
                     chr: <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{first}&quot;</span>),
                     len: <a href="#54">escaped_marks</a>.len(),
@@ -352,8 +352,8 @@
 
                 <span class="kw">if let </span><span class="kw-2">&amp;</span>[ch] = <a href="#63">printable</a>.as_slice() {
                     <a href="#43">sugg</a> =
-                        <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2043-2047">MoreThanOneCharSugg::RemoveNonPrinting</a> { <a href="#19">span</a>, ch: <a href="#71">ch</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>() });
-                    <a href="#44">note</a> = <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2068-2072">MoreThanOneCharNote::NonPrinting</a> {
+                        <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2063-2067">MoreThanOneCharSugg::RemoveNonPrinting</a> { <a href="#19">span</a>, ch: <a href="#71">ch</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>() });
+                    <a href="#44">note</a> = <span class="prelude-val">Some</span>(<a href="../errors.rs.html#2088-2092">MoreThanOneCharNote::NonPrinting</a> {
                         <a href="#19">span</a>,
                         escaped: <a href="#15">lit</a>.escape_default().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
                     });
@@ -372,13 +372,13 @@
                     escaped.push(c);
                 }
                 <span class="kw">let </span>sugg = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{prefix}\&quot;{escaped}\&quot;&quot;</span>);
-                <a href="../errors.rs.html#2049-2054">MoreThanOneCharSugg::Quotes</a> {
+                <a href="../errors.rs.html#2069-2074">MoreThanOneCharSugg::Quotes</a> {
                     span: <a href="#17">span_with_quotes</a>,
                     is_byte: <a href="#20">mode</a> == Mode::Byte,
                     <a href="#92">sugg</a>,
                 }
             });
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#2019-2026">UnescapeError::MoreThanOneChar</a> {
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#2039-2046">UnescapeError::MoreThanOneChar</a> {
                 span: <a href="#17">span_with_quotes</a>,
                 <a href="#44">note</a>,
                 suggestion: <a href="#80">sugg</a>,
@@ -386,7 +386,7 @@
         }
         EscapeError::EscapeOnlyChar =&gt; {
             <span class="kw">let </span>(c, char_span) = <a href="#29">last_char</a>();
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1910-1918">UnescapeError::EscapeOnlyChar</a> {
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1930-1938">UnescapeError::EscapeOnlyChar</a> {
                 <a href="#19">span</a>,
                 <a href="#106">char_span</a>,
                 escaped_sugg: <a href="#106">c</a>.escape_default().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
@@ -396,11 +396,11 @@
         }
         EscapeError::BareCarriageReturn =&gt; {
             <span class="kw">let </span>double_quotes = <a href="#20">mode</a>.in_double_quotes();
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1920-1925">UnescapeError::BareCr</a> { <a href="#19">span</a>, <a href="#116">double_quotes</a> });
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1940-1945">UnescapeError::BareCr</a> { <a href="#19">span</a>, <a href="#116">double_quotes</a> });
         }
         EscapeError::BareCarriageReturnInRawString =&gt; {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(mode.in_double_quotes());
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1927">UnescapeError::BareCrRawString</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1947">UnescapeError::BareCrRawString</a>(<a href="#19">span</a>));
         }
         EscapeError::InvalidEscape =&gt; {
             <span class="kw">let </span>(c, span) = <a href="#29">last_char</a>();
@@ -440,13 +440,13 @@
             <a href="#132">diag</a>.emit();
         }
         EscapeError::TooShortHexEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1929">UnescapeError::TooShortHexEscape</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1949">UnescapeError::TooShortHexEscape</a>(<a href="#19">span</a>));
         }
         EscapeError::InvalidCharInHexEscape | EscapeError::InvalidCharInUnicodeEscape =&gt; {
             <span class="kw">let </span>(c, span) = <a href="#29">last_char</a>();
             <span class="kw">let </span>is_hex = <a href="#23">error</a> == EscapeError::InvalidCharInHexEscape;
             <span class="kw">let </span>ch = <a href="#274-282">escaped_char</a>(<a href="#164">c</a>);
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1931-1937">UnescapeError::InvalidCharInEscape</a> { <a href="#164">span</a>, <a href="#165">is_hex</a>, <a href="#166">ch</a> });
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1951-1957">UnescapeError::InvalidCharInEscape</a> { <a href="#164">span</a>, <a href="#165">is_hex</a>, <a href="#166">ch</a> });
         }
         EscapeError::NonAsciiCharInByte =&gt; {
             <span class="kw">let </span>(c, span) = <a href="#29">last_char</a>();
@@ -492,20 +492,20 @@
             <a href="#177">err</a>.emit();
         }
         EscapeError::OutOfRangeHexEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1939-1943">UnescapeError::OutOfRangeHexEscape</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1959-1963">UnescapeError::OutOfRangeHexEscape</a>(<a href="#19">span</a>));
         }
         EscapeError::LeadingUnderscoreUnicodeEscape =&gt; {
             <span class="kw">let </span>(c, span) = <a href="#29">last_char</a>();
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1945-1950">UnescapeError::LeadingUnderscoreUnicodeEscape</a> {
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1965-1970">UnescapeError::LeadingUnderscoreUnicodeEscape</a> {
                 <a href="#216">span</a>,
                 ch: <a href="#274-282">escaped_char</a>(<a href="#216">c</a>),
             });
         }
         EscapeError::OverlongUnicodeEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1952-1956">UnescapeError::OverlongUnicodeEscape</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1972-1976">UnescapeError::OverlongUnicodeEscape</a>(<a href="#19">span</a>));
         }
         EscapeError::UnclosedUnicodeEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1958-1969">UnescapeError::UnclosedUnicodeEscape</a>(<a href="#19">span</a>, <a href="#19">span</a>.shrink_to_hi()));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1978-1989">UnescapeError::UnclosedUnicodeEscape</a>(<a href="#19">span</a>, <a href="#19">span</a>.shrink_to_hi()));
         }
         EscapeError::NoBraceInUnicodeEscape =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>suggestion = <span class="string">&quot;\\u{&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/borrow/trait.ToOwned.html">to_owned</a>();
@@ -520,34 +520,34 @@
             <span class="kw">let </span>(label, sub) = <span class="kw">if </span>suggestion_len &gt; <span class="number">0 </span>{
                 <a href="#229">suggestion</a>.push(<span class="string">&#39;}&#39;</span>);
                 <span class="kw">let </span>hi = <a href="#231">char_span</a>.lo() + BytePos(<a href="#230">suggestion_len</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>);
-                (<span class="prelude-val">None</span>, <a href="../errors.rs.html#2078-2082">NoBraceUnicodeSub::Suggestion</a> { span: <a href="#19">span</a>.with_hi(<a href="#240">hi</a>), <a href="#229">suggestion</a> })
+                (<span class="prelude-val">None</span>, <a href="../errors.rs.html#2098-2102">NoBraceUnicodeSub::Suggestion</a> { span: <a href="#19">span</a>.with_hi(<a href="#240">hi</a>), <a href="#229">suggestion</a> })
             } <span class="kw">else </span>{
-                (<span class="prelude-val">Some</span>(<a href="#19">span</a>), <a href="../errors.rs.html#2084">NoBraceUnicodeSub::Help</a>)
+                (<span class="prelude-val">Some</span>(<a href="#19">span</a>), <a href="../errors.rs.html#2104">NoBraceUnicodeSub::Help</a>)
             };
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1971-1978">UnescapeError::NoBraceInUnicodeEscape</a> { <a href="#19">span</a>, <a href="#238">label</a>, <a href="#238">sub</a> });
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1991-1998">UnescapeError::NoBraceInUnicodeEscape</a> { <a href="#19">span</a>, <a href="#238">label</a>, <a href="#238">sub</a> });
         }
         EscapeError::UnicodeEscapeInByte =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1981-1985">UnescapeError::UnicodeEscapeInByte</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#2001-2005">UnescapeError::UnicodeEscapeInByte</a>(<a href="#19">span</a>));
         }
         EscapeError::EmptyUnicodeEscape =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1987-1991">UnescapeError::EmptyUnicodeEscape</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#2007-2011">UnescapeError::EmptyUnicodeEscape</a>(<a href="#19">span</a>));
         }
         EscapeError::ZeroChars =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1993-1997">UnescapeError::ZeroChars</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#2013-2017">UnescapeError::ZeroChars</a>(<a href="#19">span</a>));
         }
         EscapeError::LoneSlash =&gt; {
-            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#1999-2003">UnescapeError::LoneSlash</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_err(<a href="../errors.rs.html#2019-2023">UnescapeError::LoneSlash</a>(<a href="#19">span</a>));
         }
         EscapeError::UnskippedWhitespaceWarning =&gt; {
             <span class="kw">let </span>(c, char_span) = <a href="#29">last_char</a>();
-            <a href="#13">handler</a>.emit_warning(<a href="../errors.rs.html#2005-2011">UnescapeError::UnskippedWhitespace</a> {
+            <a href="#13">handler</a>.emit_warning(<a href="../errors.rs.html#2025-2031">UnescapeError::UnskippedWhitespace</a> {
                 <a href="#19">span</a>,
                 ch: <a href="#274-282">escaped_char</a>(<a href="#260">c</a>),
                 <a href="#260">char_span</a>,
             });
         }
         EscapeError::MultipleSkippedLinesWarning =&gt; {
-            <a href="#13">handler</a>.emit_warning(<a href="../errors.rs.html#2013-2017">UnescapeError::MultipleSkippedLinesWarning</a>(<a href="#19">span</a>));
+            <a href="#13">handler</a>.emit_warning(<a href="../errors.rs.html#2033-2037">UnescapeError::MultipleSkippedLinesWarning</a>(<a href="#19">span</a>));
         }
     }
 }

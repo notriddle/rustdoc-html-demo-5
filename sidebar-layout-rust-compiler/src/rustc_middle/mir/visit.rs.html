@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/mir/visit.rs`."><title>visit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/mir/visit.rs`."><title>visit.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1380,6 +1380,14 @@
 <a href="#1380" id="1380">1380</a>
 <a href="#1381" id="1381">1381</a>
 <a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # The MIR Visitor
 //!
 //! ## Overview
@@ -1444,9 +1452,9 @@
 //! variant argument) that does not require visiting, as in
 //! `is_cleanup` above.
 
-</span><span class="kw">use </span><a href="../lib.rs.html#98"><span class="kw">crate</span>::mir</a>::<span class="kw-2">*</span>;
+</span><span class="kw">use </span><a href="../lib.rs.html#99"><span class="kw">crate</span>::mir</a>::<span class="kw-2">*</span>;
 <span class="kw">use </span><a href="../ty/generic_args.rs.html#247"><span class="kw">crate</span>::ty::GenericArgsRef</a>;
-<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="../ty/typeck_results.rs.html#658-662">CanonicalUserTypeAnnotation</a>, <a href="../ty/mod.rs.html#451">Ty</a>};
+<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="../ty/typeck_results.rs.html#588-592">CanonicalUserTypeAnnotation</a>, <a href="../ty/mod.rs.html#463">Ty</a>};
 <span class="kw">use </span><a href="../../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
 
 <span class="macro">macro_rules! </span><a href="../../../rustc_middle/mir/visit/macro.make_mir_visitor.html">make_mir_visitor</a> {
@@ -1566,9 +1574,11 @@
 
             <span class="macro">visit_place_fns!</span>($(<span class="macro-nonterminal">$mutability</span>)<span class="question-mark">?</span>);
 
-            <span class="kw">fn </span>visit_constant(
+            <span class="doccomment">/// This is called for every constant in the MIR body and every `required_consts`
+            /// (i.e., including consts that have been dead-code-eliminated).
+            </span><span class="kw">fn </span>visit_constant(
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-                constant: &amp; $(<span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+                constant: &amp; $(<span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
                 location: Location,
             ) {
                 <span class="self">self</span>.super_constant(constant, location);
@@ -2197,7 +2207,6 @@
                     ty,
                     user_ty,
                     source_info,
-                    internal: <span class="kw">_</span>,
                     local_info: <span class="kw">_</span>,
                 } = local_decl;
 
@@ -2252,20 +2261,20 @@
 
             <span class="kw">fn </span>super_constant(
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-                constant: &amp; $(<span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+                constant: &amp; $(<span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
                 location: Location
             ) {
-                <span class="kw">let </span>Constant {
+                <span class="kw">let </span>ConstOperand {
                     span,
                     user_ty: <span class="kw">_</span>, <span class="comment">// no visit method for this
-                    </span>literal,
+                    </span>const_,
                 } = constant;
 
                 <span class="self">self</span>.visit_span($(&amp; <span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>span);
-                <span class="kw">match </span>literal {
-                    ConstantKind::Ty(ct) =&gt; <span class="self">self</span>.visit_ty_const($(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>ct, location),
-                    ConstantKind::Val(<span class="kw">_</span>, ty) =&gt; <span class="self">self</span>.visit_ty($(&amp; <span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>ty, TyContext::Location(location)),
-                    ConstantKind::Unevaluated(<span class="kw">_</span>, ty) =&gt; <span class="self">self</span>.visit_ty($(&amp; <span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>ty, TyContext::Location(location)),
+                <span class="kw">match </span>const_ {
+                    Const::Ty(ct) =&gt; <span class="self">self</span>.visit_ty_const($(<span class="kw-2">&amp;</span><span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>ct, location),
+                    Const::Val(<span class="kw">_</span>, ty) =&gt; <span class="self">self</span>.visit_ty($(&amp; <span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>ty, TyContext::Location(location)),
+                    Const::Unevaluated(<span class="kw">_</span>, ty) =&gt; <span class="self">self</span>.visit_ty($(&amp; <span class="macro-nonterminal">$mutability</span>)<span class="question-mark">? </span><span class="kw-2">*</span>ty, TyContext::Location(location)),
                 }
             }
 
@@ -2491,6 +2500,11 @@
                     <span class="self">self</span>.visit_ty(<span class="kw-2">&amp;mut </span>new_ty, TyContext::Location(location));
                     <span class="kw">if </span>ty != new_ty { <span class="prelude-val">Some</span>(PlaceElem::OpaqueCast(new_ty)) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
                 }
+                PlaceElem::Subtype(ty) =&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>new_ty = ty;
+                    <span class="self">self</span>.visit_ty(<span class="kw-2">&amp;mut </span>new_ty, TyContext::Location(location));
+                    <span class="kw">if </span>ty != new_ty { <span class="prelude-val">Some</span>(PlaceElem::Subtype(new_ty)) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
+                }
                 PlaceElem::Deref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
@@ -2557,7 +2571,9 @@
             location: Location,
         ) {
             <span class="kw">match </span>elem {
-                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Field(<span class="kw">_</span>, ty) =&gt; {
+                ProjectionElem::OpaqueCast(ty)
+                | ProjectionElem::Subtype(ty)
+                | ProjectionElem::Field(<span class="kw">_</span>, ty) =&gt; {
                     <span class="self">self</span>.visit_ty(ty, TyContext::Location(location));
                 }
                 ProjectionElem::Index(local) =&gt; {
@@ -2576,28 +2592,28 @@
     };
 }
 
-<a class="macro" href="#70-955">make_mir_visitor!</a>(<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>,);
-<a class="macro" href="#70-955">make_mir_visitor!</a>(<a href="../../../rustc_middle/mir/visit/trait.MutVisitor.html">MutVisitor</a>, <span class="kw-2">mut</span>);
+<a class="macro" href="#70-956">make_mir_visitor!</a>(<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>,);
+<a class="macro" href="#70-956">make_mir_visitor!</a>(<a href="../../../rustc_middle/mir/visit/trait.MutVisitor.html">MutVisitor</a>, <span class="kw-2">mut</span>);
 
 <span class="kw">pub trait </span><a href="../../../rustc_middle/mir/visit/trait.MirVisitable.html">MirVisitable</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#3037-3042">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;);
+    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#1500-1505">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;);
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirVisitable&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#3037-3042">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a href="#1205">visitor</a>.<a href="#1197">visit_statement</a>(<a class="self" href="#1205">self</a>, <a href="#1205">location</a>)
+    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#1500-1505">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+        <a href="#1213">visitor</a>.<a href="#1205">visit_statement</a>(<a class="self" href="#1213">self</a>, <a href="#1213">location</a>)
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirVisitable&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#3037-3042">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a href="#1211">visitor</a>.<a href="#1197">visit_terminator</a>(<a class="self" href="#1211">self</a>, <a href="#1211">location</a>)
+    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#1500-1505">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+        <a href="#1219">visitor</a>.<a href="#1205">visit_terminator</a>(<a class="self" href="#1219">self</a>, <a href="#1219">location</a>)
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirVisitable&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><span class="prelude-ty">Option</span>&lt;Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#3037-3042">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a href="#1217">visitor</a>.<a href="#1197">visit_terminator</a>(<a class="self" href="#1217">self</a>.as_ref().unwrap(), <a href="#1217">location</a>)
+    <span class="kw">fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="mod.rs.html#1500-1505">Location</a>, visitor: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+        <a href="#1225">visitor</a>.<a href="#1205">visit_terminator</a>(<a class="self" href="#1225">self</a>.as_ref().unwrap(), <a href="#1225">location</a>)
     }
 }
 
@@ -2607,22 +2623,22 @@
 </span><span class="kw">pub enum </span><a href="../../../rustc_middle/mir/visit/enum.TyContext.html">TyContext</a> {
     LocalDecl {
         <span class="doccomment">/// The index of the local variable we are visiting.
-        </span>local: <a href="mod.rs.html#718-724">Local</a>,
+        </span>local: <a href="mod.rs.html#693-699">Local</a>,
 
         <span class="doccomment">/// The source location where this local variable was declared.
-        </span>source_info: <a href="mod.rs.html#699-706">SourceInfo</a>,
+        </span>source_info: <a href="mod.rs.html#674-681">SourceInfo</a>,
     },
 
     <span class="doccomment">/// The inferred type of a user type annotation.
     </span>UserTy(<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>),
 
     <span class="doccomment">/// The return type of the function.
-    </span>ReturnTy(<a href="mod.rs.html#699-706">SourceInfo</a>),
+    </span>ReturnTy(<a href="mod.rs.html#674-681">SourceInfo</a>),
 
-    YieldTy(<a href="mod.rs.html#699-706">SourceInfo</a>),
+    YieldTy(<a href="mod.rs.html#674-681">SourceInfo</a>),
 
     <span class="doccomment">/// A type found at some location.
-    </span>Location(<a href="mod.rs.html#3037-3042">Location</a>),
+    </span>Location(<a href="mod.rs.html#1500-1505">Location</a>),
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -2698,12 +2714,12 @@
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub enum </span><a href="../../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a> {
-    NonMutatingUse(<a href="#1247-1272">NonMutatingUseContext</a>),
-    MutatingUse(<a href="#1275-1303">MutatingUseContext</a>),
-    NonUse(<a href="#1306-1315">NonUseContext</a>),
+    NonMutatingUse(<a href="#1255-1280">NonMutatingUseContext</a>),
+    MutatingUse(<a href="#1283-1311">MutatingUseContext</a>),
+    NonUse(<a href="#1314-1323">NonUseContext</a>),
 }
 
-<span class="kw">impl </span><a href="#1318-1322">PlaceContext</a> {
+<span class="kw">impl </span><a href="#1326-1330">PlaceContext</a> {
     <span class="doccomment">/// Returns `true` if this place context represents a drop.
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>is_drop(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {

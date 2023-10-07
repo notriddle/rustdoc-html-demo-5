@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/coverage/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/coverage/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -616,15 +616,7 @@
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
 <a href="#618" id="618">618</a>
-<a href="#619" id="619">619</a>
-<a href="#620" id="620">620</a>
-<a href="#621" id="621">621</a>
-<a href="#622" id="622">622</a>
-<a href="#623" id="623">623</a>
-<a href="#624" id="624">624</a>
-<a href="#625" id="625">625</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://docs.rs/itertools/0.8/itertools/trait.Itertools.html">itertools::Itertools</a>;
-<span class="kw">use </span>rustc_data_structures::graph::dominators::{<a class="self" href="../../../rustc_data_structures/graph/dominators/index.html">self</a>, <a href="../../../rustc_data_structures/graph/dominators/struct.Dominators.html">Dominators</a>};
+</pre></div><pre class="rust"><code><span class="kw">use </span>rustc_data_structures::graph::dominators::{<a class="self" href="../../../rustc_data_structures/graph/dominators/index.html">self</a>, <a href="../../../rustc_data_structures/graph/dominators/struct.Dominators.html">Dominators</a>};
 <span class="kw">use </span>rustc_data_structures::graph::{<a class="self" href="../../../rustc_data_structures/graph/index.html">self</a>, <a href="../../../rustc_data_structures/graph/trait.GraphSuccessors.html">GraphSuccessors</a>, <a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">WithNumNodes</a>, <a href="../../../rustc_data_structures/graph/trait.WithStartNode.html">WithStartNode</a>};
 <span class="kw">use </span><a href="../../../rustc_index/bit_set/struct.BitSet.html">rustc_index::bit_set::BitSet</a>;
 <span class="kw">use </span>rustc_index::{<a href="../../../rustc_index/slice/struct.IndexSlice.html">IndexSlice</a>, <a href="../../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
@@ -633,22 +625,20 @@
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cmp/enum.Ordering.html">std::cmp::Ordering</a>;
 <span class="kw">use </span>std::ops::{<a href="https://doc.rust-lang.org/nightly/core/ops/index/trait.Index.html">Index</a>, <a href="https://doc.rust-lang.org/nightly/core/ops/index/trait.IndexMut.html">IndexMut</a>};
 
-<span class="kw">const </span><a href="../../../rustc_mir_transform/coverage/graph/constant.ID_SEPARATOR.html">ID_SEPARATOR</a>: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a> = <span class="string">&quot;,&quot;</span>;
-
 <span class="doccomment">/// A coverage-specific simplification of the MIR control flow graph (CFG). The `CoverageGraph`s
 /// nodes are `BasicCoverageBlock`s, which encompass one or more MIR `BasicBlock`s.
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../rustc_mir_transform/coverage/graph/struct.CoverageGraph.html">CoverageGraph</a> {
-    bcbs: IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, <a href="#303-305">BasicCoverageBlockData</a>&gt;,
-    bb_to_bcb: IndexVec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <span class="prelude-ty">Option</span>&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
-    <span class="kw">pub </span>successors: IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
-    <span class="kw">pub </span>predecessors: IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
-    dominators: <span class="prelude-ty">Option</span>&lt;Dominators&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
+    bcbs: IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, <a href="#300-302">BasicCoverageBlockData</a>&gt;,
+    bb_to_bcb: IndexVec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <span class="prelude-ty">Option</span>&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
+    <span class="kw">pub </span>successors: IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
+    <span class="kw">pub </span>predecessors: IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
+    dominators: <span class="prelude-ty">Option</span>&lt;Dominators&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
 }
 
-<span class="kw">impl </span><a href="#16-22">CoverageGraph</a> {
+<span class="kw">impl </span><a href="#13-19">CoverageGraph</a> {
     <span class="kw">pub fn </span>from_mir(mir_body: <span class="kw-2">&amp;</span>mir::Body&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>(bcbs, bb_to_bcb) = <span class="self">Self</span>::compute_basic_coverage_blocks(<a href="#25">mir_body</a>);
+        <span class="kw">let </span>(bcbs, bb_to_bcb) = <span class="self">Self</span>::compute_basic_coverage_blocks(<a href="#22">mir_body</a>);
 
         <span class="comment">// Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
         // equivalents. Note that since the BasicCoverageBlock graph has been fully simplified, the
@@ -656,13 +646,13 @@
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>seen = IndexVec::from_elem(<span class="bool-val">false</span>, <span class="kw-2">&amp;</span><a href="#26">bcbs</a>);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>seen = IndexVec::from_elem(<span class="bool-val">false</span>, <span class="kw-2">&amp;</span><a href="#23">bcbs</a>);
         <span class="kw">let </span>successors = IndexVec::from_fn_n(
             |bcb| {
                 <span class="kw">for </span>b <span class="kw">in </span>seen.iter_mut() {
                     <span class="kw-2">*</span>b = <span class="bool-val">false</span>;
                 }
-                <span class="kw">let </span>bcb_data = <span class="kw-2">&amp;</span><a href="#26">bcbs</a>[<a href="#36">bcb</a>];
+                <span class="kw">let </span>bcb_data = <span class="kw-2">&amp;</span><a href="#23">bcbs</a>[<a href="#33">bcb</a>];
                 <span class="kw">let </span><span class="kw-2">mut </span>bcb_successors = Vec::new();
                 <span class="kw">for </span>successor <span class="kw">in
                     </span>bcb_filtered_successors(<span class="kw-2">&amp;</span>mir_body, <span class="kw-2">&amp;</span>bcb_data.terminator(mir_body).kind)
@@ -673,12 +663,12 @@
                         bcb_successors.push(successor);
                     }
                 }
-                <a href="#41">bcb_successors</a>
+                <a href="#38">bcb_successors</a>
             },
-            <a href="#26">bcbs</a>.len(),
+            <a href="#23">bcbs</a>.len(),
         );
 
-        <span class="kw">let </span><span class="kw-2">mut </span>predecessors = IndexVec::from_elem(Vec::new(), <span class="kw-2">&amp;</span><a href="#26">bcbs</a>);
+        <span class="kw">let </span><span class="kw-2">mut </span>predecessors = IndexVec::from_elem(Vec::new(), <span class="kw-2">&amp;</span><a href="#23">bcbs</a>);
         <span class="kw">for </span>(bcb, bcb_successors) <span class="kw">in </span>successors.iter_enumerated() {
             <span class="kw">for </span><span class="kw-2">&amp;</span>successor <span class="kw">in </span>bcb_successors {
                 predecessors[successor].push(bcb);
@@ -686,21 +676,21 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>basic_coverage_blocks =
-            <span class="self">Self </span>{ <a href="#26">bcbs</a>, <a href="#26">bb_to_bcb</a>, <a href="#35">successors</a>, <a href="#56">predecessors</a>, dominators: <span class="prelude-val">None </span>};
-        <span class="kw">let </span>dominators = dominators::dominators(<span class="kw-2">&amp;</span><a href="#63">basic_coverage_blocks</a>);
-        <a href="#63">basic_coverage_blocks</a>.dominators = <span class="prelude-val">Some</span>(<a href="#65">dominators</a>);
-        <a href="#63">basic_coverage_blocks</a>
+            <span class="self">Self </span>{ <a href="#23">bcbs</a>, <a href="#23">bb_to_bcb</a>, <a href="#32">successors</a>, <a href="#53">predecessors</a>, dominators: <span class="prelude-val">None </span>};
+        <span class="kw">let </span>dominators = dominators::dominators(<span class="kw-2">&amp;</span><a href="#60">basic_coverage_blocks</a>);
+        <a href="#60">basic_coverage_blocks</a>.dominators = <span class="prelude-val">Some</span>(<a href="#62">dominators</a>);
+        <a href="#60">basic_coverage_blocks</a>
     }
 
     <span class="kw">fn </span>compute_basic_coverage_blocks(
         mir_body: <span class="kw-2">&amp;</span>mir::Body&lt;<span class="lifetime">&#39;_</span>&gt;,
     ) -&gt; (
-        IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, <a href="#303-305">BasicCoverageBlockData</a>&gt;,
-        IndexVec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <span class="prelude-ty">Option</span>&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
+        IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, <a href="#300-302">BasicCoverageBlockData</a>&gt;,
+        IndexVec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <span class="prelude-ty">Option</span>&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
     ) {
-        <span class="kw">let </span>num_basic_blocks = <a href="#71">mir_body</a>.basic_blocks.len();
-        <span class="kw">let </span><span class="kw-2">mut </span>bcbs = IndexVec::with_capacity(<a href="#76">num_basic_blocks</a>);
-        <span class="kw">let </span><span class="kw-2">mut </span>bb_to_bcb = IndexVec::from_elem_n(<span class="prelude-val">None</span>, <a href="#76">num_basic_blocks</a>);
+        <span class="kw">let </span>num_basic_blocks = <a href="#68">mir_body</a>.basic_blocks.len();
+        <span class="kw">let </span><span class="kw-2">mut </span>bcbs = IndexVec::with_capacity(<a href="#73">num_basic_blocks</a>);
+        <span class="kw">let </span><span class="kw-2">mut </span>bb_to_bcb = IndexVec::from_elem_n(<span class="prelude-val">None</span>, <a href="#73">num_basic_blocks</a>);
 
         <span class="comment">// Walk the MIR CFG using a Preorder traversal, which starts from `START_BLOCK` and follows
         // each block terminator&#39;s `successors()`. Coverage spans must map to actual source code,
@@ -708,7 +698,7 @@
         // intentionally omits unwind paths.
         // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
         // `catch_unwind()` handlers.
-        </span><span class="kw">let </span>mir_cfg_without_unwind = ShortCircuitPreorder::new(<span class="kw-2">&amp;</span><a href="#71">mir_body</a>, <a href="#375-392">bcb_filtered_successors</a>);
+        </span><span class="kw">let </span>mir_cfg_without_unwind = ShortCircuitPreorder::new(<span class="kw-2">&amp;</span><a href="#68">mir_body</a>, <a href="#368-385">bcb_filtered_successors</a>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>basic_blocks = Vec::new();
         <span class="kw">for </span>(bb, data) <span class="kw">in </span>mir_cfg_without_unwind {
@@ -785,115 +775,115 @@
 
         <span class="kw">if </span>!basic_blocks.is_empty() {
             <span class="comment">// process any remaining basic_blocks into a final `BasicCoverageBlockData`
-            </span><span class="self">Self</span>::add_basic_coverage_block(<span class="kw-2">&amp;mut </span><a href="#77">bcbs</a>, <span class="kw-2">&amp;mut </span><a href="#78">bb_to_bcb</a>, <a href="#88">basic_blocks</a>.split_off(<span class="number">0</span>));
+            </span><span class="self">Self</span>::add_basic_coverage_block(<span class="kw-2">&amp;mut </span><a href="#74">bcbs</a>, <span class="kw-2">&amp;mut </span><a href="#75">bb_to_bcb</a>, <a href="#85">basic_blocks</a>.split_off(<span class="number">0</span>));
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;  because the end of the MIR CFG was reached while traversing&quot;</span>);
         }
 
-        (<a href="#77">bcbs</a>, <a href="#78">bb_to_bcb</a>)
+        (<a href="#74">bcbs</a>, <a href="#75">bb_to_bcb</a>)
     }
 
     <span class="kw">fn </span>add_basic_coverage_block(
-        bcbs: <span class="kw-2">&amp;mut </span>IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, <a href="#303-305">BasicCoverageBlockData</a>&gt;,
-        bb_to_bcb: <span class="kw-2">&amp;mut </span>IndexSlice&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <span class="prelude-ty">Option</span>&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
+        bcbs: <span class="kw-2">&amp;mut </span>IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, <a href="#300-302">BasicCoverageBlockData</a>&gt;,
+        bb_to_bcb: <span class="kw-2">&amp;mut </span>IndexSlice&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, <span class="prelude-ty">Option</span>&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
         basic_blocks: Vec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;,
     ) {
-        <span class="kw">let </span>bcb = <a href="#171">bcbs</a>.next_index();
+        <span class="kw">let </span>bcb = <a href="#168">bcbs</a>.next_index();
         <span class="kw">for </span><span class="kw-2">&amp;</span>bb <span class="kw">in </span>basic_blocks.iter() {
             bb_to_bcb[bb] = <span class="prelude-val">Some</span>(bcb);
         }
-        <span class="kw">let </span>bcb_data = BasicCoverageBlockData::from(<a href="#173">basic_blocks</a>);
+        <span class="kw">let </span>bcb_data = BasicCoverageBlockData::from(<a href="#170">basic_blocks</a>);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;adding bcb{}: {:?}&quot;</span>, bcb.index(), bcb_data);
-        <a href="#171">bcbs</a>.push(<a href="#179">bcb_data</a>);
+        <a href="#168">bcbs</a>.push(<a href="#176">bcb_data</a>);
     }
 
     <span class="attr">#[inline(always)]
     </span><span class="kw">pub fn </span>iter_enumerated(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="#268-274">BasicCoverageBlock</a>, <span class="kw-2">&amp;</span><a href="#303-305">BasicCoverageBlockData</a>)&gt; {
-        <a class="self" href="#186">self</a>.bcbs.iter_enumerated()
+    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="#265-271">BasicCoverageBlock</a>, <span class="kw-2">&amp;</span><a href="#300-302">BasicCoverageBlockData</a>)&gt; {
+        <a class="self" href="#183">self</a>.bcbs.iter_enumerated()
     }
 
     <span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>bcb_from_bb(<span class="kw-2">&amp;</span><span class="self">self</span>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#268-274">BasicCoverageBlock</a>&gt; {
-        <span class="kw">if </span>bb.index() &lt; <span class="self">self</span>.bb_to_bcb.len() { <a class="self" href="#192">self</a>.bb_to_bcb[<a href="#192">bb</a>] } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
+    </span><span class="kw">pub fn </span>bcb_from_bb(<span class="kw-2">&amp;</span><span class="self">self</span>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#265-271">BasicCoverageBlock</a>&gt; {
+        <span class="kw">if </span>bb.index() &lt; <span class="self">self</span>.bb_to_bcb.len() { <a class="self" href="#189">self</a>.bb_to_bcb[<a href="#189">bb</a>] } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
     }
 
     <span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>dominates(<span class="kw-2">&amp;</span><span class="self">self</span>, dom: <a href="#268-274">BasicCoverageBlock</a>, node: <a href="#268-274">BasicCoverageBlock</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#197">self</a>.dominators.as_ref().unwrap().dominates(<a href="#197">dom</a>, <a href="#197">node</a>)
+    </span><span class="kw">pub fn </span>dominates(<span class="kw-2">&amp;</span><span class="self">self</span>, dom: <a href="#265-271">BasicCoverageBlock</a>, node: <a href="#265-271">BasicCoverageBlock</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+        <a class="self" href="#194">self</a>.dominators.as_ref().unwrap().dominates(<a href="#194">dom</a>, <a href="#194">node</a>)
     }
 
     <span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>cmp_in_dominator_order(<span class="kw-2">&amp;</span><span class="self">self</span>, a: <a href="#268-274">BasicCoverageBlock</a>, b: <a href="#268-274">BasicCoverageBlock</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/core/cmp/enum.Ordering.html">Ordering</a> {
-        <a class="self" href="#202">self</a>.dominators.as_ref().unwrap().cmp_in_dominator_order(<a href="#202">a</a>, <a href="#202">b</a>)
+    </span><span class="kw">pub fn </span>cmp_in_dominator_order(<span class="kw-2">&amp;</span><span class="self">self</span>, a: <a href="#265-271">BasicCoverageBlock</a>, b: <a href="#265-271">BasicCoverageBlock</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/core/cmp/enum.Ordering.html">Ordering</a> {
+        <a class="self" href="#199">self</a>.dominators.as_ref().unwrap().cmp_in_dominator_order(<a href="#199">a</a>, <a href="#199">b</a>)
     }
 }
 
-<span class="kw">impl </span>Index&lt;<a href="#268-274">BasicCoverageBlock</a>&gt; <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
-    <span class="kw">type </span>Output = <a href="#303-305">BasicCoverageBlockData</a>;
+<span class="kw">impl </span>Index&lt;<a href="#265-271">BasicCoverageBlock</a>&gt; <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
+    <span class="kw">type </span>Output = <a href="#300-302">BasicCoverageBlockData</a>;
 
     <span class="attr">#[inline]
-    </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: <a href="#268-274">BasicCoverageBlock</a>) -&gt; <span class="kw-2">&amp;</span><a href="#303-305">BasicCoverageBlockData</a> {
-        <span class="kw-2">&amp;</span><a class="self" href="#211">self</a>.bcbs[<a href="#211">index</a>]
+    </span><span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: <a href="#265-271">BasicCoverageBlock</a>) -&gt; <span class="kw-2">&amp;</span><a href="#300-302">BasicCoverageBlockData</a> {
+        <span class="kw-2">&amp;</span><a class="self" href="#208">self</a>.bcbs[<a href="#208">index</a>]
     }
 }
 
-<span class="kw">impl </span>IndexMut&lt;<a href="#268-274">BasicCoverageBlock</a>&gt; <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
+<span class="kw">impl </span>IndexMut&lt;<a href="#265-271">BasicCoverageBlock</a>&gt; <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
     <span class="attr">#[inline]
-    </span><span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: <a href="#268-274">BasicCoverageBlock</a>) -&gt; <span class="kw-2">&amp;mut </span><a href="#303-305">BasicCoverageBlockData</a> {
-        <span class="kw-2">&amp;mut </span><a class="self" href="#218">self</a>.bcbs[<a href="#218">index</a>]
+    </span><span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: <a href="#265-271">BasicCoverageBlock</a>) -&gt; <span class="kw-2">&amp;mut </span><a href="#300-302">BasicCoverageBlockData</a> {
+        <span class="kw-2">&amp;mut </span><a class="self" href="#215">self</a>.bcbs[<a href="#215">index</a>]
     }
 }
 
-<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.DirectedGraph.html">graph::DirectedGraph</a> <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
-    <span class="kw">type </span>Node = <a href="#268-274">BasicCoverageBlock</a>;
+<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.DirectedGraph.html">graph::DirectedGraph</a> <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
+    <span class="kw">type </span>Node = <a href="#265-271">BasicCoverageBlock</a>;
 }
 
-<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">graph::WithNumNodes</a> <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
+<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">graph::WithNumNodes</a> <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>num_nodes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <a class="self" href="#229">self</a>.bcbs.len()
+        <a class="self" href="#226">self</a>.bcbs.len()
     }
 }
 
-<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithStartNode.html">graph::WithStartNode</a> <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
+<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithStartNode.html">graph::WithStartNode</a> <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>start_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Node {
-        <a class="self" href="#236">self</a>.<a href="#192-194">bcb_from_bb</a>(<a href="../../../rustc_middle/mir/constant.START_BLOCK.html">mir::START_BLOCK</a>)
+        <a class="self" href="#233">self</a>.<a href="#189-191">bcb_from_bb</a>(<a href="../../../rustc_middle/mir/constant.START_BLOCK.html">mir::START_BLOCK</a>)
             .expect(<span class="string">&quot;mir::START_BLOCK should be in a BasicCoverageBlock&quot;</span>)
     }
 }
 
-<span class="kw">type </span><a href="../../../rustc_mir_transform/coverage/graph/type.BcbSuccessors.html">BcbSuccessors</a>&lt;<span class="lifetime">&#39;graph</span>&gt; = std::slice::Iter&lt;<span class="lifetime">&#39;graph</span>, <a href="#268-274">BasicCoverageBlock</a>&gt;;
+<span class="kw">type </span><a href="../../../rustc_mir_transform/coverage/graph/type.BcbSuccessors.html">BcbSuccessors</a>&lt;<span class="lifetime">&#39;graph</span>&gt; = std::slice::Iter&lt;<span class="lifetime">&#39;graph</span>, <a href="#265-271">BasicCoverageBlock</a>&gt;;
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;graph</span>&gt; graph::GraphSuccessors&lt;<span class="lifetime">&#39;graph</span>&gt; <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
-    <span class="kw">type </span>Item = <a href="#268-274">BasicCoverageBlock</a>;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;graph</span>&gt; graph::GraphSuccessors&lt;<span class="lifetime">&#39;graph</span>&gt; <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
+    <span class="kw">type </span>Item = <a href="#265-271">BasicCoverageBlock</a>;
     <span class="kw">type </span>Iter = std::iter::Cloned&lt;BcbSuccessors&lt;<span class="lifetime">&#39;graph</span>&gt;&gt;;
 }
 
-<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithSuccessors.html">graph::WithSuccessors</a> <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
+<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithSuccessors.html">graph::WithSuccessors</a> <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>successors(<span class="kw-2">&amp;</span><span class="self">self</span>, node: <span class="self">Self</span>::Node) -&gt; &lt;<span class="self">Self </span><span class="kw">as </span>GraphSuccessors&lt;<span class="lifetime">&#39;_</span>&gt;&gt;::Iter {
-        <a class="self" href="#251">self</a>.successors[<a href="#251">node</a>].iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>()
+        <a class="self" href="#248">self</a>.successors[<a href="#248">node</a>].iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>()
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;graph</span>&gt; graph::GraphPredecessors&lt;<span class="lifetime">&#39;graph</span>&gt; <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
-    <span class="kw">type </span>Item = <a href="#268-274">BasicCoverageBlock</a>;
-    <span class="kw">type </span>Iter = std::iter::Copied&lt;std::slice::Iter&lt;<span class="lifetime">&#39;graph</span>, <a href="#268-274">BasicCoverageBlock</a>&gt;&gt;;
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;graph</span>&gt; graph::GraphPredecessors&lt;<span class="lifetime">&#39;graph</span>&gt; <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
+    <span class="kw">type </span>Item = <a href="#265-271">BasicCoverageBlock</a>;
+    <span class="kw">type </span>Iter = std::iter::Copied&lt;std::slice::Iter&lt;<span class="lifetime">&#39;graph</span>, <a href="#265-271">BasicCoverageBlock</a>&gt;&gt;;
 }
 
-<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithPredecessors.html">graph::WithPredecessors</a> <span class="kw">for </span><a href="#16-22">CoverageGraph</a> {
+<span class="kw">impl </span><a href="../../../rustc_data_structures/graph/trait.WithPredecessors.html">graph::WithPredecessors</a> <span class="kw">for </span><a href="#13-19">CoverageGraph</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>predecessors(<span class="kw-2">&amp;</span><span class="self">self</span>, node: <span class="self">Self</span>::Node) -&gt; &lt;<span class="self">Self </span><span class="kw">as </span>graph::GraphPredecessors&lt;<span class="lifetime">&#39;_</span>&gt;&gt;::Iter {
-        <a class="self" href="#263">self</a>.predecessors[<a href="#263">node</a>].iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()
+        <a class="self" href="#260">self</a>.predecessors[<a href="#260">node</a>].iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()
     }
 }
 
-<a class="macro" href="../../../rustc_macros/rustc_macros/macro.newtype_index.html">rustc_index::newtype_index! </a>{
+<a class="macro" href="../../../rustc_macros/macro.newtype_index.html">rustc_index::newtype_index! </a>{
     <span class="doccomment">/// A node in the control-flow graph of CoverageGraph.
     </span><span class="attr">#[debug_format = <span class="string">&quot;bcb{}&quot;</span>]
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="#268-274">BasicCoverageBlock</a> {
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="#265-271">BasicCoverageBlock</a> {
         <span class="kw">const </span><a href="../../../rustc_mir_transform/coverage/graph/constant.START_BCB.html">START_BCB</a> = <span class="number">0</span>;
     }
 }
@@ -916,9 +906,9 @@
 ///     not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as
 ///     a `Goto`, and merged with its successor into the same BCB.
 ///
-/// Each BCB with at least one computed `CoverageSpan` will have no more than one `Counter`.
+/// Each BCB with at least one computed coverage span will have no more than one `Counter`.
 /// In some cases, a BCB&#39;s execution count can be computed by `Expression`. Additional
-/// disjoint `CoverageSpan`s in a BCB can also be counted by `Expression` (by adding `ZERO`
+/// disjoint coverage spans in a BCB can also be counted by `Expression` (by adding `ZERO`
 /// to the BCB&#39;s primary counter or expression).
 ///
 /// The BCB CFG is critical to simplifying the coverage analysis by ensuring graph path-based
@@ -929,29 +919,25 @@
     <span class="kw">pub </span>basic_blocks: Vec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#303-305">BasicCoverageBlockData</a> {
+<span class="kw">impl </span><a href="#300-302">BasicCoverageBlockData</a> {
     <span class="kw">pub fn </span>from(basic_blocks: Vec&lt;<a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;) -&gt; <span class="self">Self </span>{
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(basic_blocks.len() &gt; <span class="number">0</span>);
-        <span class="self">Self </span>{ <a href="#308">basic_blocks</a> }
+        <span class="self">Self </span>{ <a href="#305">basic_blocks</a> }
     }
 
     <span class="attr">#[inline(always)]
     </span><span class="kw">pub fn </span>leader_bb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a> {
-        <a class="self" href="#314">self</a>.basic_blocks[<span class="number">0</span>]
+        <a class="self" href="#311">self</a>.basic_blocks[<span class="number">0</span>]
     }
 
     <span class="attr">#[inline(always)]
     </span><span class="kw">pub fn </span>last_bb(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a> {
-        <span class="kw-2">*</span><a class="self" href="#319">self</a>.basic_blocks.last().unwrap()
+        <span class="kw-2">*</span><a class="self" href="#316">self</a>.basic_blocks.last().unwrap()
     }
 
     <span class="attr">#[inline(always)]
     </span><span class="kw">pub fn </span>terminator&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, mir_body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>mir::Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw-2">&amp;</span><a href="#324">mir_body</a>[<a class="self" href="#324">self</a>.<a href="#319-321">last_bb</a>()].terminator()
-    }
-
-    <span class="kw">pub fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-        <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;@{}&quot;</span>, <span class="self">self</span>.basic_blocks.iter().map(|bb| bb.index().to_string()).join(ID_SEPARATOR))
+        <span class="kw-2">&amp;</span><a href="#321">mir_body</a>[<a class="self" href="#321">self</a>.<a href="#316-318">last_bb</a>()].terminator()
     }
 }
 
@@ -961,35 +947,35 @@
 /// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
 </span><span class="attr">#[derive(Clone, Copy, PartialEq, Eq)]
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../rustc_mir_transform/coverage/graph/struct.BcbBranch.html">BcbBranch</a> {
-    <span class="kw">pub </span>edge_from_bcb: <span class="prelude-ty">Option</span>&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;,
-    <span class="kw">pub </span>target_bcb: <a href="#268-274">BasicCoverageBlock</a>,
+    <span class="kw">pub </span>edge_from_bcb: <span class="prelude-ty">Option</span>&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;,
+    <span class="kw">pub </span>target_bcb: <a href="#265-271">BasicCoverageBlock</a>,
 }
 
-<span class="kw">impl </span><a href="#338-341">BcbBranch</a> {
+<span class="kw">impl </span><a href="#331-334">BcbBranch</a> {
     <span class="kw">pub fn </span>from_to(
-        from_bcb: <a href="#268-274">BasicCoverageBlock</a>,
-        to_bcb: <a href="#268-274">BasicCoverageBlock</a>,
-        basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#16-22">CoverageGraph</a>,
+        from_bcb: <a href="#265-271">BasicCoverageBlock</a>,
+        to_bcb: <a href="#265-271">BasicCoverageBlock</a>,
+        basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#13-19">CoverageGraph</a>,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>edge_from_bcb = <span class="kw">if </span>basic_coverage_blocks.predecessors[to_bcb].len() &gt; <span class="number">1 </span>{
-            <span class="prelude-val">Some</span>(<a href="#345">from_bcb</a>)
+            <span class="prelude-val">Some</span>(<a href="#338">from_bcb</a>)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
-        <span class="self">Self </span>{ <a href="#349">edge_from_bcb</a>, target_bcb: <a href="#346">to_bcb</a> }
+        <span class="self">Self </span>{ <a href="#342">edge_from_bcb</a>, target_bcb: <a href="#339">to_bcb</a> }
     }
 
     <span class="kw">pub fn </span>is_only_path_to_target(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#357">self</a>.edge_from_bcb.is_none()
+        <a class="self" href="#350">self</a>.edge_from_bcb.is_none()
     }
 }
 
-<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">std::fmt::Debug</a> <span class="kw">for </span><a href="#338-341">BcbBranch</a> {
+<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">std::fmt::Debug</a> <span class="kw">for </span><a href="#331-334">BcbBranch</a> {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, fmt: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(from_bcb) = <a class="self" href="#363">self</a>.edge_from_bcb {
-            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#363">fmt</a>, <span class="string">&quot;{:?}-&gt;{:?}&quot;</span>, from_bcb, <span class="self">self</span>.target_bcb)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(from_bcb) = <a class="self" href="#356">self</a>.edge_from_bcb {
+            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#356">fmt</a>, <span class="string">&quot;{:?}-&gt;{:?}&quot;</span>, from_bcb, <span class="self">self</span>.target_bcb)
         } <span class="kw">else </span>{
-            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#363">fmt</a>, <span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.target_bcb)
+            <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#356">fmt</a>, <span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>.target_bcb)
         }
     }
 }
@@ -1002,17 +988,17 @@
     term_kind: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>TerminatorKind&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt; + <span class="lifetime">&#39;a</span>&gt; {
     Box::new(
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#377">term_kind</a> {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#370">term_kind</a> {
             <span class="comment">// SwitchInt successors are never unwind, and all of them should be traversed.
             </span><a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { <span class="kw-2">ref </span>targets, .. } =&gt; {
-                <span class="prelude-val">None</span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#382">targets</a>.all_targets().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>())
+                <span class="prelude-val">None</span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#375">targets</a>.all_targets().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>())
             }
             <span class="comment">// For all other kinds, return only the first successor, if any, and ignore unwinds.
             // NOTE: `chain(&amp;[])` is required to coerce the `option::iter` (from
             // `next().into_iter()`) into the `mir::Successors` aliased type.
-            </span><span class="kw">_ </span>=&gt; <a href="#377">term_kind</a>.successors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>((<span class="kw-2">&amp;</span>[]).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()),
+            </span><span class="kw">_ </span>=&gt; <a href="#370">term_kind</a>.successors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>((<span class="kw-2">&amp;</span>[]).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()),
         }
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(<span class="kw">move </span>|<span class="kw-2">&amp;</span>successor| <a href="#376">body</a>[<a href="#390">successor</a>].terminator().kind != TerminatorKind::Unreachable),
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(<span class="kw">move </span>|<span class="kw-2">&amp;</span>successor| <a href="#369">body</a>[<a href="#383">successor</a>].terminator().kind != TerminatorKind::Unreachable),
     )
 }
 
@@ -1022,35 +1008,35 @@
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../rustc_mir_transform/coverage/graph/struct.TraversalContext.html">TraversalContext</a> {
     <span class="doccomment">/// From one or more backedges returning to a loop header.
-    </span><span class="kw">pub </span>loop_backedges: <span class="prelude-ty">Option</span>&lt;(Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;, <a href="#268-274">BasicCoverageBlock</a>)&gt;,
+    </span><span class="kw">pub </span>loop_backedges: <span class="prelude-ty">Option</span>&lt;(Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;, <a href="#265-271">BasicCoverageBlock</a>)&gt;,
 
     <span class="doccomment">/// worklist, to be traversed, of CoverageGraph in the loop with the given loop
     /// backedges, such that the loop is the inner inner-most loop containing these
     /// CoverageGraph
-    </span><span class="kw">pub </span>worklist: Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;,
+    </span><span class="kw">pub </span>worklist: Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;,
 }
 
 <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../rustc_mir_transform/coverage/graph/struct.TraverseCoverageGraphWithLoops.html">TraverseCoverageGraphWithLoops</a> {
-    <span class="kw">pub </span>backedges: IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt;,
-    <span class="kw">pub </span>context_stack: Vec&lt;<a href="#398-406">TraversalContext</a>&gt;,
-    visited: BitSet&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;,
+    <span class="kw">pub </span>backedges: IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt;,
+    <span class="kw">pub </span>context_stack: Vec&lt;<a href="#391-399">TraversalContext</a>&gt;,
+    visited: BitSet&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#408-412">TraverseCoverageGraphWithLoops</a> {
-    <span class="kw">pub fn </span>new(basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#16-22">CoverageGraph</a>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>start_bcb = <a href="#415">basic_coverage_blocks</a>.<a href="../../../rustc_data_structures/graph/trait.WithStartNode.html">start_node</a>();
-        <span class="kw">let </span>backedges = <a href="#540-561">find_loop_backedges</a>(<a href="#415">basic_coverage_blocks</a>);
+<span class="kw">impl </span><a href="#401-405">TraverseCoverageGraphWithLoops</a> {
+    <span class="kw">pub fn </span>new(basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#13-19">CoverageGraph</a>) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>start_bcb = <a href="#408">basic_coverage_blocks</a>.<a href="../../../rustc_data_structures/graph/trait.WithStartNode.html">start_node</a>();
+        <span class="kw">let </span>backedges = <a href="#533-554">find_loop_backedges</a>(<a href="#408">basic_coverage_blocks</a>);
         <span class="kw">let </span>context_stack =
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[TraversalContext { loop_backedges: <span class="prelude-val">None</span>, worklist: <span class="macro">vec!</span>[start_bcb] }];
         <span class="comment">// `context_stack` starts with a `TraversalContext` for the main function context (beginning
         // with the `start` BasicCoverageBlock of the function). New worklists are pushed to the top
         // of the stack as loops are entered, and popped off of the stack when a loop&#39;s worklist is
         // exhausted.
-        </span><span class="kw">let </span>visited = BitSet::new_empty(<a href="#415">basic_coverage_blocks</a>.<a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">num_nodes</a>());
-        <span class="self">Self </span>{ <a href="#417">backedges</a>, <a href="#418">context_stack</a>, <a href="#424">visited</a> }
+        </span><span class="kw">let </span>visited = BitSet::new_empty(<a href="#408">basic_coverage_blocks</a>.<a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">num_nodes</a>());
+        <span class="self">Self </span>{ <a href="#410">backedges</a>, <a href="#411">context_stack</a>, <a href="#417">visited</a> }
     }
 
-    <span class="kw">pub fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>, basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#16-22">CoverageGraph</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#268-274">BasicCoverageBlock</a>&gt; {
+    <span class="kw">pub fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>, basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#13-19">CoverageGraph</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#265-271">BasicCoverageBlock</a>&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
             <span class="string">&quot;TraverseCoverageGraphWithLoops::next - context_stack: {:?}&quot;</span>,
             <span class="self">self</span>.context_stack.iter().rev().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
@@ -1083,10 +1069,10 @@
 
     <span class="kw">pub fn </span>extend_worklist(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#16-22">CoverageGraph</a>,
-        bcb: <a href="#268-274">BasicCoverageBlock</a>,
+        basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#13-19">CoverageGraph</a>,
+        bcb: <a href="#265-271">BasicCoverageBlock</a>,
     ) {
-        <span class="kw">let </span>successors = <span class="kw-2">&amp;</span><a href="#461">basic_coverage_blocks</a>.successors[<a href="#462">bcb</a>];
+        <span class="kw">let </span>successors = <span class="kw-2">&amp;</span><a href="#454">basic_coverage_blocks</a>.successors[<a href="#455">bcb</a>];
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;{:?} has {} successors:&quot;</span>, bcb, successors.len());
         <span class="kw">for </span><span class="kw-2">&amp;</span>successor <span class="kw">in </span>successors {
             <span class="kw">if </span>successor == bcb {
@@ -1151,22 +1137,22 @@
     }
 
     <span class="kw">pub fn </span>is_complete(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#528">self</a>.visited.count() == <a class="self" href="#528">self</a>.visited.domain_size()
+        <a class="self" href="#521">self</a>.visited.count() == <a class="self" href="#521">self</a>.visited.domain_size()
     }
 
-    <span class="kw">pub fn </span>unvisited(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>unvisited_set: BitSet&lt;<a href="#268-274">BasicCoverageBlock</a>&gt; =
-            BitSet::new_filled(<a class="self" href="#532">self</a>.visited.domain_size());
-        <a href="#533">unvisited_set</a>.subtract(<span class="kw-2">&amp;</span><a class="self" href="#532">self</a>.visited);
-        <a href="#533">unvisited_set</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+    <span class="kw">pub fn </span>unvisited(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>unvisited_set: BitSet&lt;<a href="#265-271">BasicCoverageBlock</a>&gt; =
+            BitSet::new_filled(<a class="self" href="#525">self</a>.visited.domain_size());
+        <a href="#526">unvisited_set</a>.subtract(<span class="kw-2">&amp;</span><a class="self" href="#525">self</a>.visited);
+        <a href="#526">unvisited_set</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
     }
 }
 
 <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span><a href="../../../rustc_mir_transform/coverage/graph/fn.find_loop_backedges.html">find_loop_backedges</a>(
-    basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#16-22">CoverageGraph</a>,
-) -&gt; IndexVec&lt;<a href="#268-274">BasicCoverageBlock</a>, Vec&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;&gt; {
-    <span class="kw">let </span>num_bcbs = <a href="#541">basic_coverage_blocks</a>.<a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">num_nodes</a>();
-    <span class="kw">let </span><span class="kw-2">mut </span>backedges = IndexVec::from_elem_n(Vec::&lt;<a href="#268-274">BasicCoverageBlock</a>&gt;::new(), <a href="#543">num_bcbs</a>);
+    basic_coverage_blocks: <span class="kw-2">&amp;</span><a href="#13-19">CoverageGraph</a>,
+) -&gt; IndexVec&lt;<a href="#265-271">BasicCoverageBlock</a>, Vec&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;&gt; {
+    <span class="kw">let </span>num_bcbs = <a href="#534">basic_coverage_blocks</a>.<a href="../../../rustc_data_structures/graph/trait.WithNumNodes.html">num_nodes</a>();
+    <span class="kw">let </span><span class="kw-2">mut </span>backedges = IndexVec::from_elem_n(Vec::&lt;<a href="#265-271">BasicCoverageBlock</a>&gt;::new(), <a href="#536">num_bcbs</a>);
 
     <span class="comment">// Identify loops by their backedges.
     </span><span class="kw">for </span>(bcb, <span class="kw">_</span>) <span class="kw">in </span>basic_coverage_blocks.iter_enumerated() {
@@ -1182,7 +1168,7 @@
             }
         }
     }
-    <a href="#544">backedges</a>
+    <a href="#537">backedges</a>
 }
 
 <span class="kw">pub struct </span><a href="../../../rustc_mir_transform/coverage/graph/struct.ShortCircuitPreorder.html">ShortCircuitPreorder</a>&lt;
@@ -1208,11 +1194,11 @@
     ) -&gt; ShortCircuitPreorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, F&gt; {
         <span class="kw">let </span>worklist = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[mir::START_BLOCK];
 
-        <a href="#563-572">ShortCircuitPreorder</a> {
-            <a href="#581">body</a>,
-            visited: BitSet::new_empty(<a href="#581">body</a>.basic_blocks.len()),
-            <a href="#584">worklist</a>,
-            <a href="#582">filtered_successors</a>,
+        <a href="#556-565">ShortCircuitPreorder</a> {
+            <a href="#574">body</a>,
+            visited: BitSet::new_empty(<a href="#574">body</a>.basic_blocks.len()),
+            <a href="#577">worklist</a>,
+            <a href="#575">filtered_successors</a>,
         }
     }
 }
@@ -1244,8 +1230,8 @@
     </span>}
 
     <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;) {
-        <span class="kw">let </span>size = <a class="self" href="#621">self</a>.body.basic_blocks.len() - <a class="self" href="#621">self</a>.visited.count();
-        (<a href="#622">size</a>, <span class="prelude-val">Some</span>(<a href="#622">size</a>))
+        <span class="kw">let </span>size = <a class="self" href="#614">self</a>.body.basic_blocks.len() - <a class="self" href="#614">self</a>.visited.count();
+        (<a href="#615">size</a>, <span class="prelude-val">Some</span>(<a href="#615">size</a>))
     }
 }
 </code></pre></div></section></main></body></html>

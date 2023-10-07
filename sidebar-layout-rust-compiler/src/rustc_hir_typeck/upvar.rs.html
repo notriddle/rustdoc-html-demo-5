@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/upvar.rs`."><title>upvar.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/upvar.rs`."><title>upvar.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2221,6 +2221,21 @@
 <a href="#2221" id="2221">2221</a>
 <a href="#2222" id="2222">2222</a>
 <a href="#2223" id="2223">2223</a>
+<a href="#2224" id="2224">2224</a>
+<a href="#2225" id="2225">2225</a>
+<a href="#2226" id="2226">2226</a>
+<a href="#2227" id="2227">2227</a>
+<a href="#2228" id="2228">2228</a>
+<a href="#2229" id="2229">2229</a>
+<a href="#2230" id="2230">2230</a>
+<a href="#2231" id="2231">2231</a>
+<a href="#2232" id="2232">2232</a>
+<a href="#2233" id="2233">2233</a>
+<a href="#2234" id="2234">2234</a>
+<a href="#2235" id="2235">2235</a>
+<a href="#2236" id="2236">2236</a>
+<a href="#2237" id="2237">2237</a>
+<a href="#2238" id="2238">2238</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! ### Inferring borrow kinds for upvars
 //!
 //! Whenever there is a closure expression, we need to determine how each
@@ -2255,7 +2270,7 @@
 
 </span><span class="kw">use </span><a href="fn_ctxt/mod.rs.html#40-114"><span class="kw">super</span>::FnCtxt</a>;
 
-<span class="kw">use </span><a href="lib.rs.html#31"><span class="kw">crate</span>::expr_use_visitor</a> <span class="kw">as </span>euv;
+<span class="kw">use </span><a href="lib.rs.html#30"><span class="kw">crate</span>::expr_use_visitor</a> <span class="kw">as </span>euv;
 <span class="kw">use </span>rustc_data_structures::unord::{<a href="../../rustc_data_structures/unord/trait.ExtendUnord.html">ExtendUnord</a>, <a href="../../rustc_data_structures/unord/struct.UnordSet.html">UnordSet</a>};
 <span class="kw">use </span>rustc_errors::{<a href="../../rustc_lint_defs/enum.Applicability.html">Applicability</a>, <a href="../../rustc_error_messages/struct.MultiSpan.html">MultiSpan</a>};
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
@@ -2264,6 +2279,7 @@
 <span class="kw">use </span>rustc_infer::infer::UpvarRegion;
 <span class="kw">use </span>rustc_middle::hir::place::{<a href="../../rustc_hir_typeck/expr_use_visitor/struct.Place.html">Place</a>, <a href="../../rustc_hir_typeck/expr_use_visitor/enum.PlaceBase.html">PlaceBase</a>, <a href="../../rustc_hir_typeck/expr_use_visitor/struct.PlaceWithHirId.html">PlaceWithHirId</a>, <a href="../../rustc_hir_typeck/expr_use_visitor/struct.Projection.html">Projection</a>, <a href="../../rustc_middle/hir/place/enum.ProjectionKind.html">ProjectionKind</a>};
 <span class="kw">use </span><a href="../../rustc_middle/mir/syntax/enum.FakeReadCause.html">rustc_middle::mir::FakeReadCause</a>;
+<span class="kw">use </span><a href="../../rustc_middle/traits/enum.ObligationCauseCode.html">rustc_middle::traits::ObligationCauseCode</a>;
 <span class="kw">use </span>rustc_middle::ty::{
     <a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/struct.ClosureSizeProfileData.html">ClosureSizeProfileData</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../rustc_middle/ty/typeck_results/struct.TypeckResults.html">TypeckResults</a>, <a href="../../rustc_middle/ty/sty/enum.UpvarArgs.html">UpvarArgs</a>, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">UpvarCapture</a>,
 };
@@ -2273,7 +2289,7 @@
 <span class="kw">use </span><a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">rustc_trait_selection::infer::InferCtxtExt</a>;
 
 <span class="kw">use </span>rustc_data_structures::fx::{<a href="../../rustc_data_structures/fx/type.FxIndexMap.html">FxIndexMap</a>, <a href="../../rustc_data_structures/fx/type.FxIndexSet.html">FxIndexSet</a>};
-<span class="kw">use </span><a href="../../rustc_abi/constant.FIRST_VARIANT.html">rustc_target::abi::FIRST_VARIANT</a>;
+<span class="kw">use </span><a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">rustc_target::abi::FIRST_VARIANT</a>;
 
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/iter/index.html">std::iter</a>;
 
@@ -2296,7 +2312,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; FnCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>closure_analyze(<span class="kw-2">&amp;</span><span class="self">self</span>, body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <a href="#136-138">InferBorrowKindVisitor</a> { fcx: <span class="self"><a href="#75">self</a> </span>}.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#75">body</a>);
+        <a href="#137-139">InferBorrowKindVisitor</a> { fcx: <span class="self"><a href="#76">self</a> </span>}.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#76">body</a>);
 
         <span class="comment">// it&#39;s our job to process these.
         </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.deferred_call_resolutions.borrow().is_empty());
@@ -2328,7 +2344,7 @@
     </span>drop_order: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 }
 
-<span class="kw">impl </span><a href="#98-106">MigrationWarningReason</a> {
+<span class="kw">impl </span><a href="#99-107">MigrationWarningReason</a> {
     <span class="kw">fn </span>migration_message(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
         <span class="kw">let </span>base = <span class="string">&quot;changes to closure capture in Rust 2021 will affect&quot;</span>;
         <span class="kw">if </span>!<span class="self">self</span>.auto_traits.is_empty() &amp;&amp; <span class="self">self</span>.drop_order {
@@ -2343,17 +2359,17 @@
 
 <span class="doccomment">/// Intermediate format to store information needed to generate a note in the migration lint.
 </span><span class="kw">struct </span><a href="../../rustc_hir_typeck/upvar/struct.MigrationLintNote.html">MigrationLintNote</a> {
-    captures_info: <a href="#87-94">UpvarMigrationInfo</a>,
+    captures_info: <a href="#88-95">UpvarMigrationInfo</a>,
 
     <span class="doccomment">/// reasons why migration is needed for this capture
-    </span>reason: <a href="#98-106">MigrationWarningReason</a>,
+    </span>reason: <a href="#99-107">MigrationWarningReason</a>,
 }
 
 <span class="doccomment">/// Intermediate format to store the hir id of the root variable and a HashSet containing
 /// information on why the root variable should be fully captured
 </span><span class="kw">struct </span><a href="../../rustc_hir_typeck/upvar/struct.NeededMigration.html">NeededMigration</a> {
     var_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
-    diagnostics_info: Vec&lt;<a href="#122-127">MigrationLintNote</a>&gt;,
+    diagnostics_info: Vec&lt;<a href="#123-128">MigrationLintNote</a>&gt;,
 }
 
 <span class="kw">struct </span><a href="../../rustc_hir_typeck/upvar/struct.InferBorrowKindVisitor.html">InferBorrowKindVisitor</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -2362,20 +2378,20 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>InferBorrowKindVisitor&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>visit_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">match </span><a href="#141">expr</a>.kind {
+        <span class="kw">match </span><a href="#142">expr</a>.kind {
             hir::ExprKind::Closure(<span class="kw-2">&amp;</span><a href="../../rustc_hir/hir/struct.Closure.html">hir::Closure</a> { capture_clause, body: body_id, .. }) =&gt; {
-                <span class="kw">let </span>body = <a class="self" href="#141">self</a>.fcx.tcx.hir().body(<a href="#143">body_id</a>);
-                <a class="self" href="#141">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#144">body</a>);
-                <a class="self" href="#141">self</a>.fcx.<a href="#161">analyze_closure</a>(<a href="#141">expr</a>.hir_id, <a href="#141">expr</a>.span, <a href="#143">body_id</a>, <a href="#144">body</a>, <a href="#143">capture_clause</a>);
+                <span class="kw">let </span>body = <a class="self" href="#142">self</a>.fcx.tcx.hir().body(<a href="#144">body_id</a>);
+                <a class="self" href="#142">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#145">body</a>);
+                <a class="self" href="#142">self</a>.fcx.<a href="#162">analyze_closure</a>(<a href="#142">expr</a>.hir_id, <a href="#142">expr</a>.span, <a href="#144">body_id</a>, <a href="#145">body</a>, <a href="#144">capture_clause</a>);
             }
             hir::ExprKind::ConstBlock(anon_const) =&gt; {
-                <span class="kw">let </span>body = <a class="self" href="#141">self</a>.fcx.tcx.hir().body(<a href="#148">anon_const</a>.body);
-                <a class="self" href="#141">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#149">body</a>);
+                <span class="kw">let </span>body = <a class="self" href="#142">self</a>.fcx.tcx.hir().body(<a href="#149">anon_const</a>.body);
+                <a class="self" href="#142">self</a>.<a href="../../rustc_hir/intravisit/trait.Visitor.html">visit_body</a>(<a href="#150">body</a>);
             }
             <span class="kw">_ </span>=&gt; {}
         }
 
-        intravisit::walk_expr(<a class="self" href="#141">self</a>, <a href="#141">expr</a>);
+        intravisit::walk_expr(<a class="self" href="#142">self</a>, <a href="#142">expr</a>);
     }
 }
 
@@ -2518,6 +2534,20 @@
         </span><span class="kw">let </span>final_upvar_tys = <span class="self">self</span>.final_upvar_tys(closure_def_id);
         <span class="macro">debug!</span>(<span class="question-mark">?</span>closure_hir_id, <span class="question-mark">?</span>args, <span class="question-mark">?</span>final_upvar_tys);
 
+        <span class="kw">if </span><span class="self">self</span>.tcx.features().unsized_locals || <span class="self">self</span>.tcx.features().unsized_fn_params {
+            <span class="kw">for </span>capture <span class="kw">in
+                </span><span class="self">self</span>.typeck_results.borrow().closure_min_captures_flattened(closure_def_id)
+            {
+                <span class="kw">if let </span>UpvarCapture::ByValue = capture.info.capture_kind {
+                    <span class="self">self</span>.require_type_is_sized(
+                        capture.place.ty(),
+                        capture.get_path_span(<span class="self">self</span>.tcx),
+                        ObligationCauseCode::SizedClosureCapture(closure_def_id),
+                    );
+                }
+            }
+        }
+
         <span class="comment">// Build a tuple (U0..Un) of the final upvar types U0..Un
         // and unify the upvar tuple type in the closure with it:
         </span><span class="kw">let </span>final_tupled_upvars_type = Ty::new_tup(<span class="self">self</span>.tcx, <span class="kw-2">&amp;</span>final_upvar_tys);
@@ -2550,16 +2580,16 @@
 
     <span class="comment">// Returns a list of `Ty`s for each upvar.
     </span><span class="kw">fn </span>final_upvar_tys(<span class="kw-2">&amp;</span><span class="self">self</span>, closure_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#329">self</a>.typeck_results
+        <a class="self" href="#344">self</a>.typeck_results
             .borrow()
-            .closure_min_captures_flattened(<a href="#329">closure_id</a>)
+            .closure_min_captures_flattened(<a href="#344">closure_id</a>)
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|captured_place| {
-                <span class="kw">let </span>upvar_ty = <a href="#333">captured_place</a>.place.ty();
-                <span class="kw">let </span>capture = <a href="#333">captured_place</a>.info.capture_kind;
+                <span class="kw">let </span>upvar_ty = <a href="#348">captured_place</a>.place.ty();
+                <span class="kw">let </span>capture = <a href="#348">captured_place</a>.info.capture_kind;
 
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>captured_place.place, <span class="question-mark">?</span>upvar_ty, <span class="question-mark">?</span>capture, <span class="question-mark">?</span>captured_place.mutability);
 
-                <a href="#1639-1653">apply_capture_kind_on_capture_ty</a>(<a class="self" href="#329">self</a>.tcx, <a href="#334">upvar_ty</a>, <a href="#335">capture</a>, <a href="#333">captured_place</a>.region)
+                <a href="#1654-1668">apply_capture_kind_on_capture_ty</a>(<a class="self" href="#344">self</a>.tcx, <a href="#349">upvar_ty</a>, <a href="#350">capture</a>, <a href="#348">captured_place</a>.region)
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
     }
@@ -2587,67 +2617,67 @@
         <span class="kw">let </span><span class="kw-2">mut </span>closure_kind = ty::ClosureKind::LATTICE_BOTTOM;
         <span class="kw">let </span><span class="kw-2">mut </span>origin: <span class="prelude-ty">Option</span>&lt;(<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, Place&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; = <span class="prelude-val">None</span>;
 
-        <span class="kw">let </span>processed = <a href="#362">capture_information</a>
+        <span class="kw">let </span>processed = <a href="#377">capture_information</a>
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(place, <span class="kw-2">mut </span>capture_info)| {
                 <span class="comment">// Apply rules for safety before inferring closure kind
                 </span><span class="kw">let </span>(place, capture_kind) =
-                    <a href="#1845-1870">restrict_capture_precision</a>(<a href="#369">place</a>, <a href="#369">capture_info</a>.capture_kind);
+                    <a href="#1860-1885">restrict_capture_precision</a>(<a href="#384">place</a>, <a href="#384">capture_info</a>.capture_kind);
 
-                <span class="kw">let </span>(place, capture_kind) = <a href="#2195-2215">truncate_capture_for_optimization</a>(<a href="#371">place</a>, <a href="#371">capture_kind</a>);
+                <span class="kw">let </span>(place, capture_kind) = <a href="#2210-2230">truncate_capture_for_optimization</a>(<a href="#386">place</a>, <a href="#386">capture_kind</a>);
 
-                <span class="kw">let </span>usage_span = <span class="kw">if let </span><span class="prelude-val">Some</span>(usage_expr) = <a href="#369">capture_info</a>.path_expr_id {
-                    <a class="self" href="#360">self</a>.tcx.hir().span(<a href="#376">usage_expr</a>)
+                <span class="kw">let </span>usage_span = <span class="kw">if let </span><span class="prelude-val">Some</span>(usage_expr) = <a href="#384">capture_info</a>.path_expr_id {
+                    <a class="self" href="#375">self</a>.tcx.hir().span(<a href="#391">usage_expr</a>)
                 } <span class="kw">else </span>{
                     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>()
                 };
 
-                <span class="kw">let </span>updated = <span class="kw">match </span><a href="#374">capture_kind</a> {
-                    ty::UpvarCapture::ByValue =&gt; <span class="kw">match </span><a href="#364">closure_kind</a> {
+                <span class="kw">let </span>updated = <span class="kw">match </span><a href="#389">capture_kind</a> {
+                    ty::UpvarCapture::ByValue =&gt; <span class="kw">match </span><a href="#379">closure_kind</a> {
                         ty::ClosureKind::Fn | ty::ClosureKind::FnMut =&gt; {
-                            (ty::ClosureKind::FnOnce, <span class="prelude-val">Some</span>((<a href="#376">usage_span</a>, <a href="#374">place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())))
+                            (ty::ClosureKind::FnOnce, <span class="prelude-val">Some</span>((<a href="#391">usage_span</a>, <a href="#389">place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())))
                         }
                         <span class="comment">// If closure is already FnOnce, don&#39;t update
-                        </span>ty::ClosureKind::FnOnce =&gt; (<a href="#364">closure_kind</a>, <a href="#365">origin</a>.take()),
+                        </span>ty::ClosureKind::FnOnce =&gt; (<a href="#379">closure_kind</a>, <a href="#380">origin</a>.take()),
                     },
 
                     ty::UpvarCapture::ByRef(
                         ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
                     ) =&gt; {
-                        <span class="kw">match </span><a href="#364">closure_kind</a> {
+                        <span class="kw">match </span><a href="#379">closure_kind</a> {
                             ty::ClosureKind::Fn =&gt; {
-                                (ty::ClosureKind::FnMut, <span class="prelude-val">Some</span>((<a href="#376">usage_span</a>, <a href="#374">place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())))
+                                (ty::ClosureKind::FnMut, <span class="prelude-val">Some</span>((<a href="#391">usage_span</a>, <a href="#389">place</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())))
                             }
                             <span class="comment">// Don&#39;t update the origin
                             </span>ty::ClosureKind::FnMut | ty::ClosureKind::FnOnce =&gt; {
-                                (<a href="#364">closure_kind</a>, <a href="#365">origin</a>.take())
+                                (<a href="#379">closure_kind</a>, <a href="#380">origin</a>.take())
                             }
                         }
                     }
 
-                    <span class="kw">_ </span>=&gt; (<a href="#364">closure_kind</a>, <a href="#365">origin</a>.take()),
+                    <span class="kw">_ </span>=&gt; (<a href="#379">closure_kind</a>, <a href="#380">origin</a>.take()),
                 };
 
-                <a href="#364">closure_kind</a> = <a href="#382">updated</a>.<span class="number">0</span>;
-                <a href="#365">origin</a> = <a href="#382">updated</a>.<span class="number">1</span>;
+                <a href="#379">closure_kind</a> = <a href="#397">updated</a>.<span class="number">0</span>;
+                <a href="#380">origin</a> = <a href="#397">updated</a>.<span class="number">1</span>;
 
-                <span class="kw">let </span>(place, capture_kind) = <span class="kw">match </span><a href="#361">capture_clause</a> {
-                    hir::CaptureBy::Value =&gt; <a href="#1873-1884">adjust_for_move_closure</a>(<a href="#374">place</a>, <a href="#374">capture_kind</a>),
-                    hir::CaptureBy::Ref =&gt; <a href="#1888-1906">adjust_for_non_move_closure</a>(<a href="#374">place</a>, <a href="#374">capture_kind</a>),
+                <span class="kw">let </span>(place, capture_kind) = <span class="kw">match </span><a href="#376">capture_clause</a> {
+                    hir::CaptureBy::Value =&gt; <a href="#1888-1899">adjust_for_move_closure</a>(<a href="#389">place</a>, <a href="#389">capture_kind</a>),
+                    hir::CaptureBy::Ref =&gt; <a href="#1903-1921">adjust_for_non_move_closure</a>(<a href="#389">place</a>, <a href="#389">capture_kind</a>),
                 };
 
                 <span class="comment">// This restriction needs to be applied after we have handled adjustments for `move`
                 // closures. We want to make sure any adjustment that might make us move the place into
                 // the closure gets handled.
                 </span><span class="kw">let </span>(place, capture_kind) =
-                    <a href="#1786-1806">restrict_precision_for_drop_types</a>(<a class="self" href="#360">self</a>, <a href="#411">place</a>, <a href="#411">capture_kind</a>);
+                    <a href="#1801-1821">restrict_precision_for_drop_types</a>(<a class="self" href="#375">self</a>, <a href="#426">place</a>, <a href="#426">capture_kind</a>);
 
-                <a href="#369">capture_info</a>.capture_kind = <a href="#419">capture_kind</a>;
-                (<a href="#419">place</a>, <a href="#369">capture_info</a>)
+                <a href="#384">capture_info</a>.capture_kind = <a href="#434">capture_kind</a>;
+                (<a href="#434">place</a>, <a href="#384">capture_info</a>)
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-        (<a href="#367">processed</a>, <a href="#364">closure_kind</a>, <a href="#365">origin</a>)
+        (<a href="#382">processed</a>, <a href="#379">closure_kind</a>, <a href="#380">origin</a>)
     }
 
     <span class="doccomment">/// Analyzes the information collected by `InferBorrowKind` to compute the min number of
@@ -2732,10 +2762,10 @@
             <span class="kw">return</span>;
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>typeck_results = <a class="self" href="#503">self</a>.typeck_results.borrow_mut();
+        <span class="kw">let </span><span class="kw-2">mut </span>typeck_results = <a class="self" href="#518">self</a>.typeck_results.borrow_mut();
 
         <span class="kw">let </span><span class="kw-2">mut </span>root_var_min_capture_list =
-            <a href="#512">typeck_results</a>.closure_min_captures.remove(<span class="kw-2">&amp;</span><a href="#504">closure_def_id</a>).unwrap_or_default();
+            <a href="#527">typeck_results</a>.closure_min_captures.remove(<span class="kw-2">&amp;</span><a href="#519">closure_def_id</a>).unwrap_or_default();
 
         <span class="kw">for </span>(<span class="kw-2">mut </span>place, capture_info) <span class="kw">in </span>capture_information.into_iter() {
             <span class="kw">let </span>var_hir_id = <span class="kw">match </span>place.base {
@@ -2948,7 +2978,7 @@
             <span class="string">&quot;For closure={:?}, min_captures after sorting={:#?}&quot;</span>,
             closure_def_id, root_var_min_capture_list
         );
-        <a href="#512">typeck_results</a>.closure_min_captures.insert(<a href="#504">closure_def_id</a>, <a href="#514">root_var_min_capture_list</a>);
+        <a href="#527">typeck_results</a>.closure_min_captures.insert(<a href="#519">closure_def_id</a>, <a href="#529">root_var_min_capture_list</a>);
     }
 
     <span class="doccomment">/// Perform the migration analysis for RFC 2229, and emit lint
@@ -2960,24 +2990,24 @@
         capture_clause: <a href="../../rustc_ast/ast/enum.CaptureBy.html">hir::CaptureBy</a>,
         span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     ) {
-        <span class="kw">let </span>(need_migrations, reasons) = <a class="self" href="#734">self</a>.<a href="#1135">compute_2229_migrations</a>(
-            <a href="#735">closure_def_id</a>,
-            <a href="#738">span</a>,
-            <a href="#737">capture_clause</a>,
-            <a class="self" href="#734">self</a>.typeck_results.borrow().closure_min_captures.get(<span class="kw-2">&amp;</span><a href="#735">closure_def_id</a>),
+        <span class="kw">let </span>(need_migrations, reasons) = <a class="self" href="#749">self</a>.<a href="#1150">compute_2229_migrations</a>(
+            <a href="#750">closure_def_id</a>,
+            <a href="#753">span</a>,
+            <a href="#752">capture_clause</a>,
+            <a class="self" href="#749">self</a>.typeck_results.borrow().closure_min_captures.get(<span class="kw-2">&amp;</span><a href="#750">closure_def_id</a>),
         );
 
         <span class="kw">if </span>!need_migrations.is_empty() {
             <span class="kw">let </span>(migration_string, migrated_variables_concat) =
-                <a href="#1989-2011">migration_suggestion_for_2229</a>(<a class="self" href="#734">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#740">need_migrations</a>);
+                <a href="#2004-2026">migration_suggestion_for_2229</a>(<a class="self" href="#749">self</a>.tcx, <span class="kw-2">&amp;</span><a href="#755">need_migrations</a>);
 
-            <span class="kw">let </span>closure_hir_id = <a class="self" href="#734">self</a>.tcx.hir().local_def_id_to_hir_id(<a href="#735">closure_def_id</a>);
-            <span class="kw">let </span>closure_head_span = <a class="self" href="#734">self</a>.tcx.def_span(<a href="#735">closure_def_id</a>);
-            <a class="self" href="#734">self</a>.tcx.struct_span_lint_hir(
+            <span class="kw">let </span>closure_hir_id = <a class="self" href="#749">self</a>.tcx.hir().local_def_id_to_hir_id(<a href="#750">closure_def_id</a>);
+            <span class="kw">let </span>closure_head_span = <a class="self" href="#749">self</a>.tcx.def_span(<a href="#750">closure_def_id</a>);
+            <a class="self" href="#749">self</a>.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
-                <a href="#751">closure_hir_id</a>,
-                <a href="#752">closure_head_span</a>,
-                <a href="#740">reasons</a>.<a href="#109-118">migration_message</a>(),
+                <a href="#766">closure_hir_id</a>,
+                <a href="#767">closure_head_span</a>,
+                <a href="#755">reasons</a>.<a href="#110-119">migration_message</a>(),
                 |lint| {
                     <span class="kw">for </span>NeededMigration { var_hir_id, diagnostics_info } <span class="kw">in </span><span class="kw-2">&amp;</span>need_migrations {
                         <span class="comment">// Labels all the usage of the captured variable and why they are responsible
@@ -3040,51 +3070,51 @@
                             }
                         }
                     }
-                    <a href="#758">lint</a>.note(<span class="string">&quot;for more information, see &lt;https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html&gt;&quot;</span>);
+                    <a href="#773">lint</a>.note(<span class="string">&quot;for more information, see &lt;https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html&gt;&quot;</span>);
 
                     <span class="kw">let </span>diagnostic_msg = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                         <span class="string">&quot;add a dummy let to cause {migrated_variables_concat} to be fully captured&quot;
                     </span>);
 
-                    <span class="kw">let </span>closure_span = <a class="self" href="#734">self</a>.tcx.hir().span_with_body(<a href="#751">closure_hir_id</a>);
+                    <span class="kw">let </span>closure_span = <a class="self" href="#749">self</a>.tcx.hir().span_with_body(<a href="#766">closure_hir_id</a>);
                     <span class="kw">let </span><span class="kw-2">mut </span>closure_body_span = {
                         <span class="comment">// If the body was entirely expanded from a macro
                         // invocation, i.e. the body is not contained inside the
                         // closure span, then we walk up the expansion until we
                         // find the span before the expansion.
-                        </span><span class="kw">let </span>s = <a class="self" href="#734">self</a>.tcx.hir().span_with_body(<a href="#736">body_id</a>.hir_id);
-                        <a href="#832">s</a>.find_ancestor_inside(<a href="#826">closure_span</a>).unwrap_or(<a href="#832">s</a>)
+                        </span><span class="kw">let </span>s = <a class="self" href="#749">self</a>.tcx.hir().span_with_body(<a href="#751">body_id</a>.hir_id);
+                        <a href="#847">s</a>.find_ancestor_inside(<a href="#841">closure_span</a>).unwrap_or(<a href="#847">s</a>)
                     };
 
-                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = <a class="self" href="#734">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#827">closure_body_span</a>) {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>s) = <a class="self" href="#749">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#842">closure_body_span</a>) {
                         <span class="kw">if </span>s.starts_with(<span class="string">&#39;$&#39;</span>) {
                             <span class="comment">// Looks like a macro fragment. Try to find the real block.
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(hir::Node::Expr(<span class="kw-2">&amp;</span><a href="../../rustc_hir/hir/struct.Expr.html">hir::Expr</a> {
                                 kind: hir::ExprKind::Block(block, ..), ..
-                            })) = <a class="self" href="#734">self</a>.tcx.hir().find(<a href="#736">body_id</a>.hir_id) {
+                            })) = <a class="self" href="#749">self</a>.tcx.hir().find(<a href="#751">body_id</a>.hir_id) {
                                 <span class="comment">// If the body is a block (with `{..}`), we use the span of that block.
                                 // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
                                 // Since we know it&#39;s a block, we know we can insert the `let _ = ..` without
                                 // breaking the macro syntax.
-                                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a class="self" href="#734">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#840">block</a>.span) {
-                                    <a href="#827">closure_body_span</a> = <a href="#840">block</a>.span;
-                                    <a href="#836">s</a> = <a href="#846">snippet</a>;
+                                </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a class="self" href="#749">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#855">block</a>.span) {
+                                    <a href="#842">closure_body_span</a> = <a href="#855">block</a>.span;
+                                    <a href="#851">s</a> = <a href="#861">snippet</a>;
                                 }
                             }
                         }
 
-                        <span class="kw">let </span><span class="kw-2">mut </span>lines = <a href="#836">s</a>.lines();
-                        <span class="kw">let </span>line1 = <a href="#853">lines</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap_or_default();
+                        <span class="kw">let </span><span class="kw-2">mut </span>lines = <a href="#851">s</a>.lines();
+                        <span class="kw">let </span>line1 = <a href="#868">lines</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap_or_default();
 
                         <span class="kw">if </span>line1.trim_end() == <span class="string">&quot;{&quot; </span>{
                             <span class="comment">// This is a multi-line closure with just a `{` on the first line,
                             // so we put the `let` on its own line.
                             // We take the indentation from the next non-empty line.
-                            </span><span class="kw">let </span>line2 = <a href="#853">lines</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|line| !<a href="#860">line</a>.is_empty()).unwrap_or_default();
-                            <span class="kw">let </span>indent = <a href="#860">line2</a>.split_once(|c: <a href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>| !<a href="#861">c</a>.is_whitespace()).unwrap_or_default().<span class="number">0</span>;
-                            <a href="#758">lint</a>.span_suggestion(
-                                <a href="#827">closure_body_span</a>.with_lo(<a href="#827">closure_body_span</a>.lo() + BytePos::from_usize(<a href="#854">line1</a>.len())).shrink_to_lo(),
-                                <a href="#822">diagnostic_msg</a>,
+                            </span><span class="kw">let </span>line2 = <a href="#868">lines</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|line| !<a href="#875">line</a>.is_empty()).unwrap_or_default();
+                            <span class="kw">let </span>indent = <a href="#875">line2</a>.split_once(|c: <a href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>| !<a href="#876">c</a>.is_whitespace()).unwrap_or_default().<span class="number">0</span>;
+                            <a href="#773">lint</a>.span_suggestion(
+                                <a href="#842">closure_body_span</a>.with_lo(<a href="#842">closure_body_span</a>.lo() + BytePos::from_usize(<a href="#869">line1</a>.len())).shrink_to_lo(),
+                                <a href="#837">diagnostic_msg</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;\n{indent}{migration_string};&quot;</span>),
                                 Applicability::MachineApplicable,
                             );
@@ -3093,17 +3123,17 @@
                             // braces, but with more than just the opening
                             // brace on the first line. We put the `let`
                             // directly after the `{`.
-                            </span><a href="#758">lint</a>.span_suggestion(
-                                <a href="#827">closure_body_span</a>.with_lo(<a href="#827">closure_body_span</a>.lo() + BytePos(<span class="number">1</span>)).shrink_to_lo(),
-                                <a href="#822">diagnostic_msg</a>,
+                            </span><a href="#773">lint</a>.span_suggestion(
+                                <a href="#842">closure_body_span</a>.with_lo(<a href="#842">closure_body_span</a>.lo() + BytePos(<span class="number">1</span>)).shrink_to_lo(),
+                                <a href="#837">diagnostic_msg</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot; {migration_string};&quot;</span>),
                                 Applicability::MachineApplicable,
                             );
                         } <span class="kw">else </span>{
                             <span class="comment">// This is a closure without braces around the body.
                             // We add braces to add the `let` before the body.
-                            </span><a href="#758">lint</a>.multipart_suggestion(
-                                <a href="#822">diagnostic_msg</a>,
+                            </span><a href="#773">lint</a>.multipart_suggestion(
+                                <a href="#837">diagnostic_msg</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
                                     (closure_body_span.shrink_to_lo(), <span class="macro">format!</span>(<span class="string">&quot;{{ {migration_string}; &quot;</span>)),
                                     (closure_body_span.shrink_to_hi(), <span class="string">&quot; }&quot;</span>.to_string()),
@@ -3112,15 +3142,15 @@
                             );
                         }
                     } <span class="kw">else </span>{
-                        <a href="#758">lint</a>.span_suggestion(
-                            <a href="#826">closure_span</a>,
-                            <a href="#822">diagnostic_msg</a>,
-                            <a href="#748">migration_string</a>,
+                        <a href="#773">lint</a>.span_suggestion(
+                            <a href="#841">closure_span</a>,
+                            <a href="#837">diagnostic_msg</a>,
+                            <a href="#763">migration_string</a>,
                             Applicability::HasPlaceholders
                         );
                     }
 
-                    <a href="#758">lint</a>
+                    <a href="#773">lint</a>
                 },
             );
         }
@@ -3131,10 +3161,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         auto_trait_reasons: UnordSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
         drop_order: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    ) -&gt; <a href="#98-106">MigrationWarningReason</a> {
-        <a href="#98-106">MigrationWarningReason</a> {
-            auto_traits: <a href="#909">auto_trait_reasons</a>.to_sorted_stable_ord(),
-            <a href="#910">drop_order</a>,
+    ) -&gt; <a href="#99-107">MigrationWarningReason</a> {
+        <a href="#99-107">MigrationWarningReason</a> {
+            auto_traits: <a href="#924">auto_trait_reasons</a>.to_sorted_stable_ord(),
+            <a href="#925">drop_order</a>,
         }
     }
 
@@ -3149,37 +3179,37 @@
         min_captures: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ty::RootVariableMinCaptureList&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         var_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
         closure_clause: <a href="../../rustc_ast/ast/enum.CaptureBy.html">hir::CaptureBy</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;FxIndexMap&lt;<a href="#87-94">UpvarMigrationInfo</a>, UnordSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;FxIndexMap&lt;<a href="#88-95">UpvarMigrationInfo</a>, UnordSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;&gt; {
         <span class="kw">let </span>auto_traits_def_id = [
-            <a class="self" href="#925">self</a>.tcx.lang_items().clone_trait(),
-            <a class="self" href="#925">self</a>.tcx.lang_items().sync_trait(),
-            <a class="self" href="#925">self</a>.tcx.get_diagnostic_item(sym::Send),
-            <a class="self" href="#925">self</a>.tcx.lang_items().unpin_trait(),
-            <a class="self" href="#925">self</a>.tcx.get_diagnostic_item(sym::unwind_safe_trait),
-            <a class="self" href="#925">self</a>.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
+            <a class="self" href="#940">self</a>.tcx.lang_items().clone_trait(),
+            <a class="self" href="#940">self</a>.tcx.lang_items().sync_trait(),
+            <a class="self" href="#940">self</a>.tcx.get_diagnostic_item(sym::Send),
+            <a class="self" href="#940">self</a>.tcx.lang_items().unpin_trait(),
+            <a class="self" href="#940">self</a>.tcx.get_diagnostic_item(sym::unwind_safe_trait),
+            <a class="self" href="#940">self</a>.tcx.get_diagnostic_item(sym::ref_unwind_safe_trait),
         ];
         <span class="kw">const </span>AUTO_TRAITS: [<span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>; <span class="number">6</span>] =
             [<span class="string">&quot;`Clone`&quot;</span>, <span class="string">&quot;`Sync`&quot;</span>, <span class="string">&quot;`Send`&quot;</span>, <span class="string">&quot;`Unpin`&quot;</span>, <span class="string">&quot;`UnwindSafe`&quot;</span>, <span class="string">&quot;`RefUnwindSafe`&quot;</span>];
 
         <span class="kw">let </span>root_var_min_capture_list = min_captures.and_then(|m| m.get(<span class="kw-2">&amp;</span>var_hir_id))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>ty = <a class="self" href="#925">self</a>.resolve_vars_if_possible(<a class="self" href="#925">self</a>.<a href="fn_ctxt/_impl.rs.html#445-457">node_ty</a>(<a href="#927">var_hir_id</a>));
+        <span class="kw">let </span>ty = <a class="self" href="#940">self</a>.resolve_vars_if_possible(<a class="self" href="#940">self</a>.<a href="fn_ctxt/_impl.rs.html#445-457">node_ty</a>(<a href="#942">var_hir_id</a>));
 
-        <span class="kw">let </span>ty = <span class="kw">match </span><a href="#928">closure_clause</a> {
-            hir::CaptureBy::Value =&gt; <a href="#943">ty</a>, <span class="comment">// For move closure the capture kind should be by value
+        <span class="kw">let </span>ty = <span class="kw">match </span><a href="#943">closure_clause</a> {
+            hir::CaptureBy::Value =&gt; <a href="#958">ty</a>, <span class="comment">// For move closure the capture kind should be by value
             </span>hir::CaptureBy::Ref =&gt; {
                 <span class="comment">// For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ImmBorrow &lt; UniqueImmBorrow &lt; MutBorrow &lt; ByValue
-                </span><span class="kw">let </span><span class="kw-2">mut </span>max_capture_info = <a href="#941">root_var_min_capture_list</a>.first().unwrap().info;
+                </span><span class="kw">let </span><span class="kw-2">mut </span>max_capture_info = <a href="#956">root_var_min_capture_list</a>.first().unwrap().info;
                 <span class="kw">for </span>capture <span class="kw">in </span>root_var_min_capture_list.iter() {
                     max_capture_info = determine_capture_info(max_capture_info, capture.info);
                 }
 
-                <a href="#1639-1653">apply_capture_kind_on_capture_ty</a>(
-                    <a class="self" href="#925">self</a>.tcx,
-                    <a href="#943">ty</a>,
-                    <a href="#950">max_capture_info</a>.capture_kind,
-                    <span class="prelude-val">Some</span>(<a class="self" href="#925">self</a>.tcx.lifetimes.re_erased),
+                <a href="#1654-1668">apply_capture_kind_on_capture_ty</a>(
+                    <a class="self" href="#940">self</a>.tcx,
+                    <a href="#958">ty</a>,
+                    <a href="#965">max_capture_info</a>.capture_kind,
+                    <span class="prelude-val">Some</span>(<a class="self" href="#940">self</a>.tcx.lifetimes.re_erased),
                 )
             }
         };
@@ -3235,7 +3265,7 @@
             }
         }
         <span class="kw">if </span>!problematic_captures.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#974">problematic_captures</a>);
+            <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#989">problematic_captures</a>);
         }
         <span class="prelude-val">None
     </span>}
@@ -3260,7 +3290,7 @@
         min_captures: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ty::RootVariableMinCaptureList&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         closure_clause: <a href="../../rustc_ast/ast/enum.CaptureBy.html">hir::CaptureBy</a>,
         var_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;FxIndexSet&lt;<a href="#87-94">UpvarMigrationInfo</a>&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;FxIndexSet&lt;<a href="#88-95">UpvarMigrationInfo</a>&gt;&gt; {
         <span class="kw">let </span>ty = <span class="self">self</span>.resolve_vars_if_possible(<span class="self">self</span>.node_ty(var_hir_id));
 
         <span class="kw">if </span>!ty.has_significant_drop(<span class="self">self</span>.tcx, <span class="self">self</span>.tcx.param_env(closure_def_id)) {
@@ -3362,7 +3392,7 @@
         closure_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         closure_clause: <a href="../../rustc_ast/ast/enum.CaptureBy.html">hir::CaptureBy</a>,
         min_captures: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ty::RootVariableMinCaptureList&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
-    ) -&gt; (Vec&lt;<a href="#131-134">NeededMigration</a>&gt;, <a href="#98-106">MigrationWarningReason</a>) {
+    ) -&gt; (Vec&lt;<a href="#132-135">NeededMigration</a>&gt;, <a href="#99-107">MigrationWarningReason</a>) {
         <span class="kw">let </span><span class="prelude-val">Some</span>(upvars) = <span class="self">self</span>.tcx.upvars_mentioned(closure_def_id) <span class="kw">else </span>{
             <span class="kw">return </span>(Vec::new(), MigrationWarningReason::default());
         };
@@ -3546,16 +3576,16 @@
         captured_by_move_projs: Vec&lt;<span class="kw-2">&amp;</span>[Projection&lt;<span class="lifetime">&#39;tcx</span>&gt;]&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>needs_drop =
-            |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| <a href="#1326">ty</a>.has_significant_drop(<a class="self" href="#1319">self</a>.tcx, <a class="self" href="#1319">self</a>.tcx.param_env(<a href="#1320">closure_def_id</a>));
+            |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| <a href="#1341">ty</a>.has_significant_drop(<a class="self" href="#1334">self</a>.tcx, <a class="self" href="#1334">self</a>.tcx.param_env(<a href="#1335">closure_def_id</a>));
 
         <span class="kw">let </span>is_drop_defined_for_ty = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
-            <span class="kw">let </span>drop_trait = <a class="self" href="#1319">self</a>.tcx.require_lang_item(hir::LangItem::Drop, <span class="prelude-val">Some</span>(<a href="#1321">closure_span</a>));
-            <a class="self" href="#1319">self</a>.infcx
-                .<a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">type_implements_trait</a>(<a href="#1329">drop_trait</a>, [<a href="#1328">ty</a>], <a class="self" href="#1319">self</a>.tcx.param_env(<a href="#1320">closure_def_id</a>))
+            <span class="kw">let </span>drop_trait = <a class="self" href="#1334">self</a>.tcx.require_lang_item(hir::LangItem::Drop, <span class="prelude-val">Some</span>(<a href="#1336">closure_span</a>));
+            <a class="self" href="#1334">self</a>.infcx
+                .<a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">type_implements_trait</a>(<a href="#1344">drop_trait</a>, [<a href="#1343">ty</a>], <a class="self" href="#1334">self</a>.tcx.param_env(<a href="#1335">closure_def_id</a>))
                 .must_apply_modulo_regions()
         };
 
-        <span class="kw">let </span>is_drop_defined_for_ty = <a href="#1328">is_drop_defined_for_ty</a>(<a href="#1322">base_path_ty</a>);
+        <span class="kw">let </span>is_drop_defined_for_ty = <a href="#1343">is_drop_defined_for_ty</a>(<a href="#1337">base_path_ty</a>);
 
         <span class="comment">// If there is a case where no projection is applied on top of current place
         // then there must be exactly one capture corresponding to such a case. Note that this
@@ -3563,7 +3593,7 @@
         //
         // eg. If `a.b` is captured and we are processing `a.b`, then we can&#39;t have the closure also
         //     capture `a.b.c`, because that violates min capture.
-        </span><span class="kw">let </span>is_completely_captured = <a href="#1323">captured_by_move_projs</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|projs| <a href="#1343">projs</a>.is_empty());
+        </span><span class="kw">let </span>is_completely_captured = <a href="#1338">captured_by_move_projs</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|projs| <a href="#1358">projs</a>.is_empty());
 
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!is_completely_captured || (captured_by_move_projs.len() == <span class="number">1</span>));
 
@@ -3574,7 +3604,7 @@
         }
 
         <span class="kw">if </span>captured_by_move_projs.is_empty() {
-            <span class="kw">return </span><a href="#1325">needs_drop</a>(<a href="#1322">base_path_ty</a>);
+            <span class="kw">return </span><a href="#1340">needs_drop</a>(<a href="#1337">base_path_ty</a>);
         }
 
         <span class="kw">if </span>is_drop_defined_for_ty {
@@ -3588,7 +3618,7 @@
             </span><span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">match </span><a href="#1322">base_path_ty</a>.kind() {
+        <span class="kw">match </span><a href="#1337">base_path_ty</a>.kind() {
             <span class="comment">// Observations:
             // - `captured_by_move_projs` is not empty. Therefore we can call
             //   `captured_by_move_projs.first().unwrap()` safely.
@@ -3597,7 +3627,7 @@
 
             // We don&#39;t capture derefs in case of move captures, which would have be applied to
             // access any further paths.
-            </span>ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#1377">def</a>.is_box() =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
+            </span>ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#1392">def</a>.is_box() =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
             ty::Ref(..) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
             ty::RawPtr(..) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
 
@@ -3613,27 +3643,27 @@
                         ProjectionKind::Field(..)
                     ))
                 );
-                <a href="#1381">def</a>.variants().get(<a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>).unwrap().fields.iter_enumerated().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(
+                <a href="#1396">def</a>.variants().get(<a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>).unwrap().fields.iter_enumerated().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(
                     |(i, field)| {
-                        <span class="kw">let </span>paths_using_field = <a href="#1323">captured_by_move_projs</a>
+                        <span class="kw">let </span>paths_using_field = <a href="#1338">captured_by_move_projs</a>
                             .iter()
                             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|projs| {
                                 <span class="kw">if let </span>ProjectionKind::Field(field_idx, <span class="kw">_</span>) =
-                                    <a href="#1397">projs</a>.first().unwrap().kind
+                                    <a href="#1412">projs</a>.first().unwrap().kind
                                 {
-                                    <span class="kw">if </span>field_idx == i { <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#1397">projs</a>[<span class="number">1</span>..]) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
+                                    <span class="kw">if </span>field_idx == i { <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#1412">projs</a>[<span class="number">1</span>..]) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
                                 } <span class="kw">else </span>{
                                     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>();
                                 }
                             })
                             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-                        <span class="kw">let </span>after_field_ty = <a href="#1394">field</a>.ty(<a class="self" href="#1319">self</a>.tcx, <a href="#1381">args</a>);
-                        <a class="self" href="#1319">self</a>.<a href="#1318-1453">has_significant_drop_outside_of_captures</a>(
-                            <a href="#1320">closure_def_id</a>,
-                            <a href="#1321">closure_span</a>,
-                            <a href="#1408">after_field_ty</a>,
-                            <a href="#1395">paths_using_field</a>,
+                        <span class="kw">let </span>after_field_ty = <a href="#1409">field</a>.ty(<a class="self" href="#1334">self</a>.tcx, <a href="#1396">args</a>);
+                        <a class="self" href="#1334">self</a>.<a href="#1333-1468">has_significant_drop_outside_of_captures</a>(
+                            <a href="#1335">closure_def_id</a>,
+                            <a href="#1336">closure_span</a>,
+                            <a href="#1423">after_field_ty</a>,
+                            <a href="#1410">paths_using_field</a>,
                         )
                     },
                 )
@@ -3648,24 +3678,24 @@
                     ))
                 );
 
-                <a href="#1419">fields</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|(i, element_ty)| {
-                    <span class="kw">let </span>paths_using_field = <a href="#1323">captured_by_move_projs</a>
+                <a href="#1434">fields</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|(i, element_ty)| {
+                    <span class="kw">let </span>paths_using_field = <a href="#1338">captured_by_move_projs</a>
                         .iter()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|projs| {
-                            <span class="kw">if let </span>ProjectionKind::Field(field_idx, <span class="kw">_</span>) = <a href="#1431">projs</a>.first().unwrap().kind
+                            <span class="kw">if let </span>ProjectionKind::Field(field_idx, <span class="kw">_</span>) = <a href="#1446">projs</a>.first().unwrap().kind
                             {
-                                <span class="kw">if </span>field_idx.index() == i { <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#1431">projs</a>[<span class="number">1</span>..]) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
+                                <span class="kw">if </span>field_idx.index() == i { <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><a href="#1446">projs</a>[<span class="number">1</span>..]) } <span class="kw">else </span>{ <span class="prelude-val">None </span>}
                             } <span class="kw">else </span>{
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>();
                             }
                         })
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-                    <a class="self" href="#1319">self</a>.<a href="#1318-1453">has_significant_drop_outside_of_captures</a>(
-                        <a href="#1320">closure_def_id</a>,
-                        <a href="#1321">closure_span</a>,
-                        <a href="#1428">element_ty</a>,
-                        <a href="#1429">paths_using_field</a>,
+                    <a class="self" href="#1334">self</a>.<a href="#1333-1468">has_significant_drop_outside_of_captures</a>(
+                        <a href="#1335">closure_def_id</a>,
+                        <a href="#1336">closure_span</a>,
+                        <a href="#1443">element_ty</a>,
+                        <a href="#1444">paths_using_field</a>,
                     )
                 })
             }
@@ -3680,14 +3710,14 @@
         place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         capture_clause: <a href="../../rustc_ast/ast/enum.CaptureBy.html">hir::CaptureBy</a>,
     ) -&gt; <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a> {
-        <span class="kw">match </span><a href="#1458">capture_clause</a> {
+        <span class="kw">match </span><a href="#1473">capture_clause</a> {
             <span class="comment">// In case of a move closure if the data is accessed through a reference we
             // want to capture by ref to allow precise capture using reborrows.
             //
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
             // the closure.
-            </span>hir::CaptureBy::Value <span class="kw">if </span>!<a href="#1457">place</a>.deref_tys().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(Ty::is_ref) =&gt; {
+            </span>hir::CaptureBy::Value <span class="kw">if </span>!<a href="#1472">place</a>.deref_tys().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(Ty::is_ref) =&gt; {
                 ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value | hir::CaptureBy::Ref =&gt; ty::UpvarCapture::ByRef(ty::ImmBorrow),
@@ -3699,17 +3729,17 @@
         closure_def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
         var_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
     ) -&gt; Place&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>upvar_id = ty::UpvarId::new(<a href="#1477">var_hir_id</a>, <a href="#1476">closure_def_id</a>);
+        <span class="kw">let </span>upvar_id = ty::UpvarId::new(<a href="#1492">var_hir_id</a>, <a href="#1491">closure_def_id</a>);
 
         <a href="../../rustc_hir_typeck/expr_use_visitor/struct.Place.html">Place</a> {
-            base_ty: <a class="self" href="#1475">self</a>.<a href="fn_ctxt/_impl.rs.html#445-457">node_ty</a>(<a href="#1477">var_hir_id</a>),
-            base: PlaceBase::Upvar(<a href="#1479">upvar_id</a>),
+            base_ty: <a class="self" href="#1490">self</a>.<a href="fn_ctxt/_impl.rs.html#445-457">node_ty</a>(<a href="#1492">var_hir_id</a>),
+            base: PlaceBase::Upvar(<a href="#1494">upvar_id</a>),
             projections: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
         }
     }
 
     <span class="kw">fn </span>should_log_capture_analysis(<span class="kw-2">&amp;</span><span class="self">self</span>, closure_def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#1488">self</a>.tcx.has_attr(<a href="#1488">closure_def_id</a>, sym::rustc_capture_analysis)
+        <a class="self" href="#1503">self</a>.tcx.has_attr(<a href="#1503">closure_def_id</a>, sym::rustc_capture_analysis)
     }
 
     <span class="kw">fn </span>log_capture_analysis_first_pass(
@@ -3720,7 +3750,7 @@
     ) {
         <span class="kw">if </span><span class="self">self</span>.should_log_capture_analysis(closure_def_id) {
             <span class="kw">let </span><span class="kw-2">mut </span>diag =
-                <a class="self" href="#1493">self</a>.tcx.sess.struct_span_err(<a href="#1496">closure_span</a>, <span class="string">&quot;First Pass analysis includes:&quot;</span>);
+                <a class="self" href="#1508">self</a>.tcx.sess.struct_span_err(<a href="#1511">closure_span</a>, <span class="string">&quot;First Pass analysis includes:&quot;</span>);
             <span class="kw">for </span>(place, capture_info) <span class="kw">in </span>capture_information {
                 <span class="kw">let </span>capture_str = construct_capture_info_string(<span class="self">self</span>.tcx, place, capture_info);
                 <span class="kw">let </span>output_str = <span class="macro">format!</span>(<span class="string">&quot;Capturing {capture_str}&quot;</span>);
@@ -3729,17 +3759,17 @@
                     capture_info.path_expr_id.map_or(closure_span, |e| <span class="self">self</span>.tcx.hir().span(e));
                 diag.span_note(span, output_str);
             }
-            <a href="#1499">diag</a>.emit();
+            <a href="#1514">diag</a>.emit();
         }
     }
 
     <span class="kw">fn </span>log_closure_min_capture_info(<span class="kw-2">&amp;</span><span class="self">self</span>, closure_def_id: <a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>, closure_span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) {
         <span class="kw">if </span><span class="self">self</span>.should_log_capture_analysis(closure_def_id) {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(min_captures) =
-                <a class="self" href="#1513">self</a>.typeck_results.borrow().closure_min_captures.get(<span class="kw-2">&amp;</span><a href="#1513">closure_def_id</a>)
+                <a class="self" href="#1528">self</a>.typeck_results.borrow().closure_min_captures.get(<span class="kw-2">&amp;</span><a href="#1528">closure_def_id</a>)
             {
                 <span class="kw">let </span><span class="kw-2">mut </span>diag =
-                    <a class="self" href="#1513">self</a>.tcx.sess.struct_span_err(<a href="#1513">closure_span</a>, <span class="string">&quot;Min Capture analysis includes:&quot;</span>);
+                    <a class="self" href="#1528">self</a>.tcx.sess.struct_span_err(<a href="#1528">closure_span</a>, <span class="string">&quot;Min Capture analysis includes:&quot;</span>);
 
                 <span class="kw">for </span>(<span class="kw">_</span>, min_captures_for_var) <span class="kw">in </span>min_captures {
                     <span class="kw">for </span>capture <span class="kw">in </span>min_captures_for_var {
@@ -3778,7 +3808,7 @@
                         };
                     }
                 }
-                <a href="#1518">diag</a>.emit();
+                <a href="#1533">diag</a>.emit();
             }
         }
     }
@@ -3791,15 +3821,15 @@
         typeck_results: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>TypeckResults&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="../../rustc_ast/ast/enum.Mutability.html">hir::Mutability</a> {
-        <span class="kw">let </span>var_hir_id = <span class="kw">match </span><a href="#1569">place</a>.base {
-            PlaceBase::Upvar(upvar_id) =&gt; <a href="#1572">upvar_id</a>.var_path.hir_id,
+        <span class="kw">let </span>var_hir_id = <span class="kw">match </span><a href="#1584">place</a>.base {
+            PlaceBase::Upvar(upvar_id) =&gt; <a href="#1587">upvar_id</a>.var_path.hir_id,
             <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
         };
 
-        <span class="kw">let </span>bm = <span class="kw-2">*</span><a href="#1568">typeck_results</a>.pat_binding_modes().get(<a href="#1571">var_hir_id</a>).expect(<span class="string">&quot;missing binding mode&quot;</span>);
+        <span class="kw">let </span>bm = <span class="kw-2">*</span><a href="#1583">typeck_results</a>.pat_binding_modes().get(<a href="#1586">var_hir_id</a>).expect(<span class="string">&quot;missing binding mode&quot;</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>is_mutbl = <span class="kw">match </span><a href="#1576">bm</a> {
-            ty::BindByValue(mutability) =&gt; <a href="#1579">mutability</a>,
+        <span class="kw">let </span><span class="kw-2">mut </span>is_mutbl = <span class="kw">match </span><a href="#1591">bm</a> {
+            ty::BindByValue(mutability) =&gt; <a href="#1594">mutability</a>,
             ty::BindByReference(<span class="kw">_</span>) =&gt; hir::Mutability::Not,
         };
 
@@ -3822,7 +3852,7 @@
             }
         }
 
-        <a href="#1578">is_mutbl</a>
+        <a href="#1593">is_mutbl</a>
     }
 }
 
@@ -3832,13 +3862,13 @@
     <span class="kw-2">mut </span>place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     <span class="kw-2">mut </span>curr_borrow_kind: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>,
 ) -&gt; (Place&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>) {
-    <span class="kw">let </span>pos = <a href="#1609">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">position</a>(|(i, p)| {
-        <span class="kw">let </span>ty = <a href="#1609">place</a>.ty_before_projection(<a href="#1612">i</a>);
+    <span class="kw">let </span>pos = <a href="#1624">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">position</a>(|(i, p)| {
+        <span class="kw">let </span>ty = <a href="#1624">place</a>.ty_before_projection(<a href="#1627">i</a>);
 
         <span class="comment">// Return true for fields of packed structs.
-        </span><span class="kw">match </span><a href="#1612">p</a>.kind {
-            ProjectionKind::Field(..) =&gt; <span class="kw">match </span><a href="#1613">ty</a>.kind() {
-                ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#1618">def</a>.repr().packed() =&gt; {
+        </span><span class="kw">match </span><a href="#1627">p</a>.kind {
+            ProjectionKind::Field(..) =&gt; <span class="kw">match </span><a href="#1628">ty</a>.kind() {
+                ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#1633">def</a>.repr().packed() =&gt; {
                     <span class="comment">// We stop here regardless of field alignment. Field alignment can change as
                     // types change, including the types of private fields in other crates, and that
                     // shouldn&#39;t affect how we compute our captures.
@@ -3851,11 +3881,11 @@
         }
     });
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(pos) = <a href="#1612">pos</a> {
-        <a href="#2099-2127">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1609">place</a>, <span class="kw-2">&amp;mut </span><a href="#1610">curr_borrow_kind</a>, <a href="#1631">pos</a>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(pos) = <a href="#1627">pos</a> {
+        <a href="#2114-2142">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1624">place</a>, <span class="kw-2">&amp;mut </span><a href="#1625">curr_borrow_kind</a>, <a href="#1646">pos</a>);
     }
 
-    (<a href="#1609">place</a>, <a href="#1610">curr_borrow_kind</a>)
+    (<a href="#1624">place</a>, <a href="#1625">curr_borrow_kind</a>)
 }
 
 <span class="doccomment">/// Returns a Ty that applies the specified capture kind on the provided capture Ty
@@ -3865,36 +3895,36 @@
     capture_kind: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">UpvarCapture</a>,
     region: <span class="prelude-ty">Option</span>&lt;ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 ) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">match </span><a href="#1642">capture_kind</a> {
-        ty::UpvarCapture::ByValue =&gt; <a href="#1641">ty</a>,
+    <span class="kw">match </span><a href="#1657">capture_kind</a> {
+        ty::UpvarCapture::ByValue =&gt; <a href="#1656">ty</a>,
         ty::UpvarCapture::ByRef(kind) =&gt; Ty::new_ref(
-            <a href="#1640">tcx</a>,
-            <a href="#1643">region</a>.unwrap(),
-            <a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: <a href="#1641">ty</a>, mutbl: <a href="#1647">kind</a>.to_mutbl_lossy() },
+            <a href="#1655">tcx</a>,
+            <a href="#1658">region</a>.unwrap(),
+            <a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: <a href="#1656">ty</a>, mutbl: <a href="#1662">kind</a>.to_mutbl_lossy() },
         ),
     }
 }
 
 <span class="doccomment">/// Returns the Span of where the value with the provided HirId would be dropped
 </span><span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.drop_location_span.html">drop_location_span</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-    <span class="kw">let </span>owner_id = <a href="#1656">tcx</a>.hir().get_enclosing_scope(<a href="#1656">hir_id</a>).unwrap();
+    <span class="kw">let </span>owner_id = <a href="#1671">tcx</a>.hir().get_enclosing_scope(<a href="#1671">hir_id</a>).unwrap();
 
-    <span class="kw">let </span>owner_node = <a href="#1656">tcx</a>.hir().get(<a href="#1657">owner_id</a>);
-    <span class="kw">let </span>owner_span = <span class="kw">match </span><a href="#1659">owner_node</a> {
-        hir::Node::Item(item) =&gt; <span class="kw">match </span><a href="#1661">item</a>.kind {
-            hir::ItemKind::Fn(<span class="kw">_</span>, <span class="kw">_</span>, owner_id) =&gt; <a href="#1656">tcx</a>.hir().span(<a href="#1662">owner_id</a>.hir_id),
+    <span class="kw">let </span>owner_node = <a href="#1671">tcx</a>.hir().get(<a href="#1672">owner_id</a>);
+    <span class="kw">let </span>owner_span = <span class="kw">match </span><a href="#1674">owner_node</a> {
+        hir::Node::Item(item) =&gt; <span class="kw">match </span><a href="#1676">item</a>.kind {
+            hir::ItemKind::Fn(<span class="kw">_</span>, <span class="kw">_</span>, owner_id) =&gt; <a href="#1671">tcx</a>.hir().span(<a href="#1677">owner_id</a>.hir_id),
             <span class="kw">_ </span>=&gt; {
                 <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Drop location span error: need to handle more ItemKind &#39;{:?}&#39;&quot;</span>, item.kind);
             }
         },
-        hir::Node::Block(block) =&gt; <a href="#1656">tcx</a>.hir().span(<a href="#1667">block</a>.hir_id),
-        hir::Node::TraitItem(item) =&gt; <a href="#1656">tcx</a>.hir().span(<a href="#1668">item</a>.hir_id()),
-        hir::Node::ImplItem(item) =&gt; <a href="#1656">tcx</a>.hir().span(<a href="#1669">item</a>.hir_id()),
+        hir::Node::Block(block) =&gt; <a href="#1671">tcx</a>.hir().span(<a href="#1682">block</a>.hir_id),
+        hir::Node::TraitItem(item) =&gt; <a href="#1671">tcx</a>.hir().span(<a href="#1683">item</a>.hir_id()),
+        hir::Node::ImplItem(item) =&gt; <a href="#1671">tcx</a>.hir().span(<a href="#1684">item</a>.hir_id()),
         <span class="kw">_ </span>=&gt; {
             <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Drop location span error: need to handle more Node &#39;{:?}&#39;&quot;</span>, owner_node);
         }
     };
-    <a href="#1656">tcx</a>.sess.source_map().end_point(<a href="#1660">owner_span</a>)
+    <a href="#1671">tcx</a>.sess.source_map().end_point(<a href="#1675">owner_span</a>)
 }
 
 <span class="kw">struct </span><a href="../../rustc_hir_typeck/upvar/struct.InferBorrowKind.html">InferBorrowKind</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -3938,16 +3968,16 @@
         cause: <a href="../../rustc_middle/mir/syntax/enum.FakeReadCause.html">FakeReadCause</a>,
         diag_expr_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
     ) {
-        <span class="kw">let </span>PlaceBase::Upvar(<span class="kw">_</span>) = <a href="#1714">place</a>.place.base <span class="kw">else </span>{ <span class="kw">return </span>};
+        <span class="kw">let </span>PlaceBase::Upvar(<span class="kw">_</span>) = <a href="#1729">place</a>.place.base <span class="kw">else </span>{ <span class="kw">return </span>};
 
         <span class="comment">// We need to restrict Fake Read precision to avoid fake reading unsafe code,
         // such as deref of a raw pointer.
         </span><span class="kw">let </span>dummy_capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
 
-        <span class="kw">let </span>(place, <span class="kw">_</span>) = <a href="#1845-1870">restrict_capture_precision</a>(<a href="#1714">place</a>.place.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#1722">dummy_capture_kind</a>);
+        <span class="kw">let </span>(place, <span class="kw">_</span>) = <a href="#1860-1885">restrict_capture_precision</a>(<a href="#1729">place</a>.place.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a href="#1737">dummy_capture_kind</a>);
 
-        <span class="kw">let </span>(place, <span class="kw">_</span>) = <a href="#1608-1636">restrict_repr_packed_field_ref_capture</a>(<a href="#1724">place</a>, <a href="#1722">dummy_capture_kind</a>);
-        <a class="self" href="#1713">self</a>.fake_reads.push((<a href="#1726">place</a>, <a href="#1715">cause</a>, <a href="#1716">diag_expr_id</a>));
+        <span class="kw">let </span>(place, <span class="kw">_</span>) = <a href="#1623-1651">restrict_repr_packed_field_ref_capture</a>(<a href="#1739">place</a>, <a href="#1737">dummy_capture_kind</a>);
+        <a class="self" href="#1728">self</a>.fake_reads.push((<a href="#1741">place</a>, <a href="#1730">cause</a>, <a href="#1731">diag_expr_id</a>));
     }
 
     <span class="attr">#[instrument(skip(<span class="self">self</span>), level = <span class="string">&quot;debug&quot;</span>)]
@@ -4011,9 +4041,9 @@
     <span class="kw-2">mut </span>place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     <span class="kw-2">mut </span>curr_mode: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>,
 ) -&gt; (Place&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>) {
-    <span class="kw">let </span>is_copy_type = <a href="#1787">fcx</a>.infcx.<a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">type_is_copy_modulo_regions</a>(<a href="#1787">fcx</a>.param_env, <a href="#1788">place</a>.ty());
+    <span class="kw">let </span>is_copy_type = <a href="#1802">fcx</a>.infcx.<a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">type_is_copy_modulo_regions</a>(<a href="#1802">fcx</a>.param_env, <a href="#1803">place</a>.ty());
 
-    <span class="kw">if let </span>(<span class="bool-val">false</span>, UpvarCapture::ByValue) = (<a href="#1791">is_copy_type</a>, <a href="#1789">curr_mode</a>) {
+    <span class="kw">if let </span>(<span class="bool-val">false</span>, UpvarCapture::ByValue) = (<a href="#1806">is_copy_type</a>, <a href="#1804">curr_mode</a>) {
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..place.projections.len() {
             <span class="kw">match </span>place.ty_before_projection(i).kind() {
                 ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span>def.destructor(fcx.tcx).is_some() =&gt; {
@@ -4025,7 +4055,7 @@
         }
     }
 
-    (<a href="#1788">place</a>, <a href="#1789">curr_mode</a>)
+    (<a href="#1803">place</a>, <a href="#1804">curr_mode</a>)
 }
 
 <span class="doccomment">/// Truncate `place` so that an `unsafe` block isn&#39;t required to capture it.
@@ -4037,11 +4067,11 @@
     <span class="kw-2">mut </span>curr_mode: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>,
 ) -&gt; (Place&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>) {
     <span class="kw">if </span>place.base_ty.is_unsafe_ptr() {
-        <a href="#2099-2127">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1813">place</a>, <span class="kw-2">&amp;mut </span><a href="#1814">curr_mode</a>, <span class="number">0</span>);
+        <a href="#2114-2142">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1828">place</a>, <span class="kw-2">&amp;mut </span><a href="#1829">curr_mode</a>, <span class="number">0</span>);
     }
 
     <span class="kw">if </span>place.base_ty.is_union() {
-        <a href="#2099-2127">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1813">place</a>, <span class="kw-2">&amp;mut </span><a href="#1814">curr_mode</a>, <span class="number">0</span>);
+        <a href="#2114-2142">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1828">place</a>, <span class="kw-2">&amp;mut </span><a href="#1829">curr_mode</a>, <span class="number">0</span>);
     }
 
     <span class="kw">for </span>(i, proj) <span class="kw">in </span>place.projections.iter().enumerate() {
@@ -4058,7 +4088,7 @@
         }
     }
 
-    (<a href="#1813">place</a>, <a href="#1814">curr_mode</a>)
+    (<a href="#1828">place</a>, <a href="#1829">curr_mode</a>)
 }
 
 <span class="doccomment">/// Truncate projections so that following rules are obeyed by the captured `place`:
@@ -4069,11 +4099,11 @@
     place: Place&lt;<span class="lifetime">&#39;_</span>&gt;,
     curr_mode: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>,
 ) -&gt; (Place&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>) {
-    <span class="kw">let </span>(<span class="kw-2">mut </span>place, <span class="kw-2">mut </span>curr_mode) = <a href="#1812-1839">restrict_precision_for_unsafe</a>(<a href="#1846">place</a>, <a href="#1847">curr_mode</a>);
+    <span class="kw">let </span>(<span class="kw-2">mut </span>place, <span class="kw-2">mut </span>curr_mode) = <a href="#1827-1854">restrict_precision_for_unsafe</a>(<a href="#1861">place</a>, <a href="#1862">curr_mode</a>);
 
     <span class="kw">if </span>place.projections.is_empty() {
         <span class="comment">// Nothing to do here
-        </span><span class="kw">return </span>(<a href="#1849">place</a>, <a href="#1849">curr_mode</a>);
+        </span><span class="kw">return </span>(<a href="#1864">place</a>, <a href="#1864">curr_mode</a>);
     }
 
     <span class="kw">for </span>(i, proj) <span class="kw">in </span>place.projections.iter().enumerate() {
@@ -4089,7 +4119,7 @@
         </span>}
     }
 
-    (<a href="#1849">place</a>, <a href="#1849">curr_mode</a>)
+    (<a href="#1864">place</a>, <a href="#1864">curr_mode</a>)
 }
 
 <span class="doccomment">/// Truncate deref of any reference.
@@ -4097,13 +4127,13 @@
     <span class="kw-2">mut </span>place: Place&lt;<span class="lifetime">&#39;_</span>&gt;,
     <span class="kw-2">mut </span>kind: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>,
 ) -&gt; (Place&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>) {
-    <span class="kw">let </span>first_deref = <a href="#1874">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">position</a>(|proj| <a href="#1877">proj</a>.kind == ProjectionKind::Deref);
+    <span class="kw">let </span>first_deref = <a href="#1889">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">position</a>(|proj| <a href="#1892">proj</a>.kind == ProjectionKind::Deref);
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = <a href="#1877">first_deref</a> {
-        <a href="#2099-2127">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1874">place</a>, <span class="kw-2">&amp;mut </span><a href="#1875">kind</a>, <a href="#1879">idx</a>);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = <a href="#1892">first_deref</a> {
+        <a href="#2114-2142">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1889">place</a>, <span class="kw-2">&amp;mut </span><a href="#1890">kind</a>, <a href="#1894">idx</a>);
     }
 
-    (<a href="#1874">place</a>, ty::UpvarCapture::ByValue)
+    (<a href="#1889">place</a>, ty::UpvarCapture::ByValue)
 }
 
 <span class="doccomment">/// Adjust closure capture just that if taking ownership of data, only move data
@@ -4113,24 +4143,24 @@
     <span class="kw-2">mut </span>kind: <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>,
 ) -&gt; (Place&lt;<span class="lifetime">&#39;_</span>&gt;, <a href="../../rustc_middle/ty/closure/enum.UpvarCapture.html">ty::UpvarCapture</a>) {
     <span class="kw">let </span>contains_deref =
-        <a href="#1889">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">position</a>(|proj| <a href="#1893">proj</a>.kind == ProjectionKind::Deref);
+        <a href="#1904">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">position</a>(|proj| <a href="#1908">proj</a>.kind == ProjectionKind::Deref);
 
-    <span class="kw">match </span><a href="#1890">kind</a> {
+    <span class="kw">match </span><a href="#1905">kind</a> {
         ty::UpvarCapture::ByValue =&gt; {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = <a href="#1892">contains_deref</a> {
-                <a href="#2099-2127">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1889">place</a>, <span class="kw-2">&amp;mut </span><a href="#1890">kind</a>, <a href="#1897">idx</a>);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(idx) = <a href="#1907">contains_deref</a> {
+                <a href="#2114-2142">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#1904">place</a>, <span class="kw-2">&amp;mut </span><a href="#1905">kind</a>, <a href="#1912">idx</a>);
             }
         }
 
         ty::UpvarCapture::ByRef(..) =&gt; {}
     }
 
-    (<a href="#1889">place</a>, <a href="#1890">kind</a>)
+    (<a href="#1904">place</a>, <a href="#1905">kind</a>)
 }
 
 <span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.construct_place_string.html">construct_place_string</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-    <span class="kw">let </span>variable_name = <span class="kw">match </span><a href="#1908">place</a>.base {
-        PlaceBase::Upvar(upvar_id) =&gt; <a href="#1967-1969">var_name</a>(<a href="#1908">tcx</a>, <a href="#1910">upvar_id</a>.var_path.hir_id).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
+    <span class="kw">let </span>variable_name = <span class="kw">match </span><a href="#1923">place</a>.base {
+        PlaceBase::Upvar(upvar_id) =&gt; <a href="#1982-1984">var_name</a>(<a href="#1923">tcx</a>, <a href="#1925">upvar_id</a>.var_path.hir_id).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
         <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Capture_information should only contain upvars&quot;</span>),
     };
 
@@ -4157,9 +4187,9 @@
     place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     capture_info: <span class="kw-2">&amp;</span><a href="../../rustc_middle/ty/closure/struct.CaptureInfo.html">ty::CaptureInfo</a>,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-    <span class="kw">let </span>place_str = <a href="#1908-1930">construct_place_string</a>(<a href="#1933">tcx</a>, <a href="#1934">place</a>);
+    <span class="kw">let </span>place_str = <a href="#1923-1945">construct_place_string</a>(<a href="#1948">tcx</a>, <a href="#1949">place</a>);
 
-    <span class="kw">let </span>capture_kind_str = <span class="kw">match </span><a href="#1935">capture_info</a>.capture_kind {
+    <span class="kw">let </span>capture_kind_str = <span class="kw">match </span><a href="#1950">capture_info</a>.capture_kind {
         ty::UpvarCapture::ByValue =&gt; <span class="string">&quot;ByValue&quot;</span>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
         ty::UpvarCapture::ByRef(kind) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{kind:?}&quot;</span>),
     };
@@ -4168,7 +4198,7 @@
 }
 
 <span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.construct_path_string.html">construct_path_string</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-    <span class="kw">let </span>place_str = <a href="#1908-1930">construct_place_string</a>(<a href="#1947">tcx</a>, <a href="#1947">place</a>);
+    <span class="kw">let </span>place_str = <a href="#1923-1945">construct_place_string</a>(<a href="#1962">tcx</a>, <a href="#1962">place</a>);
 
     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{place_str} used here&quot;</span>)
 }
@@ -4178,9 +4208,9 @@
     place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     capture_info: <span class="kw-2">&amp;</span><a href="../../rustc_middle/ty/closure/struct.CaptureInfo.html">ty::CaptureInfo</a>,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
-    <span class="kw">let </span>place_str = <a href="#1908-1930">construct_place_string</a>(<a href="#1954">tcx</a>, <a href="#1955">place</a>);
+    <span class="kw">let </span>place_str = <a href="#1923-1945">construct_place_string</a>(<a href="#1969">tcx</a>, <a href="#1970">place</a>);
 
-    <span class="kw">let </span>capture_kind_str = <span class="kw">match </span><a href="#1956">capture_info</a>.capture_kind {
+    <span class="kw">let </span>capture_kind_str = <span class="kw">match </span><a href="#1971">capture_info</a>.capture_kind {
         ty::UpvarCapture::ByValue =&gt; <span class="string">&quot;ByValue&quot;</span>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
         ty::UpvarCapture::ByRef(kind) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{kind:?}&quot;</span>),
     };
@@ -4188,7 +4218,7 @@
 }
 
 <span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.var_name.html">var_name</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, var_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a> {
-    <a href="#1967">tcx</a>.hir().name(<a href="#1967">var_hir_id</a>)
+    <a href="#1982">tcx</a>.hir().name(<a href="#1982">var_hir_id</a>)
 }
 
 <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(tcx))]
@@ -4211,15 +4241,15 @@
 /// - s2: Comma separated names of the variables being migrated.
 </span><span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.migration_suggestion_for_2229.html">migration_suggestion_for_2229</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-    need_migrations: <span class="kw-2">&amp;</span>[<a href="#131-134">NeededMigration</a>],
+    need_migrations: <span class="kw-2">&amp;</span>[<a href="#132-135">NeededMigration</a>],
 ) -&gt; (<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>) {
-    <span class="kw">let </span>need_migrations_variables = <a href="#1991">need_migrations</a>
+    <span class="kw">let </span>need_migrations_variables = <a href="#2006">need_migrations</a>
         .iter()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<a href="#131-134">NeededMigration</a> { var_hir_id: v, .. }| <a href="#1967-1969">var_name</a>(<a href="#1990">tcx</a>, <span class="kw-2">*</span><a href="#1995">v</a>))
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<a href="#132-135">NeededMigration</a> { var_hir_id: v, .. }| <a href="#1982-1984">var_name</a>(<a href="#2005">tcx</a>, <span class="kw-2">*</span><a href="#2010">v</a>))
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
     <span class="kw">let </span>migration_ref_concat =
-        <a href="#1993">need_migrations_variables</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|v| <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{v}&quot;</span>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().join(<span class="string">&quot;, &quot;</span>);
+        <a href="#2008">need_migrations_variables</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|v| <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;&amp;{v}&quot;</span>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().join(<span class="string">&quot;, &quot;</span>);
 
     <span class="kw">let </span>migration_string = <span class="kw">if </span><span class="number">1 </span>== need_migrations.len() {
         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;let _ = {migration_ref_concat}&quot;</span>)
@@ -4228,9 +4258,9 @@
     };
 
     <span class="kw">let </span>migrated_variables_concat =
-        <a href="#1993">need_migrations_variables</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|v| <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{v}`&quot;</span>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().join(<span class="string">&quot;, &quot;</span>);
+        <a href="#2008">need_migrations_variables</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|v| <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{v}`&quot;</span>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().join(<span class="string">&quot;, &quot;</span>);
 
-    (<a href="#2001">migration_string</a>, <a href="#2007">migrated_variables_concat</a>)
+    (<a href="#2016">migration_string</a>, <a href="#2022">migrated_variables_concat</a>)
 }
 
 <span class="doccomment">/// Helper function to determine if we need to escalate CaptureKind from
@@ -4275,32 +4305,32 @@
 ) -&gt; <a href="../../rustc_middle/ty/closure/struct.CaptureInfo.html">ty::CaptureInfo</a> {
     <span class="comment">// If the capture kind is equivalent then, we don&#39;t need to escalate and can compare the
     // expressions.
-    </span><span class="kw">let </span>eq_capture_kind = <span class="kw">match </span>(<a href="#2050">capture_info_a</a>.capture_kind, <a href="#2051">capture_info_b</a>.capture_kind) {
+    </span><span class="kw">let </span>eq_capture_kind = <span class="kw">match </span>(<a href="#2065">capture_info_a</a>.capture_kind, <a href="#2066">capture_info_b</a>.capture_kind) {
         (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue) =&gt; <span class="bool-val">true</span>,
-        (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) =&gt; <a href="#2057">ref_a</a> == <a href="#2057">ref_b</a>,
+        (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) =&gt; <a href="#2072">ref_a</a> == <a href="#2072">ref_b</a>,
         (ty::UpvarCapture::ByValue, <span class="kw">_</span>) | (ty::UpvarCapture::ByRef(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
     };
 
     <span class="kw">if </span>eq_capture_kind {
-        <span class="kw">match </span>(<a href="#2050">capture_info_a</a>.capture_kind_expr_id, <a href="#2051">capture_info_b</a>.capture_kind_expr_id) {
-            (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="kw">_</span>) | (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <a href="#2050">capture_info_a</a>,
-            (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <a href="#2051">capture_info_b</a>,
+        <span class="kw">match </span>(<a href="#2065">capture_info_a</a>.capture_kind_expr_id, <a href="#2066">capture_info_b</a>.capture_kind_expr_id) {
+            (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="kw">_</span>) | (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <a href="#2065">capture_info_a</a>,
+            (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <a href="#2066">capture_info_b</a>,
         }
     } <span class="kw">else </span>{
         <span class="comment">// We select the CaptureKind which ranks higher based the following priority order:
         // ByValue &gt; MutBorrow &gt; UniqueImmBorrow &gt; ImmBorrow
-        </span><span class="kw">match </span>(<a href="#2050">capture_info_a</a>.capture_kind, <a href="#2051">capture_info_b</a>.capture_kind) {
-            (ty::UpvarCapture::ByValue, <span class="kw">_</span>) =&gt; <a href="#2050">capture_info_a</a>,
-            (<span class="kw">_</span>, ty::UpvarCapture::ByValue) =&gt; <a href="#2051">capture_info_b</a>,
+        </span><span class="kw">match </span>(<a href="#2065">capture_info_a</a>.capture_kind, <a href="#2066">capture_info_b</a>.capture_kind) {
+            (ty::UpvarCapture::ByValue, <span class="kw">_</span>) =&gt; <a href="#2065">capture_info_a</a>,
+            (<span class="kw">_</span>, ty::UpvarCapture::ByValue) =&gt; <a href="#2066">capture_info_b</a>,
             (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) =&gt; {
-                <span class="kw">match </span>(<a href="#2072">ref_a</a>, <a href="#2072">ref_b</a>) {
+                <span class="kw">match </span>(<a href="#2087">ref_a</a>, <a href="#2087">ref_b</a>) {
                     <span class="comment">// Take LHS:
                     </span>(ty::UniqueImmBorrow | ty::MutBorrow, ty::ImmBorrow)
-                    | (ty::MutBorrow, ty::UniqueImmBorrow) =&gt; <a href="#2050">capture_info_a</a>,
+                    | (ty::MutBorrow, ty::UniqueImmBorrow) =&gt; <a href="#2065">capture_info_a</a>,
 
                     <span class="comment">// Take RHS:
                     </span>(ty::ImmBorrow, ty::UniqueImmBorrow | ty::MutBorrow)
-                    | (ty::UniqueImmBorrow, ty::MutBorrow) =&gt; <a href="#2051">capture_info_b</a>,
+                    | (ty::UniqueImmBorrow, ty::MutBorrow) =&gt; <a href="#2066">capture_info_b</a>,
 
                     (ty::ImmBorrow, ty::ImmBorrow)
                     | (ty::UniqueImmBorrow, ty::UniqueImmBorrow)
@@ -4330,7 +4360,7 @@
     // UniqueImmBorrow
     // Note that if the place contained Deref of a raw pointer it would&#39;ve not been MutBorrow, so
     // we don&#39;t need to worry about that case here.
-    </span><span class="kw">match </span><a href="#2101">curr_mode</a> {
+    </span><span class="kw">match </span><a href="#2116">curr_mode</a> {
         ty::UpvarCapture::ByRef(ty::BorrowKind::MutBorrow) =&gt; {
             <span class="kw">for </span>i <span class="kw">in </span>len..place.projections.len() {
                 <span class="kw">if </span>place.projections[i].kind == ProjectionKind::Deref
@@ -4346,7 +4376,7 @@
         ty::UpvarCapture::ByValue =&gt; {}
     }
 
-    <a href="#2100">place</a>.projections.truncate(<a href="#2102">len</a>);
+    <a href="#2115">place</a>.projections.truncate(<a href="#2117">len</a>);
 }
 
 <span class="doccomment">/// Determines the Ancestry relationship of Place A relative to Place B
@@ -4357,33 +4387,33 @@
 </span><span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.determine_place_ancestry_relation.html">determine_place_ancestry_relation</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     place_a: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     place_b: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <a href="#62-67">PlaceAncestryRelation</a> {
+) -&gt; <a href="#63-68">PlaceAncestryRelation</a> {
     <span class="comment">// If Place A and Place B don&#39;t start off from the same root variable, they are divergent.
     </span><span class="kw">if </span>place_a.base != place_b.base {
-        <span class="kw">return </span><a href="#66">PlaceAncestryRelation::Divergent</a>;
+        <span class="kw">return </span><a href="#67">PlaceAncestryRelation::Divergent</a>;
     }
 
     <span class="comment">// Assume of length of projections_a = n
-    </span><span class="kw">let </span>projections_a = <span class="kw-2">&amp;</span><a href="#2135">place_a</a>.projections;
+    </span><span class="kw">let </span>projections_a = <span class="kw-2">&amp;</span><a href="#2150">place_a</a>.projections;
 
     <span class="comment">// Assume of length of projections_b = m
-    </span><span class="kw">let </span>projections_b = <span class="kw-2">&amp;</span><a href="#2136">place_b</a>.projections;
+    </span><span class="kw">let </span>projections_b = <span class="kw-2">&amp;</span><a href="#2151">place_b</a>.projections;
 
     <span class="kw">let </span>same_initial_projections =
-        <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#2144">projections_a</a>, <a href="#2147">projections_b</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(proj_a, proj_b)| <a href="#2150">proj_a</a>.kind == <a href="#2150">proj_b</a>.kind);
+        <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#2159">projections_a</a>, <a href="#2162">projections_b</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(proj_a, proj_b)| <a href="#2165">proj_a</a>.kind == <a href="#2165">proj_b</a>.kind);
 
     <span class="kw">if </span>same_initial_projections {
         <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cmp/enum.Ordering.html">std::cmp::Ordering</a>;
 
         <span class="comment">// First min(n, m) projections are the same
         // Select Ancestor/Descendant
-        </span><span class="kw">match </span><a href="#2147">projections_b</a>.len().<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">cmp</a>(<span class="kw-2">&amp;</span><a href="#2144">projections_a</a>.len()) {
-            Ordering::Greater =&gt; <a href="#63">PlaceAncestryRelation::Ancestor</a>,
-            Ordering::Equal =&gt; <a href="#65">PlaceAncestryRelation::SamePlace</a>,
-            Ordering::Less =&gt; <a href="#64">PlaceAncestryRelation::Descendant</a>,
+        </span><span class="kw">match </span><a href="#2162">projections_b</a>.len().<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">cmp</a>(<span class="kw-2">&amp;</span><a href="#2159">projections_a</a>.len()) {
+            Ordering::Greater =&gt; <a href="#64">PlaceAncestryRelation::Ancestor</a>,
+            Ordering::Equal =&gt; <a href="#66">PlaceAncestryRelation::SamePlace</a>,
+            Ordering::Less =&gt; <a href="#65">PlaceAncestryRelation::Descendant</a>,
         }
     } <span class="kw">else </span>{
-        <a href="#66">PlaceAncestryRelation::Divergent</a>
+        <a href="#67">PlaceAncestryRelation::Divergent</a>
     }
 }
 
@@ -4424,17 +4454,17 @@
     <span class="comment">// Find the right-most deref (if any). All the projections that come after this
     // are fields or other &quot;in-place pointer adjustments&quot;; these refer therefore to
     // data owned by whatever pointer is being dereferenced here.
-    </span><span class="kw">let </span>idx = <a href="#2196">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rposition</a>(|proj| ProjectionKind::Deref == <a href="#2204">proj</a>.kind);
+    </span><span class="kw">let </span>idx = <a href="#2211">place</a>.projections.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rposition</a>(|proj| ProjectionKind::Deref == <a href="#2219">proj</a>.kind);
 
-    <span class="kw">match </span><a href="#2204">idx</a> {
+    <span class="kw">match </span><a href="#2219">idx</a> {
         <span class="comment">// If that pointer is a shared reference, then we don&#39;t need those fields.
-        </span><span class="prelude-val">Some</span>(idx) <span class="kw">if </span><a href="#2199">is_shared_ref</a>(<a href="#2196">place</a>.ty_before_projection(<a href="#2208">idx</a>)) =&gt; {
-            <a href="#2099-2127">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#2196">place</a>, <span class="kw-2">&amp;mut </span><a href="#2197">curr_mode</a>, <a href="#2208">idx</a> + <span class="number">1</span>)
+        </span><span class="prelude-val">Some</span>(idx) <span class="kw">if </span><a href="#2214">is_shared_ref</a>(<a href="#2211">place</a>.ty_before_projection(<a href="#2223">idx</a>)) =&gt; {
+            <a href="#2114-2142">truncate_place_to_len_and_update_capture_kind</a>(<span class="kw-2">&amp;mut </span><a href="#2211">place</a>, <span class="kw-2">&amp;mut </span><a href="#2212">curr_mode</a>, <a href="#2223">idx</a> + <span class="number">1</span>)
         }
         <span class="prelude-val">None </span>| <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {}
     }
 
-    (<a href="#2196">place</a>, <a href="#2197">curr_mode</a>)
+    (<a href="#2211">place</a>, <a href="#2212">curr_mode</a>)
 }
 
 <span class="doccomment">/// Precise capture is enabled if user is using Rust Edition 2021 or higher.
@@ -4442,6 +4472,6 @@
 </span><span class="kw">fn </span><a href="../../rustc_hir_typeck/upvar/fn.enable_precise_capture.html">enable_precise_capture</a>(span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
     <span class="comment">// We use span here to ensure that if the closure was generated by a macro with a different
     // edition.
-    </span><a href="#2219">span</a>.at_least_rust_2021()
+    </span><a href="#2234">span</a>.at_least_rust_2021()
 }
 </code></pre></div></section></main></body></html>

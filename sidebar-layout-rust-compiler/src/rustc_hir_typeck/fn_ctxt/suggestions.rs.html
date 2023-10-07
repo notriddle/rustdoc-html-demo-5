@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs`."><title>suggestions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/fn_ctxt/suggestions.rs`."><title>suggestions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1684,10 +1684,31 @@
 <a href="#1684" id="1684">1684</a>
 <a href="#1685" id="1685">1685</a>
 <a href="#1686" id="1686">1686</a>
+<a href="#1687" id="1687">1687</a>
+<a href="#1688" id="1688">1688</a>
+<a href="#1689" id="1689">1689</a>
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
+<a href="#1701" id="1701">1701</a>
+<a href="#1702" id="1702">1702</a>
+<a href="#1703" id="1703">1703</a>
+<a href="#1704" id="1704">1704</a>
+<a href="#1705" id="1705">1705</a>
+<a href="#1706" id="1706">1706</a>
+<a href="#1707" id="1707">1707</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="mod.rs.html#40-114"><span class="kw">super</span>::FnCtxt</a>;
 
-<span class="kw">use </span><a href="../lib.rs.html#27"><span class="kw">crate</span>::errors</a>;
-<span class="kw">use </span><a href="../lib.rs.html#76"><span class="kw">crate</span>::fluent_generated</a> <span class="kw">as </span>fluent;
+<span class="kw">use </span><a href="../lib.rs.html#26"><span class="kw">crate</span>::errors</a>;
+<span class="kw">use </span><a href="../lib.rs.html#74"><span class="kw">crate</span>::fluent_generated</a> <span class="kw">as </span>fluent;
 <span class="kw">use </span><span class="kw">crate</span>::method::probe::{<a href="../method/probe.rs.html#55">IsSuggestion</a>, <a href="../method/probe.rs.html#233-242">Mode</a>, <a href="../method/probe.rs.html#245-251">ProbeScope</a>};
 <span class="kw">use </span>rustc_ast::util::parser::{<a href="../../../rustc_ast/util/parser/enum.ExprPrecedence.html">ExprPrecedence</a>, <a href="../../../rustc_ast/util/parser/constant.PREC_POSTFIX.html">PREC_POSTFIX</a>};
 <span class="kw">use </span>rustc_errors::{<a href="../../../rustc_lint_defs/enum.Applicability.html">Applicability</a>, <a href="../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>, <a href="../../../rustc_error_messages/struct.MultiSpan.html">MultiSpan</a>};
@@ -1749,19 +1770,23 @@
         blk_id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span>expr = <a href="#60">expr</a>.peel_drop_temps();
-        <a class="self" href="#58">self</a>.<a href="#685-729">suggest_missing_semicolon</a>(<a href="#59">err</a>, <a href="#65">expr</a>, <a href="#61">expected</a>, <span class="bool-val">false</span>);
+        <a class="self" href="#58">self</a>.<a href="#689-733">suggest_missing_semicolon</a>(<a href="#59">err</a>, <a href="#65">expr</a>, <a href="#61">expected</a>, <span class="bool-val">false</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>pointing_at_return_type = <span class="bool-val">false</span>;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((fn_id, fn_decl, can_suggest)) = <a class="self" href="#58">self</a>.<a href="_impl.rs.html#979-990">get_fn_decl</a>(<a href="#63">blk_id</a>) {
-            <a href="#67">pointing_at_return_type</a> = <a class="self" href="#58">self</a>.<a href="#743">suggest_missing_return_type</a>(
+        <span class="kw">if let </span>hir::ExprKind::Break(..) = <a href="#65">expr</a>.kind {
+            <span class="comment">// `break` type mismatches provide better context for tail `loop` expressions.
+            </span><span class="kw">return </span><span class="bool-val">false</span>;
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((fn_id, fn_decl, can_suggest)) = <a class="self" href="#58">self</a>.<a href="_impl.rs.html#964-975">get_fn_decl</a>(<a href="#63">blk_id</a>) {
+            <a href="#67">pointing_at_return_type</a> = <a class="self" href="#58">self</a>.<a href="#747">suggest_missing_return_type</a>(
                 <a href="#59">err</a>,
-                <span class="kw-2">&amp;</span><a href="#68">fn_decl</a>,
+                <span class="kw-2">&amp;</span><a href="#72">fn_decl</a>,
                 <a href="#61">expected</a>,
                 <a href="#62">found</a>,
-                <a href="#68">can_suggest</a>,
-                <a href="#68">fn_id</a>,
+                <a href="#72">can_suggest</a>,
+                <a href="#72">fn_id</a>,
             );
-            <a class="self" href="#58">self</a>.<a href="#940-1012">suggest_missing_break_or_return_expr</a>(
-                <a href="#59">err</a>, <a href="#65">expr</a>, <span class="kw-2">&amp;</span><a href="#68">fn_decl</a>, <a href="#61">expected</a>, <a href="#62">found</a>, <a href="#63">blk_id</a>, <a href="#68">fn_id</a>,
+            <a class="self" href="#58">self</a>.<a href="#942-1014">suggest_missing_break_or_return_expr</a>(
+                <a href="#59">err</a>, <a href="#65">expr</a>, <span class="kw-2">&amp;</span><a href="#72">fn_decl</a>, <a href="#61">expected</a>, <a href="#62">found</a>, <a href="#63">blk_id</a>, <a href="#72">fn_id</a>,
             );
         }
         <a href="#67">pointing_at_return_type</a>
@@ -1781,14 +1806,14 @@
         found: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         can_satisfy: <span class="kw">impl </span>FnOnce(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span><span class="prelude-val">Some</span>((def_id_or_name, output, inputs)) = <a class="self" href="#92">self</a>.<a href="#166-171">extract_callable_info</a>(<a href="#95">found</a>) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>((def_id_or_name, output, inputs)) = <a class="self" href="#96">self</a>.<a href="#170-175">extract_callable_info</a>(<a href="#99">found</a>) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>can_satisfy(output) {
-            <span class="kw">let </span>(sugg_call, <span class="kw-2">mut </span>applicability) = <span class="kw">match </span><a href="#98">inputs</a>.len() {
+            <span class="kw">let </span>(sugg_call, <span class="kw-2">mut </span>applicability) = <span class="kw">match </span><a href="#102">inputs</a>.len() {
                 <span class="number">0 </span>=&gt; (<span class="string">&quot;&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(), Applicability::MachineApplicable),
                 <span class="number">1</span>..=<span class="number">4 </span>=&gt; (
-                    <a href="#98">inputs</a>
+                    <a href="#102">inputs</a>
                         .iter()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| {
                             <span class="kw">if </span>ty.is_suggestable(<span class="self">self</span>.tcx, <span class="bool-val">false</span>) {
@@ -1804,8 +1829,8 @@
                 <span class="kw">_ </span>=&gt; (<span class="string">&quot;/* ... */&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(), Applicability::HasPlaceholders),
             };
 
-            <span class="kw">let </span>msg = <span class="kw">match </span><a href="#98">def_id_or_name</a> {
-                DefIdOrName::DefId(def_id) =&gt; <span class="kw">match </span><a class="self" href="#92">self</a>.tcx.def_kind(<a href="#122">def_id</a>) {
+            <span class="kw">let </span>msg = <span class="kw">match </span><a href="#102">def_id_or_name</a> {
+                DefIdOrName::DefId(def_id) =&gt; <span class="kw">match </span><a class="self" href="#96">self</a>.tcx.def_kind(<a href="#126">def_id</a>) {
                     DefKind::Ctor(CtorOf::Struct, <span class="kw">_</span>) =&gt; <span class="string">&quot;construct this tuple struct&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
                     DefKind::Ctor(CtorOf::Variant, <span class="kw">_</span>) =&gt; <span class="string">&quot;construct this tuple variant&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
                     kind =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;call this {}&quot;</span>, <span class="self">self</span>.tcx.def_kind_descr(kind, def_id)),
@@ -1813,7 +1838,7 @@
                 DefIdOrName::Name(name) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;call this {name}&quot;</span>),
             };
 
-            <span class="kw">let </span>sugg = <span class="kw">match </span><a href="#94">expr</a>.kind {
+            <span class="kw">let </span>sugg = <span class="kw">match </span><a href="#98">expr</a>.kind {
                 hir::ExprKind::Call(..)
                 | hir::ExprKind::Path(..)
                 | hir::ExprKind::Index(..)
@@ -1822,7 +1847,7 @@
                 }
                 <a href="../../../rustc_hir/hir/enum.ExprKind.html">hir::ExprKind::Closure</a> { .. } =&gt; {
                     <span class="comment">// Might be `{ expr } || { bool }`
-                    </span><a href="#102">applicability</a> = Applicability::MaybeIncorrect;
+                    </span><a href="#106">applicability</a> = Applicability::MaybeIncorrect;
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
                         (expr.span.shrink_to_lo(), <span class="string">&quot;(&quot;</span>.to_string()),
                         (expr.span.shrink_to_hi(), <span class="macro">format!</span>(<span class="string">&quot;)({sugg_call})&quot;</span>)),
@@ -1836,10 +1861,10 @@
                 }
             };
 
-            <a href="#93">err</a>.multipart_suggestion_verbose(
+            <a href="#97">err</a>.multipart_suggestion_verbose(
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;use parentheses to {msg}&quot;</span>),
-                <a href="#130">sugg</a>,
-                <a href="#102">applicability</a>,
+                <a href="#134">sugg</a>,
+                <a href="#106">applicability</a>,
             );
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
@@ -1853,7 +1878,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="../../../rustc_trait_selection/traits/error_reporting/enum.DefIdOrName.html">DefIdOrName</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;)&gt; {
-        <a class="self" href="#167">self</a>.<a href="mod.rs.html#156-187">err_ctxt</a>().<a href="../../../rustc_trait_selection/traits/error_reporting/suggestions/trait.TypeErrCtxtExt.html">extract_callable_info</a>(<a class="self" href="#167">self</a>.body_id, <a class="self" href="#167">self</a>.param_env, <a href="#168">ty</a>)
+        <a class="self" href="#171">self</a>.<a href="mod.rs.html#156-187">err_ctxt</a>().<a href="../../../rustc_trait_selection/traits/error_reporting/suggestions/trait.TypeErrCtxtExt.html">extract_callable_info</a>(<a class="self" href="#171">self</a>.body_id, <a class="self" href="#171">self</a>.param_env, <a href="#172">ty</a>)
     }
 
     <span class="kw">pub fn </span>suggest_two_fn_call(
@@ -1865,10 +1890,10 @@
         rhs_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         can_satisfy: <span class="kw">impl </span>FnOnce(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, lhs_output_ty, lhs_inputs)) = <a class="self" href="#174">self</a>.<a href="#166-171">extract_callable_info</a>(<a href="#177">lhs_ty</a>) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, lhs_output_ty, lhs_inputs)) = <a class="self" href="#178">self</a>.<a href="#170-175">extract_callable_info</a>(<a href="#181">lhs_ty</a>) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
-        <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, rhs_output_ty, rhs_inputs)) = <a class="self" href="#174">self</a>.<a href="#166-171">extract_callable_info</a>(<a href="#179">rhs_ty</a>) <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, rhs_output_ty, rhs_inputs)) = <a class="self" href="#178">self</a>.<a href="#170-175">extract_callable_info</a>(<a href="#183">rhs_ty</a>) <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
 
@@ -1922,7 +1947,7 @@
                 }
             }
 
-            <a href="#175">err</a>.multipart_suggestion_verbose(<span class="string">&quot;use parentheses to call these&quot;</span>, <a href="#190">sugg</a>, <a href="#191">applicability</a>);
+            <a href="#179">err</a>.multipart_suggestion_verbose(<span class="string">&quot;use parentheses to call these&quot;</span>, <a href="#194">sugg</a>, <a href="#195">applicability</a>);
 
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
@@ -1936,16 +1961,16 @@
         expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span>hir::ExprKind::MethodCall(<a href="../../../rustc_hir/hir/struct.PathSegment.html">hir::PathSegment</a> { ident: method, .. }, recv_expr, <span class="kw-2">&amp;</span>[], <span class="kw">_</span>) = <a href="#250">expr</a>.kind &amp;&amp;
-            <span class="kw">let </span><span class="prelude-val">Some</span>(recv_ty) = <a class="self" href="#248">self</a>.typeck_results.borrow().expr_ty_opt(<a href="#253">recv_expr</a>) &amp;&amp;
+        <span class="kw">if let </span>hir::ExprKind::MethodCall(<a href="../../../rustc_hir/hir/struct.PathSegment.html">hir::PathSegment</a> { ident: method, .. }, recv_expr, <span class="kw-2">&amp;</span>[], <span class="kw">_</span>) = <a href="#254">expr</a>.kind &amp;&amp;
+            <span class="kw">let </span><span class="prelude-val">Some</span>(recv_ty) = <a class="self" href="#252">self</a>.typeck_results.borrow().expr_ty_opt(<a href="#257">recv_expr</a>) &amp;&amp;
             <span class="self">self</span>.can_coerce(recv_ty, expected) {
-                <span class="kw">let </span>span = <span class="kw">if let </span><span class="prelude-val">Some</span>(recv_span) = <a href="#253">recv_expr</a>.span.find_ancestor_inside(<a href="#250">expr</a>.span) {
-                    <a href="#250">expr</a>.span.with_lo(<a href="#256">recv_span</a>.hi())
+                <span class="kw">let </span>span = <span class="kw">if let </span><span class="prelude-val">Some</span>(recv_span) = <a href="#257">recv_expr</a>.span.find_ancestor_inside(<a href="#254">expr</a>.span) {
+                    <a href="#254">expr</a>.span.with_lo(<a href="#260">recv_span</a>.hi())
                 } <span class="kw">else </span>{
-                    <a href="#250">expr</a>.span.with_lo(<a href="#253">method</a>.span.lo() - rustc_span::BytePos(<span class="number">1</span>))
+                    <a href="#254">expr</a>.span.with_lo(<a href="#257">method</a>.span.lo() - rustc_span::BytePos(<span class="number">1</span>))
                 };
-                <a href="#249">err</a>.span_suggestion_verbose(
-                    <a href="#256">span</a>,
+                <a href="#253">err</a>.span_suggestion_verbose(
+                    <a href="#260">span</a>,
                     <span class="string">&quot;try removing the method call&quot;</span>,
                     <span class="string">&quot;&quot;</span>,
                     Applicability::MachineApplicable,
@@ -1963,24 +1988,24 @@
         found: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty_expr: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>expr = <a href="#275">expr</a>.peel_blocks();
-        <span class="kw">let </span>methods = <a class="self" href="#273">self</a>.<a href="../demand.rs.html#1116-1148">get_conversion_methods</a>(<a href="#280">expr</a>.span, <a href="#276">expected</a>, <a href="#277">found</a>, <a href="#280">expr</a>.hir_id);
+        <span class="kw">let </span>expr = <a href="#279">expr</a>.peel_blocks();
+        <span class="kw">let </span>methods = <a class="self" href="#277">self</a>.<a href="../demand.rs.html#1253-1285">get_conversion_methods</a>(<a href="#284">expr</a>.span, <a href="#280">expected</a>, <a href="#281">found</a>, <a href="#284">expr</a>.hir_id);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>((suggestion, msg, applicability, verbose, annotation)) =
-            <a class="self" href="#273">self</a>.<a href="../demand.rs.html#1300-1657">suggest_deref_or_ref</a>(<a href="#280">expr</a>, <a href="#277">found</a>, <a href="#276">expected</a>)
+            <a class="self" href="#277">self</a>.<a href="../demand.rs.html#1437-1794">suggest_deref_or_ref</a>(<a href="#284">expr</a>, <a href="#281">found</a>, <a href="#280">expected</a>)
         {
             <span class="kw">if </span>verbose {
-                <a href="#274">err</a>.multipart_suggestion_verbose(<a href="#283">msg</a>, <a href="#283">suggestion</a>, <a href="#283">applicability</a>);
+                <a href="#278">err</a>.multipart_suggestion_verbose(<a href="#287">msg</a>, <a href="#287">suggestion</a>, <a href="#287">applicability</a>);
             } <span class="kw">else </span>{
-                <a href="#274">err</a>.multipart_suggestion(<a href="#283">msg</a>, <a href="#283">suggestion</a>, <a href="#283">applicability</a>);
+                <a href="#278">err</a>.multipart_suggestion(<a href="#287">msg</a>, <a href="#287">suggestion</a>, <a href="#287">applicability</a>);
             }
             <span class="kw">if </span>annotation {
-                <span class="kw">let </span>suggest_annotation = <span class="kw">match </span><a href="#280">expr</a>.peel_drop_temps().kind {
-                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, <span class="kw">_</span>) =&gt; <a href="#293">mutbl</a>.ref_prefix_str(),
+                <span class="kw">let </span>suggest_annotation = <span class="kw">match </span><a href="#284">expr</a>.peel_drop_temps().kind {
+                    hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, <span class="kw">_</span>) =&gt; <a href="#297">mutbl</a>.ref_prefix_str(),
                     <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">true</span>,
                 };
                 <span class="kw">let </span><span class="kw-2">mut </span>tuple_indexes = Vec::new();
-                <span class="kw">let </span><span class="kw-2">mut </span>expr_id = <a href="#280">expr</a>.hir_id;
+                <span class="kw">let </span><span class="kw-2">mut </span>expr_id = <a href="#284">expr</a>.hir_id;
                 <span class="kw">for </span>(parent_id, node) <span class="kw">in </span><span class="self">self</span>.tcx.hir().parent_iter(expr.hir_id) {
                     <span class="kw">match </span>node {
                         Node::Expr(<span class="kw-2">&amp;</span>Expr { kind: ExprKind::Tup(subs), .. }) =&gt; {
@@ -2023,19 +2048,19 @@
         }
 
         <span class="kw">if </span><span class="self">self</span>.suggest_fn_call(err, expr, found, |output| <span class="self">self</span>.can_coerce(output, expected))
-            &amp;&amp; <span class="kw">let </span>ty::FnDef(def_id, ..) = <span class="kw-2">*</span><a href="#277">found</a>.kind()
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(sp) = <a class="self" href="#273">self</a>.tcx.hir().span_if_local(<a href="#340">def_id</a>)
+            &amp;&amp; <span class="kw">let </span>ty::FnDef(def_id, ..) = <span class="kw-2">*</span><a href="#281">found</a>.kind()
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(sp) = <a class="self" href="#277">self</a>.tcx.hir().span_if_local(<a href="#344">def_id</a>)
         {
-            <span class="kw">let </span>name = <a class="self" href="#273">self</a>.tcx.item_name(<a href="#340">def_id</a>);
-            <span class="kw">let </span>kind = <a class="self" href="#273">self</a>.tcx.def_kind(<a href="#340">def_id</a>);
-            <span class="kw">if let </span>DefKind::Ctor(of, CtorKind::Fn) = <a href="#344">kind</a> {
-                <a href="#274">err</a>.span_label(<a href="#341">sp</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{name}` defines {} constructor here, which should be called&quot;</span>, <span class="kw">match </span>of {
+            <span class="kw">let </span>name = <a class="self" href="#277">self</a>.tcx.item_name(<a href="#344">def_id</a>);
+            <span class="kw">let </span>kind = <a class="self" href="#277">self</a>.tcx.def_kind(<a href="#344">def_id</a>);
+            <span class="kw">if let </span>DefKind::Ctor(of, CtorKind::Fn) = <a href="#348">kind</a> {
+                <a href="#278">err</a>.span_label(<a href="#345">sp</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{name}` defines {} constructor here, which should be called&quot;</span>, <span class="kw">match </span>of {
                     CtorOf::Struct =&gt; <span class="string">&quot;a struct&quot;</span>,
                     CtorOf::Variant =&gt; <span class="string">&quot;an enum variant&quot;</span>,
                 }));
             } <span class="kw">else </span>{
-                <span class="kw">let </span>descr = <a class="self" href="#273">self</a>.tcx.def_kind_descr(<a href="#344">kind</a>, <a href="#340">def_id</a>);
-                <a href="#274">err</a>.span_label(<a href="#341">sp</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{descr} `{name}` defined here&quot;</span>));
+                <span class="kw">let </span>descr = <a class="self" href="#277">self</a>.tcx.def_kind_descr(<a href="#348">kind</a>, <a href="#344">def_id</a>);
+                <a href="#278">err</a>.span_label(<a href="#345">sp</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{descr} `{name}` defined here&quot;</span>));
             }
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
@@ -2045,18 +2070,18 @@
         }
 
         <span class="kw">if </span>!methods.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>suggestions = <a href="#281">methods</a>
+            <span class="kw">let </span><span class="kw-2">mut </span>suggestions = <a href="#285">methods</a>
                 .iter()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|conversion_method| {
-                    <span class="kw">let </span>receiver_method_ident = <a href="#280">expr</a>.method_ident();
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(method_ident) = <a href="#365">receiver_method_ident</a>
+                    <span class="kw">let </span>receiver_method_ident = <a href="#284">expr</a>.method_ident();
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(method_ident) = <a href="#369">receiver_method_ident</a>
                         &amp;&amp; method_ident.name == conversion_method.name
                     {
                         <span class="kw">return </span><span class="prelude-val">None </span><span class="comment">// do not suggest code that is already there (#53348)
                     </span>}
 
                     <span class="kw">let </span>method_call_list = [sym::to_vec, sym::to_string];
-                    <span class="kw">let </span><span class="kw-2">mut </span>sugg = <span class="kw">if let </span>ExprKind::MethodCall(receiver_method, ..) = <a href="#280">expr</a>.kind
+                    <span class="kw">let </span><span class="kw-2">mut </span>sugg = <span class="kw">if let </span>ExprKind::MethodCall(receiver_method, ..) = <a href="#284">expr</a>.kind
                         &amp;&amp; receiver_method.ident.name == sym::clone
                         &amp;&amp; method_call_list.contains(<span class="kw-2">&amp;</span>conversion_method.name)
                         <span class="comment">// If receiver is `.clone()` and found type has one of those methods,
@@ -2079,17 +2104,17 @@
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[(expr.span.shrink_to_hi(), <span class="macro">format!</span>(<span class="string">&quot;.{}()&quot;</span>, conversion_method.name))]
                     };
                     <span class="kw">let </span>struct_pat_shorthand_field =
-                        <a class="self" href="#273">self</a>.tcx.hir().maybe_get_struct_pattern_shorthand_field(<a href="#280">expr</a>);
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <a href="#395">struct_pat_shorthand_field</a> {
-                        <a href="#373">sugg</a>.insert(<span class="number">0</span>, (<a href="#280">expr</a>.span.shrink_to_lo(), <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{name}: &quot;</span>)));
+                        <a class="self" href="#277">self</a>.tcx.hir().maybe_get_struct_pattern_shorthand_field(<a href="#284">expr</a>);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(name) = <a href="#399">struct_pat_shorthand_field</a> {
+                        <a href="#377">sugg</a>.insert(<span class="number">0</span>, (<a href="#284">expr</a>.span.shrink_to_lo(), <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{name}: &quot;</span>)));
                     }
-                    <span class="prelude-val">Some</span>(<a href="#373">sugg</a>)
+                    <span class="prelude-val">Some</span>(<a href="#377">sugg</a>)
                 })
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">peekable</a>();
             <span class="kw">if </span>suggestions.peek().is_some() {
-                <a href="#274">err</a>.multipart_suggestions(
+                <a href="#278">err</a>.multipart_suggestions(
                     <span class="string">&quot;try using a conversion method&quot;</span>,
-                    <a href="#362">suggestions</a>,
+                    <a href="#366">suggestions</a>,
                     Applicability::MaybeIncorrect,
                 );
                 <span class="kw">return </span><span class="bool-val">true</span>;
@@ -2097,49 +2122,49 @@
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>((found_ty_inner, expected_ty_inner, error_tys)) =
-            <a class="self" href="#273">self</a>.<a href="#477-503">deconstruct_option_or_result</a>(<a href="#277">found</a>, <a href="#276">expected</a>)
-            &amp;&amp; <span class="kw">let </span>ty::Ref(<span class="kw">_</span>, peeled, hir::Mutability::Not) = <span class="kw-2">*</span><a href="#413">expected_ty_inner</a>.kind()
+            <a class="self" href="#277">self</a>.<a href="#481-507">deconstruct_option_or_result</a>(<a href="#281">found</a>, <a href="#280">expected</a>)
+            &amp;&amp; <span class="kw">let </span>ty::Ref(<span class="kw">_</span>, peeled, hir::Mutability::Not) = <span class="kw-2">*</span><a href="#417">expected_ty_inner</a>.kind()
         {
             <span class="comment">// Suggest removing any stray borrows (unless there&#39;s macro shenanigans involved).
-            </span><span class="kw">let </span>inner_expr = <a href="#280">expr</a>.peel_borrows();
+            </span><span class="kw">let </span>inner_expr = <a href="#284">expr</a>.peel_borrows();
             <span class="kw">if </span>!inner_expr.span.eq_ctxt(expr.span) {
                 <span class="kw">return </span><span class="bool-val">false</span>;
             }
             <span class="kw">let </span>borrow_removal_span = <span class="kw">if </span>inner_expr.hir_id == expr.hir_id {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(<a href="#280">expr</a>.span.shrink_to_lo().until(<a href="#418">inner_expr</a>.span))
+                <span class="prelude-val">Some</span>(<a href="#284">expr</a>.span.shrink_to_lo().until(<a href="#422">inner_expr</a>.span))
             };
             <span class="comment">// Given `Result&lt;_, E&gt;`, check our expected ty is `Result&lt;_, &amp;E&gt;` for
             // `as_ref` and `as_deref` compatibility.
-            </span><span class="kw">let </span>error_tys_equate_as_ref = <a href="#413">error_tys</a>.map_or(<span class="bool-val">true</span>, |(found, expected)| {
-                <a class="self" href="#273">self</a>.can_eq(<a class="self" href="#273">self</a>.param_env, Ty::new_imm_ref(<a class="self" href="#273">self</a>.tcx,<a class="self" href="#273">self</a>.tcx.lifetimes.re_erased, <a href="#429">found</a>), <a href="#429">expected</a>)
+            </span><span class="kw">let </span>error_tys_equate_as_ref = <a href="#417">error_tys</a>.map_or(<span class="bool-val">true</span>, |(found, expected)| {
+                <a class="self" href="#277">self</a>.can_eq(<a class="self" href="#277">self</a>.param_env, Ty::new_imm_ref(<a class="self" href="#277">self</a>.tcx,<a class="self" href="#277">self</a>.tcx.lifetimes.re_erased, <a href="#433">found</a>), <a href="#433">expected</a>)
             });
             <span class="comment">// FIXME: This could/should be extended to suggest `as_mut` and `as_deref_mut`,
             // but those checks need to be a bit more delicate and the benefit is diminishing.
             </span><span class="kw">if </span><span class="self">self</span>.can_eq(<span class="self">self</span>.param_env, found_ty_inner, peeled) &amp;&amp; error_tys_equate_as_ref {
-                <a href="#274">err</a>.subdiagnostic(<a href="../errors.rs.html#657-665">errors::SuggestConvertViaMethod</a> {
-                    span: <a href="#280">expr</a>.span.shrink_to_hi(),
+                <a href="#278">err</a>.subdiagnostic(<a href="../errors.rs.html#624-632">errors::SuggestConvertViaMethod</a> {
+                    span: <a href="#284">expr</a>.span.shrink_to_hi(),
                     sugg: <span class="string">&quot;.as_ref()&quot;</span>,
-                    <a href="#276">expected</a>,
-                    <a href="#277">found</a>,
-                    <a href="#422">borrow_removal_span</a>,
+                    <a href="#280">expected</a>,
+                    <a href="#281">found</a>,
+                    <a href="#426">borrow_removal_span</a>,
                 });
                 <span class="kw">return </span><span class="bool-val">true</span>;
             } <span class="kw">else if let </span><span class="prelude-val">Some</span>((deref_ty, <span class="kw">_</span>)) =
-                <a class="self" href="#273">self</a>.<a href="../autoderef.rs.html#14-16">autoderef</a>(<a href="#280">expr</a>.span, <a href="#413">found_ty_inner</a>).silence_errors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">nth</a>(<span class="number">1</span>)
+                <a class="self" href="#277">self</a>.<a href="../autoderef.rs.html#14-16">autoderef</a>(<a href="#284">expr</a>.span, <a href="#417">found_ty_inner</a>).silence_errors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">nth</a>(<span class="number">1</span>)
                 &amp;&amp; <span class="self">self</span>.can_eq(<span class="self">self</span>.param_env, deref_ty, peeled)
                 &amp;&amp; error_tys_equate_as_ref
             {
-                <a href="#274">err</a>.subdiagnostic(<a href="../errors.rs.html#657-665">errors::SuggestConvertViaMethod</a> {
-                    span: <a href="#280">expr</a>.span.shrink_to_hi(),
+                <a href="#278">err</a>.subdiagnostic(<a href="../errors.rs.html#624-632">errors::SuggestConvertViaMethod</a> {
+                    span: <a href="#284">expr</a>.span.shrink_to_hi(),
                     sugg: <span class="string">&quot;.as_deref()&quot;</span>,
-                    <a href="#276">expected</a>,
-                    <a href="#277">found</a>,
-                    <a href="#422">borrow_removal_span</a>,
+                    <a href="#280">expected</a>,
+                    <a href="#281">found</a>,
+                    <a href="#426">borrow_removal_span</a>,
                 });
                 <span class="kw">return </span><span class="bool-val">true</span>;
-            } <span class="kw">else if let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#413">found_ty_inner</a>.peel_refs().kind()
+            } <span class="kw">else if let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#417">found_ty_inner</a>.peel_refs().kind()
                 &amp;&amp; <span class="prelude-val">Some</span>(adt.did()) == <span class="self">self</span>.tcx.lang_items().string()
                 &amp;&amp; peeled.is_str()
                 <span class="comment">// `Result::map`, conversely, does not take ref of the error type.
@@ -2147,9 +2172,9 @@
                     <span class="self">self</span>.can_eq(<span class="self">self</span>.param_env, found, expected)
                 })
             {
-                <a href="#274">err</a>.span_suggestion_verbose(
-                    <a href="#280">expr</a>.span.shrink_to_hi(),
-                    <a href="../lib.rs.html#76">fluent::hir_typeck_convert_to_str</a>,
+                <a href="#278">err</a>.span_suggestion_verbose(
+                    <a href="#284">expr</a>.span.shrink_to_hi(),
+                    <a href="../lib.rs.html#74">fluent::hir_typeck_convert_to_str</a>,
                     <span class="string">&quot;.map(|x| x.as_str())&quot;</span>,
                     Applicability::MachineApplicable,
                 );
@@ -2165,23 +2190,23 @@
         found_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="prelude-ty">Option</span>&lt;(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt;)&gt; {
-        <span class="kw">let </span>ty::Adt(found_adt, found_args) = <a href="#479">found_ty</a>.peel_refs().kind() <span class="kw">else </span>{
+        <span class="kw">let </span>ty::Adt(found_adt, found_args) = <a href="#483">found_ty</a>.peel_refs().kind() <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">None</span>;
         };
-        <span class="kw">let </span>ty::Adt(expected_adt, expected_args) = <a href="#480">expected_ty</a>.kind() <span class="kw">else </span>{
+        <span class="kw">let </span>ty::Adt(expected_adt, expected_args) = <a href="#484">expected_ty</a>.kind() <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">None</span>;
         };
         <span class="kw">if </span><span class="self">self</span>.tcx.is_diagnostic_item(sym::Option, found_adt.did())
             &amp;&amp; <span class="self">self</span>.tcx.is_diagnostic_item(sym::Option, expected_adt.did())
         {
-            <span class="prelude-val">Some</span>((<a href="#482">found_args</a>.type_at(<span class="number">0</span>), <a href="#485">expected_args</a>.type_at(<span class="number">0</span>), <span class="prelude-val">None</span>))
+            <span class="prelude-val">Some</span>((<a href="#486">found_args</a>.type_at(<span class="number">0</span>), <a href="#489">expected_args</a>.type_at(<span class="number">0</span>), <span class="prelude-val">None</span>))
         } <span class="kw">else if </span><span class="self">self</span>.tcx.is_diagnostic_item(sym::Result, found_adt.did())
             &amp;&amp; <span class="self">self</span>.tcx.is_diagnostic_item(sym::Result, expected_adt.did())
         {
             <span class="prelude-val">Some</span>((
-                <a href="#482">found_args</a>.type_at(<span class="number">0</span>),
-                <a href="#485">expected_args</a>.type_at(<span class="number">0</span>),
-                <span class="prelude-val">Some</span>((<a href="#482">found_args</a>.type_at(<span class="number">1</span>), <a href="#485">expected_args</a>.type_at(<span class="number">1</span>))),
+                <a href="#486">found_args</a>.type_at(<span class="number">0</span>),
+                <a href="#489">expected_args</a>.type_at(<span class="number">0</span>),
+                <span class="prelude-val">Some</span>((<a href="#486">found_args</a>.type_at(<span class="number">1</span>), <a href="#489">expected_args</a>.type_at(<span class="number">1</span>))),
             ))
         } <span class="kw">else </span>{
             <span class="prelude-val">None
@@ -2203,9 +2228,9 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
         <span class="kw">if </span><span class="self">self</span>.can_coerce(Ty::new_box(<span class="self">self</span>.tcx, found), expected) {
-            <span class="kw">let </span>suggest_boxing = <span class="kw">match </span><a href="#513">found</a>.kind() {
-                ty::Tuple(tuple) <span class="kw">if </span><a href="#521">tuple</a>.is_empty() =&gt; {
-                    <a href="../errors.rs.html#504-509">errors::SuggestBoxing::Unit</a> { start: <a href="#510">span</a>.shrink_to_lo(), end: <a href="#510">span</a> }
+            <span class="kw">let </span>suggest_boxing = <span class="kw">match </span><a href="#517">found</a>.kind() {
+                ty::Tuple(tuple) <span class="kw">if </span><a href="#525">tuple</a>.is_empty() =&gt; {
+                    <a href="../errors.rs.html#471-476">errors::SuggestBoxing::Unit</a> { start: <a href="#514">span</a>.shrink_to_lo(), end: <a href="#514">span</a> }
                 }
                 ty::Generator(def_id, ..)
                     <span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(
@@ -2213,14 +2238,14 @@
                         <span class="prelude-val">Some</span>(GeneratorKind::Async(AsyncGeneratorKind::Closure))
                     ) =&gt;
                 {
-                    <a href="../errors.rs.html#511">errors::SuggestBoxing::AsyncBody</a>
+                    <a href="../errors.rs.html#478">errors::SuggestBoxing::AsyncBody</a>
                 }
-                <span class="kw">_ </span>=&gt; <a href="../errors.rs.html#517-522">errors::SuggestBoxing::Other</a> {
-                    start: <a href="#510">span</a>.shrink_to_lo(),
-                    end: <a href="#510">span</a>.shrink_to_hi(),
+                <span class="kw">_ </span>=&gt; <a href="../errors.rs.html#484-489">errors::SuggestBoxing::Other</a> {
+                    start: <a href="#514">span</a>.shrink_to_lo(),
+                    end: <a href="#514">span</a>.shrink_to_hi(),
                 },
             };
-            <a href="#509">err</a>.subdiagnostic(<a href="#520">suggest_boxing</a>);
+            <a href="#513">err</a>.subdiagnostic(<a href="#524">suggest_boxing</a>);
 
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
@@ -2236,27 +2261,27 @@
         expected: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         found: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span>(ty::FnPtr(<span class="kw">_</span>), ty::Closure(def_id, <span class="kw">_</span>)) = (<a href="#550">expected</a>.kind(), <a href="#551">found</a>.kind()) {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(upvars) = <a class="self" href="#548">self</a>.tcx.upvars_mentioned(<span class="kw-2">*</span><a href="#553">def_id</a>) {
+        <span class="kw">if let </span>(ty::FnPtr(<span class="kw">_</span>), ty::Closure(def_id, <span class="kw">_</span>)) = (<a href="#554">expected</a>.kind(), <a href="#555">found</a>.kind()) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(upvars) = <a class="self" href="#552">self</a>.tcx.upvars_mentioned(<span class="kw-2">*</span><a href="#557">def_id</a>) {
                 <span class="comment">// Report upto four upvars being captured to reduce the amount error messages
                 // reported back to the user.
-                </span><span class="kw">let </span>spans_and_labels = <a href="#554">upvars</a>
+                </span><span class="kw">let </span>spans_and_labels = <a href="#558">upvars</a>
                     .iter()
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">take</a>(<span class="number">4</span>)
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(var_hir_id, upvar)| {
-                        <span class="kw">let </span>var_name = <a class="self" href="#548">self</a>.tcx.hir().name(<span class="kw-2">*</span><a href="#560">var_hir_id</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
+                        <span class="kw">let </span>var_name = <a class="self" href="#552">self</a>.tcx.hir().name(<span class="kw-2">*</span><a href="#564">var_hir_id</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
                         <span class="kw">let </span>msg = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{var_name}` captured here&quot;</span>);
-                        (<a href="#560">upvar</a>.span, <a href="#562">msg</a>)
+                        (<a href="#564">upvar</a>.span, <a href="#566">msg</a>)
                     })
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
                 <span class="kw">let </span><span class="kw-2">mut </span>multi_span: <a href="../../../rustc_error_messages/struct.MultiSpan.html">MultiSpan</a> =
-                    <a href="#557">spans_and_labels</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(sp, <span class="kw">_</span>)| <span class="kw-2">*</span><a href="#568">sp</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
+                    <a href="#561">spans_and_labels</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(sp, <span class="kw">_</span>)| <span class="kw-2">*</span><a href="#572">sp</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>();
                 <span class="kw">for </span>(sp, label) <span class="kw">in </span>spans_and_labels {
                     multi_span.push_span_label(sp, label);
                 }
-                <a href="#549">err</a>.span_note(
-                    <a href="#567">multi_span</a>,
+                <a href="#553">err</a>.span_note(
+                    <a href="#571">multi_span</a>,
                     <span class="string">&quot;closures can only be coerced to `fn` types if they do not capture any variables&quot;
                 </span>);
                 <span class="kw">return </span><span class="bool-val">true</span>;
@@ -2378,21 +2403,21 @@
         <span class="kw">if </span>expected.is_unit() {
             <span class="comment">// `BlockTailExpression` only relevant if the tail expr would be
             // useful on its own.
-            </span><span class="kw">match </span><a href="#688">expression</a>.kind {
+            </span><span class="kw">match </span><a href="#692">expression</a>.kind {
                 ExprKind::Call(..)
                 | ExprKind::MethodCall(..)
                 | ExprKind::Loop(..)
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
                 | ExprKind::Block(..)
-                    <span class="kw">if </span><a href="#688">expression</a>.can_have_side_effects()
+                    <span class="kw">if </span><a href="#692">expression</a>.can_have_side_effects()
                         <span class="comment">// If the expression is from an external macro, then do not suggest
                         // adding a semicolon, because there&#39;s nowhere to put it.
                         // See issue #81943.
-                        </span>&amp;&amp; !<a href="../../../rustc_middle/lint/fn.in_external_macro.html">in_external_macro</a>(<a class="self" href="#686">self</a>.tcx.sess, <a href="#688">expression</a>.span) =&gt;
+                        </span>&amp;&amp; !<a href="../../../rustc_middle/lint/fn.in_external_macro.html">in_external_macro</a>(<a class="self" href="#690">self</a>.tcx.sess, <a href="#692">expression</a>.span) =&gt;
                 {
                     <span class="kw">if </span>needs_block {
-                        <a href="#687">err</a>.multipart_suggestion(
+                        <a href="#691">err</a>.multipart_suggestion(
                             <span class="string">&quot;consider using a semicolon here&quot;</span>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
                                 (expression.span.shrink_to_lo(), <span class="string">&quot;{ &quot;</span>.to_owned()),
@@ -2401,8 +2426,8 @@
                             Applicability::MachineApplicable,
                         );
                     } <span class="kw">else </span>{
-                        <a href="#687">err</a>.span_suggestion(
-                            <a href="#688">expression</a>.span.shrink_to_hi(),
+                        <a href="#691">err</a>.span_suggestion(
+                            <a href="#692">expression</a>.span.shrink_to_hi(),
                             <span class="string">&quot;consider using a semicolon here&quot;</span>,
                             <span class="string">&quot;;&quot;</span>,
                             Applicability::MachineApplicable,
@@ -2464,8 +2489,6 @@
                 </span>}
             }
             hir::FnRetTy::Return(hir_ty) =&gt; {
-                <span class="kw">let </span>span = hir_ty.span;
-
                 <span class="kw">if let </span>hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
                     &amp;&amp; <span class="kw">let </span>hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy(op_ty),
@@ -2481,28 +2504,28 @@
                     </span><span class="macro">debug!</span>(<span class="question-mark">?</span>found);
                     <span class="kw">if </span>found.is_suggestable(<span class="self">self</span>.tcx, <span class="bool-val">false</span>) {
                         <span class="kw">if </span>term.span.is_empty() {
-                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span, found: found.to_string() });
+                            err.subdiagnostic(errors::AddReturnTypeSuggestion::Add { span: term.span, found: found.to_string() });
                             <span class="kw">return </span><span class="bool-val">true</span>;
                         } <span class="kw">else </span>{
-                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span, expected });
+                            err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span: term.span, expected });
                         }
                     }
-                }
-
-                <span class="comment">// Only point to return type if the expected type is the return type, as if they
-                // are not, the expectation must have been caused by something else.
-                </span><span class="macro">debug!</span>(<span class="string">&quot;return type {:?}&quot;</span>, hir_ty);
-                <span class="kw">let </span>ty = <span class="self">self</span>.astconv().ast_ty_to_ty(hir_ty);
-                <span class="macro">debug!</span>(<span class="string">&quot;return type {:?}&quot;</span>, ty);
-                <span class="macro">debug!</span>(<span class="string">&quot;expected type {:?}&quot;</span>, expected);
-                <span class="kw">let </span>bound_vars = <span class="self">self</span>.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
-                <span class="kw">let </span>ty = Binder::bind_with_vars(ty, bound_vars);
-                <span class="kw">let </span>ty = <span class="self">self</span>.normalize(span, ty);
-                <span class="kw">let </span>ty = <span class="self">self</span>.tcx.erase_late_bound_regions(ty);
-                <span class="kw">if </span><span class="self">self</span>.can_coerce(expected, ty) {
-                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span, expected });
-                    <span class="self">self</span>.try_suggest_return_impl_trait(err, expected, ty, fn_id);
-                    <span class="kw">return </span><span class="bool-val">true</span>;
+                } <span class="kw">else </span>{
+                    <span class="comment">// Only point to return type if the expected type is the return type, as if they
+                    // are not, the expectation must have been caused by something else.
+                    </span><span class="macro">debug!</span>(<span class="string">&quot;return type {:?}&quot;</span>, hir_ty);
+                    <span class="kw">let </span>ty = <span class="self">self</span>.astconv().ast_ty_to_ty(hir_ty);
+                    <span class="macro">debug!</span>(<span class="string">&quot;return type {:?}&quot;</span>, ty);
+                    <span class="macro">debug!</span>(<span class="string">&quot;expected type {:?}&quot;</span>, expected);
+                    <span class="kw">let </span>bound_vars = <span class="self">self</span>.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
+                    <span class="kw">let </span>ty = Binder::bind_with_vars(ty, bound_vars);
+                    <span class="kw">let </span>ty = <span class="self">self</span>.normalize(hir_ty.span, ty);
+                    <span class="kw">let </span>ty = <span class="self">self</span>.tcx.erase_late_bound_regions(ty);
+                    <span class="kw">if </span><span class="self">self</span>.can_coerce(expected, ty) {
+                        err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other { span: hir_ty.span, expected });
+                        <span class="self">self</span>.try_suggest_return_impl_trait(err, expected, ty, fn_id);
+                        <span class="kw">return </span><span class="bool-val">true</span>;
+                    }
                 }
             }
             <span class="kw">_ </span>=&gt; {}
@@ -2535,9 +2558,9 @@
 
         </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;try_suggest_return_impl_trait, expected = {:?}, found = {:?}&quot;</span>, expected, found);
 
-        <span class="kw">let </span>ty::Param(expected_ty_as_param) = <a href="#838">expected</a>.kind() <span class="kw">else </span>{ <span class="kw">return </span>};
+        <span class="kw">let </span>ty::Param(expected_ty_as_param) = <a href="#840">expected</a>.kind() <span class="kw">else </span>{ <span class="kw">return </span>};
 
-        <span class="kw">let </span>fn_node = <a class="self" href="#836">self</a>.tcx.hir().find(<a href="#840">fn_id</a>);
+        <span class="kw">let </span>fn_node = <a class="self" href="#838">self</a>.tcx.hir().find(<a href="#842">fn_id</a>);
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(hir::Node::Item(<a href="../../../rustc_hir/hir/struct.Item.html">hir::Item</a> {
             kind:
@@ -2550,7 +2573,7 @@
                     _body_id,
                 ),
             ..
-        })) = <a href="#854">fn_node</a>
+        })) = <a href="#856">fn_node</a>
         <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
@@ -2560,41 +2583,41 @@
         };
 
         <span class="comment">// get all where BoundPredicates here, because they are used in two cases below
-        </span><span class="kw">let </span>where_predicates = <a href="#863">predicates</a>
+        </span><span class="kw">let </span>where_predicates = <a href="#865">predicates</a>
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|p| <span class="kw">match </span><a href="#879">p</a> {
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|p| <span class="kw">match </span><a href="#881">p</a> {
                 WherePredicate::BoundPredicate(<a href="../../../rustc_hir/hir/struct.WhereBoundPredicate.html">hir::WhereBoundPredicate</a> {
                     bounds,
                     bounded_ty,
                     ..
                 }) =&gt; {
                     <span class="comment">// FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
-                    </span><span class="kw">let </span>ty = <a class="self" href="#836">self</a>.<a href="../../../rustc_hir_analysis/astconv/trait.AstConv.html">astconv</a>().ast_ty_to_ty(<a href="#882">bounded_ty</a>);
-                    <span class="prelude-val">Some</span>((<a href="#886">ty</a>, <a href="#881">bounds</a>))
+                    </span><span class="kw">let </span>ty = <a class="self" href="#838">self</a>.<a href="../../../rustc_hir_analysis/astconv/trait.AstConv.html">astconv</a>().ast_ty_to_ty(<a href="#884">bounded_ty</a>);
+                    <span class="prelude-val">Some</span>((<a href="#888">ty</a>, <a href="#883">bounds</a>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             })
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(ty, bounds)| <span class="kw">match </span><a href="#891">ty</a>.kind() {
-                ty::Param(param_ty) <span class="kw">if </span><a href="#892">param_ty</a> == <a href="#852">expected_ty_as_param</a> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<a href="#891">bounds</a>)),
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(ty, bounds)| <span class="kw">match </span><a href="#893">ty</a>.kind() {
+                ty::Param(param_ty) <span class="kw">if </span><a href="#894">param_ty</a> == <a href="#854">expected_ty_as_param</a> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<a href="#893">bounds</a>)),
                 <span class="comment">// check whether there is any predicate that contains our `T`, like `Option&lt;T&gt;: Send`
-                </span><span class="kw">_ </span>=&gt; <span class="kw">match </span><a href="#891">ty</a>.contains(<a href="#838">expected</a>) {
+                </span><span class="kw">_ </span>=&gt; <span class="kw">match </span><a href="#893">ty</a>.contains(<a href="#840">expected</a>) {
                     <span class="bool-val">true </span>=&gt; <span class="prelude-val">Err</span>(()),
                     <span class="bool-val">false </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
                 },
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>(where_predicates) = <a href="#877">where_predicates</a> <span class="kw">else </span>{ <span class="kw">return </span>};
+        <span class="kw">let </span><span class="prelude-val">Ok</span>(where_predicates) = <a href="#879">where_predicates</a> <span class="kw">else </span>{ <span class="kw">return </span>};
 
         <span class="comment">// now get all predicates in the same types as the where bounds, so we can chain them
         </span><span class="kw">let </span>predicates_from_where =
-            <a href="#901">where_predicates</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flatten</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|bounds| <a href="#905">bounds</a>.iter());
+            <a href="#903">where_predicates</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flatten</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|bounds| <a href="#907">bounds</a>.iter());
 
         <span class="comment">// extract all bounds from the source code using their spans
-        </span><span class="kw">let </span>all_matching_bounds_strs = <a href="#904">predicates_from_where</a>
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|bound| <span class="kw">match </span><a href="#909">bound</a> {
+        </span><span class="kw">let </span>all_matching_bounds_strs = <a href="#906">predicates_from_where</a>
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|bound| <span class="kw">match </span><a href="#911">bound</a> {
                 GenericBound::Trait(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                    <a class="self" href="#836">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#909">bound</a>.span()).ok()
+                    <a class="self" href="#838">self</a>.tcx.sess.source_map().span_to_snippet(<a href="#911">bound</a>.span()).ok()
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             })
@@ -2604,10 +2627,10 @@
             <span class="kw">return</span>;
         }
 
-        <span class="kw">let </span>all_bounds_str = <a href="#908">all_matching_bounds_strs</a>.join(<span class="string">&quot; + &quot;</span>);
+        <span class="kw">let </span>all_bounds_str = <a href="#910">all_matching_bounds_strs</a>.join(<span class="string">&quot; + &quot;</span>);
 
-        <span class="kw">let </span>ty_param_used_in_fn_params = <a href="#860">fn_parameters</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|param| {
-                <span class="kw">let </span>ty = <a class="self" href="#836">self</a>.<a href="../../../rustc_hir_analysis/astconv/trait.AstConv.html">astconv</a>().ast_ty_to_ty( <a href="#923">param</a>);
+        <span class="kw">let </span>ty_param_used_in_fn_params = <a href="#862">fn_parameters</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|param| {
+                <span class="kw">let </span>ty = <a class="self" href="#838">self</a>.<a href="../../../rustc_hir_analysis/astconv/trait.AstConv.html">astconv</a>().ast_ty_to_ty( <a href="#925">param</a>);
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(ty.kind(), ty::Param(fn_param_ty_param) <span class="kw">if </span>expected_ty_as_param == fn_param_ty_param)
             });
 
@@ -2615,8 +2638,8 @@
             <span class="kw">return</span>;
         }
 
-        <a href="#837">err</a>.span_suggestion(
-            <a href="#860">fn_return</a>.span(),
+        <a href="#839">err</a>.span_suggestion(
+            <a href="#862">fn_return</a>.span(),
             <span class="string">&quot;consider using an impl return type&quot;</span>,
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;impl {all_bounds_str}&quot;</span>),
             Applicability::MaybeIncorrect,
@@ -2636,28 +2659,28 @@
         <span class="kw">if </span>!expected.is_unit() {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>found = <a class="self" href="#941">self</a>.resolve_vars_if_possible(<a href="#946">found</a>);
+        <span class="kw">let </span>found = <a class="self" href="#943">self</a>.resolve_vars_if_possible(<a href="#948">found</a>);
 
-        <span class="kw">let </span>in_loop = <a class="self" href="#941">self</a>.<a href="#1491-1494">is_loop</a>(<a href="#947">id</a>)
-            || <span class="self"><a href="#941">self</a>
+        <span class="kw">let </span>in_loop = <a class="self" href="#943">self</a>.<a href="#1493-1496">is_loop</a>(<a href="#949">id</a>)
+            || <span class="self"><a href="#943">self</a>
                 </span>.tcx
                 .hir()
-                .parent_iter(<a href="#947">id</a>)
+                .parent_iter(<a href="#949">id</a>)
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">take_while</a>(|(<span class="kw">_</span>, node)| {
                     <span class="comment">// look at parents until we find the first body owner
-                    </span><a href="#960">node</a>.body_id().is_none()
+                    </span><a href="#962">node</a>.body_id().is_none()
                 })
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|(parent_id, <span class="kw">_</span>)| <a class="self" href="#941">self</a>.<a href="#1491-1494">is_loop</a>(<a href="#964">parent_id</a>));
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|(parent_id, <span class="kw">_</span>)| <a class="self" href="#943">self</a>.<a href="#1493-1496">is_loop</a>(<a href="#966">parent_id</a>));
 
-        <span class="kw">let </span>in_local_statement = <a class="self" href="#941">self</a>.<a href="#1496-1499">is_local_statement</a>(<a href="#947">id</a>)
-            || <span class="self"><a href="#941">self</a>
+        <span class="kw">let </span>in_local_statement = <a class="self" href="#943">self</a>.<a href="#1498-1501">is_local_statement</a>(<a href="#949">id</a>)
+            || <span class="self"><a href="#943">self</a>
                 </span>.tcx
                 .hir()
-                .parent_iter(<a href="#947">id</a>)
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|(parent_id, <span class="kw">_</span>)| <a class="self" href="#941">self</a>.<a href="#1496-1499">is_local_statement</a>(<a href="#971">parent_id</a>));
+                .parent_iter(<a href="#949">id</a>)
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|(parent_id, <span class="kw">_</span>)| <a class="self" href="#943">self</a>.<a href="#1498-1501">is_local_statement</a>(<a href="#973">parent_id</a>));
 
         <span class="kw">if </span>in_loop &amp;&amp; in_local_statement {
-            <a href="#942">err</a>.multipart_suggestion(
+            <a href="#944">err</a>.multipart_suggestion(
                 <span class="string">&quot;you might have meant to break the loop with this value&quot;</span>,
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
                     (expr.span.shrink_to_lo(), <span class="string">&quot;break &quot;</span>.to_string()),
@@ -2668,23 +2691,23 @@
             <span class="kw">return</span>;
         }
 
-        <span class="kw">if let </span>hir::FnRetTy::Return(ty) = <a href="#944">fn_decl</a>.output {
-            <span class="kw">let </span>ty = <a class="self" href="#941">self</a>.<a href="../../../rustc_hir_analysis/astconv/trait.AstConv.html">astconv</a>().ast_ty_to_ty(<a href="#985">ty</a>);
-            <span class="kw">let </span>bound_vars = <a class="self" href="#941">self</a>.tcx.late_bound_vars(<a href="#948">fn_id</a>);
-            <span class="kw">let </span>ty = <a class="self" href="#941">self</a>.tcx.erase_late_bound_regions(Binder::bind_with_vars(<a href="#986">ty</a>, <a href="#987">bound_vars</a>));
-            <span class="kw">let </span>ty = <span class="kw">match </span><a class="self" href="#941">self</a>.tcx.asyncness(<a href="#948">fn_id</a>.owner) {
-                hir::IsAsync::Async =&gt; <a class="self" href="#941">self</a>.get_impl_future_output_ty(<a href="#988">ty</a>).unwrap_or_else(|| {
+        <span class="kw">if let </span>hir::FnRetTy::Return(ty) = <a href="#946">fn_decl</a>.output {
+            <span class="kw">let </span>ty = <a class="self" href="#943">self</a>.<a href="../../../rustc_hir_analysis/astconv/trait.AstConv.html">astconv</a>().ast_ty_to_ty(<a href="#987">ty</a>);
+            <span class="kw">let </span>bound_vars = <a class="self" href="#943">self</a>.tcx.late_bound_vars(<a href="#950">fn_id</a>);
+            <span class="kw">let </span>ty = <a class="self" href="#943">self</a>.tcx.erase_late_bound_regions(Binder::bind_with_vars(<a href="#988">ty</a>, <a href="#989">bound_vars</a>));
+            <span class="kw">let </span>ty = <span class="kw">match </span><a class="self" href="#943">self</a>.tcx.asyncness(<a href="#950">fn_id</a>.owner) {
+                ty::Asyncness::Yes =&gt; <a class="self" href="#943">self</a>.get_impl_future_output_ty(<a href="#990">ty</a>).unwrap_or_else(|| {
                     <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(fn_decl.output.span(), <span class="string">&quot;failed to get output type of async function&quot;</span>)
                 }),
-                hir::IsAsync::NotAsync =&gt; <a href="#988">ty</a>,
+                ty::Asyncness::No =&gt; <a href="#990">ty</a>,
             };
-            <span class="kw">let </span>ty = <a class="self" href="#941">self</a>.<a href="_impl.rs.html#310-317">normalize</a>(<a href="#943">expr</a>.span, <a href="#989">ty</a>);
+            <span class="kw">let </span>ty = <a class="self" href="#943">self</a>.<a href="_impl.rs.html#310-317">normalize</a>(<a href="#945">expr</a>.span, <a href="#991">ty</a>);
             <span class="kw">if </span><span class="self">self</span>.can_coerce(found, ty) {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <a class="self" href="#941">self</a>.tcx.hir().find(<a href="#948">fn_id</a>)
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(owner_node) = <a href="#997">node</a>.as_owner()
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(span) = <a href="#943">expr</a>.span.find_ancestor_inside(<a href="#998">owner_node</a>.span())
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(node) = <a class="self" href="#943">self</a>.tcx.hir().find(<a href="#950">fn_id</a>)
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(owner_node) = <a href="#999">node</a>.as_owner()
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(span) = <a href="#945">expr</a>.span.find_ancestor_inside(<a href="#1000">owner_node</a>.span())
                 {
-                    <a href="#942">err</a>.multipart_suggestion(
+                    <a href="#944">err</a>.multipart_suggestion(
                         <span class="string">&quot;you might have meant to return this value&quot;</span>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
                             (span.shrink_to_lo(), <span class="string">&quot;return &quot;</span>.to_string()),
@@ -2702,10 +2725,10 @@
         err: <span class="kw-2">&amp;mut </span><a href="../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>,
         expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>sp = <a class="self" href="#1015">self</a>.tcx.sess.source_map().start_point(<a href="#1017">expr</a>.span).with_parent(<span class="prelude-val">None</span>);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(sp) = <a class="self" href="#1015">self</a>.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(<span class="kw-2">&amp;</span><a href="#1019">sp</a>) {
+        <span class="kw">let </span>sp = <a class="self" href="#1017">self</a>.tcx.sess.source_map().start_point(<a href="#1019">expr</a>.span).with_parent(<span class="prelude-val">None</span>);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(sp) = <a class="self" href="#1017">self</a>.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(<span class="kw-2">&amp;</span><a href="#1021">sp</a>) {
             <span class="comment">// `{ 42 } &amp;&amp;x` (#61475) or `{ 42 } &amp;&amp; if x { 1 } else { 0 }`
-            </span><a href="#1016">err</a>.subdiagnostic(ExprParenthesesNeeded::surrounding(<span class="kw-2">*</span><a href="#1020">sp</a>));
+            </span><a href="#1018">err</a>.subdiagnostic(ExprParenthesesNeeded::surrounding(<span class="kw-2">*</span><a href="#1022">sp</a>));
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
             <span class="bool-val">false
@@ -2723,18 +2746,18 @@
         <span class="kw-2">mut </span>expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">loop </span>{
-            <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#1035">expr</a>.kind, <a href="#1036">expr_ty</a>.kind(), <a href="#1037">expected_ty</a>.kind()) {
+            <span class="kw">match </span>(<span class="kw-2">&amp;</span><a href="#1037">expr</a>.kind, <a href="#1038">expr_ty</a>.kind(), <a href="#1039">expected_ty</a>.kind()) {
                 (
                     hir::ExprKind::AddrOf(<span class="kw">_</span>, <span class="kw">_</span>, inner_expr),
                     ty::Ref(<span class="kw">_</span>, inner_expr_ty, <span class="kw">_</span>),
                     ty::Ref(<span class="kw">_</span>, inner_expected_ty, <span class="kw">_</span>),
                 ) =&gt; {
-                    <a href="#1035">expr</a> = <span class="kw-2">*</span><a href="#1042">inner_expr</a>;
-                    <a href="#1036">expr_ty</a> = <span class="kw-2">*</span><a href="#1043">inner_expr_ty</a>;
-                    <a href="#1037">expected_ty</a> = <span class="kw-2">*</span><a href="#1044">inner_expected_ty</a>;
+                    <a href="#1037">expr</a> = <span class="kw-2">*</span><a href="#1044">inner_expr</a>;
+                    <a href="#1038">expr_ty</a> = <span class="kw-2">*</span><a href="#1045">inner_expr_ty</a>;
+                    <a href="#1039">expected_ty</a> = <span class="kw-2">*</span><a href="#1046">inner_expected_ty</a>;
                 }
                 (hir::ExprKind::Block(blk, <span class="kw">_</span>), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                    <a class="self" href="#1033">self</a>.<a href="#1261-1298">suggest_block_to_brackets</a>(<a href="#1034">diag</a>, <span class="kw-2">*</span><a href="#1050">blk</a>, <a href="#1036">expr_ty</a>, <a href="#1037">expected_ty</a>);
+                    <a class="self" href="#1035">self</a>.<a href="#1263-1300">suggest_block_to_brackets</a>(<a href="#1036">diag</a>, <span class="kw-2">*</span><a href="#1052">blk</a>, <a href="#1038">expr_ty</a>, <a href="#1039">expected_ty</a>);
                     <span class="kw">break </span><span class="bool-val">true</span>;
                 }
                 <span class="kw">_ </span>=&gt; <span class="kw">break </span><span class="bool-val">false</span>,
@@ -2749,8 +2772,8 @@
         expr_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span>ty::Ref(<span class="kw">_</span>, inner_ty, hir::Mutability::Not) = <a href="#1063">expr_ty</a>.kind()
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(clone_trait_def) = <a class="self" href="#1060">self</a>.tcx.lang_items().clone_trait()
+        <span class="kw">if let </span>ty::Ref(<span class="kw">_</span>, inner_ty, hir::Mutability::Not) = <a href="#1065">expr_ty</a>.kind()
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(clone_trait_def) = <a class="self" href="#1062">self</a>.tcx.lang_items().clone_trait()
             &amp;&amp; expected_ty == <span class="kw-2">*</span>inner_ty
             &amp;&amp; <span class="self">self
                 </span>.infcx
@@ -2761,15 +2784,15 @@
                 )
                 .must_apply_modulo_regions()
           {
-            <span class="kw">let </span>suggestion = <span class="kw">match </span><a class="self" href="#1060">self</a>.tcx.hir().maybe_get_struct_pattern_shorthand_field(<a href="#1062">expr</a>) {
+            <span class="kw">let </span>suggestion = <span class="kw">match </span><a class="self" href="#1062">self</a>.tcx.hir().maybe_get_struct_pattern_shorthand_field(<a href="#1064">expr</a>) {
                 <span class="prelude-val">Some</span>(ident) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;: {ident}.clone()&quot;</span>),
                 <span class="prelude-val">None </span>=&gt; <span class="string">&quot;.clone()&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>()
             };
 
-            <a href="#1061">diag</a>.span_suggestion_verbose(
-                <a href="#1062">expr</a>.span.shrink_to_hi(),
+            <a href="#1063">diag</a>.span_suggestion_verbose(
+                <a href="#1064">expr</a>.span.shrink_to_hi(),
                 <span class="string">&quot;consider using clone here&quot;</span>,
-                <a href="#1078">suggestion</a>,
+                <a href="#1080">suggestion</a>,
                 Applicability::MachineApplicable,
             );
             <span class="kw">return </span><span class="bool-val">true</span>;
@@ -2784,10 +2807,10 @@
         expr_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>ty::Adt(adt_def, args) = <a href="#1098">expr_ty</a>.kind() <span class="kw">else </span>{
+        <span class="kw">let </span>ty::Adt(adt_def, args) = <a href="#1100">expr_ty</a>.kind() <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
-        <span class="kw">let </span>ty::Adt(expected_adt_def, expected_args) = <a href="#1099">expected_ty</a>.kind() <span class="kw">else </span>{
+        <span class="kw">let </span>ty::Adt(expected_adt_def, expected_args) = <a href="#1101">expected_ty</a>.kind() <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>adt_def != expected_adt_def {
@@ -2798,18 +2821,18 @@
             &amp;&amp; <span class="self">self</span>.can_eq(<span class="self">self</span>.param_env, args.type_at(<span class="number">1</span>), expected_args.type_at(<span class="number">1</span>))
             || <span class="prelude-val">Some</span>(adt_def.did()) == <span class="self">self</span>.tcx.get_diagnostic_item(sym::Option)
         {
-            <span class="kw">let </span>expr_inner_ty = <a href="#1101">args</a>.type_at(<span class="number">0</span>);
-            <span class="kw">let </span>expected_inner_ty = <a href="#1104">expected_args</a>.type_at(<span class="number">0</span>);
-            <span class="kw">if let </span><span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, ty, _mutability) = <a href="#1115">expr_inner_ty</a>.kind()
+            <span class="kw">let </span>expr_inner_ty = <a href="#1103">args</a>.type_at(<span class="number">0</span>);
+            <span class="kw">let </span>expected_inner_ty = <a href="#1106">expected_args</a>.type_at(<span class="number">0</span>);
+            <span class="kw">if let </span><span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, ty, _mutability) = <a href="#1117">expr_inner_ty</a>.kind()
                     &amp;&amp; <span class="self">self</span>.can_eq(<span class="self">self</span>.param_env, ty, expected_inner_ty)
                 {
-                    <span class="kw">let </span>def_path = <a class="self" href="#1095">self</a>.tcx.def_path_str(<a href="#1101">adt_def</a>.did());
-                    <span class="kw">let </span>span = <a href="#1097">expr</a>.span.shrink_to_hi();
+                    <span class="kw">let </span>def_path = <a class="self" href="#1097">self</a>.tcx.def_path_str(<a href="#1103">adt_def</a>.did());
+                    <span class="kw">let </span>span = <a href="#1099">expr</a>.span.shrink_to_hi();
                     <span class="kw">let </span>subdiag = <span class="kw">if </span><span class="self">self</span>.type_is_copy_modulo_regions(<span class="self">self</span>.param_env, ty) {
-                        <a href="../errors.rs.html#386-390">errors::OptionResultRefMismatch::Copied</a> {
-                            <a href="#1121">span</a>, <a href="#1120">def_path</a>
+                        <a href="../errors.rs.html#353-357">errors::OptionResultRefMismatch::Copied</a> {
+                            <a href="#1123">span</a>, <a href="#1122">def_path</a>
                         }
-                    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(clone_did) = <a class="self" href="#1095">self</a>.tcx.lang_items().clone_trait()
+                    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(clone_did) = <a class="self" href="#1097">self</a>.tcx.lang_items().clone_trait()
                         &amp;&amp; rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
                             <span class="self">self</span>,
                             <span class="self">self</span>.param_env,
@@ -2817,13 +2840,13 @@
                             clone_did,
                         )
                     {
-                        <a href="../errors.rs.html#397-401">errors::OptionResultRefMismatch::Cloned</a> {
-                            <a href="#1121">span</a>, <a href="#1120">def_path</a>
+                        <a href="../errors.rs.html#364-368">errors::OptionResultRefMismatch::Cloned</a> {
+                            <a href="#1123">span</a>, <a href="#1122">def_path</a>
                         }
                     } <span class="kw">else </span>{
                         <span class="kw">return </span><span class="bool-val">false</span>;
                     };
-                    <a href="#1096">diag</a>.subdiagnostic(<a href="#1122">subdiag</a>);
+                    <a href="#1098">diag</a>.subdiagnostic(<a href="#1124">subdiag</a>);
                     <span class="kw">return </span><span class="bool-val">true</span>;
                 }
         }
@@ -2838,7 +2861,7 @@
         expr_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>expr = <a href="#1151">expr</a>.peel_blocks();
+        <span class="kw">let </span>expr = <a href="#1153">expr</a>.peel_blocks();
 
         <span class="comment">// We have better suggestions for scalar interconversions...
         </span><span class="kw">if </span>expr_ty.is_scalar() &amp;&amp; expected_ty.is_scalar() {
@@ -2856,7 +2879,7 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(into_def_id) = <a class="self" href="#1149">self</a>.tcx.get_diagnostic_item(sym::Into)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(into_def_id) = <a class="self" href="#1151">self</a>.tcx.get_diagnostic_item(sym::Into)
             &amp;&amp; <span class="self">self</span>.predicate_must_hold_modulo_regions(<span class="kw-2">&amp;</span>traits::Obligation::new(
                 <span class="self">self</span>.tcx,
                 <span class="self">self</span>.misc(expr.span),
@@ -2867,7 +2890,7 @@
                 ),
             ))
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>span = <a href="#1155">expr</a>.span;
+            <span class="kw">let </span><span class="kw-2">mut </span>span = <a href="#1157">expr</a>.span;
             <span class="kw">while </span>expr.span.eq_ctxt(span) &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(parent_callsite) = span.parent_callsite()
             {
                 span = parent_callsite;
@@ -2878,9 +2901,9 @@
             } <span class="kw">else </span>{
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[(span.shrink_to_lo(), <span class="string">&quot;(&quot;</span>.to_owned()), (span.shrink_to_hi(), <span class="string">&quot;).into()&quot;</span>.to_owned())]
             };
-            <a href="#1150">diag</a>.multipart_suggestion(
+            <a href="#1152">diag</a>.multipart_suggestion(
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`&quot;</span>),
-                <a href="#1190">sugg</a>,
+                <a href="#1192">sugg</a>,
                 Applicability::MaybeIncorrect
             );
             <span class="kw">return </span><span class="bool-val">true</span>;
@@ -2901,15 +2924,15 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#1211">expr_ty</a>.peel_refs().kind() <span class="kw">else </span>{
+        <span class="kw">let </span>ty::Adt(def, <span class="kw">_</span>) = <a href="#1213">expr_ty</a>.peel_refs().kind() <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
         <span class="kw">if </span>!<span class="self">self</span>.tcx.is_diagnostic_item(sym::Option, def.did()) {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span>hir = <a class="self" href="#1208">self</a>.tcx.hir();
-        <span class="kw">let </span>cond_parent = <a href="#1225">hir</a>.parent_iter(<a href="#1210">expr</a>.hir_id).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|(<span class="kw">_</span>, node)| {
+        <span class="kw">let </span>hir = <a class="self" href="#1210">self</a>.tcx.hir();
+        <span class="kw">let </span>cond_parent = <a href="#1227">hir</a>.parent_iter(<a href="#1212">expr</a>.hir_id).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|(<span class="kw">_</span>, node)| {
             !<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, <span class="kw">_</span>, <span class="kw">_</span>), .. }) <span class="kw">if </span>op.node == hir::BinOpKind::And)
         });
         <span class="comment">// Don&#39;t suggest:
@@ -2917,26 +2940,26 @@
         //                     ++++++++++
         // since the user probably just misunderstood how `let else`
         // and `&amp;&amp;` work together.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, hir::Node::Local(local))) = <a href="#1226">cond_parent</a>
-            &amp;&amp; <span class="kw">let </span>hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="kw-2">&amp;</span><a href="#1234">local</a>.pat.kind
-            &amp;&amp; <span class="kw">let </span>hir::QPath::Resolved(<span class="prelude-val">None</span>, path) = <a href="#1235">qpath</a>
-            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(did) = <a href="#1236">path</a>.res.opt_def_id()
-                .and_then(|did| <a class="self" href="#1208">self</a>.tcx.opt_parent(<a href="#1238">did</a>))
-                .and_then(|did| <a class="self" href="#1208">self</a>.tcx.opt_parent(<a href="#1239">did</a>))
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, hir::Node::Local(local))) = <a href="#1228">cond_parent</a>
+            &amp;&amp; <span class="kw">let </span>hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, <span class="kw">_</span>, <span class="kw">_</span>) = <span class="kw-2">&amp;</span><a href="#1236">local</a>.pat.kind
+            &amp;&amp; <span class="kw">let </span>hir::QPath::Resolved(<span class="prelude-val">None</span>, path) = <a href="#1237">qpath</a>
+            &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(did) = <a href="#1238">path</a>.res.opt_def_id()
+                .and_then(|did| <a class="self" href="#1210">self</a>.tcx.opt_parent(<a href="#1240">did</a>))
+                .and_then(|did| <a class="self" href="#1210">self</a>.tcx.opt_parent(<a href="#1241">did</a>))
             &amp;&amp; <span class="self">self</span>.tcx.is_diagnostic_item(sym::Option, did)
         {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span>suggestion = <span class="kw">match </span><a class="self" href="#1208">self</a>.tcx.hir().maybe_get_struct_pattern_shorthand_field(<a href="#1210">expr</a>) {
+        <span class="kw">let </span>suggestion = <span class="kw">match </span><a class="self" href="#1210">self</a>.tcx.hir().maybe_get_struct_pattern_shorthand_field(<a href="#1212">expr</a>) {
             <span class="prelude-val">Some</span>(ident) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;: {ident}.is_some()&quot;</span>),
             <span class="prelude-val">None </span>=&gt; <span class="string">&quot;.is_some()&quot;</span>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
         };
 
-        <a href="#1209">diag</a>.span_suggestion_verbose(
-            <a href="#1210">expr</a>.span.shrink_to_hi(),
+        <a href="#1211">diag</a>.span_suggestion_verbose(
+            <a href="#1212">expr</a>.span.shrink_to_hi(),
             <span class="string">&quot;use `Option::is_some` to test if the `Option` has a value&quot;</span>,
-            <a href="#1245">suggestion</a>,
+            <a href="#1247">suggestion</a>,
             Applicability::MachineApplicable,
         );
         <span class="bool-val">true
@@ -2951,15 +2974,15 @@
         blk_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) {
-        <span class="kw">if let </span>ty::Slice(elem_ty) | ty::Array(elem_ty, <span class="kw">_</span>) = <a href="#1266">expected_ty</a>.kind() {
+        <span class="kw">if let </span>ty::Slice(elem_ty) | ty::Array(elem_ty, <span class="kw">_</span>) = <a href="#1268">expected_ty</a>.kind() {
             <span class="kw">if </span><span class="self">self</span>.can_coerce(blk_ty, <span class="kw-2">*</span>elem_ty)
                 &amp;&amp; blk.stmts.is_empty()
                 &amp;&amp; blk.rules == hir::BlockCheckMode::DefaultBlock
             {
-                <span class="kw">let </span>source_map = <a class="self" href="#1262">self</a>.tcx.sess.source_map();
-                <span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a href="#1273">source_map</a>.span_to_snippet(<a href="#1264">blk</a>.span) {
+                <span class="kw">let </span>source_map = <a class="self" href="#1264">self</a>.tcx.sess.source_map();
+                <span class="kw">if let </span><span class="prelude-val">Ok</span>(snippet) = <a href="#1275">source_map</a>.span_to_snippet(<a href="#1266">blk</a>.span) {
                     <span class="kw">if </span>snippet.starts_with(<span class="string">&#39;{&#39;</span>) &amp;&amp; snippet.ends_with(<span class="string">&#39;}&#39;</span>) {
-                        <a href="#1263">diag</a>.multipart_suggestion_verbose(
+                        <a href="#1265">diag</a>.multipart_suggestion_verbose(
                             <span class="string">&quot;to create an array, use square brackets instead of curly braces&quot;</span>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[
                                 (
@@ -3099,33 +3122,33 @@
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="kw">let </span><span class="prelude-val">Some</span>((DefKind::AssocFn, old_def_id)) =
-            <a class="self" href="#1410">self</a>.typeck_results.borrow().type_dependent_def(<a href="#1412">expr</a>.hir_id)
+            <a class="self" href="#1412">self</a>.typeck_results.borrow().type_dependent_def(<a href="#1414">expr</a>.hir_id)
         <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
-        <span class="kw">let </span>old_item_name = <a class="self" href="#1410">self</a>.tcx.item_name(<a href="#1415">old_def_id</a>);
-        <span class="kw">let </span>capitalized_name = Symbol::intern(<span class="kw-2">&amp;</span><a href="#1420">old_item_name</a>.as_str().to_uppercase());
+        <span class="kw">let </span>old_item_name = <a class="self" href="#1412">self</a>.tcx.item_name(<a href="#1417">old_def_id</a>);
+        <span class="kw">let </span>capitalized_name = Symbol::intern(<span class="kw-2">&amp;</span><a href="#1422">old_item_name</a>.as_str().to_uppercase());
         <span class="kw">if </span>old_item_name == capitalized_name {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="kw">let </span>(item, segment) = <span class="kw">match </span><a href="#1412">expr</a>.kind {
+        <span class="kw">let </span>(item, segment) = <span class="kw">match </span><a href="#1414">expr</a>.kind {
             hir::ExprKind::Path(QPath::Resolved(
                 <span class="prelude-val">Some</span>(ty),
                 <a href="../../../rustc_hir/hir/struct.Path.html">hir::Path</a> { segments: [segment], .. },
             ))
             | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(self_ty) = <a class="self" href="#1410">self</a>.typeck_results.borrow().node_type_opt(<a href="#1427">ty</a>.hir_id)
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(pick) = <a class="self" href="#1410">self</a>.<a href="../method/probe.rs.html#303">probe_for_name</a>(
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(self_ty) = <a class="self" href="#1412">self</a>.typeck_results.borrow().node_type_opt(<a href="#1429">ty</a>.hir_id)
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Ok</span>(pick) = <a class="self" href="#1412">self</a>.<a href="../method/probe.rs.html#303">probe_for_name</a>(
                         <a href="../method/probe.rs.html#241">Mode::Path</a>,
-                        Ident::new(<a href="#1421">capitalized_name</a>, <a href="#1428">segment</a>.ident.span),
-                        <span class="prelude-val">Some</span>(<a href="#1413">expected_ty</a>),
+                        Ident::new(<a href="#1423">capitalized_name</a>, <a href="#1430">segment</a>.ident.span),
+                        <span class="prelude-val">Some</span>(<a href="#1415">expected_ty</a>),
                         <a href="../method/probe.rs.html#55">IsSuggestion</a>(<span class="bool-val">true</span>),
-                        <a href="#1431">self_ty</a>,
-                        <a href="#1412">expr</a>.hir_id,
+                        <a href="#1433">self_ty</a>,
+                        <a href="#1414">expr</a>.hir_id,
                         <a href="../method/probe.rs.html#247">ProbeScope::TraitsInScope</a>,
                     )
                 {
-                    (<a href="#1432">pick</a>.item, <a href="#1428">segment</a>)
+                    (<a href="#1434">pick</a>.item, <a href="#1430">segment</a>)
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
@@ -3139,13 +3162,13 @@
                 </span><span class="kw">if </span>old_item_name != segment.ident.name {
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(item) = <span class="self"><a href="#1410">self</a>
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(item) = <span class="self"><a href="#1412">self</a>
                     </span>.tcx
-                    .associated_items(<a class="self" href="#1410">self</a>.tcx.parent(<a href="#1415">old_def_id</a>))
-                    .filter_by_name_unhygienic(<a href="#1421">capitalized_name</a>)
+                    .associated_items(<a class="self" href="#1412">self</a>.tcx.parent(<a href="#1417">old_def_id</a>))
+                    .filter_by_name_unhygienic(<a href="#1423">capitalized_name</a>)
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>()
                 {
-                    (<span class="kw-2">*</span><a href="#1456">item</a>, <a href="#1449">segment</a>)
+                    (<span class="kw-2">*</span><a href="#1458">item</a>, <a href="#1451">segment</a>)
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
@@ -3156,16 +3179,16 @@
             <span class="comment">// Same item
             </span><span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="kw">let </span>item_ty = <a class="self" href="#1410">self</a>.tcx.type_of(<a href="#1425">item</a>.def_id).instantiate_identity();
+        <span class="kw">let </span>item_ty = <a class="self" href="#1412">self</a>.tcx.type_of(<a href="#1427">item</a>.def_id).instantiate_identity();
         <span class="comment">// FIXME(compiler-errors): This check is *so* rudimentary
         </span><span class="kw">if </span>item_ty.has_param() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
         <span class="kw">if </span><span class="self">self</span>.can_coerce(item_ty, expected_ty) {
-            <a href="#1411">err</a>.span_suggestion_verbose(
-                <a href="#1425">segment</a>.ident.span,
+            <a href="#1413">err</a>.span_suggestion_verbose(
+                <a href="#1427">segment</a>.ident.span,
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;try referring to the associated const `{capitalized_name}` instead&quot;</span>,),
-                <a href="#1421">capitalized_name</a>,
+                <a href="#1423">capitalized_name</a>,
                 Applicability::MachineApplicable,
             );
             <span class="bool-val">true
@@ -3175,12 +3198,12 @@
     }
 
     <span class="kw">fn </span>is_loop(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>node = <a class="self" href="#1491">self</a>.tcx.hir().get(<a href="#1491">id</a>);
+        <span class="kw">let </span>node = <a class="self" href="#1493">self</a>.tcx.hir().get(<a href="#1493">id</a>);
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
     }
 
     <span class="kw">fn </span>is_local_statement(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>node = <a class="self" href="#1496">self</a>.tcx.hir().get(<a href="#1496">id</a>);
+        <span class="kw">let </span>node = <a class="self" href="#1498">self</a>.tcx.hir().get(<a href="#1498">id</a>);
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
     }
 
@@ -3195,18 +3218,18 @@
     ) {
         <span class="comment">// When `expr` is `x` in something like `let x = foo.clone(); x`, need to recurse up to get
         // `foo` and `clone`.
-        </span><span class="kw">let </span>expr = <a class="self" href="#1504">self</a>.<a href="#1575-1646">note_type_is_not_clone_inner_expr</a>(<a href="#1508">expr</a>);
+        </span><span class="kw">let </span>expr = <a class="self" href="#1506">self</a>.<a href="#1577-1648">note_type_is_not_clone_inner_expr</a>(<a href="#1510">expr</a>);
 
         <span class="comment">// If we&#39;ve recursed to an `expr` of `foo.clone()`, get `foo` and `clone`.
-        </span><span class="kw">let </span>hir::ExprKind::MethodCall(segment, callee_expr, <span class="kw-2">&amp;</span>[], <span class="kw">_</span>) = <a href="#1512">expr</a>.kind <span class="kw">else </span>{
+        </span><span class="kw">let </span>hir::ExprKind::MethodCall(segment, callee_expr, <span class="kw-2">&amp;</span>[], <span class="kw">_</span>) = <a href="#1514">expr</a>.kind <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
 
-        <span class="kw">let </span><span class="prelude-val">Some</span>(clone_trait_did) = <a class="self" href="#1504">self</a>.tcx.lang_items().clone_trait() <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(clone_trait_did) = <a class="self" href="#1506">self</a>.tcx.lang_items().clone_trait() <span class="kw">else </span>{
             <span class="kw">return</span>;
         };
-        <span class="kw">let </span>ty::Ref(<span class="kw">_</span>, pointee_ty, <span class="kw">_</span>) = <a href="#1507">found_ty</a>.kind() <span class="kw">else </span>{ <span class="kw">return </span>};
-        <span class="kw">let </span>results = <a class="self" href="#1504">self</a>.typeck_results.borrow();
+        <span class="kw">let </span>ty::Ref(<span class="kw">_</span>, pointee_ty, <span class="kw">_</span>) = <a href="#1509">found_ty</a>.kind() <span class="kw">else </span>{ <span class="kw">return </span>};
+        <span class="kw">let </span>results = <a class="self" href="#1506">self</a>.typeck_results.borrow();
         <span class="comment">// First, look for a `Clone::clone` call
         </span><span class="kw">if </span>segment.ident.name == sym::clone
             &amp;&amp; results.type_dependent_def_id(expr.hir_id).map_or(
@@ -3222,7 +3245,7 @@
             </span>&amp;&amp; !results.expr_adjustments(callee_expr).iter().any(|adj| <span class="macro">matches!</span>(adj.kind, ty::adjustment::Adjust::Deref(..)))
             <span class="comment">// Check that we&#39;re in fact trying to clone into the expected type
             </span>&amp;&amp; <span class="self">self</span>.can_coerce(<span class="kw-2">*</span>pointee_ty, expected_ty)
-            &amp;&amp; <span class="kw">let </span>trait_ref = ty::TraitRef::new(<a class="self" href="#1504">self</a>.tcx, <a href="#1519">clone_trait_did</a>, [<a href="#1506">expected_ty</a>])
+            &amp;&amp; <span class="kw">let </span>trait_ref = ty::TraitRef::new(<a class="self" href="#1506">self</a>.tcx, <a href="#1521">clone_trait_did</a>, [<a href="#1508">expected_ty</a>])
             <span class="comment">// And the expected type doesn&#39;t implement `Clone`
             </span>&amp;&amp; !<span class="self">self</span>.predicate_must_hold_considering_regions(<span class="kw-2">&amp;</span>traits::Obligation::new(
                 <span class="self">self</span>.tcx,
@@ -3231,25 +3254,25 @@
                 trait_ref,
             ))
         {
-            <a href="#1505">diag</a>.span_note(
-                <a href="#1515">callee_expr</a>.span,
+            <a href="#1507">diag</a>.span_note(
+                <a href="#1517">callee_expr</a>.span,
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                     <span class="string">&quot;`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead&quot;
                 </span>),
             );
-            <span class="kw">let </span>owner = <a class="self" href="#1504">self</a>.tcx.hir().enclosing_body_owner(<a href="#1512">expr</a>.hir_id);
-            <span class="kw">if let </span>ty::Param(param) = <a href="#1506">expected_ty</a>.kind()
-                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(generics) = <a class="self" href="#1504">self</a>.tcx.hir().get_generics(<a href="#1554">owner</a>)
+            <span class="kw">let </span>owner = <a class="self" href="#1506">self</a>.tcx.hir().enclosing_body_owner(<a href="#1514">expr</a>.hir_id);
+            <span class="kw">if let </span>ty::Param(param) = <a href="#1508">expected_ty</a>.kind()
+                &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(generics) = <a class="self" href="#1506">self</a>.tcx.hir().get_generics(<a href="#1556">owner</a>)
             {
                 <a href="../../../rustc_middle/ty/diagnostics/fn.suggest_constraining_type_params.html">suggest_constraining_type_params</a>(
-                    <a class="self" href="#1504">self</a>.tcx,
-                    <a href="#1556">generics</a>,
-                    <a href="#1505">diag</a>,
+                    <a class="self" href="#1506">self</a>.tcx,
+                    <a href="#1558">generics</a>,
+                    <a href="#1507">diag</a>,
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[(param.name.as_str(), <span class="string">&quot;Clone&quot;</span>, <span class="prelude-val">Some</span>(clone_trait_did))].<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>(),
                     <span class="prelude-val">None</span>,
                 );
             } <span class="kw">else </span>{
-                <a class="self" href="#1504">self</a>.<a href="../method/suggest.rs.html#2174-2276">suggest_derive</a>(<a href="#1505">diag</a>, <span class="kw-2">&amp;</span>[(<a href="#1539">trait_ref</a>.<a href="../../../rustc_middle/ty/trait.ToPredicate.html">to_predicate</a>(<a class="self" href="#1504">self</a>.tcx), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)]);
+                <a class="self" href="#1506">self</a>.<a href="../method/suggest.rs.html#2174-2276">suggest_derive</a>(<a href="#1507">diag</a>, <span class="kw-2">&amp;</span>[(<a href="#1541">trait_ref</a>.<a href="../../../rustc_middle/ty/trait.ToPredicate.html">to_predicate</a>(<a class="self" href="#1506">self</a>.tcx), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)]);
             }
         }
     }
@@ -3262,23 +3285,23 @@
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="self">self</span>,
         expr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>hir::Expr&lt;<span class="lifetime">&#39;b</span>&gt;,
     ) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>hir::Expr&lt;<span class="lifetime">&#39;b</span>&gt; {
-        <span class="kw">match </span><a href="#1577">expr</a>.peel_blocks().kind {
+        <span class="kw">match </span><a href="#1579">expr</a>.peel_blocks().kind {
             hir::ExprKind::Path(hir::QPath::Resolved(
                 <span class="prelude-val">None</span>,
                 <a href="../../../rustc_hir/hir/struct.Path.html">hir::Path</a> { segments: [<span class="kw">_</span>], res: <span class="kw">crate</span>::Res::Local(binding), .. },
             )) =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Some</span>(hir::Node::Pat(<a href="../../../rustc_hir/hir/struct.Pat.html">hir::Pat</a> { hir_id, .. })) = <a class="self" href="#1576">self</a>.tcx.hir().find(<span class="kw-2">*</span><a href="#1582">binding</a>)
+                <span class="kw">let </span><span class="prelude-val">Some</span>(hir::Node::Pat(<a href="../../../rustc_hir/hir/struct.Pat.html">hir::Pat</a> { hir_id, .. })) = <a class="self" href="#1578">self</a>.tcx.hir().find(<span class="kw-2">*</span><a href="#1584">binding</a>)
                 <span class="kw">else </span>{
-                    <span class="kw">return </span><a href="#1577">expr</a>;
+                    <span class="kw">return </span><a href="#1579">expr</a>;
                 };
-                <span class="kw">let </span><span class="prelude-val">Some</span>(parent) = <a class="self" href="#1576">self</a>.tcx.hir().find(<a class="self" href="#1576">self</a>.tcx.hir().parent_id(<span class="kw-2">*</span><a href="#1584">hir_id</a>)) <span class="kw">else </span>{
-                    <span class="kw">return </span><a href="#1577">expr</a>;
+                <span class="kw">let </span><span class="prelude-val">Some</span>(parent) = <a class="self" href="#1578">self</a>.tcx.hir().find(<a class="self" href="#1578">self</a>.tcx.hir().parent_id(<span class="kw-2">*</span><a href="#1586">hir_id</a>)) <span class="kw">else </span>{
+                    <span class="kw">return </span><a href="#1579">expr</a>;
                 };
 
-                <span class="kw">match </span><a href="#1588">parent</a> {
+                <span class="kw">match </span><a href="#1590">parent</a> {
                     <span class="comment">// foo.clone()
                     </span>hir::Node::Local(<a href="../../../rustc_hir/hir/struct.Local.html">hir::Local</a> { init: <span class="prelude-val">Some</span>(init), .. }) =&gt; {
-                        <a class="self" href="#1576">self</a>.<a href="#1575-1646">note_type_is_not_clone_inner_expr</a>(<a href="#1594">init</a>)
+                        <a class="self" href="#1578">self</a>.<a href="#1577-1648">note_type_is_not_clone_inner_expr</a>(<a href="#1596">init</a>)
                     }
                     <span class="comment">// When `expr` is more complex like a tuple
                     </span>hir::Node::Pat(<a href="../../../rustc_hir/hir/struct.Pat.html">hir::Pat</a> {
@@ -3287,47 +3310,47 @@
                         ..
                     }) =&gt; {
                         <span class="kw">let </span><span class="prelude-val">Some</span>(hir::Node::Local(<a href="../../../rustc_hir/hir/struct.Local.html">hir::Local</a> { init: <span class="prelude-val">Some</span>(init), .. })) =
-                                <a class="self" href="#1576">self</a>.tcx.hir().find(<a class="self" href="#1576">self</a>.tcx.hir().parent_id(<span class="kw-2">*</span><a href="#1599">pat_hir_id</a>)) <span class="kw">else </span>{
-                            <span class="kw">return </span><a href="#1577">expr</a>;
+                                <a class="self" href="#1578">self</a>.tcx.hir().find(<a class="self" href="#1578">self</a>.tcx.hir().parent_id(<span class="kw-2">*</span><a href="#1601">pat_hir_id</a>)) <span class="kw">else </span>{
+                            <span class="kw">return </span><a href="#1579">expr</a>;
                         };
 
-                        <span class="kw">match </span><a href="#1603">init</a>.peel_blocks().kind {
+                        <span class="kw">match </span><a href="#1605">init</a>.peel_blocks().kind {
                             ExprKind::Tup(init_tup) =&gt; {
-                                <span class="kw">if let </span><span class="prelude-val">Some</span>(init) = <a href="#1600">pats</a>
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(init) = <a href="#1602">pats</a>
                                     .iter()
                                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
-                                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|x| <a href="#1613">x</a>.<span class="number">1</span>.hir_id == <span class="kw-2">*</span><a href="#1584">hir_id</a>)
-                                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find_map</a>(|(i, <span class="kw">_</span>)| <a href="#1609">init_tup</a>.get(<a href="#1614">i</a>))
+                                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|x| <a href="#1615">x</a>.<span class="number">1</span>.hir_id == <span class="kw-2">*</span><a href="#1586">hir_id</a>)
+                                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find_map</a>(|(i, <span class="kw">_</span>)| <a href="#1611">init_tup</a>.get(<a href="#1616">i</a>))
                                 {
-                                    <a class="self" href="#1576">self</a>.<a href="#1575-1646">note_type_is_not_clone_inner_expr</a>(<a href="#1610">init</a>)
+                                    <a class="self" href="#1578">self</a>.<a href="#1577-1648">note_type_is_not_clone_inner_expr</a>(<a href="#1612">init</a>)
                                 } <span class="kw">else </span>{
-                                    <a href="#1577">expr</a>
+                                    <a href="#1579">expr</a>
                                 }
                             }
-                            <span class="kw">_ </span>=&gt; <a href="#1577">expr</a>,
+                            <span class="kw">_ </span>=&gt; <a href="#1579">expr</a>,
                         }
                     }
-                    <span class="kw">_ </span>=&gt; <a href="#1577">expr</a>,
+                    <span class="kw">_ </span>=&gt; <a href="#1579">expr</a>,
                 }
             }
             <span class="comment">// If we&#39;re calling into a closure that may not be typed recurse into that call. no need
             // to worry if it&#39;s a call to a typed function or closure as this would ne handled
             // previously.
             </span>hir::ExprKind::Call(<a href="../../../rustc_hir/hir/struct.Expr.html">Expr</a> { kind: call_expr_kind, .. }, <span class="kw">_</span>) =&gt; {
-                <span class="kw">if let </span>hir::ExprKind::Path(hir::QPath::Resolved(<span class="prelude-val">None</span>, call_expr_path)) = <a href="#1630">call_expr_kind</a>
-                    &amp;&amp; <span class="kw">let </span><a href="../../../rustc_hir/hir/struct.Path.html">hir::Path</a> { segments: [<span class="kw">_</span>], res: <span class="kw">crate</span>::Res::Local(binding), .. } = <a href="#1631">call_expr_path</a>
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(hir::Node::Pat(<a href="../../../rustc_hir/hir/struct.Pat.html">hir::Pat</a> { hir_id, .. })) = <a class="self" href="#1576">self</a>.tcx.hir().find(<span class="kw-2">*</span><a href="#1632">binding</a>)
-                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(closure) = <a class="self" href="#1576">self</a>.tcx.hir().find(<a class="self" href="#1576">self</a>.tcx.hir().parent_id(<span class="kw-2">*</span><a href="#1633">hir_id</a>))
-                    &amp;&amp; <span class="kw">let </span>hir::Node::Local(<a href="../../../rustc_hir/hir/struct.Local.html">hir::Local</a> { init: <span class="prelude-val">Some</span>(init), .. }) = <a href="#1634">closure</a>
-                    &amp;&amp; <span class="kw">let </span><a href="../../../rustc_hir/hir/struct.Expr.html">Expr</a> { kind: hir::ExprKind::Closure(<a href="../../../rustc_hir/hir/struct.Closure.html">hir::Closure</a> { body: body_id, .. }), ..} = <a href="#1635">init</a>
+                <span class="kw">if let </span>hir::ExprKind::Path(hir::QPath::Resolved(<span class="prelude-val">None</span>, call_expr_path)) = <a href="#1632">call_expr_kind</a>
+                    &amp;&amp; <span class="kw">let </span><a href="../../../rustc_hir/hir/struct.Path.html">hir::Path</a> { segments: [<span class="kw">_</span>], res: <span class="kw">crate</span>::Res::Local(binding), .. } = <a href="#1633">call_expr_path</a>
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(hir::Node::Pat(<a href="../../../rustc_hir/hir/struct.Pat.html">hir::Pat</a> { hir_id, .. })) = <a class="self" href="#1578">self</a>.tcx.hir().find(<span class="kw-2">*</span><a href="#1634">binding</a>)
+                    &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(closure) = <a class="self" href="#1578">self</a>.tcx.hir().find(<a class="self" href="#1578">self</a>.tcx.hir().parent_id(<span class="kw-2">*</span><a href="#1635">hir_id</a>))
+                    &amp;&amp; <span class="kw">let </span>hir::Node::Local(<a href="../../../rustc_hir/hir/struct.Local.html">hir::Local</a> { init: <span class="prelude-val">Some</span>(init), .. }) = <a href="#1636">closure</a>
+                    &amp;&amp; <span class="kw">let </span><a href="../../../rustc_hir/hir/struct.Expr.html">Expr</a> { kind: hir::ExprKind::Closure(<a href="../../../rustc_hir/hir/struct.Closure.html">hir::Closure</a> { body: body_id, .. }), ..} = <a href="#1637">init</a>
                 {
-                    <span class="kw">let </span><a href="../../../rustc_hir/hir/struct.Body.html">hir::Body</a> { value: body_expr, .. } = <a class="self" href="#1576">self</a>.tcx.hir().body(<span class="kw-2">*</span><a href="#1636">body_id</a>);
-                    <a class="self" href="#1576">self</a>.<a href="#1575-1646">note_type_is_not_clone_inner_expr</a>(<a href="#1638">body_expr</a>)
+                    <span class="kw">let </span><a href="../../../rustc_hir/hir/struct.Body.html">hir::Body</a> { value: body_expr, .. } = <a class="self" href="#1578">self</a>.tcx.hir().body(<span class="kw-2">*</span><a href="#1638">body_id</a>);
+                    <a class="self" href="#1578">self</a>.<a href="#1577-1648">note_type_is_not_clone_inner_expr</a>(<a href="#1640">body_expr</a>)
                 } <span class="kw">else </span>{
-                    <a href="#1577">expr</a>
+                    <a href="#1579">expr</a>
                 }
             }
-            <span class="kw">_ </span>=&gt; <a href="#1577">expr</a>,
+            <span class="kw">_ </span>=&gt; <a href="#1579">expr</a>,
         }
     }
 
@@ -3348,17 +3371,17 @@
         expected_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         err: <span class="kw-2">&amp;mut </span><a href="../../../rustc_errors/diagnostic/struct.Diagnostic.html">Diagnostic</a>,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>((span_semi, boxed)) = <a class="self" href="#1660">self</a>.<a href="mod.rs.html#156-187">err_ctxt</a>().could_remove_semicolon(<a href="#1661">blk</a>, <a href="#1662">expected_ty</a>) {
-            <span class="kw">if let </span>StatementAsExpression::NeedsBoxing = <a href="#1665">boxed</a> {
-                <a href="#1663">err</a>.span_suggestion_verbose(
-                    <a href="#1665">span_semi</a>,
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((span_semi, boxed)) = <a class="self" href="#1662">self</a>.<a href="mod.rs.html#156-187">err_ctxt</a>().could_remove_semicolon(<a href="#1663">blk</a>, <a href="#1664">expected_ty</a>) {
+            <span class="kw">if let </span>StatementAsExpression::NeedsBoxing = <a href="#1667">boxed</a> {
+                <a href="#1665">err</a>.span_suggestion_verbose(
+                    <a href="#1667">span_semi</a>,
                     <span class="string">&quot;consider removing this semicolon and boxing the expression&quot;</span>,
                     <span class="string">&quot;&quot;</span>,
                     Applicability::HasPlaceholders,
                 );
             } <span class="kw">else </span>{
-                <a href="#1663">err</a>.span_suggestion_short(
-                    <a href="#1665">span_semi</a>,
+                <a href="#1665">err</a>.span_suggestion_short(
+                    <a href="#1667">span_semi</a>,
                     <span class="string">&quot;remove this semicolon to return this value&quot;</span>,
                     <span class="string">&quot;&quot;</span>,
                     Applicability::MachineApplicable,
@@ -3368,6 +3391,25 @@
         </span>} <span class="kw">else </span>{
             <span class="bool-val">false
         </span>}
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_field_suggestable(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        field: <span class="kw-2">&amp;</span><a href="../../../rustc_middle/ty/struct.FieldDef.html">ty::FieldDef</a>,
+        hir_id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>,
+        span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
+    ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+        <span class="comment">// The field must be visible in the containing module.
+        </span><a href="#1691">field</a>.vis.is_accessible_from(<a class="self" href="#1690">self</a>.tcx.parent_module(<a href="#1692">hir_id</a>), <a class="self" href="#1690">self</a>.tcx)
+            <span class="comment">// The field must not be unstable.
+            </span>&amp;&amp; !<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(
+                <span class="self">self</span>.tcx.eval_stability(field.did, <span class="prelude-val">None</span>, rustc_span::DUMMY_SP, <span class="prelude-val">None</span>),
+                rustc_middle::middle::stability::EvalResult::Deny { .. }
+            )
+            <span class="comment">// If the field is from an external crate it must not be `doc(hidden)`.
+            </span>&amp;&amp; (<a href="#1691">field</a>.did.is_local() || !<a class="self" href="#1690">self</a>.tcx.is_doc_hidden(<a href="#1691">field</a>.did))
+            <span class="comment">// If the field is hygienic it must come from the same syntax context.
+            </span>&amp;&amp; <a class="self" href="#1690">self</a>.tcx.def_ident_span(<a href="#1691">field</a>.did).unwrap().normalize_to_macros_2_0().eq_ctxt(<a href="#1693">span</a>)
     }
 }
 </code></pre></div></section></main></body></html>

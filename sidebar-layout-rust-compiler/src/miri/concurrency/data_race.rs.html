@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/data_race.rs`."><title>data_race.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/data_race.rs`."><title>data_race.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2164,8 +2164,8 @@
         <span class="kw">let </span>old = this.allow_data_races_mut(|this| this.read_immediate(place))<span class="question-mark">?</span>;
 
         <span class="comment">// Atomics wrap around on overflow.
-        </span><span class="kw">let </span>val = this.binary_op(op, <span class="kw-2">&amp;</span>old, rhs)<span class="question-mark">?</span>;
-        <span class="kw">let </span>val = <span class="kw">if </span>neg { this.unary_op(mir::UnOp::Not, <span class="kw-2">&amp;</span>val)<span class="question-mark">? </span>} <span class="kw">else </span>{ <a href="#519">val</a> };
+        </span><span class="kw">let </span>val = this.wrapping_binary_op(op, <span class="kw-2">&amp;</span>old, rhs)<span class="question-mark">?</span>;
+        <span class="kw">let </span>val = <span class="kw">if </span>neg { this.wrapping_unary_op(mir::UnOp::Not, <span class="kw-2">&amp;</span>val)<span class="question-mark">? </span>} <span class="kw">else </span>{ <a href="#519">val</a> };
         this.allow_data_races_mut(|this| this.write_immediate(<span class="kw-2">*</span>val, place))<span class="question-mark">?</span>;
 
         this.validate_atomic_rmw(place, atomic)<span class="question-mark">?</span>;
@@ -2209,7 +2209,7 @@
 
         this.validate_overlapping_atomic(place)<span class="question-mark">?</span>;
         <span class="kw">let </span>old = this.allow_data_races_mut(|this| this.read_immediate(place))<span class="question-mark">?</span>;
-        <span class="kw">let </span>lt = this.binary_op(mir::BinOp::Lt, <span class="kw-2">&amp;</span>old, <span class="kw-2">&amp;</span>rhs)<span class="question-mark">?</span>.to_scalar().to_bool()<span class="question-mark">?</span>;
+        <span class="kw">let </span>lt = this.wrapping_binary_op(mir::BinOp::Lt, <span class="kw-2">&amp;</span>old, <span class="kw-2">&amp;</span>rhs)<span class="question-mark">?</span>.to_scalar().to_bool()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>new_val = <span class="kw">if </span>min {
             <span class="kw">if </span>lt { <span class="kw-2">&amp;</span><a href="#563">old</a> } <span class="kw">else </span>{ <span class="kw-2">&amp;</span><a href="#555">rhs</a> }
@@ -2253,7 +2253,7 @@
         // Read as immediate for the sake of `binary_op()`
         </span><span class="kw">let </span>old = this.allow_data_races_mut(|this| this.read_immediate(place))<span class="question-mark">?</span>;
         <span class="comment">// `binary_op` will bail if either of them is not a scalar.
-        </span><span class="kw">let </span>eq = this.binary_op(mir::BinOp::Eq, <span class="kw-2">&amp;</span>old, expect_old)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>eq = this.wrapping_binary_op(mir::BinOp::Eq, <span class="kw-2">&amp;</span>old, expect_old)<span class="question-mark">?</span>;
         <span class="comment">// If the operation would succeed, but is &quot;weak&quot;, fail some portion
         // of the time, based on `success_rate`.
         </span><span class="kw">let </span>success_rate = <span class="number">1.0 </span>- <a href="#598">this</a>.machine.cmpxchg_weak_failure_rate;
@@ -2288,7 +2288,7 @@
     <span class="doccomment">/// Update the data-race detector for an atomic fence on the current thread.
     </span><span class="kw">fn </span>atomic_fence(<span class="kw-2">&amp;mut </span><span class="self">self</span>, atomic: <a href="#94-99">AtomicFenceOrd</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>this = <a class="self" href="#641">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_span = <a href="#642">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#642">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data_race) = <span class="kw-2">&amp;mut </span><a href="#642">this</a>.machine.data_race {
             <a href="#644">data_race</a>.<a href="#1522-1536">maybe_perform_sync_operation</a>(
                 <span class="kw-2">&amp;</span><a href="#642">this</a>.machine.threads,
@@ -2520,7 +2520,7 @@
         access_range: <a href="../../../miri/struct.AllocRange.html">AllocRange</a>,
         machine: <span class="kw-2">&amp;</span>MiriMachine&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>current_span = <a href="#873">machine</a>.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#873">machine</a>.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>global = <a href="#873">machine</a>.data_race.as_ref().unwrap();
         <span class="kw">if </span>global.race_detecting() {
             <span class="kw">let </span>(index, <span class="kw-2">mut </span>thread_clocks) = <a href="#876">global</a>.<a href="#1617-1625">current_thread_state_mut</a>(<span class="kw-2">&amp;</span><a href="#873">machine</a>.threads);
@@ -2557,7 +2557,7 @@
         write_type: <a href="#196-208">WriteType</a>,
         machine: <span class="kw-2">&amp;mut </span>MiriMachine&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>current_span = <a href="#910">machine</a>.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#910">machine</a>.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>global = <a href="#910">machine</a>.data_race.as_mut().unwrap();
         <span class="kw">if </span>global.race_detecting() {
             <span class="kw">let </span>(index, <span class="kw-2">mut </span>thread_clocks) = <a href="#913">global</a>.<a href="#1617-1625">current_thread_state_mut</a>(<span class="kw-2">&amp;</span><a href="#910">machine</a>.threads);
@@ -2796,7 +2796,7 @@
                     size.bytes()
                 );
 
-                <span class="kw">let </span>current_span = <a href="#1135">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+                <span class="kw">let </span>current_span = <a href="#1135">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
                 <span class="comment">// Perform the atomic operation.
                 </span>data_race.maybe_perform_sync_operation(
                     <span class="kw-2">&amp;</span>this.machine.threads,

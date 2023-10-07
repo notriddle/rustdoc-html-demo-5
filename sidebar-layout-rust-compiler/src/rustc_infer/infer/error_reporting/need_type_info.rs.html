@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs`."><title>need_type_info.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_infer/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs`."><title>need_type_info.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_infer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../rustc_infer/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_infer"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1247,42 +1247,9 @@
 <a href="#1247" id="1247">1247</a>
 <a href="#1248" id="1248">1248</a>
 <a href="#1249" id="1249">1249</a>
-<a href="#1250" id="1250">1250</a>
-<a href="#1251" id="1251">1251</a>
-<a href="#1252" id="1252">1252</a>
-<a href="#1253" id="1253">1253</a>
-<a href="#1254" id="1254">1254</a>
-<a href="#1255" id="1255">1255</a>
-<a href="#1256" id="1256">1256</a>
-<a href="#1257" id="1257">1257</a>
-<a href="#1258" id="1258">1258</a>
-<a href="#1259" id="1259">1259</a>
-<a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
-<a href="#1265" id="1265">1265</a>
-<a href="#1266" id="1266">1266</a>
-<a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a>
-<a href="#1277" id="1277">1277</a>
-<a href="#1278" id="1278">1278</a>
-<a href="#1279" id="1279">1279</a>
-<a href="#1280" id="1280">1280</a>
-<a href="#1281" id="1281">1281</a>
-<a href="#1282" id="1282">1282</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::errors::{
-    <a href="../../errors/mod.rs.html#56-69">AmbiguousImpl</a>, <a href="../../errors/mod.rs.html#74-87">AmbiguousReturn</a>, <a href="../../errors/mod.rs.html#38-51">AnnotationRequired</a>, <a href="../../errors/mod.rs.html#102-112">InferenceBadError</a>, <a href="../../errors/mod.rs.html#91-97">NeedTypeInfoInGenerator</a>,
-    <a href="../../errors/mod.rs.html#158-185">SourceKindMultiSuggestion</a>, <a href="../../errors/mod.rs.html#115-155">SourceKindSubdiag</a>,
+    <a href="../../errors/mod.rs.html#55-68">AmbiguousImpl</a>, <a href="../../errors/mod.rs.html#73-86">AmbiguousReturn</a>, <a href="../../errors/mod.rs.html#37-50">AnnotationRequired</a>, <a href="../../errors/mod.rs.html#91-101">InferenceBadError</a>,
+    <a href="../../errors/mod.rs.html#147-174">SourceKindMultiSuggestion</a>, <a href="../../errors/mod.rs.html#104-144">SourceKindSubdiag</a>,
 };
 <span class="kw">use </span><a href="mod.rs.html#122-131"><span class="kw">crate</span>::infer::error_reporting::TypeErrCtxt</a>;
 <span class="kw">use </span><span class="kw">crate</span>::infer::type_variable::{<a href="../type_variable.rs.html#114-117">TypeVariableOrigin</a>, <a href="../type_variable.rs.html#121-140">TypeVariableOriginKind</a>};
@@ -1309,7 +1276,7 @@
 
 <span class="kw">pub enum </span><a href="../../../../rustc_infer/infer/error_reporting/need_type_info/enum.TypeAnnotationNeeded.html">TypeAnnotationNeeded</a> {
     <span class="doccomment">/// ```compile_fail,E0282
-    /// let x = &quot;hello&quot;.chars().rev().collect();
+    /// let x;
     /// ```
     </span>E0282,
     <span class="doccomment">/// An implementation cannot be chosen unambiguously because of lack of information.
@@ -1382,7 +1349,7 @@
             .as_ref()
             .map(|parent| (<a href="#101">parent</a>.prefix, <a href="#101">parent</a>.name.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>()))
             .unwrap_or_default();
-        <a href="../../errors/mod.rs.html#102-112">InferenceBadError</a> {
+        <a href="../../errors/mod.rs.html#91-101">InferenceBadError</a> {
             <a href="#95">span</a>,
             <a href="#97">bad_kind</a>,
             prefix_kind: <a class="self" href="#95">self</a>.kind.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
@@ -1638,7 +1605,7 @@
         <span class="kw">let </span>multi_suggestions = Vec::new();
         <span class="kw">let </span>bad_label = <span class="prelude-val">Some</span>(<a href="#349">arg_data</a>.<a href="#95-113">make_bad_error</a>(<a href="#348">span</a>));
         <span class="kw">match </span><a href="#350">error_code</a> {
-            <a href="#32">TypeAnnotationNeeded::E0282</a> =&gt; <a href="../../errors/mod.rs.html#38-51">AnnotationRequired</a> {
+            <a href="#32">TypeAnnotationNeeded::E0282</a> =&gt; <a href="../../errors/mod.rs.html#37-50">AnnotationRequired</a> {
                 <a href="#348">span</a>,
                 <a href="#352">source_kind</a>,
                 <a href="#353">source_name</a>,
@@ -1648,7 +1615,7 @@
                 <a href="#357">bad_label</a>,
             }
             .<a href="../../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<span class="kw-2">&amp;</span><a class="self" href="#347">self</a>.tcx.sess.parse_sess.span_diagnostic),
-            <a href="#37">TypeAnnotationNeeded::E0283</a> =&gt; <a href="../../errors/mod.rs.html#56-69">AmbiguousImpl</a> {
+            <a href="#37">TypeAnnotationNeeded::E0283</a> =&gt; <a href="../../errors/mod.rs.html#55-68">AmbiguousImpl</a> {
                 <a href="#348">span</a>,
                 <a href="#352">source_kind</a>,
                 <a href="#353">source_name</a>,
@@ -1658,7 +1625,7 @@
                 <a href="#357">bad_label</a>,
             }
             .<a href="../../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<span class="kw-2">&amp;</span><a class="self" href="#347">self</a>.tcx.sess.parse_sess.span_diagnostic),
-            <a href="#42">TypeAnnotationNeeded::E0284</a> =&gt; <a href="../../errors/mod.rs.html#74-87">AmbiguousReturn</a> {
+            <a href="#42">TypeAnnotationNeeded::E0284</a> =&gt; <a href="../../errors/mod.rs.html#73-86">AmbiguousReturn</a> {
                 <a href="#348">span</a>,
                 <a href="#352">source_kind</a>,
                 <a href="#353">source_name</a>,
@@ -1877,39 +1844,6 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">pub fn </span>need_type_info_err_in_generator(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        kind: <a href="../../../../rustc_hir/hir/enum.GeneratorKind.html">hir::GeneratorKind</a>,
-        span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-        ty: ty::Term&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; DiagnosticBuilder&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt; {
-        <span class="kw">let </span>ty = <a class="self" href="#600">self</a>.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#603">ty</a>);
-        <span class="kw">let </span>data = <a class="self" href="#600">self</a>.<a href="#255-342">extract_inference_diagnostics_data</a>(<a href="#605">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <span class="prelude-val">None</span>);
-
-        <a href="../../errors/mod.rs.html#91-97">NeedTypeInfoInGenerator</a> {
-            bad_label: <a href="#606">data</a>.<a href="#95-113">make_bad_error</a>(<a href="#602">span</a>),
-            <a href="#602">span</a>,
-            generator_kind: <a href="#617">GeneratorKindAsDiagArg</a>(<a href="#601">kind</a>),
-        }
-        .<a href="../../../../rustc_errors/diagnostic_builder/trait.IntoDiagnostic.html">into_diagnostic</a>(<span class="kw-2">&amp;</span><a class="self" href="#600">self</a>.tcx.sess.parse_sess.span_diagnostic)
-    }
-}
-
-<span class="kw">pub struct </span><a href="../../../../rustc_infer/infer/error_reporting/need_type_info/struct.GeneratorKindAsDiagArg.html">GeneratorKindAsDiagArg</a>(<span class="kw">pub </span><a href="../../../../rustc_hir/hir/enum.GeneratorKind.html">hir::GeneratorKind</a>);
-
-<span class="kw">impl </span><a href="../../../../rustc_errors/diagnostic/trait.IntoDiagnosticArg.html">IntoDiagnosticArg</a> <span class="kw">for </span><a href="#617">GeneratorKindAsDiagArg</a> {
-    <span class="kw">fn </span>into_diagnostic_arg(<span class="self">self</span>) -&gt; rustc_errors::DiagnosticArgValue&lt;<span class="lifetime">&#39;static</span>&gt; {
-        <span class="kw">let </span>kind = <span class="kw">match </span><a class="self" href="#620">self</a>.<span class="number">0 </span>{
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) =&gt; <span class="string">&quot;async_block&quot;</span>,
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) =&gt; <span class="string">&quot;async_closure&quot;</span>,
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) =&gt; <span class="string">&quot;async_fn&quot;</span>,
-            hir::GeneratorKind::Gen =&gt; <span class="string">&quot;generator&quot;</span>,
-        };
-        rustc_errors::DiagnosticArgValue::Str(<a href="#621">kind</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
-    }
-}
-
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span><a href="../../../../rustc_infer/infer/error_reporting/need_type_info/struct.InferSource.html">InferSource</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
@@ -1953,38 +1887,38 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; InferSource&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>from_expansion(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>source_from_expansion = <span class="kw">match </span><a class="self" href="#673">self</a>.kind {
-            <a href="#639-644">InferSourceKind::LetBinding</a> { insert_span, .. }
-            | <a href="#645-648">InferSourceKind::ClosureArg</a> { insert_span, .. }
-            | <a href="#649-656">InferSourceKind::GenericArg</a> { insert_span, .. } =&gt; <a href="#675">insert_span</a>.from_expansion(),
-            <a href="#657-664">InferSourceKind::FullyQualifiedMethodCall</a> { receiver, .. } =&gt; {
-                <a href="#678">receiver</a>.span.from_expansion()
+        <span class="kw">let </span>source_from_expansion = <span class="kw">match </span><a class="self" href="#640">self</a>.kind {
+            <a href="#606-611">InferSourceKind::LetBinding</a> { insert_span, .. }
+            | <a href="#612-615">InferSourceKind::ClosureArg</a> { insert_span, .. }
+            | <a href="#616-623">InferSourceKind::GenericArg</a> { insert_span, .. } =&gt; <a href="#642">insert_span</a>.from_expansion(),
+            <a href="#624-631">InferSourceKind::FullyQualifiedMethodCall</a> { receiver, .. } =&gt; {
+                <a href="#645">receiver</a>.span.from_expansion()
             }
-            <a href="#665-669">InferSourceKind::ClosureReturn</a> { data, should_wrap_expr, .. } =&gt; {
-                <a href="#681">data</a>.span().from_expansion() || <a href="#681">should_wrap_expr</a>.is_some_and(Span::from_expansion)
+            <a href="#632-636">InferSourceKind::ClosureReturn</a> { data, should_wrap_expr, .. } =&gt; {
+                <a href="#648">data</a>.span().from_expansion() || <a href="#648">should_wrap_expr</a>.is_some_and(Span::from_expansion)
             }
         };
-        <a href="#674">source_from_expansion</a> || <a class="self" href="#673">self</a>.span.from_expansion()
+        <a href="#641">source_from_expansion</a> || <a class="self" href="#640">self</a>.span.from_expansion()
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; InferSourceKind&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>ty_localized_msg(<span class="kw-2">&amp;</span><span class="self">self</span>, infcx: <span class="kw-2">&amp;</span>InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; (<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>) {
-        <span class="kw">match </span><span class="kw-2">*</span><span class="self"><a href="#690">self</a> </span>{
-            <a href="#639-644">InferSourceKind::LetBinding</a> { ty, .. }
-            | <a href="#645-648">InferSourceKind::ClosureArg</a> { ty, .. }
-            | <a href="#665-669">InferSourceKind::ClosureReturn</a> { ty, .. } =&gt; {
+        <span class="kw">match </span><span class="kw-2">*</span><span class="self"><a href="#657">self</a> </span>{
+            <a href="#606-611">InferSourceKind::LetBinding</a> { ty, .. }
+            | <a href="#612-615">InferSourceKind::ClosureArg</a> { ty, .. }
+            | <a href="#632-636">InferSourceKind::ClosureReturn</a> { ty, .. } =&gt; {
                 <span class="kw">if </span>ty.is_closure() {
-                    (<span class="string">&quot;closure&quot;</span>, <a href="#228-250">closure_as_fn_str</a>(<a href="#690">infcx</a>, <a href="#692">ty</a>))
+                    (<span class="string">&quot;closure&quot;</span>, <a href="#228-250">closure_as_fn_str</a>(<a href="#657">infcx</a>, <a href="#659">ty</a>))
                 } <span class="kw">else if </span>!ty.is_ty_or_numeric_infer() {
-                    (<span class="string">&quot;normal&quot;</span>, <a href="#198-223">ty_to_string</a>(<a href="#690">infcx</a>, <a href="#692">ty</a>, <span class="prelude-val">None</span>))
+                    (<span class="string">&quot;normal&quot;</span>, <a href="#198-223">ty_to_string</a>(<a href="#657">infcx</a>, <a href="#659">ty</a>, <span class="prelude-val">None</span>))
                 } <span class="kw">else </span>{
                     (<span class="string">&quot;other&quot;</span>, String::new())
                 }
             }
             <span class="comment">// FIXME: We should be able to add some additional info here.
-            </span><a href="#649-656">InferSourceKind::GenericArg</a> { .. }
-            | <a href="#657-664">InferSourceKind::FullyQualifiedMethodCall</a> { .. } =&gt; (<span class="string">&quot;other&quot;</span>, String::new()),
+            </span><a href="#616-623">InferSourceKind::GenericArg</a> { .. }
+            | <a href="#624-631">InferSourceKind::FullyQualifiedMethodCall</a> { .. } =&gt; (<span class="string">&quot;other&quot;</span>, String::new()),
         }
     }
 }
@@ -2022,11 +1956,11 @@
         typeck_results: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>TypeckResults&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         target: GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <a href="#726-735">FindInferSourceVisitor</a> {
-            <a href="#739">infcx</a>,
-            <a href="#740">typeck_results</a>,
+        <a href="#693-702">FindInferSourceVisitor</a> {
+            <a href="#706">infcx</a>,
+            <a href="#707">typeck_results</a>,
 
-            <a href="#741">target</a>,
+            <a href="#708">target</a>,
 
             attempt: <span class="number">0</span>,
             infer_source_cost: usize::MAX,
@@ -2045,28 +1979,28 @@
         }
         <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; CostCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
             <span class="kw">fn </span>arg_cost(<span class="self">self</span>, arg: GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-                <span class="kw">match </span><a href="#765">arg</a>.unpack() {
+                <span class="kw">match </span><a href="#732">arg</a>.unpack() {
                     GenericArgKind::Lifetime(<span class="kw">_</span>) =&gt; <span class="number">0</span>, <span class="comment">// erased
-                    </span>GenericArgKind::Type(ty) =&gt; <a class="self" href="#765">self</a>.<a href="#772-791">ty_cost</a>(<a href="#768">ty</a>),
+                    </span>GenericArgKind::Type(ty) =&gt; <a class="self" href="#732">self</a>.<a href="#739-758">ty_cost</a>(<a href="#735">ty</a>),
                     GenericArgKind::Const(<span class="kw">_</span>) =&gt; <span class="number">3</span>, <span class="comment">// some non-zero value
                 </span>}
             }
             <span class="kw">fn </span>ty_cost(<span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-                <span class="kw">match </span><span class="kw-2">*</span><a href="#772">ty</a>.kind() {
+                <span class="kw">match </span><span class="kw-2">*</span><a href="#739">ty</a>.kind() {
                     ty::Closure(..) =&gt; <span class="number">1000</span>,
                     ty::FnDef(..) =&gt; <span class="number">150</span>,
                     ty::FnPtr(..) =&gt; <span class="number">30</span>,
                     ty::Adt(def, args) =&gt; {
-                        <span class="number">5 </span>+ <span class="self"><a href="#772">self</a>
+                        <span class="number">5 </span>+ <span class="self"><a href="#739">self</a>
                             </span>.tcx
-                            .generics_of(<a href="#777">def</a>.did())
-                            .own_args_no_defaults(<a class="self" href="#772">self</a>.tcx, <a href="#777">args</a>)
+                            .generics_of(<a href="#744">def</a>.did())
+                            .own_args_no_defaults(<a class="self" href="#739">self</a>.tcx, <a href="#744">args</a>)
                             .iter()
-                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>arg| <a class="self" href="#772">self</a>.<a href="#765-771">arg_cost</a>(<a href="#783">arg</a>))
+                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>arg| <a class="self" href="#739">self</a>.<a href="#732-738">arg_cost</a>(<a href="#750">arg</a>))
                             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;()
                     }
-                    ty::Tuple(args) =&gt; <span class="number">5 </span>+ <a href="#786">args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| <a class="self" href="#772">self</a>.<a href="#772-791">ty_cost</a>(<a href="#786">arg</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;(),
-                    ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) =&gt; <span class="number">2 </span>+ <a class="self" href="#772">self</a>.<a href="#772-791">ty_cost</a>(<a href="#787">ty</a>),
+                    ty::Tuple(args) =&gt; <span class="number">5 </span>+ <a href="#753">args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| <a class="self" href="#739">self</a>.<a href="#739-758">ty_cost</a>(<a href="#753">arg</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;(),
+                    ty::Ref(<span class="kw">_</span>, ty, <span class="kw">_</span>) =&gt; <span class="number">2 </span>+ <a class="self" href="#739">self</a>.<a href="#739-758">ty_cost</a>(<a href="#754">ty</a>),
                     ty::Infer(..) =&gt; <span class="number">0</span>,
                     <span class="kw">_ </span>=&gt; <span class="number">1</span>,
                 }
@@ -2074,24 +2008,24 @@
         }
 
         <span class="comment">// The sources are listed in order of preference here.
-        </span><span class="kw">let </span>tcx = <a class="self" href="#759">self</a>.infcx.tcx;
-        <span class="kw">let </span>ctx = <a href="#761-763">CostCtxt</a> { <a href="#795">tcx</a> };
-        <span class="kw">match </span><a href="#759">source</a>.kind {
-            <a href="#639-644">InferSourceKind::LetBinding</a> { ty, .. } =&gt; <a href="#796">ctx</a>.<a href="#772-791">ty_cost</a>(<a href="#798">ty</a>),
-            <a href="#645-648">InferSourceKind::ClosureArg</a> { ty, .. } =&gt; <a href="#796">ctx</a>.<a href="#772-791">ty_cost</a>(<a href="#799">ty</a>),
-            <a href="#649-656">InferSourceKind::GenericArg</a> { def_id, generic_args, .. } =&gt; {
-                <span class="kw">let </span>variant_cost = <span class="kw">match </span><a href="#795">tcx</a>.def_kind(<a href="#800">def_id</a>) {
+        </span><span class="kw">let </span>tcx = <a class="self" href="#726">self</a>.infcx.tcx;
+        <span class="kw">let </span>ctx = <a href="#728-730">CostCtxt</a> { <a href="#762">tcx</a> };
+        <span class="kw">match </span><a href="#726">source</a>.kind {
+            <a href="#606-611">InferSourceKind::LetBinding</a> { ty, .. } =&gt; <a href="#763">ctx</a>.<a href="#739-758">ty_cost</a>(<a href="#765">ty</a>),
+            <a href="#612-615">InferSourceKind::ClosureArg</a> { ty, .. } =&gt; <a href="#763">ctx</a>.<a href="#739-758">ty_cost</a>(<a href="#766">ty</a>),
+            <a href="#616-623">InferSourceKind::GenericArg</a> { def_id, generic_args, .. } =&gt; {
+                <span class="kw">let </span>variant_cost = <span class="kw">match </span><a href="#762">tcx</a>.def_kind(<a href="#767">def_id</a>) {
                     <span class="comment">// `None::&lt;u32&gt;` and friends are ugly.
                     </span>DefKind::Variant | DefKind::Ctor(CtorOf::Variant, <span class="kw">_</span>) =&gt; <span class="number">15</span>,
                     <span class="kw">_ </span>=&gt; <span class="number">10</span>,
                 };
-                <a href="#801">variant_cost</a> + <a href="#800">generic_args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>arg| <a href="#796">ctx</a>.<a href="#765-771">arg_cost</a>(<a href="#806">arg</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;()
+                <a href="#768">variant_cost</a> + <a href="#767">generic_args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>arg| <a href="#763">ctx</a>.<a href="#732-738">arg_cost</a>(<a href="#773">arg</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;()
             }
-            <a href="#657-664">InferSourceKind::FullyQualifiedMethodCall</a> { args, .. } =&gt; {
-                <span class="number">20 </span>+ <a href="#808">args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| <a href="#796">ctx</a>.<a href="#765-771">arg_cost</a>(<a href="#809">arg</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;()
+            <a href="#624-631">InferSourceKind::FullyQualifiedMethodCall</a> { args, .. } =&gt; {
+                <span class="number">20 </span>+ <a href="#775">args</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|arg| <a href="#763">ctx</a>.<a href="#732-738">arg_cost</a>(<a href="#776">arg</a>)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;()
             }
-            <a href="#665-669">InferSourceKind::ClosureReturn</a> { ty, should_wrap_expr, .. } =&gt; {
-                <span class="number">30 </span>+ <a href="#796">ctx</a>.<a href="#772-791">ty_cost</a>(<a href="#811">ty</a>) + <span class="kw">if </span>should_wrap_expr.is_some() { <span class="number">10 </span>} <span class="kw">else </span>{ <span class="number">0 </span>}
+            <a href="#632-636">InferSourceKind::ClosureReturn</a> { ty, should_wrap_expr, .. } =&gt; {
+                <span class="number">30 </span>+ <a href="#763">ctx</a>.<a href="#739-758">ty_cost</a>(<a href="#778">ty</a>) + <span class="kw">if </span>should_wrap_expr.is_some() { <span class="number">10 </span>} <span class="kw">else </span>{ <span class="number">0 </span>}
             }
         }
     }
@@ -2123,13 +2057,13 @@
     }
 
     <span class="kw">fn </span>node_args_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, hir_id: <a href="../../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">let </span>args = <a class="self" href="#843">self</a>.typeck_results.node_args_opt(<a href="#843">hir_id</a>);
-        <a class="self" href="#843">self</a>.infcx.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#844">args</a>)
+        <span class="kw">let </span>args = <a class="self" href="#810">self</a>.typeck_results.node_args_opt(<a href="#810">hir_id</a>);
+        <a class="self" href="#810">self</a>.infcx.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#811">args</a>)
     }
 
     <span class="kw">fn </span>opt_node_type(<span class="kw-2">&amp;</span><span class="self">self</span>, hir_id: <a href="../../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">let </span>ty = <a class="self" href="#848">self</a>.typeck_results.node_type_opt(<a href="#848">hir_id</a>);
-        <a class="self" href="#848">self</a>.infcx.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#849">ty</a>)
+        <span class="kw">let </span>ty = <a class="self" href="#815">self</a>.typeck_results.node_type_opt(<a href="#815">hir_id</a>);
+        <a class="self" href="#815">self</a>.infcx.<a href="../mod.rs.html#1370-1379">resolve_vars_if_possible</a>(<a href="#816">ty</a>)
     }
 
     <span class="comment">// Check whether this generic argument is the inference variable we
@@ -2139,25 +2073,25 @@
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
 
-        <span class="kw">match </span>(<a href="#855">arg</a>.unpack(), <a class="self" href="#855">self</a>.target.unpack()) {
+        <span class="kw">match </span>(<a href="#822">arg</a>.unpack(), <a class="self" href="#822">self</a>.target.unpack()) {
             (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) =&gt; {
                 <span class="kw">use </span>ty::{Infer, TyVar};
-                <span class="kw">match </span>(<a href="#861">inner_ty</a>.kind(), <a href="#861">target_ty</a>.kind()) {
+                <span class="kw">match </span>(<a href="#828">inner_ty</a>.kind(), <a href="#828">target_ty</a>.kind()) {
                     (<span class="kw-2">&amp;</span>Infer(TyVar(a_vid)), <span class="kw-2">&amp;</span>Infer(TyVar(b_vid))) =&gt; {
-                        <a class="self" href="#855">self</a>.infcx.inner.borrow_mut().<a href="../mod.rs.html#207-209">type_variables</a>().<a href="../type_variable.rs.html#304-306">sub_unified</a>(<a href="#864">a_vid</a>, <a href="#864">b_vid</a>)
+                        <a class="self" href="#822">self</a>.infcx.inner.borrow_mut().<a href="../mod.rs.html#207-209">type_variables</a>().<a href="../type_variable.rs.html#304-306">sub_unified</a>(<a href="#831">a_vid</a>, <a href="#831">b_vid</a>)
                     }
                     <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                 }
             }
             (GenericArgKind::Const(inner_ct), GenericArgKind::Const(target_ct)) =&gt; {
                 <span class="kw">use </span><a href="../../../../rustc_middle/ty/consts/kind/enum.InferConst.html">ty::InferConst</a>::<span class="kw-2">*</span>;
-                <span class="kw">match </span>(<a href="#870">inner_ct</a>.kind(), <a href="#870">target_ct</a>.kind()) {
-                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) =&gt; <span class="self"><a href="#855">self</a>
+                <span class="kw">match </span>(<a href="#837">inner_ct</a>.kind(), <a href="#837">target_ct</a>.kind()) {
+                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) =&gt; <span class="self"><a href="#822">self</a>
                         </span>.infcx
                         .inner
                         .borrow_mut()
                         .<a href="../mod.rs.html#227-229">const_unification_table</a>()
-                        .unioned(<a href="#873">a_vid</a>, <a href="#873">b_vid</a>),
+                        .unioned(<a href="#840">a_vid</a>, <a href="#840">b_vid</a>),
                     <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                 }
             }
@@ -2168,7 +2102,7 @@
     <span class="doccomment">/// Does this generic argument contain our target inference variable
     /// in a way which can be written by the user.
     </span><span class="kw">fn </span>generic_arg_contains_target(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span><span class="kw-2">mut </span>walker = <a href="#888">arg</a>.walk();
+        <span class="kw">let </span><span class="kw-2">mut </span>walker = <a href="#855">arg</a>.walk();
         <span class="kw">while let </span><span class="prelude-val">Some</span>(inner) = walker.next() {
             <span class="kw">if </span><span class="self">self</span>.generic_arg_is_target(inner) {
                 <span class="kw">return </span><span class="bool-val">true</span>;
@@ -2209,11 +2143,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         expr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Expr&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = InsertableGenericArgs&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; + <span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#927">self</a>.infcx.tcx;
-        <span class="kw">match </span><a href="#928">expr</a>.kind {
+        <span class="kw">let </span>tcx = <a class="self" href="#894">self</a>.infcx.tcx;
+        <span class="kw">match </span><a href="#895">expr</a>.kind {
             hir::ExprKind::Path(<span class="kw-2">ref </span>path) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(args) = <a class="self" href="#927">self</a>.<a href="#843-846">node_args_opt</a>(<a href="#928">expr</a>.hir_id) {
-                    <span class="kw">return </span><a class="self" href="#927">self</a>.<a href="#1041-1113">path_inferred_arg_iter</a>(<a href="#928">expr</a>.hir_id, <a href="#933">args</a>, <a href="#932">path</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(args) = <a class="self" href="#894">self</a>.<a href="#810-813">node_args_opt</a>(<a href="#895">expr</a>.hir_id) {
+                    <span class="kw">return </span><a class="self" href="#894">self</a>.<a href="#1008-1080">path_inferred_arg_iter</a>(<a href="#895">expr</a>.hir_id, <a href="#900">args</a>, <a href="#899">path</a>);
                 }
             }
             <span class="comment">// FIXME(#98711): Ideally we would also deal with type relative
@@ -2233,23 +2167,23 @@
             //
             // See the `need_type_info/issue-103053.rs` test for
             // a example.
-            </span><span class="kw">if </span>!<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(path.res, Res::Def(DefKind::TyAlias { .. }, <span class="kw">_</span>)) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a class="self" href="#927">self</a>.<a href="#848-851">opt_node_type</a>(<a href="#928">expr</a>.hir_id)
-                    &amp;&amp; <span class="kw">let </span>ty::Adt(<span class="kw">_</span>, args) = <a href="#955">ty</a>.kind()
+            </span><span class="kw">if </span>!<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(path.res, Res::Def(DefKind::TyAlias, <span class="kw">_</span>)) =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a class="self" href="#894">self</a>.<a href="#815-818">opt_node_type</a>(<a href="#895">expr</a>.hir_id)
+                    &amp;&amp; <span class="kw">let </span>ty::Adt(<span class="kw">_</span>, args) = <a href="#922">ty</a>.kind()
                 {
-                    <span class="kw">return </span>Box::new(<a class="self" href="#927">self</a>.<a href="#988-1039">resolved_path_inferred_arg_iter</a>(<a href="#947">path</a>, <a href="#956">args</a>));
+                    <span class="kw">return </span>Box::new(<a class="self" href="#894">self</a>.<a href="#955-1006">resolved_path_inferred_arg_iter</a>(<a href="#914">path</a>, <a href="#923">args</a>));
                 }
             }
             hir::ExprKind::MethodCall(segment, ..) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a class="self" href="#927">self</a>.typeck_results.type_dependent_def_id(<a href="#928">expr</a>.hir_id) {
-                    <span class="kw">let </span>generics = <a href="#930">tcx</a>.generics_of(<a href="#962">def_id</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a class="self" href="#894">self</a>.typeck_results.type_dependent_def_id(<a href="#895">expr</a>.hir_id) {
+                    <span class="kw">let </span>generics = <a href="#897">tcx</a>.generics_of(<a href="#929">def_id</a>);
                     <span class="kw">let </span>insertable: <span class="prelude-ty">Option</span>&lt;<span class="kw">_</span>&gt; = <span class="kw">try </span>{
                         <span class="kw">if </span>generics.has_impl_trait() {
                             <span class="prelude-val">None</span><span class="question-mark">?
                         </span>}
                         <span class="kw">let </span>args = <span class="self">self</span>.node_args_opt(expr.hir_id)<span class="question-mark">?</span>;
-                        <span class="kw">let </span>span = <a href="#930">tcx</a>.hir().span(<a href="#961">segment</a>.hir_id);
-                        <span class="kw">let </span>insert_span = <a href="#961">segment</a>.ident.span.shrink_to_hi().with_hi(<a href="#969">span</a>.hi());
+                        <span class="kw">let </span>span = <a href="#897">tcx</a>.hir().span(<a href="#928">segment</a>.hir_id);
+                        <span class="kw">let </span>insert_span = <a href="#928">segment</a>.ident.span.shrink_to_hi().with_hi(<a href="#936">span</a>.hi());
                         InsertableGenericArgs {
                             insert_span,
                             args,
@@ -2258,7 +2192,7 @@
                             have_turbofish: <span class="bool-val">false</span>,
                         }
                     };
-                    <span class="kw">return </span>Box::new(<a href="#964">insertable</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>());
+                    <span class="kw">return </span>Box::new(<a href="#931">insertable</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>());
                 }
             }
             <span class="kw">_ </span>=&gt; {}
@@ -2272,9 +2206,9 @@
         path: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Path&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = InsertableGenericArgs&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; + <span class="lifetime">&#39;a </span>{
-        <span class="kw">let </span>tcx = <a class="self" href="#989">self</a>.infcx.tcx;
-        <span class="kw">let </span>have_turbofish = <a href="#990">path</a>.segments.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|segment| {
-            <a href="#994">segment</a>.args.is_some_and(|args| <a href="#995">args</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|arg| <a href="#995">arg</a>.is_ty_or_const()))
+        <span class="kw">let </span>tcx = <a class="self" href="#956">self</a>.infcx.tcx;
+        <span class="kw">let </span>have_turbofish = <a href="#957">path</a>.segments.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|segment| {
+            <a href="#961">segment</a>.args.is_some_and(|args| <a href="#962">args</a>.args.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|arg| <a href="#962">arg</a>.is_ty_or_const()))
         });
         <span class="comment">// The last segment of a path often has `Res::Err` and the
         // correct `Res` is the one of the whole path.
@@ -2283,12 +2217,12 @@
         // would be good to remove this special case.
         </span><span class="kw">let </span>last_segment_using_path_data: <span class="prelude-ty">Option</span>&lt;<span class="kw">_</span>&gt; = <span class="kw">try </span>{
             <span class="kw">let </span>generics_def_id = tcx.res_generics_def_id(path.res)<span class="question-mark">?</span>;
-            <span class="kw">let </span>generics = <a href="#993">tcx</a>.generics_of(<a href="#1003">generics_def_id</a>);
+            <span class="kw">let </span>generics = <a href="#960">tcx</a>.generics_of(<a href="#970">generics_def_id</a>);
             <span class="kw">if </span>generics.has_impl_trait() {
                 <span class="prelude-val">None</span><span class="question-mark">?</span>;
             }
             <span class="kw">let </span>insert_span =
-                <a href="#990">path</a>.segments.last().unwrap().ident.span.shrink_to_hi().with_hi(<a href="#990">path</a>.span.hi());
+                <a href="#957">path</a>.segments.last().unwrap().ident.span.shrink_to_hi().with_hi(<a href="#957">path</a>.span.hi());
             InsertableGenericArgs {
                 insert_span,
                 args,
@@ -2298,26 +2232,26 @@
             }
         };
 
-        <a href="#990">path</a>.segments
+        <a href="#957">path</a>.segments
             .iter()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(<span class="kw">move </span>|segment| {
-                <span class="kw">let </span>res = <a href="#1021">segment</a>.res;
+                <span class="kw">let </span>res = <a href="#988">segment</a>.res;
                 <span class="kw">let </span>generics_def_id = tcx.res_generics_def_id(res)<span class="question-mark">?</span>;
-                <span class="kw">let </span>generics = <a href="#993">tcx</a>.generics_of(<a href="#1023">generics_def_id</a>);
+                <span class="kw">let </span>generics = <a href="#960">tcx</a>.generics_of(<a href="#990">generics_def_id</a>);
                 <span class="kw">if </span>generics.has_impl_trait() {
                     <span class="kw">return </span><span class="prelude-val">None</span>;
                 }
-                <span class="kw">let </span>span = <a href="#993">tcx</a>.hir().span(<a href="#1021">segment</a>.hir_id);
-                <span class="kw">let </span>insert_span = <a href="#1021">segment</a>.ident.span.shrink_to_hi().with_hi(<a href="#1028">span</a>.hi());
-                <span class="prelude-val">Some</span>(<a href="#711-717">InsertableGenericArgs</a> {
-                    <a href="#1029">insert_span</a>,
-                    <a href="#991">args</a>,
-                    <a href="#1023">generics_def_id</a>,
-                    def_id: <a href="#1022">res</a>.def_id(),
-                    <a href="#994">have_turbofish</a>,
+                <span class="kw">let </span>span = <a href="#960">tcx</a>.hir().span(<a href="#988">segment</a>.hir_id);
+                <span class="kw">let </span>insert_span = <a href="#988">segment</a>.ident.span.shrink_to_hi().with_hi(<a href="#995">span</a>.hi());
+                <span class="prelude-val">Some</span>(<a href="#678-684">InsertableGenericArgs</a> {
+                    <a href="#996">insert_span</a>,
+                    <a href="#958">args</a>,
+                    <a href="#990">generics_def_id</a>,
+                    def_id: <a href="#989">res</a>.def_id(),
+                    <a href="#961">have_turbofish</a>,
                 })
             })
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1002">last_segment_using_path_data</a>)
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#969">last_segment_using_path_data</a>)
     }
 
     <span class="kw">fn </span>path_inferred_arg_iter(
@@ -2326,23 +2260,23 @@
         args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         qpath: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::QPath&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = InsertableGenericArgs&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; + <span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#1042">self</a>.infcx.tcx;
-        <span class="kw">match </span><a href="#1045">qpath</a> {
+        <span class="kw">let </span>tcx = <a class="self" href="#1009">self</a>.infcx.tcx;
+        <span class="kw">match </span><a href="#1012">qpath</a> {
             hir::QPath::Resolved(_self_ty, path) =&gt; {
-                Box::new(<a class="self" href="#1042">self</a>.<a href="#988-1039">resolved_path_inferred_arg_iter</a>(<a href="#1049">path</a>, <a href="#1044">args</a>))
+                Box::new(<a class="self" href="#1009">self</a>.<a href="#955-1006">resolved_path_inferred_arg_iter</a>(<a href="#1016">path</a>, <a href="#1011">args</a>))
             }
             hir::QPath::TypeRelative(ty, segment) =&gt; {
-                <span class="kw">let </span><span class="prelude-val">Some</span>(def_id) = <a class="self" href="#1042">self</a>.typeck_results.type_dependent_def_id(<a href="#1043">hir_id</a>) <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Some</span>(def_id) = <a class="self" href="#1009">self</a>.typeck_results.type_dependent_def_id(<a href="#1010">hir_id</a>) <span class="kw">else </span>{
                     <span class="kw">return </span>Box::new(iter::empty());
                 };
 
-                <span class="kw">let </span>generics = <a href="#1047">tcx</a>.generics_of(<a href="#1053">def_id</a>);
+                <span class="kw">let </span>generics = <a href="#1014">tcx</a>.generics_of(<a href="#1020">def_id</a>);
                 <span class="kw">let </span>segment: <span class="prelude-ty">Option</span>&lt;<span class="kw">_</span>&gt; = <span class="kw">try </span>{
                     <span class="kw">if </span>!segment.infer_args || generics.has_impl_trait() {
                         <span class="prelude-val">None</span><span class="question-mark">?</span>;
                     }
-                    <span class="kw">let </span>span = <a href="#1047">tcx</a>.hir().span(<a href="#1052">segment</a>.hir_id);
-                    <span class="kw">let </span>insert_span = <a href="#1052">segment</a>.ident.span.shrink_to_hi().with_hi(<a href="#1062">span</a>.hi());
+                    <span class="kw">let </span>span = <a href="#1014">tcx</a>.hir().span(<a href="#1019">segment</a>.hir_id);
+                    <span class="kw">let </span>insert_span = <a href="#1019">segment</a>.ident.span.shrink_to_hi().with_hi(<a href="#1029">span</a>.hi());
                     InsertableGenericArgs {
                         insert_span,
                         args,
@@ -2352,17 +2286,17 @@
                     }
                 };
 
-                <span class="kw">let </span>parent_def_id = <a href="#1057">generics</a>.parent.unwrap();
-                <span class="kw">if let </span><a href="../../../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { .. } = <a href="#1047">tcx</a>.def_kind(<a href="#1073">parent_def_id</a>) {
-                    <span class="kw">let </span>parent_ty = <a href="#1047">tcx</a>.type_of(<a href="#1073">parent_def_id</a>).instantiate(<a href="#1047">tcx</a>, <a href="#1044">args</a>);
-                    <span class="kw">match </span>(<a href="#1075">parent_ty</a>.kind(), <span class="kw-2">&amp;</span><a href="#1052">ty</a>.kind) {
+                <span class="kw">let </span>parent_def_id = <a href="#1024">generics</a>.parent.unwrap();
+                <span class="kw">if let </span><a href="../../../../rustc_hir/def/enum.DefKind.html">DefKind::Impl</a> { .. } = <a href="#1014">tcx</a>.def_kind(<a href="#1040">parent_def_id</a>) {
+                    <span class="kw">let </span>parent_ty = <a href="#1014">tcx</a>.type_of(<a href="#1040">parent_def_id</a>).instantiate(<a href="#1014">tcx</a>, <a href="#1011">args</a>);
+                    <span class="kw">match </span>(<a href="#1042">parent_ty</a>.kind(), <span class="kw-2">&amp;</span><a href="#1019">ty</a>.kind) {
                         (
                             ty::Adt(def, args),
                             hir::TyKind::Path(hir::QPath::Resolved(_self_ty, path)),
                         ) =&gt; {
                             <span class="kw">if </span>tcx.res_generics_def_id(path.res) != <span class="prelude-val">Some</span>(def.did()) {
-                                <span class="kw">match </span><a href="#1079">path</a>.res {
-                                    Res::Def(<a href="../../../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { .. }, <span class="kw">_</span>) =&gt; {
+                                <span class="kw">match </span><a href="#1046">path</a>.res {
+                                    Res::Def(DefKind::TyAlias, <span class="kw">_</span>) =&gt; {
                                         <span class="comment">// FIXME: Ideally we should support this. For that
                                         // we have to map back from the self type to the
                                         // type alias though. That&#39;s difficult.
@@ -2380,7 +2314,7 @@
                                 }
                             } <span class="kw">else </span>{
                                 <span class="kw">return </span>Box::new(
-                                    <a class="self" href="#1042">self</a>.<a href="#988-1039">resolved_path_inferred_arg_iter</a>(<a href="#1079">path</a>, <a href="#1078">args</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1058">segment</a>),
+                                    <a class="self" href="#1009">self</a>.<a href="#955-1006">resolved_path_inferred_arg_iter</a>(<a href="#1046">path</a>, <a href="#1045">args</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1025">segment</a>),
                                 );
                             }
                         }
@@ -2388,7 +2322,7 @@
                     }
                 }
 
-                Box::new(<a href="#1058">segment</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>())
+                Box::new(<a href="#1025">segment</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>())
             }
             hir::QPath::LangItem(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; Box::new(iter::empty()),
         }
@@ -2399,22 +2333,22 @@
     <span class="kw">type </span>NestedFilter = <a href="../../../../rustc_middle/hir/nested_filter/struct.OnlyBodies.html">nested_filter::OnlyBodies</a>;
 
     <span class="kw">fn </span>nested_visit_map(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Map {
-        <a class="self" href="#1119">self</a>.infcx.tcx.hir()
+        <a class="self" href="#1086">self</a>.infcx.tcx.hir()
     }
 
     <span class="kw">fn </span>visit_local(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>Local&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        intravisit::walk_local(<a class="self" href="#1123">self</a>, <a href="#1123">local</a>);
+        intravisit::walk_local(<a class="self" href="#1090">self</a>, <a href="#1090">local</a>);
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a class="self" href="#1123">self</a>.<a href="#848-851">opt_node_type</a>(<a href="#1123">local</a>.hir_id) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a class="self" href="#1090">self</a>.<a href="#815-818">opt_node_type</a>(<a href="#1090">local</a>.hir_id) {
             <span class="kw">if </span><span class="self">self</span>.generic_arg_contains_target(ty.into()) {
-                <span class="kw">match </span><a href="#1123">local</a>.source {
-                    LocalSource::Normal <span class="kw">if </span><a href="#1123">local</a>.ty.is_none() =&gt; {
-                        <a class="self" href="#1123">self</a>.<a href="#819">update_infer_source</a>(<a href="#632-635">InferSource</a> {
-                            span: <a href="#1123">local</a>.pat.span,
-                            kind: <a href="#639-644">InferSourceKind::LetBinding</a> {
-                                insert_span: <a href="#1123">local</a>.pat.span.shrink_to_hi(),
-                                pattern_name: <a href="#1123">local</a>.pat.simple_ident(),
-                                <a href="#1126">ty</a>,
+                <span class="kw">match </span><a href="#1090">local</a>.source {
+                    LocalSource::Normal <span class="kw">if </span><a href="#1090">local</a>.ty.is_none() =&gt; {
+                        <a class="self" href="#1090">self</a>.<a href="#786">update_infer_source</a>(<a href="#599-602">InferSource</a> {
+                            span: <a href="#1090">local</a>.pat.span,
+                            kind: <a href="#606-611">InferSourceKind::LetBinding</a> {
+                                insert_span: <a href="#1090">local</a>.pat.span.shrink_to_hi(),
+                                pattern_name: <a href="#1090">local</a>.pat.simple_ident(),
+                                <a href="#1093">ty</a>,
                                 def_id: <span class="prelude-val">None</span>,
                             },
                         })
@@ -2450,7 +2384,7 @@
                 })
             }
         }
-        intravisit::walk_body(<a class="self" href="#1148">self</a>, <a href="#1148">body</a>);
+        intravisit::walk_body(<a class="self" href="#1115">self</a>, <a href="#1115">body</a>);
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(<span class="self">self</span>))]

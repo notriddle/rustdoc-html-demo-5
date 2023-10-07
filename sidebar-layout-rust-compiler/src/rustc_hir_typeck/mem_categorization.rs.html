@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/mem_categorization.rs`."><title>mem_categorization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_typeck/src/mem_categorization.rs`."><title>mem_categorization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_hir_typeck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -781,9 +781,6 @@
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
 <a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # Categorization
 //!
 //! The job of the categorization module is to analyze an expression to
@@ -847,7 +844,7 @@
 <span class="kw">use </span><a href="../../rustc_hir/hir/enum.PatKind.html">rustc_hir::PatKind</a>;
 <span class="kw">use </span><a href="../../rustc_infer/infer/struct.InferCtxt.html">rustc_infer::infer::InferCtxt</a>;
 <span class="kw">use </span><a href="../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
-<span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
 <span class="kw">use </span><a href="../../rustc_trait_selection/infer/trait.InferCtxtExt.html">rustc_trait_selection::infer::InferCtxtExt</a>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span><a href="../../rustc_hir_typeck/mem_categorization/trait.HirNode.html">HirNode</a> {
@@ -1250,7 +1247,7 @@
         <span class="comment">// Opaque types can&#39;t have field projections, but we can instead convert
         // the current place in-place (heh) to the hidden type, and then apply all
         // follow up projections on that.
-        </span><span class="kw">if </span>node_ty != place_ty &amp;&amp; place_ty.has_opaque_types() {
+        </span><span class="kw">if </span>node_ty != place_ty &amp;&amp; <span class="macro">matches!</span>(place_ty.kind(), ty::Alias(ty::Opaque, ..)) {
             projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
         }
         projections.push(Projection { kind, ty });
@@ -1317,7 +1314,7 @@
     <span class="kw">where
         </span>F: FnMut(<span class="kw-2">&amp;</span>PlaceWithHirId&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="kw-2">&amp;</span>hir::Pat&lt;<span class="lifetime">&#39;_</span>&gt;),
     {
-        <a class="self" href="#526">self</a>.<a href="#613">cat_pattern_</a>(<a href="#527">place</a>, <a href="#528">pat</a>, <span class="kw-2">&amp;mut </span><a href="#529">op</a>)
+        <a class="self" href="#526">self</a>.<a href="#610">cat_pattern_</a>(<a href="#527">place</a>, <a href="#528">pat</a>, <span class="kw-2">&amp;mut </span><a href="#529">op</a>)
     }
 
     <span class="doccomment">/// Returns the variant index for an ADT used within a Struct or TupleStruct pattern
@@ -1327,7 +1324,7 @@
         qpath: <span class="kw-2">&amp;</span>hir::QPath&lt;<span class="lifetime">&#39;_</span>&gt;,
         pat_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
         span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    ) -&gt; McResult&lt;<a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>&gt; {
+    ) -&gt; McResult&lt;<a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>&gt; {
         <span class="kw">let </span>res = <a class="self" href="#540">self</a>.typeck_results.qpath_res(<a href="#541">qpath</a>, <a href="#542">pat_hir_id</a>);
         <span class="kw">let </span>ty = <a class="self" href="#540">self</a>.typeck_results.node_type(<a href="#542">pat_hir_id</a>);
         <span class="kw">let </span>ty::Adt(adt_def, <span class="kw">_</span>) = <a href="#546">ty</a>.kind() <span class="kw">else </span>{
@@ -1343,15 +1340,12 @@
                 <span class="prelude-val">Ok</span>(<a href="#547">adt_def</a>.variant_index_with_ctor_id(<a href="#556">variant_ctor_id</a>))
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), <span class="kw">_</span>)
-            | Res::Def(
-                DefKind::Struct | DefKind::Union | <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { .. } | DefKind::AssocTy,
-                <span class="kw">_</span>,
-            )
+            | Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, <span class="kw">_</span>)
             | Res::SelfCtor(..)
             | <a href="../../rustc_hir/def/enum.Res.html">Res::SelfTyParam</a> { .. }
             | <a href="../../rustc_hir/def/enum.Res.html">Res::SelfTyAlias</a> { .. } =&gt; {
                 <span class="comment">// Structs and Unions have only have one variant.
-                </span><span class="prelude-val">Ok</span>(<a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>)
+                </span><span class="prelude-val">Ok</span>(<a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>)
             }
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;expected ADT path, found={:?}&quot;</span>, res),
         }
@@ -1362,16 +1356,16 @@
     </span><span class="kw">fn </span>total_fields_in_adt_variant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         pat_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
-        variant_index: <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
         span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     ) -&gt; McResult&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt; {
-        <span class="kw">let </span>ty = <a class="self" href="#577">self</a>.typeck_results.node_type(<a href="#578">pat_hir_id</a>);
-        <span class="kw">match </span><a href="#582">ty</a>.kind() {
-            ty::Adt(adt_def, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<a href="#584">adt_def</a>.variant(<a href="#579">variant_index</a>).fields.len()),
+        <span class="kw">let </span>ty = <a class="self" href="#574">self</a>.typeck_results.node_type(<a href="#575">pat_hir_id</a>);
+        <span class="kw">match </span><a href="#579">ty</a>.kind() {
+            ty::Adt(adt_def, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<a href="#581">adt_def</a>.variant(<a href="#576">variant_index</a>).fields.len()),
             <span class="kw">_ </span>=&gt; {
-                <a class="self" href="#577">self</a>.<a href="#118-120">tcx</a>()
+                <a class="self" href="#574">self</a>.<a href="#118-120">tcx</a>()
                     .sess
-                    .delay_span_bug(<a href="#580">span</a>, <span class="string">&quot;struct or tuple struct pattern not applied to an ADT&quot;</span>);
+                    .delay_span_bug(<a href="#577">span</a>, <span class="string">&quot;struct or tuple struct pattern not applied to an ADT&quot;</span>);
                 <span class="prelude-val">Err</span>(())
             }
         }
@@ -1380,11 +1374,11 @@
     <span class="doccomment">/// Returns the total number of fields in a tuple used within a Tuple pattern.
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     </span><span class="kw">fn </span>total_fields_in_tuple(<span class="kw-2">&amp;</span><span class="self">self</span>, pat_hir_id: <a href="../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>, span: <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; McResult&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt; {
-        <span class="kw">let </span>ty = <a class="self" href="#596">self</a>.typeck_results.node_type(<a href="#596">pat_hir_id</a>);
-        <span class="kw">match </span><a href="#597">ty</a>.kind() {
-            ty::Tuple(args) =&gt; <span class="prelude-val">Ok</span>(<a href="#599">args</a>.len()),
+        <span class="kw">let </span>ty = <a class="self" href="#593">self</a>.typeck_results.node_type(<a href="#593">pat_hir_id</a>);
+        <span class="kw">match </span><a href="#594">ty</a>.kind() {
+            ty::Tuple(args) =&gt; <span class="prelude-val">Ok</span>(<a href="#596">args</a>.len()),
             <span class="kw">_ </span>=&gt; {
-                <a class="self" href="#596">self</a>.<a href="#118-120">tcx</a>().sess.delay_span_bug(<a href="#596">span</a>, <span class="string">&quot;tuple pattern not applied to a tuple&quot;</span>);
+                <a class="self" href="#593">self</a>.<a href="#118-120">tcx</a>().sess.delay_span_bug(<a href="#593">span</a>, <span class="string">&quot;tuple pattern not applied to a tuple&quot;</span>);
                 <span class="prelude-val">Err</span>(())
             }
         }

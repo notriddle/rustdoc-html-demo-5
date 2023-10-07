@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/back/symbol_export.rs`."><title>symbol_export.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/back/symbol_export.rs`."><title>symbol_export.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -631,9 +631,7 @@
 <a href="#631" id="631">631</a>
 <a href="#632" id="632">632</a>
 <a href="#633" id="633">633</a>
-<a href="#634" id="634">634</a>
-<a href="#635" id="635">635</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="../base.rs.html#541-553"><span class="kw">crate</span>::base::allocator_kind_for_codegen</a>;
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="../base.rs.html#557-569"><span class="kw">crate</span>::base::allocator_kind_for_codegen</a>;
 
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/std/collections/hash/map/enum.Entry.html">std::collections::hash_map::Entry</a>::<span class="kw-2">*</span>;
 
@@ -646,10 +644,10 @@
     <a href="../../../rustc_middle/middle/exported_symbols/fn.metadata_symbol_name.html">metadata_symbol_name</a>, <a href="../../../rustc_middle/middle/exported_symbols/enum.ExportedSymbol.html">ExportedSymbol</a>, <a href="../../../rustc_middle/middle/exported_symbols/struct.SymbolExportInfo.html">SymbolExportInfo</a>, <a href="../../../rustc_middle/middle/exported_symbols/enum.SymbolExportKind.html">SymbolExportKind</a>, <a href="../../../rustc_middle/middle/exported_symbols/enum.SymbolExportLevel.html">SymbolExportLevel</a>,
 };
 <span class="kw">use </span>rustc_middle::query::LocalCrate;
-<span class="kw">use </span>rustc_middle::query::{<a href="../../../rustc_middle/query/struct.ExternProviders.html">ExternProviders</a>, <a href="../../../rustc_middle/query/struct.Providers.html">Providers</a>};
 <span class="kw">use </span><a href="../../../rustc_middle/ty/instance/struct.Instance.html">rustc_middle::ty::Instance</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/struct.SymbolName.html">SymbolName</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
 <span class="kw">use </span>rustc_middle::ty::{<a href="../../../rustc_middle/ty/generic_args/enum.GenericArgKind.html">GenericArgKind</a>, <a href="../../../rustc_middle/ty/generic_args/type.GenericArgsRef.html">GenericArgsRef</a>};
+<span class="kw">use </span><a href="../../../rustc_middle/util/struct.Providers.html">rustc_middle::util::Providers</a>;
 <span class="kw">use </span>rustc_session::config::{<a href="../../../rustc_session/config/enum.CrateType.html">CrateType</a>, <a href="../../../rustc_session/config/enum.OomStrategy.html">OomStrategy</a>};
 <span class="kw">use </span><a href="../../../rustc_target/spec/struct.SanitizerSet.html">rustc_target::spec::SanitizerSet</a>;
 
@@ -747,7 +745,7 @@
             <span class="kw">let </span>export_level = <span class="kw">if </span>special_runtime_crate {
                 SymbolExportLevel::Rust
             } <span class="kw">else </span>{
-                <a href="#467-491">symbol_export_level</a>(<a href="#45">tcx</a>, <a href="#107">def_id</a>.to_def_id())
+                <a href="#465-489">symbol_export_level</a>(<a href="#45">tcx</a>, <a href="#107">def_id</a>.to_def_id())
             };
             <span class="kw">let </span>codegen_attrs = <a href="#45">tcx</a>.codegen_fn_attrs(<a href="#107">def_id</a>.to_def_id());
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
@@ -1084,19 +1082,17 @@
     !<a href="#448">tcx</a>.reachable_set(()).contains(<span class="kw-2">&amp;</span><a href="#448">def_id</a>)
 }
 
-<span class="kw">pub fn </span><a href="../../../rustc_codegen_ssa/back/symbol_export/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../../rustc_middle/query/struct.Providers.html">Providers</a>) {
+<span class="kw">pub fn </span><a href="../../../rustc_codegen_ssa/back/symbol_export/fn.provide.html">provide</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../../rustc_middle/util/struct.Providers.html">Providers</a>) {
     <a href="#452">providers</a>.reachable_non_generics = <a href="#45-154">reachable_non_generics_provider</a>;
     <a href="#452">providers</a>.is_reachable_non_generic = <a href="#156-164">is_reachable_non_generic_provider_local</a>;
     <a href="#452">providers</a>.exported_symbols = <a href="#170-375">exported_symbols_provider_local</a>;
     <a href="#452">providers</a>.upstream_monomorphizations = <a href="#377-427">upstream_monomorphizations_provider</a>;
     <a href="#452">providers</a>.is_unreachable_local_definition = <a href="#448-450">is_unreachable_local_definition_provider</a>;
     <a href="#452">providers</a>.upstream_drop_glue_for = <a href="#437-446">upstream_drop_glue_for_provider</a>;
-    <a href="#452">providers</a>.wasm_import_module_map = <a href="#613-635">wasm_import_module_map</a>;
-}
-
-<span class="kw">pub fn </span><a href="../../../rustc_codegen_ssa/back/symbol_export/fn.provide_extern.html">provide_extern</a>(providers: <span class="kw-2">&amp;mut </span><a href="../../../rustc_middle/query/struct.ExternProviders.html">ExternProviders</a>) {
-    <a href="#462">providers</a>.is_reachable_non_generic = <a href="#166-168">is_reachable_non_generic_provider_extern</a>;
-    <a href="#462">providers</a>.upstream_monomorphizations_for = <a href="#429-435">upstream_monomorphizations_for_provider</a>;
+    <a href="#452">providers</a>.wasm_import_module_map = <a href="#611-633">wasm_import_module_map</a>;
+    <a href="#452">providers</a>.extern_queries.is_reachable_non_generic = <a href="#166-168">is_reachable_non_generic_provider_extern</a>;
+    <a href="#452">providers</a>.extern_queries.upstream_monomorphizations_for =
+        <a href="#429-435">upstream_monomorphizations_for_provider</a>;
 }
 
 <span class="kw">fn </span><a href="../../../rustc_codegen_ssa/back/symbol_export/fn.symbol_export_level.html">symbol_export_level</a>(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, sym_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>) -&gt; <a href="../../../rustc_middle/middle/exported_symbols/enum.SymbolExportLevel.html">SymbolExportLevel</a> {
@@ -1105,16 +1101,16 @@
     // special symbols in the standard library for various plumbing between
     // core/std/allocators/etc. For example symbols used to hook up allocation
     // are not considered for export
-    </span><span class="kw">let </span>codegen_fn_attrs = <a href="#467">tcx</a>.codegen_fn_attrs(<a href="#467">sym_def_id</a>);
-    <span class="kw">let </span>is_extern = <a href="#473">codegen_fn_attrs</a>.contains_extern_indicator();
+    </span><span class="kw">let </span>codegen_fn_attrs = <a href="#465">tcx</a>.codegen_fn_attrs(<a href="#465">sym_def_id</a>);
+    <span class="kw">let </span>is_extern = <a href="#471">codegen_fn_attrs</a>.contains_extern_indicator();
     <span class="kw">let </span>std_internal =
-        <a href="#473">codegen_fn_attrs</a>.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+        <a href="#471">codegen_fn_attrs</a>.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
 
     <span class="kw">if </span>is_extern &amp;&amp; !std_internal {
-        <span class="kw">let </span>target = <span class="kw-2">&amp;</span><a href="#467">tcx</a>.sess.target.llvm_target;
+        <span class="kw">let </span>target = <span class="kw-2">&amp;</span><a href="#465">tcx</a>.sess.target.llvm_target;
         <span class="comment">// WebAssembly cannot export data symbols, so reduce their export level
         </span><span class="kw">if </span>target.contains(<span class="string">&quot;emscripten&quot;</span>) {
-            <span class="kw">if let </span>DefKind::Static(<span class="kw">_</span>) = <a href="#467">tcx</a>.def_kind(<a href="#467">sym_def_id</a>) {
+            <span class="kw">if let </span>DefKind::Static(<span class="kw">_</span>) = <a href="#465">tcx</a>.def_kind(<a href="#465">sym_def_id</a>) {
                 <span class="kw">return </span>SymbolExportLevel::Rust;
             }
         }
@@ -1134,42 +1130,42 @@
     <span class="comment">// If this is something instantiated in the local crate then we might
     // already have cached the name as a query result.
     </span><span class="kw">if </span>instantiating_crate == LOCAL_CRATE {
-        <span class="kw">return </span><a href="#496">symbol</a>.symbol_name_for_local_instance(<a href="#495">tcx</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
+        <span class="kw">return </span><a href="#494">symbol</a>.symbol_name_for_local_instance(<a href="#493">tcx</a>).<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
     }
 
     <span class="comment">// This is something instantiated in an upstream crate, so we have to use
     // the slower (because uncached) version of computing the symbol name.
-    </span><span class="kw">match </span><a href="#496">symbol</a> {
+    </span><span class="kw">match </span><a href="#494">symbol</a> {
         ExportedSymbol::NonGeneric(def_id) =&gt; {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
-                <a href="#495">tcx</a>,
-                Instance::mono(<a href="#495">tcx</a>, <a href="#508">def_id</a>),
-                <a href="#497">instantiating_crate</a>,
+                <a href="#493">tcx</a>,
+                Instance::mono(<a href="#493">tcx</a>, <a href="#506">def_id</a>),
+                <a href="#495">instantiating_crate</a>,
             )
         }
         ExportedSymbol::Generic(def_id, args) =&gt; {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
-                <a href="#495">tcx</a>,
-                Instance::new(<a href="#515">def_id</a>, <a href="#515">args</a>),
-                <a href="#497">instantiating_crate</a>,
+                <a href="#493">tcx</a>,
+                Instance::new(<a href="#513">def_id</a>, <a href="#513">args</a>),
+                <a href="#495">instantiating_crate</a>,
             )
         }
         ExportedSymbol::ThreadLocalShim(def_id) =&gt; {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
-                <a href="#495">tcx</a>,
+                <a href="#493">tcx</a>,
                 <a href="../../../rustc_middle/ty/instance/struct.Instance.html">ty::Instance</a> {
-                    def: ty::InstanceDef::ThreadLocalShim(<a href="#522">def_id</a>),
+                    def: ty::InstanceDef::ThreadLocalShim(<a href="#520">def_id</a>),
                     args: ty::GenericArgs::empty(),
                 },
-                <a href="#497">instantiating_crate</a>,
+                <a href="#495">instantiating_crate</a>,
             )
         }
         ExportedSymbol::DropGlue(ty) =&gt; rustc_symbol_mangling::symbol_name_for_instance_in_crate(
-            <a href="#495">tcx</a>,
-            Instance::resolve_drop_in_place(<a href="#495">tcx</a>, <a href="#532">ty</a>),
-            <a href="#497">instantiating_crate</a>,
+            <a href="#493">tcx</a>,
+            Instance::resolve_drop_in_place(<a href="#493">tcx</a>, <a href="#530">ty</a>),
+            <a href="#495">instantiating_crate</a>,
         ),
-        ExportedSymbol::NoDefId(symbol_name) =&gt; <a href="#537">symbol_name</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
+        ExportedSymbol::NoDefId(symbol_name) =&gt; <a href="#535">symbol_name</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>(),
     }
 }
 
@@ -1183,30 +1179,30 @@
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a> {
     <span class="kw">use </span><a href="../../../rustc_target/abi/call/enum.Conv.html">rustc_target::abi::call::Conv</a>;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>undecorated = <a href="#494-539">symbol_name_for_instance_in_crate</a>(<a href="#545">tcx</a>, <a href="#546">symbol</a>, <a href="#547">instantiating_crate</a>);
+    <span class="kw">let </span><span class="kw-2">mut </span>undecorated = <a href="#492-537">symbol_name_for_instance_in_crate</a>(<a href="#543">tcx</a>, <a href="#544">symbol</a>, <a href="#545">instantiating_crate</a>);
 
-    <span class="kw">let </span>target = <span class="kw-2">&amp;</span><a href="#545">tcx</a>.sess.target;
+    <span class="kw">let </span>target = <span class="kw-2">&amp;</span><a href="#543">tcx</a>.sess.target;
     <span class="kw">if </span>!target.is_like_windows {
         <span class="comment">// Mach-O has a global &quot;_&quot; suffix and `object` crate will handle it.
         // ELF does not have any symbol decorations.
-        </span><span class="kw">return </span><a href="#551">undecorated</a>;
+        </span><span class="kw">return </span><a href="#549">undecorated</a>;
     }
 
-    <span class="kw">let </span>x86 = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#553">target</a>.arch[..] {
+    <span class="kw">let </span>x86 = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#551">target</a>.arch[..] {
         <span class="string">&quot;x86&quot; </span>=&gt; <span class="bool-val">true</span>,
         <span class="string">&quot;x86_64&quot; </span>=&gt; <span class="bool-val">false</span>,
         <span class="comment">// Only x86/64 use symbol decorations.
-        </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><a href="#551">undecorated</a>,
+        </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><a href="#549">undecorated</a>,
     };
 
-    <span class="kw">let </span>instance = <span class="kw">match </span><a href="#546">symbol</a> {
+    <span class="kw">let </span>instance = <span class="kw">match </span><a href="#544">symbol</a> {
         ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, <span class="kw">_</span>)
-            <span class="kw">if </span><a href="#545">tcx</a>.is_static(<a href="#568">def_id</a>) =&gt;
+            <span class="kw">if </span><a href="#543">tcx</a>.is_static(<a href="#566">def_id</a>) =&gt;
         {
             <span class="prelude-val">None
         </span>}
-        ExportedSymbol::NonGeneric(def_id) =&gt; <span class="prelude-val">Some</span>(Instance::mono(<a href="#545">tcx</a>, <a href="#573">def_id</a>)),
-        ExportedSymbol::Generic(def_id, args) =&gt; <span class="prelude-val">Some</span>(Instance::new(<a href="#574">def_id</a>, <a href="#574">args</a>)),
+        ExportedSymbol::NonGeneric(def_id) =&gt; <span class="prelude-val">Some</span>(Instance::mono(<a href="#543">tcx</a>, <a href="#571">def_id</a>)),
+        ExportedSymbol::Generic(def_id, args) =&gt; <span class="prelude-val">Some</span>(Instance::new(<a href="#572">def_id</a>, <a href="#572">args</a>)),
         <span class="comment">// DropGlue always use the Rust calling convention and thus follow the target&#39;s default
         // symbol decoration scheme.
         </span>ExportedSymbol::DropGlue(..) =&gt; <span class="prelude-val">None</span>,
@@ -1216,31 +1212,31 @@
         </span>ExportedSymbol::ThreadLocalShim(..) =&gt; <span class="prelude-val">None</span>,
     };
 
-    <span class="kw">let </span>(conv, args) = <a href="#567">instance</a>
+    <span class="kw">let </span>(conv, args) = <a href="#565">instance</a>
         .map(|i| {
-            <a href="#545">tcx</a>.fn_abi_of_instance(ty::ParamEnv::reveal_all().and((<a href="#585">i</a>, ty::List::empty())))
+            <a href="#543">tcx</a>.fn_abi_of_instance(ty::ParamEnv::reveal_all().and((<a href="#583">i</a>, ty::List::empty())))
                 .unwrap_or_else(|<span class="kw">_</span>| <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;fn_abi_of_instance({i:?}) failed&quot;</span>))
         })
-        .map(|fnabi| (<a href="#589">fnabi</a>.conv, <span class="kw-2">&amp;</span><a href="#589">fnabi</a>.args[..]))
+        .map(|fnabi| (<a href="#587">fnabi</a>.conv, <span class="kw-2">&amp;</span><a href="#587">fnabi</a>.args[..]))
         .unwrap_or((Conv::Rust, <span class="kw-2">&amp;</span>[]));
 
     <span class="comment">// Decorate symbols with prefixes, suffixes and total number of bytes of arguments.
     // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
-    </span><span class="kw">let </span>(prefix, suffix) = <span class="kw">match </span><a href="#584">conv</a> {
+    </span><span class="kw">let </span>(prefix, suffix) = <span class="kw">match </span><a href="#582">conv</a> {
         Conv::X86Fastcall =&gt; (<span class="string">&quot;@&quot;</span>, <span class="string">&quot;@&quot;</span>),
         Conv::X86Stdcall =&gt; (<span class="string">&quot;_&quot;</span>, <span class="string">&quot;@&quot;</span>),
         Conv::X86VectorCall =&gt; (<span class="string">&quot;&quot;</span>, <span class="string">&quot;@@&quot;</span>),
         <span class="kw">_ </span>=&gt; {
             <span class="kw">if </span>x86 {
-                <a href="#551">undecorated</a>.insert(<span class="number">0</span>, <span class="string">&#39;_&#39;</span>);
+                <a href="#549">undecorated</a>.insert(<span class="number">0</span>, <span class="string">&#39;_&#39;</span>);
             }
-            <span class="kw">return </span><a href="#551">undecorated</a>;
+            <span class="kw">return </span><a href="#549">undecorated</a>;
         }
     };
 
-    <span class="kw">let </span>args_in_bytes: <a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a> = <a href="#584">args</a>
+    <span class="kw">let </span>args_in_bytes: <a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a> = <a href="#582">args</a>
         .iter()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|abi| <a href="#608">abi</a>.layout.size.bytes().next_multiple_of(<a href="#553">target</a>.pointer_width <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a> / <span class="number">8</span>))
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|abi| <a href="#606">abi</a>.layout.size.bytes().next_multiple_of(<a href="#551">target</a>.pointer_width <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html">u64</a> / <span class="number">8</span>))
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">sum</a>();
     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{prefix}{undecorated}{suffix}{args_in_bytes}&quot;</span>)
 }
@@ -1249,11 +1245,11 @@
     <span class="comment">// Build up a map from DefId to a `NativeLib` structure, where
     // `NativeLib` internally contains information about
     // `#[link(wasm_import_module = &quot;...&quot;)]` for example.
-    </span><span class="kw">let </span>native_libs = <a href="#613">tcx</a>.native_libraries(<a href="#613">cnum</a>);
+    </span><span class="kw">let </span>native_libs = <a href="#611">tcx</a>.native_libraries(<a href="#611">cnum</a>);
 
-    <span class="kw">let </span>def_id_to_native_lib = <a href="#617">native_libs</a>
+    <span class="kw">let </span>def_id_to_native_lib = <a href="#615">native_libs</a>
         .iter()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|lib| <a href="#621">lib</a>.foreign_module.map(|id| (<a href="#621">id</a>, <a href="#621">lib</a>)))
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|lib| <a href="#619">lib</a>.foreign_module.map(|id| (<a href="#619">id</a>, <a href="#619">lib</a>)))
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;FxHashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 
     <span class="kw">let </span><span class="kw-2">mut </span>ret = FxHashMap::default();
@@ -1266,6 +1262,6 @@
         }));
     }
 
-    <a href="#624">ret</a>
+    <a href="#622">ret</a>
 }
 </code></pre></div></section></main></body></html>

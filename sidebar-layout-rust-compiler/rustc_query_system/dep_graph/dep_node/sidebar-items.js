@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DepKindStruct","DepNode","WorkProductId"],"trait":["DepNodeParams"]};
+window.SIDEBAR_ITEMS = {"fn":["default_dep_kind_debug","default_dep_node_debug"],"static":["DEP_KIND_DEBUG","DEP_NODE_DEBUG"],"struct":["DepKind","DepKindStruct","DepNode","WorkProductId"],"trait":["DepNodeParams"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/tree_borrows/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/borrow_tracker/tree_borrows/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -582,6 +582,14 @@
 <a href="#582" id="582">582</a>
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="https://docs.rs/log/0.4.19/log/macro.trace.html">log::trace</a>;
 
 <span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/enum.Abi.html">Abi</a>, <a href="../../../../rustc_abi/struct.Align.html">Align</a>, <a href="../../../../rustc_abi/struct.Size.html">Size</a>};
@@ -596,15 +604,19 @@
 <span class="kw">use crate</span>::<span class="kw-2">*</span>;
 
 <span class="kw">pub mod </span><a href="diagnostics.rs.html#1-780">diagnostics</a>;
-<span class="kw">mod </span><a href="perms.rs.html#1-497">perms</a>;
-<span class="kw">mod </span><a href="tree.rs.html#1-751">tree</a>;
+<span class="kw">mod </span><a href="perms.rs.html#1-546">perms</a>;
+<span class="kw">mod </span><a href="tree.rs.html#1-696">tree</a>;
 <span class="kw">mod </span><a href="unimap.rs.html#1-333">unimap</a>;
-<span class="kw">use </span><a href="perms.rs.html#138-140">perms::Permission</a>;
-<span class="kw">pub use </span><a href="tree.rs.html#178-200">tree::Tree</a>;
 
-<span class="kw">pub type </span><a href="../../../../miri/borrow_tracker/tree_borrows/type.AllocState.html">AllocState</a> = <a href="tree.rs.html#178-200">Tree</a>;
+<span class="attr">#[cfg(test)]
+</span><span class="kw">mod </span>exhaustive;
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="tree.rs.html#178-200">Tree</a> {
+<span class="kw">use </span><a href="perms.rs.html#144-146">perms::Permission</a>;
+<span class="kw">pub use </span><a href="tree.rs.html#207-229">tree::Tree</a>;
+
+<span class="kw">pub type </span><a href="../../../../miri/borrow_tracker/tree_borrows/type.AllocState.html">AllocState</a> = <a href="tree.rs.html#207-229">Tree</a>;
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="tree.rs.html#207-229">Tree</a> {
     <span class="doccomment">/// Create a new allocation, i.e. a new tree
     </span><span class="kw">pub fn </span>new_allocation(
         id: <a href="../../../../miri/struct.AllocId.html">AllocId</a>,
@@ -613,9 +625,9 @@
         _kind: MemoryKind&lt;<a href="../../machine.rs.html#92-118">machine::MiriMemoryKind</a>&gt;,
         machine: <span class="kw-2">&amp;</span>MiriMachine&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>tag = <a href="#28">state</a>.<a href="../mod.rs.html#221-235">base_ptr_tag</a>(<a href="#26">id</a>, <a href="#30">machine</a>); <span class="comment">// Fresh tag for the root
-        </span><span class="kw">let </span>span = <a href="#30">machine</a>.<a href="../../helpers.rs.html#1076-1080">current_span</a>();
-        Tree::new(<a href="#32">tag</a>, <a href="#27">size</a>, <a href="#33">span</a>)
+        <span class="kw">let </span>tag = <a href="#32">state</a>.<a href="../mod.rs.html#221-235">base_ptr_tag</a>(<a href="#30">id</a>, <a href="#34">machine</a>); <span class="comment">// Fresh tag for the root
+        </span><span class="kw">let </span>span = <a href="#34">machine</a>.<a href="../../helpers.rs.html#1094-1098">current_span</a>();
+        Tree::new(<a href="#36">tag</a>, <a href="#31">size</a>, <a href="#37">span</a>)
     }
 
     <span class="doccomment">/// Check that an access on the entire range is permitted, and update
@@ -637,19 +649,19 @@
         );
         <span class="comment">// TODO: for now we bail out on wildcard pointers. Eventually we should
         // handle them as much as we can.
-        </span><span class="kw">let </span>tag = <span class="kw">match </span><a href="#43">prov</a> {
-            <a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) =&gt; <a href="#57">tag</a>,
+        </span><span class="kw">let </span>tag = <span class="kw">match </span><a href="#47">prov</a> {
+            <a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) =&gt; <a href="#61">tag</a>,
             <a href="../../machine.rs.html#202">ProvenanceExtra::Wildcard</a> =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
         };
-        <span class="kw">let </span>global = <a href="#45">machine</a>.borrow_tracker.as_ref().unwrap();
-        <span class="kw">let </span>span = <a href="#45">machine</a>.<a href="../../helpers.rs.html#1076-1080">current_span</a>();
-        <a class="self" href="#40">self</a>.<a href="tree.rs.html#500-556">perform_access</a>(
-            <a href="#41">access_kind</a>,
-            <a href="#56">tag</a>,
-            <a href="#44">range</a>,
-            <a href="#60">global</a>,
-            <a href="#61">span</a>,
-            <a href="diagnostics.rs.html#19">diagnostics::AccessCause::Explicit</a>(<a href="#41">access_kind</a>),
+        <span class="kw">let </span>global = <a href="#49">machine</a>.borrow_tracker.as_ref().unwrap();
+        <span class="kw">let </span>span = <a href="#49">machine</a>.<a href="../../helpers.rs.html#1094-1098">current_span</a>();
+        <a class="self" href="#44">self</a>.<a href="tree.rs.html#529-585">perform_access</a>(
+            <a href="#45">access_kind</a>,
+            <a href="#60">tag</a>,
+            <a href="#48">range</a>,
+            <a href="#64">global</a>,
+            <a href="#65">span</a>,
+            <a href="diagnostics.rs.html#19">diagnostics::AccessCause::Explicit</a>(<a href="#45">access_kind</a>),
         )
     }
 
@@ -663,13 +675,13 @@
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="comment">// TODO: for now we bail out on wildcard pointers. Eventually we should
         // handle them as much as we can.
-        </span><span class="kw">let </span>tag = <span class="kw">match </span><a href="#76">prov</a> {
-            <a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) =&gt; <a href="#83">tag</a>,
+        </span><span class="kw">let </span>tag = <span class="kw">match </span><a href="#80">prov</a> {
+            <a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) =&gt; <a href="#87">tag</a>,
             <a href="../../machine.rs.html#202">ProvenanceExtra::Wildcard</a> =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
         };
-        <span class="kw">let </span>global = <a href="#78">machine</a>.borrow_tracker.as_ref().unwrap();
-        <span class="kw">let </span>span = <a href="#78">machine</a>.<a href="../../helpers.rs.html#1076-1080">current_span</a>();
-        <a class="self" href="#74">self</a>.<a href="tree.rs.html#446-489">dealloc</a>(<a href="#82">tag</a>, <a href="#77">range</a>, <a href="#86">global</a>, <a href="#87">span</a>)
+        <span class="kw">let </span>global = <a href="#82">machine</a>.borrow_tracker.as_ref().unwrap();
+        <span class="kw">let </span>span = <a href="#82">machine</a>.<a href="../../helpers.rs.html#1094-1098">current_span</a>();
+        <a class="self" href="#78">self</a>.<a href="tree.rs.html#475-518">dealloc</a>(<a href="#86">tag</a>, <a href="#81">range</a>, <a href="#90">global</a>, <a href="#91">span</a>)
     }
 
     <span class="kw">pub fn </span>expose_tag(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _tag: <a href="../mod.rs.html#20">BorTag</a>) {
@@ -684,13 +696,13 @@
     /// If this is set then `dereferenceable` is not enforced.
     </span>zero_size: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     <span class="doccomment">/// Which permission should the pointer start with.
-    </span>initial_state: <a href="perms.rs.html#138-140">Permission</a>,
+    </span>initial_state: <a href="perms.rs.html#144-146">Permission</a>,
     <span class="doccomment">/// Whether this pointer is part of the arguments of a function call.
     /// `protector` is `Some(_)` for all pointers marked `noalias`.
     </span>protector: <span class="prelude-ty">Option</span>&lt;<a href="../mod.rs.html#153-169">ProtectorKind</a>&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="#98-107">NewPermission</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="#102-111">NewPermission</a> {
     <span class="doccomment">/// Determine NewPermission of the reference from the type of the pointee.
     </span><span class="kw">fn </span>from_ref_ty(
         pointee: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
@@ -698,11 +710,11 @@
         kind: <a href="../../../../rustc_middle/mir/syntax/enum.RetagKind.html">RetagKind</a>,
         cx: <span class="kw-2">&amp;</span><span class="kw">crate</span>::MiriInterpCx&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>ty_is_freeze = <a href="#112">pointee</a>.is_freeze(<span class="kw-2">*</span><a href="#115">cx</a>.tcx, <a href="#115">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
-        <span class="kw">let </span>ty_is_unpin = <a href="#112">pointee</a>.is_unpin(<span class="kw-2">*</span><a href="#115">cx</a>.tcx, <a href="#115">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
-        <span class="kw">let </span>initial_state = <span class="kw">match </span><a href="#113">mutability</a> {
-            Mutability::Mut <span class="kw">if </span><a href="#118">ty_is_unpin</a> =&gt; Permission::new_reserved(<a href="#117">ty_is_freeze</a>),
-            Mutability::Not <span class="kw">if </span><a href="#117">ty_is_freeze</a> =&gt; Permission::new_frozen(),
+        <span class="kw">let </span>ty_is_freeze = <a href="#116">pointee</a>.is_freeze(<span class="kw-2">*</span><a href="#119">cx</a>.tcx, <a href="#119">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
+        <span class="kw">let </span>ty_is_unpin = <a href="#116">pointee</a>.is_unpin(<span class="kw-2">*</span><a href="#119">cx</a>.tcx, <a href="#119">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
+        <span class="kw">let </span>initial_state = <span class="kw">match </span><a href="#117">mutability</a> {
+            Mutability::Mut <span class="kw">if </span><a href="#122">ty_is_unpin</a> =&gt; Permission::new_reserved(<a href="#121">ty_is_freeze</a>),
+            Mutability::Not <span class="kw">if </span><a href="#121">ty_is_freeze</a> =&gt; Permission::new_frozen(),
             <span class="comment">// Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
             // tag, this also happens for `!Unpin` `&amp;mut`s and interior mutable
@@ -710,8 +722,8 @@
             </span><span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
         };
 
-        <span class="kw">let </span>protector = (<a href="#114">kind</a> == RetagKind::FnEntry).then_some(<a href="../mod.rs.html#168">ProtectorKind::StrongProtector</a>);
-        <span class="prelude-val">Some</span>(<span class="self">Self </span>{ zero_size: <span class="bool-val">false</span>, <a href="#119">initial_state</a>, <a href="#129">protector</a> })
+        <span class="kw">let </span>protector = (<a href="#118">kind</a> == RetagKind::FnEntry).then_some(<a href="../mod.rs.html#168">ProtectorKind::StrongProtector</a>);
+        <span class="prelude-val">Some</span>(<span class="self">Self </span>{ zero_size: <span class="bool-val">false</span>, <a href="#123">initial_state</a>, <a href="#133">protector</a> })
     }
 
     <span class="doccomment">/// Compute permission for `Box`-like type (`Box` always, and also `Unique` if enabled).
@@ -723,15 +735,15 @@
         cx: <span class="kw-2">&amp;</span><span class="kw">crate</span>::MiriInterpCx&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         zero_size: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>pointee = <a href="#137">ty</a>.builtin_deref(<span class="bool-val">true</span>).unwrap().ty;
-        <a href="#142">pointee</a>.is_unpin(<span class="kw-2">*</span><a href="#139">cx</a>.tcx, <a href="#139">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>()).then_some(()).map(|()| {
+        <span class="kw">let </span>pointee = <a href="#141">ty</a>.builtin_deref(<span class="bool-val">true</span>).unwrap().ty;
+        <a href="#146">pointee</a>.is_unpin(<span class="kw-2">*</span><a href="#143">cx</a>.tcx, <a href="#143">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>()).then_some(()).map(|()| {
             <span class="comment">// Regular `Unpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.
-            </span><span class="kw">let </span>ty_is_freeze = <a href="#137">ty</a>.is_freeze(<span class="kw-2">*</span><a href="#139">cx</a>.tcx, <a href="#139">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
+            </span><span class="kw">let </span>ty_is_freeze = <a href="#141">ty</a>.is_freeze(<span class="kw-2">*</span><a href="#143">cx</a>.tcx, <a href="#143">cx</a>.<a href="../../../../rustc_middle/ty/layout/trait.HasParamEnv.html">param_env</a>());
             <span class="self">Self </span>{
-                <a href="#140">zero_size</a>,
-                initial_state: Permission::new_reserved(<a href="#146">ty_is_freeze</a>),
-                protector: (<a href="#138">kind</a> == RetagKind::FnEntry).then_some(<a href="../mod.rs.html#160">ProtectorKind::WeakProtector</a>),
+                <a href="#144">zero_size</a>,
+                initial_state: Permission::new_reserved(<a href="#150">ty_is_freeze</a>),
+                protector: (<a href="#142">kind</a> == RetagKind::FnEntry).then_some(<a href="../mod.rs.html#160">ProtectorKind::WeakProtector</a>),
             }
         })
     }
@@ -750,10 +762,10 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         place: <span class="kw-2">&amp;</span>MPlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;, <span class="comment">// parent tag extracted from here
         </span>ptr_size: <a href="../../../../rustc_abi/struct.Size.html">Size</a>,
-        new_perm: <a href="#98-107">NewPermission</a>,
+        new_perm: <a href="#102-111">NewPermission</a>,
         new_tag: <a href="../mod.rs.html#20">BorTag</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <span class="prelude-ty">Option</span>&lt;<a href="../../machine.rs.html#171-178">Provenance</a>&gt;&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#166">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#170">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
         <span class="comment">// Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         </span>this.check_ptr_access_align(
             place.ptr(),
@@ -766,26 +778,26 @@
         </span><span class="kw">let </span>log_creation = |this: <span class="kw-2">&amp;</span>MiriInterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
                             loc: <span class="prelude-ty">Option</span>&lt;(<a href="../../../../miri/struct.AllocId.html">AllocId</a>, <a href="../../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../machine.rs.html#200-203">ProvenanceExtra</a>)&gt;| <span class="comment">// alloc_id, base_offset, orig_tag
          </span>-&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-            <span class="kw">let </span>global = <a href="#182">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow();
-            <span class="kw">let </span>ty = <a href="#167">place</a>.layout.ty;
+            <span class="kw">let </span>global = <a href="#186">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow();
+            <span class="kw">let </span>ty = <a href="#171">place</a>.layout.ty;
             <span class="kw">if </span>global.tracked_pointer_tags.contains(<span class="kw-2">&amp;</span>new_tag) {
                 <span class="kw">let </span>kind_str = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{new_perm:?} (pointee type {ty})&quot;</span>);
-                <a href="#182">this</a>.<a href="../../diagnostics.rs.html#610-613">emit_diagnostic</a>(<a href="../../diagnostics.rs.html#112">NonHaltingDiagnostic::CreatedPointerTag</a>(
-                    <a href="#170">new_tag</a>.<a href="../mod.rs.html#31-33">inner</a>(),
-                    <span class="prelude-val">Some</span>(<a href="#188">kind_str</a>),
-                    <a href="#183">loc</a>.map(|(alloc_id, base_offset, orig_tag)| (<a href="#192">alloc_id</a>, <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a href="#192">base_offset</a>, <a href="#168">ptr_size</a>), <a href="#192">orig_tag</a>)),
+                <a href="#186">this</a>.<a href="../../diagnostics.rs.html#610-613">emit_diagnostic</a>(<a href="../../diagnostics.rs.html#112">NonHaltingDiagnostic::CreatedPointerTag</a>(
+                    <a href="#174">new_tag</a>.<a href="../mod.rs.html#31-33">inner</a>(),
+                    <span class="prelude-val">Some</span>(<a href="#192">kind_str</a>),
+                    <a href="#187">loc</a>.map(|(alloc_id, base_offset, orig_tag)| (<a href="#196">alloc_id</a>, <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a href="#196">base_offset</a>, <a href="#172">ptr_size</a>), <a href="#196">orig_tag</a>)),
                 ));
             }
-            <a href="https://doc.rust-lang.org/nightly/core/mem/fn.drop.html">drop</a>(<a href="#185">global</a>); <span class="comment">// don&#39;t hold that reference any longer than we have to
+            <a href="https://doc.rust-lang.org/nightly/core/mem/fn.drop.html">drop</a>(<a href="#189">global</a>); <span class="comment">// don&#39;t hold that reference any longer than we have to
             </span><span class="prelude-val">Ok</span>(())
         };
 
         <a class="macro" href="https://docs.rs/log/0.4.19/log/macro.trace.html">trace!</a>(<span class="string">&quot;Reborrow of size {:?}&quot;</span>, ptr_size);
-        <span class="kw">let </span>(alloc_id, base_offset, parent_prov) = <span class="kw">match </span><a href="#172">this</a>.ptr_try_get_alloc_id(<a href="#167">place</a>.ptr()) {
+        <span class="kw">let </span>(alloc_id, base_offset, parent_prov) = <span class="kw">match </span><a href="#176">this</a>.ptr_try_get_alloc_id(<a href="#171">place</a>.ptr()) {
             <span class="prelude-val">Ok</span>(data) =&gt; {
                 <span class="comment">// Unlike SB, we *do* a proper retag for size 0 if can identify the allocation.
                 // After all, the pointer may be lazily initialized outside this initial range.
-                </span><a href="#201">data</a>
+                </span><a href="#205">data</a>
             }
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(ptr_size, Size::ZERO); <span class="comment">// we did the deref check above, size has to be 0 here
@@ -799,14 +811,14 @@
                 );
                 log_creation(this, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
                 <span class="comment">// Keep original provenance.
-                </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#167">place</a>.ptr().provenance);
+                </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#171">place</a>.ptr().provenance);
             }
         };
         log_creation(this, <span class="prelude-val">Some</span>((alloc_id, base_offset, parent_prov)))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>orig_tag = <span class="kw">match </span><a href="#200">parent_prov</a> {
-            <a href="../../machine.rs.html#202">ProvenanceExtra::Wildcard</a> =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#167">place</a>.ptr().provenance), <span class="comment">// TODO: handle wildcard pointers
-            </span><a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) =&gt; <a href="#225">tag</a>,
+        <span class="kw">let </span>orig_tag = <span class="kw">match </span><a href="#204">parent_prov</a> {
+            <a href="../../machine.rs.html#202">ProvenanceExtra::Wildcard</a> =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<a href="#171">place</a>.ptr().provenance), <span class="comment">// TODO: handle wildcard pointers
+            </span><a href="../../machine.rs.html#201">ProvenanceExtra::Concrete</a>(tag) =&gt; <a href="#229">tag</a>,
         };
 
         <a class="macro" href="https://docs.rs/log/0.4.19/log/macro.trace.html">trace!</a>(
@@ -818,32 +830,32 @@
             ptr_size.bytes()
         );
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(protect) = <a href="#169">new_perm</a>.protector {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(protect) = <a href="#173">new_perm</a>.protector {
             <span class="comment">// We register the protection in two different places.
             // This makes creating a protector slower, but checking whether a tag
             // is protected faster.
-            </span><a href="#172">this</a>.frame_mut().extra.borrow_tracker.as_mut().unwrap().protected_tags.push(<a href="#170">new_tag</a>);
-            <a href="#172">this</a>.machine
+            </span><a href="#176">this</a>.frame_mut().extra.borrow_tracker.as_mut().unwrap().protected_tags.push(<a href="#174">new_tag</a>);
+            <a href="#176">this</a>.machine
                 .borrow_tracker
                 .as_mut()
                 .expect(<span class="string">&quot;We should have borrow tracking data&quot;</span>)
                 .get_mut()
                 .protected_tags
-                .insert(<a href="#170">new_tag</a>, <a href="#237">protect</a>);
+                .insert(<a href="#174">new_tag</a>, <a href="#241">protect</a>);
         }
 
-        <span class="kw">let </span>alloc_kind = <a href="#172">this</a>.get_alloc_info(<a href="#200">alloc_id</a>).<span class="number">2</span>;
+        <span class="kw">let </span>alloc_kind = <a href="#176">this</a>.get_alloc_info(<a href="#204">alloc_id</a>).<span class="number">2</span>;
         <span class="kw">if </span>!<span class="macro">matches!</span>(alloc_kind, AllocKind::LiveData) {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(ptr_size, Size::ZERO); <span class="comment">// we did the deref check above, size has to be 0 here
             // There&#39;s not actually any bytes here where accesses could even be tracked.
             // Just produce the new provenance, nothing else to do.
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<a href="../../machine.rs.html#172-176">Provenance::Concrete</a> { <a href="#200">alloc_id</a>, tag: <a href="#170">new_tag</a> }));
+            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<a href="../../machine.rs.html#172-176">Provenance::Concrete</a> { <a href="#204">alloc_id</a>, tag: <a href="#174">new_tag</a> }));
         }
 
-        <span class="kw">let </span>span = <a href="#172">this</a>.machine.<a href="../../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>span = <a href="#176">this</a>.machine.<a href="../../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>alloc_extra = this.get_alloc_extra(alloc_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>range = <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a href="#200">base_offset</a>, <a href="#168">ptr_size</a>);
-        <span class="kw">let </span><span class="kw-2">mut </span>tree_borrows = <a href="#260">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow_mut();
+        <span class="kw">let </span>range = <a href="../../../../miri/fn.alloc_range.html">alloc_range</a>(<a href="#204">base_offset</a>, <a href="#172">ptr_size</a>);
+        <span class="kw">let </span><span class="kw-2">mut </span>tree_borrows = <a href="#264">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow_mut();
 
         <span class="comment">// All reborrows incur a (possibly zero-sized) read access to the parent
         </span>tree_borrows.perform_access(
@@ -855,19 +867,23 @@
             diagnostics::AccessCause::Reborrow,
         )<span class="question-mark">?</span>;
         <span class="comment">// Record the parent-child pair in the tree.
+        // FIXME: We should eventually ensure that the following `assert` holds, because
+        // some &quot;exhaustive&quot; tests consider only the initial configurations that satisfy it.
+        // The culprit is `Permission::new_active` in `tb_protect_place`.
+        //assert!(new_perm.initial_state.is_initial());
         </span>tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)<span class="question-mark">?</span>;
-        <a href="https://doc.rust-lang.org/nightly/core/mem/fn.drop.html">drop</a>(<a href="#262">tree_borrows</a>);
+        <a href="https://doc.rust-lang.org/nightly/core/mem/fn.drop.html">drop</a>(<a href="#266">tree_borrows</a>);
 
         <span class="comment">// Also inform the data race model (but only if any bytes are actually affected).
         </span><span class="kw">if </span>range.size.bytes() &gt; <span class="number">0 </span>{
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(data_race) = <a href="#260">alloc_extra</a>.data_race.as_ref() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(data_race) = <a href="#264">alloc_extra</a>.data_race.as_ref() {
                 <span class="comment">// We sometimes need to make it a write, since not all retags commute with reads!
                 // FIXME: Is that truly the semantics we want? Some optimizations are likely to be
                 // very unhappy without this. We&#39;d tsill ge some UB just by picking a suitable
                 // interleaving, but wether UB happens can depend on whether a write occurs in the
                 // future...
-                </span><span class="kw">let </span>is_write = <a href="#169">new_perm</a>.initial_state.<a href="perms.rs.html#165-167">is_active</a>()
-                    || (<a href="#169">new_perm</a>.initial_state.<a href="perms.rs.html#169-171">is_reserved</a>() &amp;&amp; <a href="#169">new_perm</a>.protector.is_some());
+                </span><span class="kw">let </span>is_write = <a href="#173">new_perm</a>.initial_state.<a href="perms.rs.html#176-178">is_active</a>()
+                    || (<a href="#173">new_perm</a>.initial_state.<a href="perms.rs.html#182-188">is_reserved</a>(<span class="prelude-val">None</span>) &amp;&amp; <a href="#173">new_perm</a>.protector.is_some());
                 <span class="kw">if </span>is_write {
                     <span class="comment">// Need to get mutable access to alloc_extra.
                     // (Cannot always do this as we can do read-only reborrowing on read-only allocations.)
@@ -879,16 +895,16 @@
             }
         }
 
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<a href="../../machine.rs.html#172-176">Provenance::Concrete</a> { <a href="#200">alloc_id</a>, tag: <a href="#170">new_tag</a> }))
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<a href="../../machine.rs.html#172-176">Provenance::Concrete</a> { <a href="#204">alloc_id</a>, tag: <a href="#174">new_tag</a> }))
     }
 
     <span class="doccomment">/// Retags an individual pointer, returning the retagged version.
     </span><span class="kw">fn </span>tb_retag_reference(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         val: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
-        new_perm: <a href="#98-107">NewPermission</a>,
+        new_perm: <a href="#102-111">NewPermission</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#303">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#311">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
         <span class="comment">// We want a place for where the ptr *points to*, so we get one.
         </span><span class="kw">let </span>place = this.ref_to_mplace(val)<span class="question-mark">?</span>;
 
@@ -897,11 +913,11 @@
         // - when `extern type` is involved we use the size of the known prefix,
         // - if the pointer is not reborrowed (raw pointer) or if `zero_size` is set
         // then we override the size to do a zero-length reborrow.
-        </span><span class="kw">let </span>reborrow_size = <span class="kw">match </span><a href="#305">new_perm</a> {
-            <a href="#98-107">NewPermission</a> { zero_size: <span class="bool-val">false</span>, .. } =&gt;
+        </span><span class="kw">let </span>reborrow_size = <span class="kw">match </span><a href="#313">new_perm</a> {
+            <a href="#102-111">NewPermission</a> { zero_size: <span class="bool-val">false</span>, .. } =&gt;
                 this.size_and_align_of_mplace(<span class="kw-2">&amp;</span>place)<span class="question-mark">?
-                    </span>.map(|(size, <span class="kw">_</span>)| <a href="#319">size</a>)
-                    .unwrap_or(<a href="#309">place</a>.layout.size),
+                    </span>.map(|(size, <span class="kw">_</span>)| <a href="#327">size</a>)
+                    .unwrap_or(<a href="#317">place</a>.layout.size),
             <span class="kw">_ </span>=&gt; Size::from_bytes(<span class="number">0</span>),
         };
         <a class="macro" href="https://docs.rs/log/0.4.19/log/macro.trace.html">trace!</a>(<span class="string">&quot;Creating new permission: {:?} with size {:?}&quot;</span>, new_perm, reborrow_size);
@@ -912,16 +928,16 @@
         // so that rather than taking as input a fresh tag and deciding whether it uses this
         // one or the parent it instead just returns whether a new tag should be created.
         // This will avoid creating tags than end up never being used.
-        </span><span class="kw">let </span>new_tag = <a href="#307">this</a>.machine.borrow_tracker.as_mut().unwrap().get_mut().<a href="../mod.rs.html#194-198">new_ptr</a>();
+        </span><span class="kw">let </span>new_tag = <a href="#315">this</a>.machine.borrow_tracker.as_mut().unwrap().get_mut().<a href="../mod.rs.html#194-198">new_ptr</a>();
 
         <span class="comment">// Compute the actual reborrow.
         </span><span class="kw">let </span>new_prov = this.tb_reborrow(<span class="kw-2">&amp;</span>place, reborrow_size, new_perm, new_tag)<span class="question-mark">?</span>;
 
         <span class="comment">// Adjust pointer.
-        </span><span class="kw">let </span>new_place = <a href="#309">place</a>.map_provenance(|<span class="kw">_</span>| <a href="#334">new_prov</a>);
+        </span><span class="kw">let </span>new_place = <a href="#317">place</a>.map_provenance(|<span class="kw">_</span>| <a href="#342">new_prov</a>);
 
         <span class="comment">// Return new pointer.
-        </span><span class="prelude-val">Ok</span>(ImmTy::from_immediate(<a href="#337">new_place</a>.to_ref(<a href="#307">this</a>), <a href="#304">val</a>.layout))
+        </span><span class="prelude-val">Ok</span>(ImmTy::from_immediate(<a href="#345">new_place</a>.to_ref(<a href="#315">this</a>), <a href="#312">val</a>.layout))
     }
 }
 
@@ -934,16 +950,16 @@
         kind: <a href="../../../../rustc_middle/mir/syntax/enum.RetagKind.html">RetagKind</a>,
         val: <span class="kw-2">&amp;</span>ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#349">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>new_perm = <span class="kw">match </span><a href="#351">val</a>.layout.ty.kind() {
+        <span class="kw">let </span>this = <a class="self" href="#357">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>new_perm = <span class="kw">match </span><a href="#359">val</a>.layout.ty.kind() {
             <span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, pointee, mutability) =&gt;
-                NewPermission::from_ref_ty(<a href="#355">pointee</a>, <a href="#355">mutability</a>, <a href="#350">kind</a>, <a href="#353">this</a>),
+                NewPermission::from_ref_ty(<a href="#363">pointee</a>, <a href="#363">mutability</a>, <a href="#358">kind</a>, <a href="#361">this</a>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         };
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(new_perm) = <a href="#354">new_perm</a> {
-            <a href="#353">this</a>.<a href="#302-341">tb_retag_reference</a>(<a href="#351">val</a>, <a href="#359">new_perm</a>)
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(new_perm) = <a href="#362">new_perm</a> {
+            <a href="#361">this</a>.<a href="#310-349">tb_retag_reference</a>(<a href="#359">val</a>, <a href="#367">new_perm</a>)
         } <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>(<a href="#351">val</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())
+            <span class="prelude-val">Ok</span>(<a href="#359">val</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())
         }
     }
 
@@ -953,13 +969,13 @@
         kind: <a href="../../../../rustc_middle/mir/syntax/enum.RetagKind.html">RetagKind</a>,
         place: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#368">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>options = <a href="#372">this</a>.machine.borrow_tracker.as_mut().unwrap().get_mut();
-        <span class="kw">let </span>retag_fields = <a href="#373">options</a>.retag_fields;
+        <span class="kw">let </span>this = <a class="self" href="#376">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>options = <a href="#380">this</a>.machine.borrow_tracker.as_mut().unwrap().get_mut();
+        <span class="kw">let </span>retag_fields = <a href="#381">options</a>.retag_fields;
         <span class="kw">let </span>unique_did =
-            <a href="#373">options</a>.unique_is_unique.then(|| <a href="#372">this</a>.tcx.lang_items().ptr_unique()).flatten();
-        <span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#381-386">RetagVisitor</a> { ecx: <a href="#372">this</a>, <a href="#369">kind</a>, <a href="#374">retag_fields</a>, <a href="#375">unique_did</a> };
-        <span class="kw">return </span><a href="#377">visitor</a>.<a href="../../../../miri/trait.ValueVisitor.html">visit_value</a>(<a href="#370">place</a>);
+            <a href="#381">options</a>.unique_is_unique.then(|| <a href="#380">this</a>.tcx.lang_items().ptr_unique()).flatten();
+        <span class="kw">let </span><span class="kw-2">mut </span>visitor = <a href="#389-394">RetagVisitor</a> { ecx: <a href="#380">this</a>, <a href="#377">kind</a>, <a href="#382">retag_fields</a>, <a href="#383">unique_did</a> };
+        <span class="kw">return </span><a href="#385">visitor</a>.<a href="../../../../miri/trait.ValueVisitor.html">visit_value</a>(<a href="#378">place</a>);
 
         <span class="comment">// The actual visitor.
         </span><span class="kw">struct </span>RetagVisitor&lt;<span class="lifetime">&#39;ecx</span>, <span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -973,9 +989,9 @@
             </span><span class="kw">fn </span>retag_ptr_inplace(
                 <span class="kw-2">&amp;mut </span><span class="self">self</span>,
                 place: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;,
-                new_perm: <span class="prelude-ty">Option</span>&lt;<a href="#98-107">NewPermission</a>&gt;,
+                new_perm: <span class="prelude-ty">Option</span>&lt;<a href="#102-111">NewPermission</a>&gt;,
             ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(new_perm) = <a href="#392">new_perm</a> {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(new_perm) = <a href="#400">new_perm</a> {
                     <span class="kw">let </span>val = <span class="self">self</span>.ecx.read_immediate(<span class="kw-2">&amp;</span><span class="self">self</span>.ecx.place_to_op(place)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                     <span class="kw">let </span>val = <span class="self">self</span>.ecx.tb_retag_reference(<span class="kw-2">&amp;</span>val, new_perm)<span class="question-mark">?</span>;
                     <span class="self">self</span>.ecx.write_immediate(<span class="kw-2">*</span>val, place)<span class="question-mark">?</span>;
@@ -990,7 +1006,7 @@
 
             <span class="attr">#[inline(always)]
             </span><span class="kw">fn </span>ecx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MiriInterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-                <a class="self" href="#408">self</a>.ecx
+                <a class="self" href="#416">self</a>.ecx
             }
 
             <span class="doccomment">/// Regardless of how `Unique` is handled, Boxes are always reborrowed.
@@ -998,12 +1014,12 @@
             /// except for the fact that `Box` has a non-zero-sized reborrow.
             </span><span class="kw">fn </span>visit_box(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
                 <span class="kw">let </span>new_perm = NewPermission::from_unique_ty(
-                    <a href="#415">place</a>.layout.ty,
-                    <a class="self" href="#415">self</a>.kind,
-                    <a class="self" href="#415">self</a>.ecx,
+                    <a href="#423">place</a>.layout.ty,
+                    <a class="self" href="#423">self</a>.kind,
+                    <a class="self" href="#423">self</a>.ecx,
                     <span class="comment">/* zero_size */ </span><span class="bool-val">false</span>,
                 );
-                <a class="self" href="#415">self</a>.<a href="#389-400">retag_ptr_inplace</a>(<a href="#415">place</a>, <a href="#416">new_perm</a>)
+                <a class="self" href="#423">self</a>.<a href="#397-408">retag_ptr_inplace</a>(<a href="#423">place</a>, <a href="#424">new_perm</a>)
             }
 
             <span class="kw">fn </span>visit_value(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -1016,10 +1032,10 @@
                 }
 
                 <span class="comment">// Check the type of this value to see what to do with it (retag, or recurse).
-                </span><span class="kw">match </span><a href="#425">place</a>.layout.ty.kind() {
+                </span><span class="kw">match </span><a href="#433">place</a>.layout.ty.kind() {
                     <span class="kw-2">&amp;</span>ty::Ref(<span class="kw">_</span>, pointee, mutability) =&gt; {
                         <span class="kw">let </span>new_perm =
-                            NewPermission::from_ref_ty(<a href="#436">pointee</a>, <a href="#436">mutability</a>, <a class="self" href="#425">self</a>.kind, <a class="self" href="#425">self</a>.ecx);
+                            NewPermission::from_ref_ty(<a href="#444">pointee</a>, <a href="#444">mutability</a>, <a class="self" href="#433">self</a>.kind, <a class="self" href="#433">self</a>.ecx);
                         <span class="self">self</span>.retag_ptr_inplace(place, new_perm)<span class="question-mark">?</span>;
                     }
                     ty::RawPtr(<span class="kw">_</span>) =&gt; {
@@ -1028,25 +1044,25 @@
                         // type!
                         // We also do not want to reborrow them.
                     </span>}
-                    ty::Adt(adt, <span class="kw">_</span>) <span class="kw">if </span><a href="#447">adt</a>.is_box() =&gt; {
+                    ty::Adt(adt, <span class="kw">_</span>) <span class="kw">if </span><a href="#455">adt</a>.is_box() =&gt; {
                         <span class="comment">// Recurse for boxes, they require some tricky handling and will end up in `visit_box` above.
                         // (Yes this means we technically also recursively retag the allocator itself
                         // even if field retagging is not enabled. *shrug*)
                         </span><span class="self">self</span>.walk_value(place)<span class="question-mark">?</span>;
                     }
-                    ty::Adt(adt, <span class="kw">_</span>) <span class="kw">if </span><a class="self" href="#425">self</a>.unique_did == <span class="prelude-val">Some</span>(<a href="#453">adt</a>.did()) =&gt; {
+                    ty::Adt(adt, <span class="kw">_</span>) <span class="kw">if </span><a class="self" href="#433">self</a>.unique_did == <span class="prelude-val">Some</span>(<a href="#461">adt</a>.did()) =&gt; {
                         <span class="kw">let </span>place = inner_ptr_of_unique(<span class="self">self</span>.ecx, place)<span class="question-mark">?</span>;
                         <span class="kw">let </span>new_perm = NewPermission::from_unique_ty(
-                            <a href="#454">place</a>.layout.ty,
-                            <a class="self" href="#425">self</a>.kind,
-                            <a class="self" href="#425">self</a>.ecx,
+                            <a href="#462">place</a>.layout.ty,
+                            <a class="self" href="#433">self</a>.kind,
+                            <a class="self" href="#433">self</a>.ecx,
                             <span class="comment">/* zero_size */ </span><span class="bool-val">true</span>,
                         );
                         <span class="self">self</span>.retag_ptr_inplace(<span class="kw-2">&amp;</span>place, new_perm)<span class="question-mark">?</span>;
                     }
                     <span class="kw">_ </span>=&gt; {
                         <span class="comment">// Not a reference/pointer/box. Only recurse if configured appropriately.
-                        </span><span class="kw">let </span>recurse = <span class="kw">match </span><a class="self" href="#425">self</a>.retag_fields {
+                        </span><span class="kw">let </span>recurse = <span class="kw">match </span><a class="self" href="#433">self</a>.retag_fields {
                             <a href="../mod.rs.html#143">RetagFields::No</a> =&gt; <span class="bool-val">false</span>,
                             <a href="../mod.rs.html#145">RetagFields::Yes</a> =&gt; <span class="bool-val">true</span>,
                             <a href="../mod.rs.html#148">RetagFields::OnlyScalar</a> =&gt; {
@@ -1070,13 +1086,13 @@
     ///
     /// This is used to ensure soundness of in-place function argument/return passing.
     </span><span class="kw">fn </span>tb_protect_place(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>MPlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../machine.rs.html#171-178">Provenance</a>&gt;) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#488">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#496">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
 
         <span class="comment">// We have to turn the place into a pointer to use the usual retagging logic.
         // (The pointer type does not matter, so we use a raw pointer.)
         </span><span class="kw">let </span>ptr = this.mplace_to_ref(place)<span class="question-mark">?</span>;
         <span class="comment">// Reborrow it. With protection! That is the entire point.
-        </span><span class="kw">let </span>new_perm = <a href="#98-107">NewPermission</a> {
+        </span><span class="kw">let </span>new_perm = <a href="#102-111">NewPermission</a> {
             initial_state: Permission::new_active(),
             zero_size: <span class="bool-val">false</span>,
             protector: <span class="prelude-val">Some</span>(<a href="../mod.rs.html#168">ProtectorKind::StrongProtector</a>),
@@ -1089,20 +1105,20 @@
 
     <span class="doccomment">/// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
     </span><span class="kw">fn </span>tb_expose_tag(<span class="kw-2">&amp;mut </span><span class="self">self</span>, alloc_id: <a href="../../../../miri/struct.AllocId.html">AllocId</a>, tag: <a href="../mod.rs.html#20">BorTag</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#507">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#515">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
 
         <span class="comment">// Function pointers and dead objects don&#39;t have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Tree Borrows checks.
         // NOT using `get_alloc_extra_mut` since this might be a read-only allocation!
-        </span><span class="kw">let </span>(_size, _align, kind) = <a href="#508">this</a>.get_alloc_info(<a href="#507">alloc_id</a>);
-        <span class="kw">match </span><a href="#513">kind</a> {
+        </span><span class="kw">let </span>(_size, _align, kind) = <a href="#516">this</a>.get_alloc_info(<a href="#515">alloc_id</a>);
+        <span class="kw">match </span><a href="#521">kind</a> {
             AllocKind::LiveData =&gt; {
                 <span class="comment">// This should have alloc_extra data, but `get_alloc_extra` can still fail
                 // if converting this alloc_id from a global to a local one
                 // uncovers a non-supported `extern static`.
                 </span><span class="kw">let </span>alloc_extra = this.get_alloc_extra(alloc_id)<span class="question-mark">?</span>;
                 <a class="macro" href="https://docs.rs/log/0.4.19/log/macro.trace.html">trace!</a>(<span class="string">&quot;Stacked Borrows tag {tag:?} exposed in {alloc_id:?}&quot;</span>);
-                <a href="#519">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow_mut().<a href="#91-93">expose_tag</a>(<a href="#507">tag</a>);
+                <a href="#527">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow_mut().<a href="#95-97">expose_tag</a>(<a href="#515">tag</a>);
             }
             AllocKind::Function | AllocKind::VTable | AllocKind::Dead =&gt; {
                 <span class="comment">// No tree borrows on these allocations.
@@ -1113,11 +1129,11 @@
 
     <span class="doccomment">/// Display the tree.
     </span><span class="kw">fn </span>print_tree(<span class="kw-2">&amp;mut </span><span class="self">self</span>, alloc_id: <a href="../../../../miri/struct.AllocId.html">AllocId</a>, show_unnamed: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#531">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#539">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>alloc_extra = this.get_alloc_extra(alloc_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>tree_borrows = <a href="#533">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow();
-        <span class="kw">let </span>borrow_tracker = <span class="kw-2">&amp;</span><a href="#532">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow();
-        <a href="#534">tree_borrows</a>.<a href="diagnostics.rs.html#762-779">print_tree</a>(<span class="kw-2">&amp;</span><a href="#535">borrow_tracker</a>.protected_tags, <a href="#531">show_unnamed</a>)
+        <span class="kw">let </span>tree_borrows = <a href="#541">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow();
+        <span class="kw">let </span>borrow_tracker = <span class="kw-2">&amp;</span><a href="#540">this</a>.machine.borrow_tracker.as_ref().unwrap().borrow();
+        <a href="#542">tree_borrows</a>.<a href="diagnostics.rs.html#762-779">print_tree</a>(<span class="kw-2">&amp;</span><a href="#543">borrow_tracker</a>.protected_tags, <a href="#539">show_unnamed</a>)
     }
 
     <span class="doccomment">/// Give a name to the pointer, usually the name it has in the source code (for debugging).
@@ -1129,17 +1145,17 @@
         nth_parent: <a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>,
         name: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#543">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>(tag, alloc_id) = <span class="kw">match </span><a href="#544">ptr</a>.provenance {
-            <span class="prelude-val">Some</span>(<a href="../../machine.rs.html#172-176">Provenance::Concrete</a> { tag, alloc_id }) =&gt; (<a href="#550">tag</a>, <a href="#550">alloc_id</a>),
+        <span class="kw">let </span>this = <a class="self" href="#551">self</a>.<a href="../../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>(tag, alloc_id) = <span class="kw">match </span><a href="#552">ptr</a>.provenance {
+            <span class="prelude-val">Some</span>(<a href="../../machine.rs.html#172-176">Provenance::Concrete</a> { tag, alloc_id }) =&gt; (<a href="#558">tag</a>, <a href="#558">alloc_id</a>),
             <span class="kw">_ </span>=&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.eprintln.html">eprintln!</a>(<span class="string">&quot;Can&#39;t give the name {name} to Wildcard pointer&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
             }
         };
         <span class="kw">let </span>alloc_extra = this.get_alloc_extra(alloc_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>tree_borrows = <a href="#556">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow_mut();
-        <a href="#557">tree_borrows</a>.<a href="diagnostics.rs.html#199-213">give_pointer_debug_name</a>(<a href="#549">tag</a>, <a href="#545">nth_parent</a>, <a href="#546">name</a>)
+        <span class="kw">let </span><span class="kw-2">mut </span>tree_borrows = <a href="#564">alloc_extra</a>.<a href="../mod.rs.html#381-386">borrow_tracker_tb</a>().borrow_mut();
+        <a href="#565">tree_borrows</a>.<a href="diagnostics.rs.html#199-213">give_pointer_debug_name</a>(<a href="#557">tag</a>, <a href="#553">nth_parent</a>, <a href="#554">name</a>)
     }
 }
 
@@ -1164,6 +1180,6 @@
     </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(nonnull.layout.fields.count(), <span class="number">1</span>, <span class="string">&quot;NonNull must have exactly 1 field&quot;</span>);
     <span class="kw">let </span>ptr = ecx.project_field(<span class="kw-2">&amp;</span>nonnull, <span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="comment">// Finally a plain `*mut`
-    </span><span class="prelude-val">Ok</span>(<a href="#581">ptr</a>)
+    </span><span class="prelude-val">Ok</span>(<a href="#589">ptr</a>)
 }
 </code></pre></div></section></main></body></html>

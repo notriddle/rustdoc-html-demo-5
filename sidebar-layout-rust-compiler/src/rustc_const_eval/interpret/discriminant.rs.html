@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/discriminant.rs`."><title>discriminant.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/interpret/discriminant.rs`."><title>discriminant.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -263,22 +263,21 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Functions for reading and writing discriminants of multi-variant layouts (enums and generators).
 
 </span><span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/trait.PrimitiveExt.html">PrimitiveExt</a>, <a href="../../../rustc_middle/ty/layout/type.TyAndLayout.html">TyAndLayout</a>};
 <span class="kw">use </span>rustc_middle::{<a href="../../../rustc_middle/mir/index.html">mir</a>, <a href="../../../rustc_middle/ty/index.html">ty</a>};
 <span class="kw">use </span>rustc_target::abi::{<a class="self" href="../../../rustc_target/abi/index.html">self</a>, <a href="../../../rustc_abi/enum.TagEncoding.html">TagEncoding</a>};
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../rustc_abi/enum.Variants.html">Variants</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../rustc_abi/enum.Variants.html">Variants</a>};
 
-<span class="kw">use super</span>::{<a href="operand.rs.html#91-94">ImmTy</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="operand.rs.html#388-390">Readable</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>, <a href="place.rs.html#363-372">Writeable</a>};
+<span class="kw">use super</span>::{<a href="operand.rs.html#96-99">ImmTy</a>, <a href="eval_context.rs.html#31-50">InterpCx</a>, <a href="../../../rustc_const_eval/interpret/type.InterpResult.html">InterpResult</a>, <a href="machine.rs.html#87-493">Machine</a>, <a href="operand.rs.html#407-409">Readable</a>, <a href="../../../rustc_const_eval/interpret/enum.Scalar.html">Scalar</a>, <a href="place.rs.html#362-371">Writeable</a>};
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;mir</span>, M: Machine&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; InterpCx&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, M&gt; {
     <span class="doccomment">/// Writes the discriminant of the given variant.
     </span><span class="attr">#[instrument(skip(<span class="self">self</span>), level = <span class="string">&quot;trace&quot;</span>)]
     </span><span class="kw">pub fn </span>write_discriminant(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        variant_index: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
         dest: <span class="kw-2">&amp;</span><span class="kw">impl </span>Writeable&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="comment">// Layout computation excludes uninhabited variants from consideration
@@ -342,7 +341,7 @@
                     <span class="kw">let </span>niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                     <span class="kw">let </span>variant_index_relative_val =
                         ImmTy::from_uint(variant_index_relative, tag_layout);
-                    <span class="kw">let </span>tag_val = <span class="self">self</span>.binary_op(
+                    <span class="kw">let </span>tag_val = <span class="self">self</span>.wrapping_binary_op(
                         mir::BinOp::Add,
                         <span class="kw-2">&amp;</span>variant_index_relative_val,
                         <span class="kw-2">&amp;</span>niche_start_val,
@@ -363,7 +362,7 @@
     </span><span class="kw">pub fn </span>read_discriminant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         op: <span class="kw-2">&amp;</span><span class="kw">impl </span>Readable&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;,
-    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>&gt; {
+    ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>&gt; {
         <span class="kw">let </span>ty = op.layout().ty;
         <span class="macro">trace!</span>(<span class="string">&quot;read_discriminant_value {:#?}&quot;</span>, op.layout());
         <span class="comment">// Get type and layout of the discriminant.
@@ -419,19 +418,18 @@
         <span class="comment">// Figure out which discriminant and variant this corresponds to.
         </span><span class="kw">let </span>index = <span class="kw">match </span><span class="kw-2">*</span>tag_encoding {
             TagEncoding::Direct =&gt; {
-                <span class="kw">let </span>scalar = tag_val.to_scalar();
                 <span class="comment">// Generate a specific error if `tag_val` is not an integer.
                 // (`tag_bits` itself is only used for error messages below.)
-                </span><span class="kw">let </span>tag_bits = scalar
+                </span><span class="kw">let </span>tag_bits = tag_val
+                    .to_scalar()
                     .try_to_int()
                     .map_err(|dbg_val| <span class="macro">err_ub!</span>(InvalidTag(dbg_val)))<span class="question-mark">?
                     </span>.assert_bits(tag_layout.size);
                 <span class="comment">// Cast bits from tag layout to discriminant layout.
                 // After the checks we did above, this cannot fail, as
                 // discriminants are int-like.
-                </span><span class="kw">let </span>discr_val =
-                    <span class="self">self</span>.cast_from_int_like(scalar, tag_val.layout, discr_layout.ty).unwrap();
-                <span class="kw">let </span>discr_bits = discr_val.assert_bits(discr_layout.size);
+                </span><span class="kw">let </span>discr_val = <span class="self">self</span>.int_to_int_or_float(<span class="kw-2">&amp;</span>tag_val, discr_layout).unwrap();
+                <span class="kw">let </span>discr_bits = discr_val.to_scalar().assert_bits(discr_layout.size);
                 <span class="comment">// Convert discriminant to variant index, and catch invalid discriminants.
                 </span><span class="kw">let </span>index = <span class="kw">match </span><span class="kw-2">*</span>ty.kind() {
                     ty::Adt(adt, <span class="kw">_</span>) =&gt; {
@@ -474,7 +472,7 @@
                         </span><span class="kw">let </span>tag_val = ImmTy::from_uint(tag_bits, tag_layout);
                         <span class="kw">let </span>niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         <span class="kw">let </span>variant_index_relative_val =
-                            <span class="self">self</span>.binary_op(mir::BinOp::Sub, <span class="kw-2">&amp;</span>tag_val, <span class="kw-2">&amp;</span>niche_start_val)<span class="question-mark">?</span>;
+                            <span class="self">self</span>.wrapping_binary_op(mir::BinOp::Sub, <span class="kw-2">&amp;</span>tag_val, <span class="kw-2">&amp;</span>niche_start_val)<span class="question-mark">?</span>;
                         <span class="kw">let </span>variant_index_relative =
                             variant_index_relative_val.to_scalar().assert_bits(tag_val.layout.size);
                         <span class="comment">// Check if this is in the range that indicates an actual discriminant.
@@ -512,22 +510,22 @@
     <span class="kw">pub fn </span>discriminant_for_variant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        variant: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, ImmTy&lt;<span class="lifetime">&#39;tcx</span>, M::Provenance&gt;&gt; {
         <span class="kw">let </span>discr_layout = <span class="self">self</span>.layout_of(layout.ty.discriminant_ty(<span class="kw-2">*</span><span class="self">self</span>.tcx))<span class="question-mark">?</span>;
-        <span class="kw">let </span>discr_value = <span class="kw">match </span><a href="#248">layout</a>.ty.discriminant_for_variant(<span class="kw-2">*</span><a class="self" href="#247">self</a>.tcx, <a href="#249">variant</a>) {
+        <span class="kw">let </span>discr_value = <span class="kw">match </span><a href="#247">layout</a>.ty.discriminant_for_variant(<span class="kw-2">*</span><a class="self" href="#246">self</a>.tcx, <a href="#248">variant</a>) {
             <span class="prelude-val">Some</span>(discr) =&gt; {
                 <span class="comment">// This type actually has discriminants.
                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(discr.ty, discr_layout.ty);
-                Scalar::from_uint(<a href="#253">discr</a>.val, <a href="#251">discr_layout</a>.size)
+                Scalar::from_uint(<a href="#252">discr</a>.val, <a href="#250">discr_layout</a>.size)
             }
             <span class="prelude-val">None </span>=&gt; {
                 <span class="comment">// On a type without actual discriminants, variant is 0.
                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(variant.as_u32(), <span class="number">0</span>);
-                Scalar::from_uint(<a href="#249">variant</a>.as_u32(), <a href="#251">discr_layout</a>.size)
+                Scalar::from_uint(<a href="#248">variant</a>.as_u32(), <a href="#250">discr_layout</a>.size)
             }
         };
-        <span class="prelude-val">Ok</span>(ImmTy::from_scalar(<a href="#252">discr_value</a>, <a href="#251">discr_layout</a>))
+        <span class="prelude-val">Ok</span>(ImmTy::from_scalar(<a href="#251">discr_value</a>, <a href="#250">discr_layout</a>))
     }
 }
 </code></pre></div></section></main></body></html>

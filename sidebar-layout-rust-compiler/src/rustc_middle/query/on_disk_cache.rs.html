@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/query/on_disk_cache.rs`."><title>on_disk_cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/query/on_disk_cache.rs`."><title>on_disk_cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1047,9 +1047,9 @@
 <span class="kw">use </span>rustc_index::{<a href="../../../rustc_index/idx/trait.Idx.html">Idx</a>, <a href="../../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
 <span class="kw">use </span>rustc_middle::dep_graph::{<a href="../../../rustc_middle/dep_graph/struct.DepNodeIndex.html">DepNodeIndex</a>, <a href="../../../rustc_middle/dep_graph/struct.SerializedDepNodeIndex.html">SerializedDepNodeIndex</a>};
 <span class="kw">use </span>rustc_middle::mir::interpret::{<a href="../mir/interpret/mod.rs.html#301-304">AllocDecodingSession</a>, <a href="../mir/interpret/mod.rs.html#273-278">AllocDecodingState</a>};
-<span class="kw">use </span>rustc_middle::mir::{<a class="self" href="../lib.rs.html#98">self</a>, <a href="../mir/mod.rs.html#54">interpret</a>};
+<span class="kw">use </span>rustc_middle::mir::{<a class="self" href="../lib.rs.html#99">self</a>, <a href="../mir/mod.rs.html#53">interpret</a>};
 <span class="kw">use </span>rustc_middle::ty::codec::{<a href="../ty/codec.rs.html#67-69">RefDecodable</a>, <a href="../../../rustc_middle/ty/trait.TyDecoder.html">TyDecoder</a>, <a href="../../../rustc_middle/ty/trait.TyEncoder.html">TyEncoder</a>};
-<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="../ty/mod.rs.html#451">Ty</a>, <a href="../ty/context.rs.html#510-512">TyCtxt</a>};
+<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="../ty/mod.rs.html#463">Ty</a>, <a href="../ty/context.rs.html#510-512">TyCtxt</a>};
 <span class="kw">use </span><a href="../../../rustc_query_system/query/struct.QuerySideEffects.html">rustc_query_system::query::QuerySideEffects</a>;
 <span class="kw">use </span>rustc_serialize::{
     opaque::{<a href="../../../rustc_serialize/opaque/type.FileEncodeResult.html">FileEncodeResult</a>, <a href="../../../rustc_serialize/opaque/struct.FileEncoder.html">FileEncoder</a>, IntEncodedWithFixedSize, <a href="../../../rustc_serialize/opaque/struct.MemDecoder.html">MemDecoder</a>},
@@ -1186,7 +1186,7 @@
 <span class="kw">impl </span><a href="#143-146">EncodedSourceFileId</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>translate(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="../../../rustc_span/source_map/struct.StableSourceFileId.html">StableSourceFileId</a> {
-        <span class="kw">let </span>cnum = <a href="#150">tcx</a>.<a href="../ty/context.rs.html#863-869">stable_crate_id_to_crate_num</a>(<a class="self" href="#150">self</a>.stable_crate_id);
+        <span class="kw">let </span>cnum = <a href="#150">tcx</a>.<a href="../ty/context.rs.html#869-875">stable_crate_id_to_crate_num</a>(<a class="self" href="#150">self</a>.stable_crate_id);
         <a href="../../../rustc_span/source_map/struct.StableSourceFileId.html">StableSourceFileId</a> { file_name_hash: <a class="self" href="#150">self</a>.file_name_hash, <a href="#151">cnum</a> }
     }
 
@@ -1195,7 +1195,7 @@
         <span class="kw">let </span>source_file_id = StableSourceFileId::new(<a href="#156">file</a>);
         <a href="#143-146">EncodedSourceFileId</a> {
             file_name_hash: <a href="#157">source_file_id</a>.file_name_hash,
-            stable_crate_id: <a href="#156">tcx</a>.<a href="../ty/context.rs.html#852-858">stable_crate_id</a>(<a href="#157">source_file_id</a>.cnum),
+            stable_crate_id: <a href="#156">tcx</a>.<a href="../ty/context.rs.html#858-864">stable_crate_id</a>(<a href="#157">source_file_id</a>.cnum),
         }
     }
 }
@@ -1544,7 +1544,7 @@
                 // expansion, so we use `import_source_files` to ensure that the foreign
                 // source files are actually imported before we call `source_file_by_stable_id`.
                 </span><span class="kw">if </span>stable_id.cnum != LOCAL_CRATE {
-                    <a class="self" href="#484">self</a>.tcx.<a href="../ty/context.rs.html#997-999">cstore_untracked</a>().import_source_files(<a class="self" href="#484">self</a>.tcx.sess, <a href="#497">stable_id</a>.cnum);
+                    <a class="self" href="#484">self</a>.tcx.<a href="../ty/context.rs.html#1003-1005">cstore_untracked</a>().import_source_files(<a class="self" href="#484">self</a>.tcx.sess, <a href="#497">stable_id</a>.cnum);
                 }
 
                 <a href="#489">source_map</a>
@@ -1591,7 +1591,7 @@
     {
         <span class="kw">let </span>tcx = <a class="self" href="#550">self</a>.tcx;
 
-        <span class="kw">let </span>cache_key = <a href="../ty/mod.rs.html#442-445">ty::CReaderCacheKey</a> { cnum: <span class="prelude-val">None</span>, pos: <a href="#550">shorthand</a> };
+        <span class="kw">let </span>cache_key = <a href="../ty/mod.rs.html#454-457">ty::CReaderCacheKey</a> { cnum: <span class="prelude-val">None</span>, pos: <a href="#550">shorthand</a> };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>ty) = <a href="#554">tcx</a>.ty_rcache.borrow().get(<span class="kw-2">&amp;</span><a href="#556">cache_key</a>) {
             <span class="kw">return </span><a href="#558">ty</a>;
@@ -1622,7 +1622,7 @@
     }
 }
 
-<a class="macro" href="../ty/codec.rs.html#501-541">rustc_middle::implement_ty_decoder!</a>(CacheDecoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;);
+<a class="macro" href="../ty/codec.rs.html#503-543">rustc_middle::implement_ty_decoder!</a>(CacheDecoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;);
 
 <span class="comment">// This ensures that the `Decodable&lt;opaque::Decoder&gt;::decode` specialization for `Vec&lt;u8&gt;` is used
 // when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt
@@ -1659,7 +1659,7 @@
             <span class="kw">return </span><a href="#620">expn_id</a>;
         }
 
-        <span class="kw">let </span>krate = <a href="#614">decoder</a>.tcx.<a href="../ty/context.rs.html#863-869">stable_crate_id_to_crate_num</a>(<a href="#615">hash</a>.stable_crate_id());
+        <span class="kw">let </span>krate = <a href="#614">decoder</a>.tcx.<a href="../ty/context.rs.html#869-875">stable_crate_id_to_crate_num</a>(<a href="#615">hash</a>.stable_crate_id());
 
         <span class="kw">let </span>expn_id = <span class="kw">if </span>krate == LOCAL_CRATE {
             <span class="comment">// We look up the position of the associated `ExpnData` and decode it.
@@ -1675,7 +1675,7 @@
             <span class="attr">#[cfg(debug_assertions)]
             </span>{
                 <span class="kw">use </span>rustc_data_structures::stable_hasher::{<a href="../../../rustc_data_structures/stable_hasher/trait.HashStable.html">HashStable</a>, <a href="../../../rustc_data_structures/stable_hasher/struct.StableHasher.html">StableHasher</a>};
-                <span class="kw">let </span>local_hash = <a href="#614">decoder</a>.tcx.<a href="../ty/context.rs.html#1020-1025">with_stable_hashing_context</a>(|<span class="kw-2">mut </span>hcx| {
+                <span class="kw">let </span>local_hash = <a href="#614">decoder</a>.tcx.<a href="../ty/context.rs.html#1026-1031">with_stable_hashing_context</a>(|<span class="kw-2">mut </span>hcx| {
                     <span class="kw">let </span><span class="kw-2">mut </span>hasher = StableHasher::new();
                     <a href="#635">expn_id</a>.expn_data().<a href="../../../rustc_data_structures/stable_hasher/trait.HashStable.html">hash_stable</a>(<span class="kw-2">&amp;mut </span><a href="#640">hcx</a>, <span class="kw-2">&amp;mut </span><a href="#641">hasher</a>);
                     <a href="#641">hasher</a>.finish()
@@ -1686,7 +1686,7 @@
             <a href="#635">expn_id</a>
         } <span class="kw">else </span>{
             <span class="kw">let </span>index_guess = <a href="#614">decoder</a>.foreign_expn_data[<span class="kw-2">&amp;</span><a href="#615">hash</a>];
-            <a href="#614">decoder</a>.tcx.<a href="../ty/context.rs.html#997-999">cstore_untracked</a>().expn_hash_to_expn_id(
+            <a href="#614">decoder</a>.tcx.<a href="../ty/context.rs.html#1003-1005">cstore_untracked</a>().expn_hash_to_expn_id(
                 <a href="#614">decoder</a>.tcx.sess,
                 <a href="#624">krate</a>,
                 <a href="#650">index_guess</a>,
@@ -1711,7 +1711,7 @@
             <span class="kw">let </span>dlo = u32::decode(<a href="#665">decoder</a>);
             <span class="kw">let </span>dto = u32::decode(<a href="#665">decoder</a>);
 
-            <span class="kw">let </span>enclosing = <a href="#665">decoder</a>.tcx.<a href="../ty/context.rs.html#1015-1017">source_span_untracked</a>(<a href="#667">parent</a>.unwrap()).data_untracked();
+            <span class="kw">let </span>enclosing = <a href="#665">decoder</a>.tcx.<a href="../ty/context.rs.html#1021-1023">source_span_untracked</a>(<a href="#667">parent</a>.unwrap()).data_untracked();
             <span class="kw">let </span>span = Span::new(
                 <a href="#676">enclosing</a>.lo + BytePos::from_u32(<a href="#673">dlo</a>),
                 <a href="#676">enclosing</a>.lo + BytePos::from_u32(<a href="#674">dto</a>),
@@ -1772,7 +1772,7 @@
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>decode(d: <span class="kw-2">&amp;mut </span>CacheDecoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>stable_id = StableCrateId::decode(<a href="#735">d</a>);
-        <span class="kw">let </span>cnum = <a href="#735">d</a>.tcx.<a href="../ty/context.rs.html#863-869">stable_crate_id_to_crate_num</a>(<a href="#736">stable_id</a>);
+        <span class="kw">let </span>cnum = <a href="#735">d</a>.tcx.<a href="../ty/context.rs.html#869-875">stable_crate_id_to_crate_num</a>(<a href="#736">stable_id</a>);
         <a href="#737">cnum</a>
     }
 }
@@ -1801,7 +1801,7 @@
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        </span><a href="#757">d</a>.tcx.<a href="../ty/context.rs.html#874-890">def_path_hash_to_def_id</a>(<a href="#759">def_path_hash</a>, <span class="kw-2">&amp;mut </span>|| {
+        </span><a href="#757">d</a>.tcx.<a href="../ty/context.rs.html#880-896">def_path_hash_to_def_id</a>(<a href="#759">def_path_hash</a>, <span class="kw-2">&amp;mut </span>|| {
             <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.panic.html">panic!</a>(<span class="string">&quot;Failed to convert DefPathHash {def_path_hash:?}&quot;</span>)
         })
     }
@@ -1824,7 +1824,7 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Decodable&lt;CacheDecoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt;
-    <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>IndexVec&lt;<a href="../mir/mod.rs.html#2827-2831">mir::Promoted</a>, mir::Body&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;
+    <span class="kw">for </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>IndexVec&lt;<a href="../mir/mod.rs.html#1490-1494">mir::Promoted</a>, mir::Body&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;
 {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>decode(d: <span class="kw-2">&amp;mut </span>CacheDecoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
@@ -1865,7 +1865,7 @@
     <a href="../../../rustc_span/def_id/struct.DefId.html">rustc_span::def_id::DefId</a>,
     <a href="../../../rustc_span/def_id/struct.LocalDefId.html">rustc_span::def_id::LocalDefId</a>,
     (rustc_middle::middle::exported_symbols::ExportedSymbol&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../middle/exported_symbols.rs.html#35-39">rustc_middle::middle::exported_symbols::SymbolExportInfo</a>),
-    <a href="../ty/context.rs.html#2158-2162">ty::DeducedParamAttrs</a>,
+    <a href="../ty/context.rs.html#2163-2167">ty::DeducedParamAttrs</a>,
 }
 
 <span class="comment">//- ENCODING -------------------------------------------------------------------
@@ -1934,7 +1934,7 @@
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = <a href="#890">span_data</a>.parent {
-            <span class="kw">let </span>enclosing = <a href="#889">s</a>.tcx.<a href="../ty/context.rs.html#1015-1017">source_span_untracked</a>(<a href="#898">parent</a>).data_untracked();
+            <span class="kw">let </span>enclosing = <a href="#889">s</a>.tcx.<a href="../ty/context.rs.html#1021-1023">source_span_untracked</a>(<a href="#898">parent</a>).data_untracked();
             <span class="kw">if </span>enclosing.contains(span_data) {
                 <a href="#37">TAG_RELATIVE_SPAN</a>.<a href="../../../rustc_serialize/serialize/trait.Encodable.html">encode</a>(<a href="#889">s</a>);
                 (<a href="#890">span_data</a>.lo - <a href="#899">enclosing</a>.lo).<a href="../../../rustc_span/trait.Pos.html">to_u32</a>().<a href="../../../rustc_serialize/serialize/trait.Encodable.html">encode</a>(<a href="#889">s</a>);
@@ -2020,14 +2020,14 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Encodable&lt;CacheEncoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span><a href="../../../rustc_span/def_id/struct.CrateNum.html">CrateNum</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>encode(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;mut </span>CacheEncoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) {
-        <a href="#984">s</a>.tcx.<a href="../ty/context.rs.html#852-858">stable_crate_id</a>(<span class="kw-2">*</span><a class="self" href="#984">self</a>).<a href="../../../rustc_serialize/serialize/trait.Encodable.html">encode</a>(<a href="#984">s</a>);
+        <a href="#984">s</a>.tcx.<a href="../ty/context.rs.html#858-864">stable_crate_id</a>(<span class="kw-2">*</span><a class="self" href="#984">self</a>).<a href="../../../rustc_serialize/serialize/trait.Encodable.html">encode</a>(<a href="#984">s</a>);
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Encodable&lt;CacheEncoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span><a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>encode(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;mut </span>CacheEncoder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;) {
-        <a href="#991">s</a>.tcx.<a href="../ty/context.rs.html#805-812">def_path_hash</a>(<span class="kw-2">*</span><a class="self" href="#991">self</a>).<a href="../../../rustc_serialize/serialize/trait.Encodable.html">encode</a>(<a href="#991">s</a>);
+        <a href="#991">s</a>.tcx.<a href="../ty/context.rs.html#811-818">def_path_hash</a>(<span class="kw-2">*</span><a class="self" href="#991">self</a>).<a href="../../../rustc_serialize/serialize/trait.Encodable.html">encode</a>(<a href="#991">s</a>);
     }
 }
 

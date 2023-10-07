@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/thread.rs`."><title>thread.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/thread.rs`."><title>thread.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1085,7 +1085,6 @@
 <a href="#1085" id="1085">1085</a>
 <a href="#1086" id="1086">1086</a>
 <a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implements threads.
 
 </span><span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html">std::cell::RefCell</a>;
@@ -1849,9 +1848,9 @@
         //    thread.
         // 2. Make the scheduler the only place that can change the active
         //    thread.
-        </span><span class="kw">let </span>old_thread = <a href="#744">this</a>.<a href="#902-905">set_active_thread</a>(<a href="#745">thread</a>);
+        </span><span class="kw">let </span>old_thread = <a href="#744">this</a>.<a href="#901-904">set_active_thread</a>(<a href="#745">thread</a>);
         callback.call(this)<span class="question-mark">?</span>;
-        <a href="#744">this</a>.<a href="#902-905">set_active_thread</a>(<a href="#764">old_thread</a>);
+        <a href="#744">this</a>.<a href="#901-904">set_active_thread</a>(<a href="#764">old_thread</a>);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1859,12 +1858,12 @@
     </span><span class="kw">fn </span>run_on_stack_empty(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, Poll&lt;()&gt;&gt; {
         <span class="kw">let </span>this = <a class="self" href="#771">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span><span class="kw-2">mut </span>callback = <a href="#772">this</a>
-            .<a href="#914-917">active_thread_mut</a>()
+            .<a href="#913-916">active_thread_mut</a>()
             .on_stack_empty
             .take()
             .expect(<span class="string">&quot;`on_stack_empty` not set up, or already running&quot;</span>);
         <span class="kw">let </span>res = callback(this)<span class="question-mark">?</span>;
-        <a href="#772">this</a>.<a href="#914-917">active_thread_mut</a>().on_stack_empty = <span class="prelude-val">Some</span>(<a href="#773">callback</a>);
+        <a href="#772">this</a>.<a href="#913-916">active_thread_mut</a>().on_stack_empty = <span class="prelude-val">Some</span>(<a href="#773">callback</a>);
         <span class="prelude-val">Ok</span>(<a href="#778">res</a>)
     }
 }
@@ -1891,15 +1890,14 @@
             </span><span class="kw">if </span>tcx.is_foreign_item(def_id) {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_unsup_format.html">throw_unsup_format!</a>(<span class="string">&quot;foreign thread-local statics are not supported&quot;</span>);
             }
-            <span class="comment">// We don&#39;t give a span -- statics don&#39;t need that, they cannot be generic or associated.
-            </span><span class="kw">let </span>allocation = this.ctfe_query(<span class="prelude-val">None</span>, |tcx| tcx.eval_static_initializer(def_id))<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>allocation = <a href="#807">allocation</a>.inner().<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+            <span class="kw">let </span>allocation = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>allocation = <a href="#806">allocation</a>.inner().<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
             <span class="comment">// This allocation will be deallocated when the thread dies, so it is not in read-only memory.
-            </span><a href="#808">allocation</a>.mutability = Mutability::Mut;
+            </span><a href="#807">allocation</a>.mutability = Mutability::Mut;
             <span class="comment">// Create a fresh allocation with this content.
             </span><span class="kw">let </span>new_alloc = this.allocate_raw_ptr(allocation, MiriMemoryKind::Tls.into())<span class="question-mark">?</span>;
-            <a href="#793">this</a>.machine.threads.<a href="#397-402">set_thread_local_alloc</a>(<a href="#791">def_id</a>, <a href="#812">new_alloc</a>);
-            <span class="prelude-val">Ok</span>(<a href="#812">new_alloc</a>)
+            <a href="#793">this</a>.machine.threads.<a href="#397-402">set_thread_local_alloc</a>(<a href="#791">def_id</a>, <a href="#811">new_alloc</a>);
+            <span class="prelude-val">Ok</span>(<a href="#811">new_alloc</a>)
         }
     }
 
@@ -1913,21 +1911,21 @@
         func_arg: ImmTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>&gt;,
         ret_layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, <a href="#45">ThreadId</a>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#821">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#820">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
 
         <span class="comment">// Create the new thread
-        </span><span class="kw">let </span>new_thread_id = <a href="#828">this</a>.machine.threads.<a href="#423-427">create_thread</a>({
+        </span><span class="kw">let </span>new_thread_id = <a href="#827">this</a>.machine.threads.<a href="#423-427">create_thread</a>({
             <span class="kw">let </span><span class="kw-2">mut </span>state = tls::TlsDtorsState::default();
-            Box::new(<span class="kw">move </span>|m| <a href="#832">state</a>.<a href="../shims/tls.rs.html#235-280">on_stack_empty</a>(<a href="#833">m</a>))
+            Box::new(<span class="kw">move </span>|m| <a href="#831">state</a>.<a href="../shims/tls.rs.html#235-280">on_stack_empty</a>(<a href="#832">m</a>))
         });
-        <span class="kw">let </span>current_span = <a href="#828">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_race) = <span class="kw-2">&amp;mut </span><a href="#828">this</a>.machine.data_race {
-            <a href="#836">data_race</a>.<a href="data_race.rs.html#1361-1425">thread_created</a>(<span class="kw-2">&amp;</span><a href="#828">this</a>.machine.threads, <a href="#831">new_thread_id</a>, <a href="#835">current_span</a>);
+        <span class="kw">let </span>current_span = <a href="#827">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(data_race) = <span class="kw-2">&amp;mut </span><a href="#827">this</a>.machine.data_race {
+            <a href="#835">data_race</a>.<a href="data_race.rs.html#1361-1425">thread_created</a>(<span class="kw-2">&amp;</span><a href="#827">this</a>.machine.threads, <a href="#830">new_thread_id</a>, <a href="#834">current_span</a>);
         }
 
         <span class="comment">// Write the current thread-id, switch to the next thread later
         // to treat this write operation as occurring on the current thread.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(thread_info_place) = <a href="#822">thread</a> {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(thread_info_place) = <a href="#821">thread</a> {
             this.write_scalar(
                 Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
                 <span class="kw-2">&amp;</span>thread_info_place,
@@ -1936,7 +1934,7 @@
 
         <span class="comment">// Finally switch to new thread so that we can push the first stackframe.
         // After this all accesses will be treated as occurring in the new thread.
-        </span><span class="kw">let </span>old_thread_id = <a href="#828">this</a>.<a href="#902-905">set_active_thread</a>(<a href="#831">new_thread_id</a>);
+        </span><span class="kw">let </span>old_thread_id = <a href="#827">this</a>.<a href="#901-904">set_active_thread</a>(<a href="#830">new_thread_id</a>);
 
         <span class="comment">// Perform the function pointer load in the new thread frame.
         </span><span class="kw">let </span>instance = this.get_ptr_fn(start_routine)<span class="question-mark">?</span>.as_instance()<span class="question-mark">?</span>;
@@ -1955,9 +1953,9 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Restore the old active thread frame.
-        </span><a href="#828">this</a>.<a href="#902-905">set_active_thread</a>(<a href="#851">old_thread_id</a>);
+        </span><a href="#827">this</a>.<a href="#901-904">set_active_thread</a>(<a href="#850">old_thread_id</a>);
 
-        <span class="prelude-val">Ok</span>(<a href="#831">new_thread_id</a>)
+        <span class="prelude-val">Ok</span>(<a href="#830">new_thread_id</a>)
     }
 
     <span class="attr">#[inline]
@@ -1966,20 +1964,20 @@
         thread_id: <a href="#45">ThreadId</a>,
         allow_terminated_joined: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#877">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#881">this</a>.machine.threads.<a href="#487-503">detach_thread</a>(<a href="#878">thread_id</a>, <a href="#879">allow_terminated_joined</a>)
+        <span class="kw">let </span>this = <a class="self" href="#876">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#880">this</a>.machine.threads.<a href="#487-503">detach_thread</a>(<a href="#877">thread_id</a>, <a href="#878">allow_terminated_joined</a>)
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>join_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>, joined_thread_id: <a href="#45">ThreadId</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#886">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#885">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         this.machine.threads.join_thread(joined_thread_id, this.machine.data_race.as_mut())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>join_thread_exclusive(<span class="kw-2">&amp;mut </span><span class="self">self</span>, joined_thread_id: <a href="#45">ThreadId</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#893">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#892">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         this.machine
             .threads
             .join_thread_exclusive(joined_thread_id, this.machine.data_race.as_mut())<span class="question-mark">?</span>;
@@ -1988,76 +1986,76 @@
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>set_active_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread_id: <a href="#45">ThreadId</a>) -&gt; <a href="#45">ThreadId</a> {
-        <span class="kw">let </span>this = <a class="self" href="#902">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#903">this</a>.machine.threads.<a href="#430-435">set_active_thread_id</a>(<a href="#902">thread_id</a>)
+        <span class="kw">let </span>this = <a class="self" href="#901">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#902">this</a>.machine.threads.<a href="#430-435">set_active_thread_id</a>(<a href="#901">thread_id</a>)
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>get_active_thread(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="#45">ThreadId</a> {
-        <span class="kw">let </span>this = <a class="self" href="#908">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
-        <a href="#909">this</a>.machine.threads.<a href="#438-440">get_active_thread_id</a>()
+        <span class="kw">let </span>this = <a class="self" href="#907">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
+        <a href="#908">this</a>.machine.threads.<a href="#438-440">get_active_thread_id</a>()
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>active_thread_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Thread&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#914">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#915">this</a>.machine.threads.<a href="#470-472">active_thread_mut</a>()
+        <span class="kw">let </span>this = <a class="self" href="#913">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#914">this</a>.machine.threads.<a href="#470-472">active_thread_mut</a>()
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>active_thread_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Thread&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#920">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
-        <a href="#921">this</a>.machine.threads.<a href="#475-477">active_thread_ref</a>()
+        <span class="kw">let </span>this = <a class="self" href="#919">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
+        <a href="#920">this</a>.machine.threads.<a href="#475-477">active_thread_ref</a>()
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>get_total_thread_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <span class="kw">let </span>this = <a class="self" href="#926">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
-        <a href="#927">this</a>.machine.threads.<a href="#443-445">get_total_thread_count</a>()
+        <span class="kw">let </span>this = <a class="self" href="#925">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
+        <a href="#926">this</a>.machine.threads.<a href="#443-445">get_total_thread_count</a>()
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>have_all_terminated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>this = <a class="self" href="#932">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
-        <a href="#933">this</a>.machine.threads.<a href="#459-461">have_all_terminated</a>()
+        <span class="kw">let </span>this = <a class="self" href="#931">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
+        <a href="#932">this</a>.machine.threads.<a href="#459-461">have_all_terminated</a>()
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>enable_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread_id: <a href="#45">ThreadId</a>) {
-        <span class="kw">let </span>this = <a class="self" href="#938">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#939">this</a>.machine.threads.<a href="#464-467">enable_thread</a>(<a href="#938">thread_id</a>);
+        <span class="kw">let </span>this = <a class="self" href="#937">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#938">this</a>.machine.threads.<a href="#464-467">enable_thread</a>(<a href="#937">thread_id</a>);
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>active_thread_stack(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[Frame&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>, FrameExtra&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;] {
-        <span class="kw">let </span>this = <a class="self" href="#944">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
-        <a href="#945">this</a>.machine.threads.<a href="#405-407">active_thread_stack</a>()
+        <span class="kw">let </span>this = <a class="self" href="#943">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>();
+        <a href="#944">this</a>.machine.threads.<a href="#405-407">active_thread_stack</a>()
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>active_thread_stack_mut(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     ) -&gt; <span class="kw-2">&amp;mut </span>Vec&lt;Frame&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>, FrameExtra&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#951">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#953">this</a>.machine.threads.<a href="#410-414">active_thread_stack_mut</a>()
+        <span class="kw">let </span>this = <a class="self" href="#950">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#952">this</a>.machine.threads.<a href="#410-414">active_thread_stack_mut</a>()
     }
 
     <span class="doccomment">/// Set the name of the current thread. The buffer must not include the null terminator.
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>set_thread_name(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread: <a href="#45">ThreadId</a>, new_thread_name: Vec&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt;) {
-        <span class="kw">let </span>this = <a class="self" href="#959">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#960">this</a>.machine.threads.<a href="#562-564">set_thread_name</a>(<a href="#959">thread</a>, <a href="#959">new_thread_name</a>);
+        <span class="kw">let </span>this = <a class="self" href="#958">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#959">this</a>.machine.threads.<a href="#562-564">set_thread_name</a>(<a href="#958">thread</a>, <a href="#958">new_thread_name</a>);
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>set_thread_name_wide(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread: <a href="#45">ThreadId</a>, new_thread_name: <span class="kw-2">&amp;</span>[<a href="https://doc.rust-lang.org/nightly/std/primitive.u16.html">u16</a>]) {
-        <span class="kw">let </span>this = <a class="self" href="#965">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#964">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
 
         <span class="comment">// The Windows `GetThreadDescription` shim to get the thread name isn&#39;t implemented, so being lossy is okay.
         // This is only read by diagnostics, which already use `from_utf8_lossy`.
-        </span><a href="#966">this</a>.machine
+        </span><a href="#965">this</a>.machine
             .threads
-            .<a href="#562-564">set_thread_name</a>(<a href="#965">thread</a>, String::from_utf16_lossy(<a href="#965">new_thread_name</a>).into_bytes());
+            .<a href="#562-564">set_thread_name</a>(<a href="#964">thread</a>, String::from_utf16_lossy(<a href="#964">new_thread_name</a>).into_bytes());
     }
 
     <span class="attr">#[inline]
@@ -2065,31 +2063,31 @@
     <span class="kw">where
         </span><span class="lifetime">&#39;mir</span>: <span class="lifetime">&#39;c</span>,
     {
-        <a class="self" href="#976">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>().machine.threads.<a href="#567-569">get_thread_name</a>(<a href="#976">thread</a>)
+        <a class="self" href="#975">self</a>.<a href="../machine.rs.html#853">eval_context_ref</a>().machine.threads.<a href="#567-569">get_thread_name</a>(<a href="#975">thread</a>)
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>block_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread: <a href="#45">ThreadId</a>) {
-        <a class="self" href="#984">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>().machine.threads.<a href="#572-576">block_thread</a>(<a href="#984">thread</a>);
+        <a class="self" href="#983">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>().machine.threads.<a href="#572-576">block_thread</a>(<a href="#983">thread</a>);
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>unblock_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread: <a href="#45">ThreadId</a>) {
-        <a class="self" href="#989">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>().machine.threads.<a href="#579-583">unblock_thread</a>(<a href="#989">thread</a>);
+        <a class="self" href="#988">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>().machine.threads.<a href="#579-583">unblock_thread</a>(<a href="#988">thread</a>);
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>yield_active_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <a class="self" href="#994">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>().machine.threads.<a href="#586-591">yield_active_thread</a>();
+        <a class="self" href="#993">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>().machine.threads.<a href="#586-591">yield_active_thread</a>();
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>maybe_preempt_active_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">use </span><a href="https://rust-random.github.io/rand/rand/rng/trait.Rng.html">rand::Rng</a> <span class="kw">as _</span>;
 
-        <span class="kw">let </span>this = <a class="self" href="#999">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#998">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">if </span>this.machine.rng.get_mut().gen_bool(this.machine.preemption_rate) {
-            <a href="#1002">this</a>.<a href="#994-996">yield_active_thread</a>();
+            <a href="#1001">this</a>.<a href="#993-995">yield_active_thread</a>();
         }
     }
 
@@ -2100,17 +2098,17 @@
         call_time: <a href="#281-284">Time</a>,
         callback: TimeoutCallback&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     ) {
-        <span class="kw">let </span>this = <a class="self" href="#1010">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#1009">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">if </span>!this.machine.communicate() &amp;&amp; <span class="macro">matches!</span>(call_time, Time::RealTime(..)) {
             <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.panic.html">panic!</a>(<span class="string">&quot;cannot have `RealTime` callback with isolation enabled!&quot;</span>)
         }
-        <a href="#1015">this</a>.machine.threads.<a href="#597-606">register_timeout_callback</a>(<a href="#1011">thread</a>, <a href="#1012">call_time</a>, <a href="#1013">callback</a>);
+        <a href="#1014">this</a>.machine.threads.<a href="#597-606">register_timeout_callback</a>(<a href="#1010">thread</a>, <a href="#1011">call_time</a>, <a href="#1012">callback</a>);
     }
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>unregister_timeout_callback_if_exists(<span class="kw-2">&amp;mut </span><span class="self">self</span>, thread: <a href="#45">ThreadId</a>) {
-        <span class="kw">let </span>this = <a class="self" href="#1023">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <a href="#1024">this</a>.machine.threads.<a href="#609-611">unregister_timeout_callback_if_exists</a>(<a href="#1023">thread</a>);
+        <span class="kw">let </span>this = <a class="self" href="#1022">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <a href="#1023">this</a>.machine.threads.<a href="#609-611">unregister_timeout_callback_if_exists</a>(<a href="#1022">thread</a>);
     }
 
     <span class="doccomment">/// Run the core interpreter loop. Returns only when an interrupt occurs (an error or program
@@ -2128,10 +2126,10 @@
             }
         })
         .unwrap();
-        <span class="kw">let </span>this = <a class="self" href="#1030">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#1029">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">loop </span>{
             <span class="kw">if </span>SIGNALED.load(Relaxed) {
-                <a href="#1043">this</a>.machine.<a href="../machine.rs.html#747-753">handle_abnormal_termination</a>();
+                <a href="#1042">this</a>.machine.<a href="../machine.rs.html#747-753">handle_abnormal_termination</a>();
                 <a href="https://doc.rust-lang.org/nightly/std/process/fn.exit.html">std::process::exit</a>(<span class="number">1</span>);
             }
             <span class="kw">match </span>this.machine.threads.schedule(<span class="kw-2">&amp;</span>this.machine.clock)<span class="question-mark">? </span>{
@@ -2148,7 +2146,7 @@
                     this.run_timeout_callback()<span class="question-mark">?</span>;
                 }
                 <a href="#33">SchedulingAction::Sleep</a>(duration) =&gt; {
-                    <a href="#1043">this</a>.machine.clock.<a href="../clock.rs.html#91-99">sleep</a>(<a href="#1062">duration</a>);
+                    <a href="#1042">this</a>.machine.clock.<a href="../clock.rs.html#91-99">sleep</a>(<a href="#1061">duration</a>);
                 }
             }
         }
@@ -2160,12 +2158,12 @@
     /// This is called by the eval loop when a thread&#39;s on_stack_empty returns `Ready`.
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>terminate_active_thread(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#1074">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>thread = <a href="#1075">this</a>.<a href="#914-917">active_thread_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#1073">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>thread = <a href="#1074">this</a>.<a href="#913-916">active_thread_mut</a>();
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(thread.stack.is_empty(), <span class="string">&quot;only threads with an empty stack can be terminated&quot;</span>);
-        <a href="#1076">thread</a>.state = <a href="#96">ThreadState::Terminated</a>;
+        <a href="#1075">thread</a>.state = <a href="#96">ThreadState::Terminated</a>;
 
-        <span class="kw">let </span>current_span = <a href="#1075">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_span = <a href="#1074">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">for </span>ptr <span class="kw">in
             </span>this.machine.threads.thread_terminated(this.machine.data_race.as_mut(), current_span)
         {

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["check_must_not_suspend_def","check_must_not_suspend_ty","resolve_interior"],"mod":["drop_ranges"],"struct":["InteriorVisitor","SuspendCheckData"]};

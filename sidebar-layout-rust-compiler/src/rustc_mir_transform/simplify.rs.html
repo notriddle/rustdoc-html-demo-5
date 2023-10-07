@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/simplify.rs`."><title>simplify.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/simplify.rs`."><title>simplify.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -687,6 +687,13 @@
 <a href="#687" id="687">687</a>
 <a href="#688" id="688">688</a>
 <a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A number of passes which remove various redundancies in the CFG.
 //!
 //! The `SimplifyCfg` pass gets rid of unnecessary blocks in the CFG, whereas the `SimplifyLocals`
@@ -718,6 +725,7 @@
 
 </span><span class="kw">use </span><a href="../../rustc_middle/mir/trait.MirPass.html"><span class="kw">crate</span>::MirPass</a>;
 <span class="kw">use </span>rustc_data_structures::fx::{FxHashSet, <a href="../../rustc_data_structures/fx/type.FxIndexSet.html">FxIndexSet</a>};
+<span class="kw">use </span><a href="../../rustc_index/bit_set/struct.BitSet.html">rustc_index::bit_set::BitSet</a>;
 <span class="kw">use </span>rustc_index::{<a href="../../rustc_index/idx/trait.Idx.html">Idx</a>, <a href="../../rustc_index/slice/struct.IndexSlice.html">IndexSlice</a>, <a href="../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
 <span class="kw">use </span><a href="../../rustc_middle/mir/coverage/index.html">rustc_middle::mir::coverage</a>::<span class="kw-2">*</span>;
 <span class="kw">use </span>rustc_middle::mir::visit::{<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">MutVisitor</a>, <a href="../../rustc_middle/mir/visit/enum.MutatingUseContext.html">MutatingUseContext</a>, <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>};
@@ -736,17 +744,17 @@
     AfterUninhabitedEnumBranching,
 }
 
-<span class="kw">impl </span><a href="#39-48">SimplifyCfg</a> {
+<span class="kw">impl </span><a href="#40-49">SimplifyCfg</a> {
     <span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a> {
-        <span class="kw">match </span><span class="self"><a href="#51">self</a> </span>{
-            <a href="#40">SimplifyCfg::Initial</a> =&gt; <span class="string">&quot;SimplifyCfg-initial&quot;</span>,
-            <a href="#41">SimplifyCfg::PromoteConsts</a> =&gt; <span class="string">&quot;SimplifyCfg-promote-consts&quot;</span>,
-            <a href="#42">SimplifyCfg::RemoveFalseEdges</a> =&gt; <span class="string">&quot;SimplifyCfg-remove-false-edges&quot;</span>,
-            <a href="#43">SimplifyCfg::EarlyOpt</a> =&gt; <span class="string">&quot;SimplifyCfg-early-opt&quot;</span>,
-            <a href="#44">SimplifyCfg::ElaborateDrops</a> =&gt; <span class="string">&quot;SimplifyCfg-elaborate-drops&quot;</span>,
-            <a href="#45">SimplifyCfg::Final</a> =&gt; <span class="string">&quot;SimplifyCfg-final&quot;</span>,
-            <a href="#46">SimplifyCfg::MakeShim</a> =&gt; <span class="string">&quot;SimplifyCfg-make_shim&quot;</span>,
-            <a href="#47">SimplifyCfg::AfterUninhabitedEnumBranching</a> =&gt; {
+        <span class="kw">match </span><span class="self"><a href="#52">self</a> </span>{
+            <a href="#41">SimplifyCfg::Initial</a> =&gt; <span class="string">&quot;SimplifyCfg-initial&quot;</span>,
+            <a href="#42">SimplifyCfg::PromoteConsts</a> =&gt; <span class="string">&quot;SimplifyCfg-promote-consts&quot;</span>,
+            <a href="#43">SimplifyCfg::RemoveFalseEdges</a> =&gt; <span class="string">&quot;SimplifyCfg-remove-false-edges&quot;</span>,
+            <a href="#44">SimplifyCfg::EarlyOpt</a> =&gt; <span class="string">&quot;SimplifyCfg-early-opt&quot;</span>,
+            <a href="#45">SimplifyCfg::ElaborateDrops</a> =&gt; <span class="string">&quot;SimplifyCfg-elaborate-drops&quot;</span>,
+            <a href="#46">SimplifyCfg::Final</a> =&gt; <span class="string">&quot;SimplifyCfg-final&quot;</span>,
+            <a href="#47">SimplifyCfg::MakeShim</a> =&gt; <span class="string">&quot;SimplifyCfg-make_shim&quot;</span>,
+            <a href="#48">SimplifyCfg::AfterUninhabitedEnumBranching</a> =&gt; {
                 <span class="string">&quot;SimplifyCfg-after-uninhabited-enum-branching&quot;
             </span>}
         }
@@ -754,22 +762,22 @@
 }
 
 <span class="kw">pub fn </span><a href="../../rustc_mir_transform/simplify/fn.simplify_cfg.html">simplify_cfg</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-    CfgSimplifier::new(<a href="#67">body</a>).<a href="#113-166">simplify</a>();
-    <a href="#294-337">remove_duplicate_unreachable_blocks</a>(<a href="#67">tcx</a>, <a href="#67">body</a>);
-    <a href="#339-372">remove_dead_blocks</a>(<a href="#67">tcx</a>, <a href="#67">body</a>);
+    CfgSimplifier::new(<a href="#68">body</a>).<a href="#114-167">simplify</a>();
+    <a href="#295-338">remove_duplicate_unreachable_blocks</a>(<a href="#68">tcx</a>, <a href="#68">body</a>);
+    <a href="#340-371">remove_dead_blocks</a>(<a href="#68">tcx</a>, <a href="#68">body</a>);
 
     <span class="comment">// FIXME: Should probably be moved into some kind of pass manager
-    </span><a href="#67">body</a>.basic_blocks_mut().raw.shrink_to_fit();
+    </span><a href="#68">body</a>.basic_blocks_mut().raw.shrink_to_fit();
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirPass&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#39-48">SimplifyCfg</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirPass&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#40-49">SimplifyCfg</a> {
     <span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a> {
-        <span class="kw-2">&amp;</span><a class="self" href="#77">self</a>.<a href="#51-64">name</a>()
+        <span class="kw-2">&amp;</span><a class="self" href="#78">self</a>.<a href="#52-65">name</a>()
     }
 
     <span class="kw">fn </span>run_pass(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;SimplifyCfg({:?}) - simplifying {:?}&quot;</span>, <span class="self">self</span>.name(), body.source);
-        <a href="#67-74">simplify_cfg</a>(<a href="#81">tcx</a>, <a href="#81">body</a>);
+        <a href="#68-75">simplify_cfg</a>(<a href="#82">tcx</a>, <a href="#82">body</a>);
     }
 }
 
@@ -780,11 +788,11 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; CfgSimplifier&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>new(body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="kw-2">mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>pred_count = IndexVec::from_elem(<span class="number">0u32</span>, <span class="kw-2">&amp;</span><a href="#93">body</a>.basic_blocks);
+        <span class="kw">let </span><span class="kw-2">mut </span>pred_count = IndexVec::from_elem(<span class="number">0u32</span>, <span class="kw-2">&amp;</span><a href="#94">body</a>.basic_blocks);
 
         <span class="comment">// we can&#39;t use mir.predecessors() here because that counts
         // dead blocks, which we don&#39;t want to.
-        </span><a href="#94">pred_count</a>[<a href="../../rustc_middle/mir/constant.START_BLOCK.html">START_BLOCK</a>] = <span class="number">1</span>;
+        </span><a href="#95">pred_count</a>[<a href="../../rustc_middle/mir/constant.START_BLOCK.html">START_BLOCK</a>] = <span class="number">1</span>;
 
         <span class="kw">for </span>(<span class="kw">_</span>, data) <span class="kw">in </span>traversal::preorder(body) {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>term) = data.terminator {
@@ -794,13 +802,13 @@
             }
         }
 
-        <span class="kw">let </span>basic_blocks = <a href="#93">body</a>.basic_blocks_mut();
+        <span class="kw">let </span>basic_blocks = <a href="#94">body</a>.basic_blocks_mut();
 
-        <a href="#87-90">CfgSimplifier</a> { <a href="#108">basic_blocks</a>, <a href="#94">pred_count</a> }
+        <a href="#88-91">CfgSimplifier</a> { <a href="#109">basic_blocks</a>, <a href="#95">pred_count</a> }
     }
 
     <span class="kw">pub fn </span>simplify(<span class="kw-2">mut </span><span class="self">self</span>) {
-        <a class="self" href="#113">self</a>.<a href="#275-279">strip_nops</a>();
+        <a class="self" href="#114">self</a>.<a href="#276-280">strip_nops</a>();
 
         <span class="comment">// Vec of the blocks that should be merged. We store the indices here, instead of the
         // statements itself to avoid moving the (relatively) large statements twice.
@@ -859,13 +867,13 @@
     /// * the block has a terminator other than `goto`
     /// * the block has no terminator (meaning some other part of the current optimization stole it)
     </span><span class="kw">fn </span>take_terminator_if_simple_goto(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bb: <a href="../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>) -&gt; <span class="prelude-ty">Option</span>&lt;Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <span class="kw">match </span><a class="self" href="#172">self</a>.basic_blocks[<a href="#172">bb</a>] {
+        <span class="kw">match </span><a class="self" href="#173">self</a>.basic_blocks[<a href="#173">bb</a>] {
             <a href="../../rustc_middle/mir/struct.BasicBlockData.html">BasicBlockData</a> {
                 <span class="kw-2">ref </span>statements,
                 terminator:
                     <span class="kw-2">ref mut </span>terminator @ <span class="prelude-val">Some</span>(<a href="../../rustc_middle/mir/terminator/struct.Terminator.html">Terminator</a> { kind: <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { .. }, .. }),
                 ..
-            } <span class="kw">if </span><a href="#175">statements</a>.is_empty() =&gt; <a href="#177">terminator</a>.take(),
+            } <span class="kw">if </span><a href="#176">statements</a>.is_empty() =&gt; <a href="#178">terminator</a>.take(),
             <span class="comment">// if `terminator` is None, this means we are in a loop. In that
             // case, let all the loop collapse to its entry.
             </span><span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
@@ -877,7 +885,7 @@
         <span class="comment">// Using `SmallVec` here, because in some logs on libcore oli-obk saw many single-element
         // goto chains. We should probably benchmark different sizes.
         </span><span class="kw">let </span><span class="kw-2">mut </span>terminators: SmallVec&lt;[<span class="kw">_</span>; <span class="number">1</span>]&gt; = <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>();
-        <span class="kw">let </span><span class="kw-2">mut </span>current = <span class="kw-2">*</span><a href="#187">start</a>;
+        <span class="kw">let </span><span class="kw-2">mut </span>current = <span class="kw-2">*</span><a href="#188">start</a>;
         <span class="kw">while let </span><span class="prelude-val">Some</span>(terminator) = <span class="self">self</span>.take_terminator_if_simple_goto(current) {
             <span class="kw">let </span>Terminator { kind: TerminatorKind::Goto { target }, .. } = terminator <span class="kw">else </span>{
                 <span class="macro">unreachable!</span>();
@@ -885,8 +893,8 @@
             terminators.push((current, terminator));
             current = target;
         }
-        <span class="kw">let </span>last = <a href="#191">current</a>;
-        <span class="kw-2">*</span><a href="#187">start</a> = <a href="#199">last</a>;
+        <span class="kw">let </span>last = <a href="#192">current</a>;
+        <span class="kw-2">*</span><a href="#188">start</a> = <a href="#200">last</a>;
         <span class="kw">while let </span><span class="prelude-val">Some</span>((current, <span class="kw-2">mut </span>terminator)) = terminators.pop() {
             <span class="kw">let </span>Terminator { kind: TerminatorKind::Goto { <span class="kw-2">ref mut </span>target }, .. } = terminator
             <span class="kw">else </span>{
@@ -914,14 +922,14 @@
         merged_blocks: <span class="kw-2">&amp;mut </span>Vec&lt;<a href="../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;,
         terminator: <span class="kw-2">&amp;mut </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">let </span>target = <span class="kw">match </span><a href="#226">terminator</a>.kind {
-            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target } <span class="kw">if </span><a class="self" href="#224">self</a>.pred_count[<a href="#229">target</a>] == <span class="number">1 </span>=&gt; <a href="#229">target</a>,
+        <span class="kw">let </span>target = <span class="kw">match </span><a href="#227">terminator</a>.kind {
+            <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target } <span class="kw">if </span><a class="self" href="#225">self</a>.pred_count[<a href="#230">target</a>] == <span class="number">1 </span>=&gt; <a href="#230">target</a>,
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
         };
 
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;merging block {:?} into {:?}&quot;</span>, target, terminator);
-        <span class="kw-2">*</span><a href="#226">terminator</a> = <span class="kw">match </span><a class="self" href="#224">self</a>.basic_blocks[<a href="#228">target</a>].terminator.take() {
-            <span class="prelude-val">Some</span>(terminator) =&gt; <a href="#235">terminator</a>,
+        <span class="kw-2">*</span><a href="#227">terminator</a> = <span class="kw">match </span><a class="self" href="#225">self</a>.basic_blocks[<a href="#229">target</a>].terminator.take() {
+            <span class="prelude-val">Some</span>(terminator) =&gt; <a href="#236">terminator</a>,
             <span class="prelude-val">None </span>=&gt; {
                 <span class="comment">// unreachable loop - this should not be possible, as we
                 // don&#39;t strand blocks, but handle it correctly.
@@ -929,25 +937,25 @@
             }
         };
 
-        <a href="#225">merged_blocks</a>.push(<a href="#228">target</a>);
-        <a class="self" href="#224">self</a>.pred_count[<a href="#228">target</a>] = <span class="number">0</span>;
+        <a href="#226">merged_blocks</a>.push(<a href="#229">target</a>);
+        <a class="self" href="#225">self</a>.pred_count[<a href="#229">target</a>] = <span class="number">0</span>;
 
         <span class="bool-val">true
     </span>}
 
     <span class="comment">// turn a branch with all successors identical to a goto
     </span><span class="kw">fn </span>simplify_branch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, terminator: <span class="kw-2">&amp;mut </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><a href="#250">terminator</a>.kind {
+        <span class="kw">match </span><a href="#251">terminator</a>.kind {
             <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { .. } =&gt; {}
             <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="bool-val">false</span>,
         };
 
         <span class="kw">let </span>first_succ = {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(first_succ) = <a href="#250">terminator</a>.successors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(first_succ) = <a href="#251">terminator</a>.successors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>() {
                 <span class="kw">if </span>terminator.successors().all(|s| s == first_succ) {
-                    <span class="kw">let </span>count = <a href="#250">terminator</a>.successors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">count</a>();
-                    <a class="self" href="#250">self</a>.pred_count[<a href="#257">first_succ</a>] -= (<a href="#259">count</a> - <span class="number">1</span>) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>;
-                    <a href="#257">first_succ</a>
+                    <span class="kw">let </span>count = <a href="#251">terminator</a>.successors().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">count</a>();
+                    <a class="self" href="#251">self</a>.pred_count[<a href="#258">first_succ</a>] -= (<a href="#260">count</a> - <span class="number">1</span>) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>;
+                    <a href="#258">first_succ</a>
                 } <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
@@ -957,7 +965,7 @@
         };
 
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;simplifying branch {:?}&quot;</span>, terminator);
-        <a href="#250">terminator</a>.kind = <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target: <a href="#256">first_succ</a> };
+        <a href="#251">terminator</a>.kind = <a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target: <a href="#257">first_succ</a> };
         <span class="bool-val">true
     </span>}
 
@@ -969,12 +977,12 @@
 }
 
 <span class="kw">pub fn </span><a href="../../rustc_mir_transform/simplify/fn.simplify_duplicate_switch_targets.html">simplify_duplicate_switch_targets</a>(terminator: <span class="kw-2">&amp;mut </span>Terminator&lt;<span class="lifetime">&#39;_</span>&gt;) {
-    <span class="kw">if let </span><a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { targets, .. } = <span class="kw-2">&amp;mut </span><a href="#282">terminator</a>.kind {
-        <span class="kw">let </span>otherwise = <a href="#283">targets</a>.otherwise();
+    <span class="kw">if let </span><a href="../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { targets, .. } = <span class="kw-2">&amp;mut </span><a href="#283">terminator</a>.kind {
+        <span class="kw">let </span>otherwise = <a href="#284">targets</a>.otherwise();
         <span class="kw">if </span>targets.iter().any(|t| t.<span class="number">1 </span>== otherwise) {
-            <span class="kw-2">*</span><a href="#283">targets</a> = SwitchTargets::new(
-                <a href="#283">targets</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|t| <a href="#287">t</a>.<span class="number">1 </span>!= <a href="#284">otherwise</a>),
-                <a href="#283">targets</a>.otherwise(),
+            <span class="kw-2">*</span><a href="#284">targets</a> = SwitchTargets::new(
+                <a href="#284">targets</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|t| <a href="#288">t</a>.<span class="number">1 </span>!= <a href="#285">otherwise</a>),
+                <a href="#284">targets</a>.otherwise(),
             );
         }
     }
@@ -988,7 +996,7 @@
 
     <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MutVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>OptApplier&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">fn </span>tcx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-            <a class="self" href="#301">self</a>.tcx
+            <a class="self" href="#302">self</a>.tcx
         }
 
         <span class="kw">fn </span>visit_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, terminator: <span class="kw-2">&amp;mut </span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
@@ -1000,13 +1008,13 @@
                 }
             }
 
-            <a href="#282-292">simplify_duplicate_switch_targets</a>(<a href="#305">terminator</a>);
+            <a href="#283-293">simplify_duplicate_switch_targets</a>(<a href="#306">terminator</a>);
 
-            <a class="self" href="#305">self</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">super_terminator</a>(<a href="#305">terminator</a>, <a href="#305">location</a>);
+            <a class="self" href="#306">self</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">super_terminator</a>(<a href="#306">terminator</a>, <a href="#306">location</a>);
         }
     }
 
-    <span class="kw">let </span>unreachable_blocks = <a href="#294">body</a>
+    <span class="kw">let </span>unreachable_blocks = <a href="#295">body</a>
         .basic_blocks
         .iter_enumerated()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(<span class="kw">_</span>, bb)| {
@@ -1015,43 +1023,41 @@
             // before then so we need to handle missing terminators.
             // We also need to prevent confusing cleanup and non-cleanup blocks. In practice we
             // don&#39;t emit empty unreachable cleanup blocks, so this simple check suffices.
-            </span><a href="#323">bb</a>.terminator.is_some() &amp;&amp; <a href="#323">bb</a>.is_empty_unreachable() &amp;&amp; !<a href="#323">bb</a>.is_cleanup
+            </span><a href="#324">bb</a>.terminator.is_some() &amp;&amp; <a href="#324">bb</a>.is_empty_unreachable() &amp;&amp; !<a href="#324">bb</a>.is_cleanup
         })
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(block, <span class="kw">_</span>)| <a href="#331">block</a>)
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(block, <span class="kw">_</span>)| <a href="#332">block</a>)
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;FxIndexSet&lt;<span class="kw">_</span>&gt;&gt;();
 
     <span class="kw">if </span>unreachable_blocks.len() &gt; <span class="number">1 </span>{
-        <a href="#295-298">OptApplier</a> { <a href="#294">tcx</a>, duplicates: <a href="#320">unreachable_blocks</a> }.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">visit_body</a>(<a href="#294">body</a>);
+        <a href="#296-299">OptApplier</a> { <a href="#295">tcx</a>, duplicates: <a href="#321">unreachable_blocks</a> }.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">visit_body</a>(<a href="#295">body</a>);
     }
 }
 
 <span class="kw">pub fn </span><a href="../../rustc_mir_transform/simplify/fn.remove_dead_blocks.html">remove_dead_blocks</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-    <span class="kw">let </span>reachable = traversal::reachable_as_bitset(<a href="#339">body</a>);
-    <span class="kw">let </span>num_blocks = <a href="#339">body</a>.basic_blocks.len();
+    <span class="kw">let </span>reachable = traversal::reachable_as_bitset(<a href="#340">body</a>);
+    <span class="kw">let </span>num_blocks = <a href="#340">body</a>.basic_blocks.len();
     <span class="kw">if </span>num_blocks == reachable.count() {
         <span class="kw">return</span>;
     }
 
-    <span class="kw">let </span>basic_blocks = <a href="#339">body</a>.basic_blocks.as_mut();
-    <span class="kw">let </span>source_scopes = <span class="kw-2">&amp;</span><a href="#339">body</a>.source_scopes;
-    <span class="kw">let </span><span class="kw-2">mut </span>replacements: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<a href="#341">num_blocks</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(BasicBlock::new).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-    <span class="kw">let </span><span class="kw-2">mut </span>used_blocks = <span class="number">0</span>;
-    <span class="kw">for </span>alive_index <span class="kw">in </span>reachable.iter() {
-        <span class="kw">let </span>alive_index = alive_index.index();
-        replacements[alive_index] = BasicBlock::new(used_blocks);
-        <span class="kw">if </span>alive_index != used_blocks {
-            <span class="comment">// Swap the next alive block data with the current available slot. Since
-            // alive_index is non-decreasing this is a valid operation.
-            </span>basic_blocks.raw.swap(alive_index, used_blocks);
-        }
-        used_blocks += <span class="number">1</span>;
-    }
-
+    <span class="kw">let </span>basic_blocks = <a href="#340">body</a>.basic_blocks.as_mut();
+    <span class="kw">let </span>source_scopes = <span class="kw-2">&amp;</span><a href="#340">body</a>.source_scopes;
     <span class="kw">if </span>tcx.sess.instrument_coverage() {
-        <a href="#404-457">save_unreachable_coverage</a>(<a href="#346">basic_blocks</a>, <a href="#347">source_scopes</a>, <a href="#349">used_blocks</a>);
+        <a href="#403-464">save_unreachable_coverage</a>(<a href="#347">basic_blocks</a>, <a href="#348">source_scopes</a>, <span class="kw-2">&amp;</span><a href="#341">reachable</a>);
     }
 
-    <a href="#346">basic_blocks</a>.raw.truncate(<a href="#349">used_blocks</a>);
+    <span class="kw">let </span><span class="kw-2">mut </span>replacements: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..<a href="#342">num_blocks</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(BasicBlock::new).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+    <span class="kw">let </span><span class="kw-2">mut </span>orig_index = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>used_index = <span class="number">0</span>;
+    <a href="#347">basic_blocks</a>.raw.retain(|<span class="kw">_</span>| {
+        <span class="kw">let </span>keep = <a href="#341">reachable</a>.contains(BasicBlock::new(<a href="#354">orig_index</a>));
+        <span class="kw">if </span>keep {
+            <a href="#353">replacements</a>[<a href="#354">orig_index</a>] = BasicBlock::new(<a href="#355">used_index</a>);
+            <a href="#355">used_index</a> += <span class="number">1</span>;
+        }
+        <a href="#354">orig_index</a> += <span class="number">1</span>;
+        <a href="#357">keep</a>
+    });
 
     <span class="kw">for </span>block <span class="kw">in </span>basic_blocks {
         <span class="kw">for </span>target <span class="kw">in </span>block.terminator_mut().successors_mut() {
@@ -1093,11 +1099,12 @@
 </span><span class="kw">fn </span><a href="../../rustc_mir_transform/simplify/fn.save_unreachable_coverage.html">save_unreachable_coverage</a>(
     basic_blocks: <span class="kw-2">&amp;mut </span>IndexSlice&lt;<a href="../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, BasicBlockData&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
     source_scopes: <span class="kw-2">&amp;</span>IndexSlice&lt;<a href="../../rustc_middle/mir/struct.SourceScope.html">SourceScope</a>, SourceScopeData&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
-    first_dead_block: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
+    reachable: <span class="kw-2">&amp;</span>BitSet&lt;<a href="../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>&gt;,
 ) {
     <span class="comment">// Identify instances that still have some live coverage counters left.
     </span><span class="kw">let </span><span class="kw-2">mut </span>live = FxHashSet::default();
-    <span class="kw">for </span>basic_block <span class="kw">in </span><span class="kw-2">&amp;</span>basic_blocks.raw[<span class="number">0</span>..first_dead_block] {
+    <span class="kw">for </span>bb <span class="kw">in </span>reachable.iter() {
+        <span class="kw">let </span>basic_block = <span class="kw-2">&amp;</span>basic_blocks[bb];
         <span class="kw">for </span>statement <span class="kw">in </span><span class="kw-2">&amp;</span>basic_block.statements {
             <span class="kw">let </span>StatementKind::Coverage(coverage) = <span class="kw-2">&amp;</span>statement.kind <span class="kw">else </span>{ <span class="kw">continue </span>};
             <span class="kw">let </span>CoverageKind::Counter { .. } = coverage.kind <span class="kw">else </span>{ <span class="kw">continue </span>};
@@ -1106,7 +1113,8 @@
         }
     }
 
-    <span class="kw">for </span>block <span class="kw">in </span><span class="kw-2">&amp;mut </span>basic_blocks.raw[..first_dead_block] {
+    <span class="kw">for </span>bb <span class="kw">in </span>reachable.iter() {
+        <span class="kw">let </span>block = <span class="kw-2">&amp;mut </span>basic_blocks[bb];
         <span class="kw">for </span>statement <span class="kw">in </span><span class="kw-2">&amp;mut </span>block.statements {
             <span class="kw">let </span>StatementKind::Coverage(<span class="kw">_</span>) = <span class="kw-2">&amp;</span>statement.kind <span class="kw">else </span>{ <span class="kw">continue </span>};
             <span class="kw">let </span>instance = statement.source_info.scope.inlined_instance(source_scopes);
@@ -1122,24 +1130,30 @@
 
     <span class="comment">// Retain coverage for instances that still have some live counters left.
     </span><span class="kw">let </span><span class="kw-2">mut </span>retained_coverage = Vec::new();
-    <span class="kw">for </span>dead_block <span class="kw">in </span><span class="kw-2">&amp;</span>basic_blocks.raw[first_dead_block..] {
+    <span class="kw">for </span>dead_block <span class="kw">in </span>basic_blocks.indices() {
+        <span class="kw">if </span>reachable.contains(dead_block) {
+            <span class="kw">continue</span>;
+        }
+        <span class="kw">let </span>dead_block = <span class="kw-2">&amp;</span>basic_blocks[dead_block];
         <span class="kw">for </span>statement <span class="kw">in </span><span class="kw-2">&amp;</span>dead_block.statements {
             <span class="kw">let </span>StatementKind::Coverage(coverage) = <span class="kw-2">&amp;</span>statement.kind <span class="kw">else </span>{ <span class="kw">continue </span>};
-            <span class="kw">let </span><span class="prelude-val">Some</span>(code_region) = <span class="kw-2">&amp;</span>coverage.code_region <span class="kw">else </span>{ <span class="kw">continue </span>};
+            <span class="kw">if </span>coverage.code_regions.is_empty() {
+                <span class="kw">continue</span>;
+            };
             <span class="kw">let </span>instance = statement.source_info.scope.inlined_instance(source_scopes);
             <span class="kw">if </span>live.contains(<span class="kw-2">&amp;</span>instance) {
-                retained_coverage.push((statement.source_info, code_region.clone()));
+                retained_coverage.push((statement.source_info, coverage.code_regions.clone()));
             }
         }
     }
 
-    <span class="kw">let </span>start_block = <span class="kw-2">&amp;mut </span><a href="#405">basic_blocks</a>[<a href="../../rustc_middle/mir/constant.START_BLOCK.html">START_BLOCK</a>];
-    <a href="#447">start_block</a>.statements.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#435">retained_coverage</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(
-        |(source_info, code_region)| <a href="../../rustc_middle/mir/struct.Statement.html">Statement</a> {
-            <a href="#449">source_info</a>,
+    <span class="kw">let </span>start_block = <span class="kw-2">&amp;mut </span><a href="#404">basic_blocks</a>[<a href="../../rustc_middle/mir/constant.START_BLOCK.html">START_BLOCK</a>];
+    <a href="#454">start_block</a>.statements.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#436">retained_coverage</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(
+        |(source_info, code_regions)| <a href="../../rustc_middle/mir/statement/struct.Statement.html">Statement</a> {
+            <a href="#456">source_info</a>,
             kind: StatementKind::Coverage(Box::new(<a href="../../rustc_middle/mir/syntax/struct.Coverage.html">Coverage</a> {
                 kind: CoverageKind::Unreachable,
-                code_region: <span class="prelude-val">Some</span>(<a href="#449">code_region</a>),
+                <a href="#456">code_regions</a>,
             })),
         },
     ));
@@ -1150,66 +1164,66 @@
     Final,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirPass&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#459-462">SimplifyLocals</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirPass&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#466-469">SimplifyLocals</a> {
     <span class="kw">fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a> {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self"><a href="#465">self</a> </span>{
-            <a href="#460">SimplifyLocals::BeforeConstProp</a> =&gt; <span class="string">&quot;SimplifyLocals-before-const-prop&quot;</span>,
-            <a href="#461">SimplifyLocals::Final</a> =&gt; <span class="string">&quot;SimplifyLocals-final&quot;</span>,
+        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self"><a href="#472">self</a> </span>{
+            <a href="#467">SimplifyLocals::BeforeConstProp</a> =&gt; <span class="string">&quot;SimplifyLocals-before-const-prop&quot;</span>,
+            <a href="#468">SimplifyLocals::Final</a> =&gt; <span class="string">&quot;SimplifyLocals-final&quot;</span>,
         }
     }
 
     <span class="kw">fn </span>is_enabled(<span class="kw-2">&amp;</span><span class="self">self</span>, sess: <span class="kw-2">&amp;</span><a href="../../rustc_session/session/struct.Session.html">rustc_session::Session</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#472">sess</a>.mir_opt_level() &gt; <span class="number">0
+        <a href="#479">sess</a>.mir_opt_level() &gt; <span class="number">0
     </span>}
 
     <span class="kw">fn </span>run_pass(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;running SimplifyLocals on {:?}&quot;</span>, body.source);
-        <a href="#494-516">simplify_locals</a>(<a href="#476">body</a>, <a href="#476">tcx</a>);
+        <a href="#501-523">simplify_locals</a>(<a href="#483">body</a>, <a href="#483">tcx</a>);
     }
 }
 
 <span class="kw">pub fn </span><a href="../../rustc_mir_transform/simplify/fn.remove_unused_definitions.html">remove_unused_definitions</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
     <span class="comment">// First, we&#39;re going to get a count of *actual* uses for every `Local`.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>used_locals = UsedLocals::new(<a href="#482">body</a>);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>used_locals = UsedLocals::new(<a href="#489">body</a>);
 
     <span class="comment">// Next, we&#39;re going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we&#39;re also going to subtract any uses of other `Locals` from the `used_locals`
     // count. For example, if we removed `_2 = discriminant(_1)`, then we&#39;ll subtract one from
     // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
     // fixedpoint where there are no more unused locals.
-    </span><a href="#639-674">remove_unused_definitions_helper</a>(<span class="kw-2">&amp;mut </span><a href="#484">used_locals</a>, <a href="#482">body</a>);
+    </span><a href="#646-681">remove_unused_definitions_helper</a>(<span class="kw-2">&amp;mut </span><a href="#491">used_locals</a>, <a href="#489">body</a>);
 }
 
 <span class="kw">pub fn </span><a href="../../rustc_mir_transform/simplify/fn.simplify_locals.html">simplify_locals</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
     <span class="comment">// First, we&#39;re going to get a count of *actual* uses for every `Local`.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>used_locals = UsedLocals::new(<a href="#494">body</a>);
+    </span><span class="kw">let </span><span class="kw-2">mut </span>used_locals = UsedLocals::new(<a href="#501">body</a>);
 
     <span class="comment">// Next, we&#39;re going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we&#39;re also going to subtract any uses of other `Locals` from the `used_locals`
     // count. For example, if we removed `_2 = discriminant(_1)`, then we&#39;ll subtract one from
     // `use_counts[_1]`. That in turn might make `_1` unused, so we loop until we hit a
     // fixedpoint where there are no more unused locals.
-    </span><a href="#639-674">remove_unused_definitions_helper</a>(<span class="kw-2">&amp;mut </span><a href="#496">used_locals</a>, <a href="#494">body</a>);
+    </span><a href="#646-681">remove_unused_definitions_helper</a>(<span class="kw-2">&amp;mut </span><a href="#503">used_locals</a>, <a href="#501">body</a>);
 
     <span class="comment">// Finally, we&#39;ll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
-    </span><span class="kw">let </span>map = <a href="#519-540">make_local_map</a>(<span class="kw-2">&amp;mut </span><a href="#494">body</a>.local_decls, <span class="kw-2">&amp;</span><a href="#496">used_locals</a>);
+    </span><span class="kw">let </span>map = <a href="#526-547">make_local_map</a>(<span class="kw-2">&amp;mut </span><a href="#501">body</a>.local_decls, <span class="kw-2">&amp;</span><a href="#503">used_locals</a>);
 
     <span class="comment">// Only bother running the `LocalUpdater` if we actually found locals to remove.
     </span><span class="kw">if </span>map.iter().any(Option::is_none) {
         <span class="comment">// Update references to all vars and tmps now
-        </span><span class="kw">let </span><span class="kw-2">mut </span>updater = <a href="#676-679">LocalUpdater</a> { <a href="#506">map</a>, <a href="#494">tcx</a> };
-        <a href="#511">updater</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">visit_body_preserves_cfg</a>(<a href="#494">body</a>);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>updater = <a href="#683-686">LocalUpdater</a> { <a href="#513">map</a>, <a href="#501">tcx</a> };
+        <a href="#518">updater</a>.<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">visit_body_preserves_cfg</a>(<a href="#501">body</a>);
 
-        <a href="#494">body</a>.local_decls.shrink_to_fit();
+        <a href="#501">body</a>.local_decls.shrink_to_fit();
     }
 }
 
 <span class="doccomment">/// Construct the mapping while swapping out unused stuff out from the `vec`.
 </span><span class="kw">fn </span><a href="../../rustc_mir_transform/simplify/fn.make_local_map.html">make_local_map</a>&lt;V&gt;(
     local_decls: <span class="kw-2">&amp;mut </span>IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, V&gt;,
-    used_locals: <span class="kw-2">&amp;</span><a href="#543-547">UsedLocals</a>,
+    used_locals: <span class="kw-2">&amp;</span><a href="#550-554">UsedLocals</a>,
 ) -&gt; IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt;&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>map: IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt;&gt; = IndexVec::from_elem(<span class="prelude-val">None</span>, <a href="#520">local_decls</a>);
+    <span class="kw">let </span><span class="kw-2">mut </span>map: IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt;&gt; = IndexVec::from_elem(<span class="prelude-val">None</span>, <a href="#527">local_decls</a>);
     <span class="kw">let </span><span class="kw-2">mut </span>used = Local::new(<span class="number">0</span>);
 
     <span class="kw">for </span>alive_index <span class="kw">in </span>local_decls.indices() {
@@ -1224,8 +1238,8 @@
         }
         used.increment_by(<span class="number">1</span>);
     }
-    <a href="#520">local_decls</a>.truncate(<a href="#524">used</a>.index());
-    <a href="#523">map</a>
+    <a href="#527">local_decls</a>.truncate(<a href="#531">used</a>.index());
+    <a href="#530">map</a>
 }
 
 <span class="doccomment">/// Keeps track of used &amp; unused locals.
@@ -1235,16 +1249,16 @@
     use_count: IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#543-547">UsedLocals</a> {
+<span class="kw">impl </span><a href="#550-554">UsedLocals</a> {
     <span class="doccomment">/// Determines which locals are used &amp; unused in the given body.
     </span><span class="kw">fn </span>new(body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>this = <span class="self">Self </span>{
             increment: <span class="bool-val">true</span>,
-            arg_count: <a href="#551">body</a>.arg_count.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>().unwrap(),
-            use_count: IndexVec::from_elem(<span class="number">0</span>, <span class="kw-2">&amp;</span><a href="#551">body</a>.local_decls),
+            arg_count: <a href="#558">body</a>.arg_count.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>().unwrap(),
+            use_count: IndexVec::from_elem(<span class="number">0</span>, <span class="kw-2">&amp;</span><a href="#558">body</a>.local_decls),
         };
-        <a href="#552">this</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#551">body</a>);
-        <a href="#552">this</a>
+        <a href="#559">this</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#558">body</a>);
+        <a href="#559">this</a>
     }
 
     <span class="doccomment">/// Checks if local is used.
@@ -1252,46 +1266,46 @@
     /// Return place and arguments are always considered used.
     </span><span class="kw">fn </span>is_used(<span class="kw-2">&amp;</span><span class="self">self</span>, local: <a href="../../rustc_middle/mir/struct.Local.html">Local</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;is_used({:?}): use_count: {:?}&quot;</span>, local, <span class="self">self</span>.use_count[local]);
-        <a href="#564">local</a>.as_u32() &lt;= <a class="self" href="#564">self</a>.arg_count || <a class="self" href="#564">self</a>.use_count[<a href="#564">local</a>] != <span class="number">0
+        <a href="#571">local</a>.as_u32() &lt;= <a class="self" href="#571">self</a>.arg_count || <a class="self" href="#571">self</a>.use_count[<a href="#571">local</a>] != <span class="number">0
     </span>}
 
     <span class="doccomment">/// Updates the use counts to reflect the removal of given statement.
     </span><span class="kw">fn </span>statement_removed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, statement: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;_</span>&gt;) {
-        <a class="self" href="#570">self</a>.increment = <span class="bool-val">false</span>;
+        <a class="self" href="#577">self</a>.increment = <span class="bool-val">false</span>;
 
         <span class="comment">// The location of the statement is irrelevant.
         </span><span class="kw">let </span>location = Location::START;
-        <a class="self" href="#570">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_statement</a>(<a href="#570">statement</a>, <a href="#574">location</a>);
+        <a class="self" href="#577">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_statement</a>(<a href="#577">statement</a>, <a href="#581">location</a>);
     }
 
     <span class="doccomment">/// Visits a left-hand side of an assignment.
     </span><span class="kw">fn </span>visit_lhs(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;_</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <span class="kw">if </span>place.is_indirect() {
             <span class="comment">// A use, not a definition.
-            </span><a class="self" href="#579">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_place</a>(<a href="#579">place</a>, PlaceContext::MutatingUse(MutatingUseContext::Store), <a href="#579">location</a>);
+            </span><a class="self" href="#586">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_place</a>(<a href="#586">place</a>, PlaceContext::MutatingUse(MutatingUseContext::Store), <a href="#586">location</a>);
         } <span class="kw">else </span>{
             <span class="comment">// A definition. The base local itself is not visited, so this occurrence is not counted
             // toward its use count. There might be other locals still, used in an indexing
             // projection.
-            </span><a class="self" href="#579">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_projection</a>(
-                <a href="#579">place</a>.as_ref(),
+            </span><a class="self" href="#586">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_projection</a>(
+                <a href="#586">place</a>.as_ref(),
                 PlaceContext::MutatingUse(MutatingUseContext::Projection),
-                <a href="#579">location</a>,
+                <a href="#586">location</a>,
             );
         }
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#543-547">UsedLocals</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#550-554">UsedLocals</a> {
     <span class="kw">fn </span>visit_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, statement: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">match </span><a href="#597">statement</a>.kind {
+        <span class="kw">match </span><a href="#604">statement</a>.kind {
             StatementKind::Intrinsic(..)
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::AscribeUserType(..) =&gt; {
-                <a class="self" href="#597">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#597">statement</a>, <a href="#597">location</a>);
+                <a class="self" href="#604">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#604">statement</a>, <a href="#604">location</a>);
             }
 
             StatementKind::ConstEvalCounter | StatementKind::Nop =&gt; {}
@@ -1300,32 +1314,32 @@
 
             StatementKind::Assign(<span class="kw">box </span>(<span class="kw-2">ref </span>place, <span class="kw-2">ref </span>rvalue)) =&gt; {
                 <span class="kw">if </span>rvalue.is_safe_to_remove() {
-                    <a class="self" href="#597">self</a>.<a href="#579-593">visit_lhs</a>(<a href="#612">place</a>, <a href="#597">location</a>);
-                    <a class="self" href="#597">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_rvalue</a>(<a href="#612">rvalue</a>, <a href="#597">location</a>);
+                    <a class="self" href="#604">self</a>.<a href="#586-600">visit_lhs</a>(<a href="#619">place</a>, <a href="#604">location</a>);
+                    <a class="self" href="#604">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_rvalue</a>(<a href="#619">rvalue</a>, <a href="#604">location</a>);
                 } <span class="kw">else </span>{
-                    <a class="self" href="#597">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#597">statement</a>, <a href="#597">location</a>);
+                    <a class="self" href="#604">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#604">statement</a>, <a href="#604">location</a>);
                 }
             }
 
             <a href="../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { <span class="kw-2">ref </span>place, variant_index: <span class="kw">_ </span>}
             | StatementKind::Deinit(<span class="kw-2">ref </span>place) =&gt; {
-                <a class="self" href="#597">self</a>.<a href="#579-593">visit_lhs</a>(<a href="#621">place</a>, <a href="#597">location</a>);
+                <a class="self" href="#604">self</a>.<a href="#586-600">visit_lhs</a>(<a href="#628">place</a>, <a href="#604">location</a>);
             }
         }
     }
 
     <span class="kw">fn </span>visit_local(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <a href="../../rustc_middle/mir/struct.Local.html">Local</a>, _ctx: <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, _location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <span class="kw">if </span><span class="self">self</span>.increment {
-            <a class="self" href="#628">self</a>.use_count[<a href="#628">local</a>] += <span class="number">1</span>;
+            <a class="self" href="#635">self</a>.use_count[<a href="#635">local</a>] += <span class="number">1</span>;
         } <span class="kw">else </span>{
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_ne.html">assert_ne!</a>(<span class="self">self</span>.use_count[local], <span class="number">0</span>);
-            <a class="self" href="#628">self</a>.use_count[<a href="#628">local</a>] -= <span class="number">1</span>;
+            <a class="self" href="#635">self</a>.use_count[<a href="#635">local</a>] -= <span class="number">1</span>;
         }
     }
 }
 
 <span class="doccomment">/// Removes unused definitions. Updates the used locals to reflect the changes made.
-</span><span class="kw">fn </span><a href="../../rustc_mir_transform/simplify/fn.remove_unused_definitions_helper.html">remove_unused_definitions_helper</a>(used_locals: <span class="kw-2">&amp;mut </span><a href="#543-547">UsedLocals</a>, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) {
+</span><span class="kw">fn </span><a href="../../rustc_mir_transform/simplify/fn.remove_unused_definitions_helper.html">remove_unused_definitions_helper</a>(used_locals: <span class="kw-2">&amp;mut </span><a href="#550-554">UsedLocals</a>, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) {
     <span class="comment">// The use counts are updated as we remove the statements. A local might become unused
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this
@@ -1369,11 +1383,11 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MutVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>LocalUpdater&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>tcx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#682">self</a>.tcx
+        <a class="self" href="#689">self</a>.tcx
     }
 
     <span class="kw">fn </span>visit_local(<span class="kw-2">&amp;mut </span><span class="self">self</span>, l: <span class="kw-2">&amp;mut </span><a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <span class="kw">_</span>: <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <span class="kw">_</span>: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw-2">*</span><a href="#686">l</a> = <a class="self" href="#686">self</a>.map[<span class="kw-2">*</span><a href="#686">l</a>].unwrap();
+        <span class="kw-2">*</span><a href="#693">l</a> = <a class="self" href="#693">self</a>.map[<span class="kw-2">*</span><a href="#693">l</a>].unwrap();
     }
 }
 </code></pre></div></section></main></body></html>

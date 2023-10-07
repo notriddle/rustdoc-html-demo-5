@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_ty_utils/src/layout.rs`."><title>layout.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_ty_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_ty_utils/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_ty_utils"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_ty_utils/src/layout.rs`."><title>layout.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_ty_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_ty_utils/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_ty_utils"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1163,10 +1163,6 @@
 <a href="#1163" id="1163">1163</a>
 <a href="#1164" id="1164">1164</a>
 <a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
-<a href="#1169" id="1169">1169</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../rustc_span/def_id/struct.DefId.html">hir::def_id::DefId</a>;
 <span class="kw">use </span><a href="../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
 <span class="kw">use </span><a href="../../rustc_index/bit_set/struct.BitSet.html">rustc_index::bit_set::BitSet</a>;
@@ -1251,10 +1247,10 @@
 <span class="kw">fn </span><a href="../../rustc_ty_utils/layout/fn.univariant_uninterned.html">univariant_uninterned</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     cx: <span class="kw-2">&amp;</span>LayoutCx&lt;<span class="lifetime">&#39;tcx</span>, TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    fields: <span class="kw-2">&amp;</span>IndexSlice&lt;<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, Layout&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
+    fields: <span class="kw-2">&amp;</span>IndexSlice&lt;<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, Layout&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
     repr: <span class="kw-2">&amp;</span><a href="../../rustc_abi/struct.ReprOptions.html">ReprOptions</a>,
     kind: <a href="../../rustc_abi/enum.StructKind.html">StructKind</a>,
-) -&gt; <span class="prelude-ty">Result</span>&lt;<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>LayoutError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
+) -&gt; <span class="prelude-ty">Result</span>&lt;LayoutS&lt;<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>LayoutError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
     <span class="kw">let </span>dl = <a href="#83">cx</a>.data_layout();
     <span class="kw">let </span>pack = <a href="#86">repr</a>.pack;
     <span class="kw">if </span>pack.is_some() &amp;&amp; repr.align.is_some() {
@@ -1286,7 +1282,7 @@
     };
     <span class="kw">let </span>scalar = |value: <a href="../../rustc_abi/enum.Primitive.html">Primitive</a>| <a href="#110">tcx</a>.mk_layout(LayoutS::scalar(<a href="#100">cx</a>, <a href="#113">scalar_unit</a>(<a href="#118">value</a>)));
 
-    <span class="kw">let </span>univariant = |fields: <span class="kw-2">&amp;</span>IndexSlice&lt;<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, Layout&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, repr: <span class="kw-2">&amp;</span><a href="../../rustc_abi/struct.ReprOptions.html">ReprOptions</a>, kind| {
+    <span class="kw">let </span>univariant = |fields: <span class="kw-2">&amp;</span>IndexSlice&lt;<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, Layout&lt;<span class="lifetime">&#39;_</span>&gt;&gt;, repr: <span class="kw-2">&amp;</span><a href="../../rustc_abi/struct.ReprOptions.html">ReprOptions</a>, kind| {
         <span class="prelude-val">Ok</span>(<a href="#110">tcx</a>.mk_layout(univariant_uninterned(cx, ty, fields, repr, kind)<span class="question-mark">?</span>))
     };
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(!ty.has_non_region_infer());
@@ -1432,7 +1428,7 @@
             <span class="kw">let </span>largest_niche = <span class="kw">if </span>count != <span class="number">0 </span>{ <a href="#251">element</a>.largest_niche } <span class="kw">else </span>{ <span class="prelude-val">None </span>};
 
             <a href="#110">tcx</a>.mk_layout(<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
-                variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
+                variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
                 fields: <a href="../../rustc_abi/enum.FieldsShape.html">FieldsShape::Array</a> { stride: <a href="#251">element</a>.size, <a href="#248">count</a> },
                 <a href="#257">abi</a>,
                 <a href="#263">largest_niche</a>,
@@ -1445,7 +1441,7 @@
         ty::Slice(element) =&gt; {
             <span class="kw">let </span>element = cx.layout_of(element)<span class="question-mark">?</span>;
             <a href="#110">tcx</a>.mk_layout(<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
-                variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
+                variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
                 fields: <a href="../../rustc_abi/enum.FieldsShape.html">FieldsShape::Array</a> { stride: <a href="#277">element</a>.size, count: <span class="number">0 </span>},
                 abi: <a href="../../rustc_abi/enum.Abi.html">Abi::Aggregate</a> { sized: <span class="bool-val">false </span>},
                 largest_niche: <span class="prelude-val">None</span>,
@@ -1456,7 +1452,7 @@
             })
         }
         ty::Str =&gt; <a href="#110">tcx</a>.mk_layout(<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
-            variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
+            variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
             fields: <a href="../../rustc_abi/enum.FieldsShape.html">FieldsShape::Array</a> { stride: Size::from_bytes(<span class="number">1</span>), count: <span class="number">0 </span>},
             abi: <a href="../../rustc_abi/enum.Abi.html">Abi::Aggregate</a> { sized: <span class="bool-val">false </span>},
             largest_niche: <span class="prelude-val">None</span>,
@@ -1613,7 +1609,7 @@
             };
 
             <a href="#110">tcx</a>.mk_layout(<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
-                variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
+                variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index: <a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a> },
                 <a href="#440">fields</a>,
                 abi: <a href="../../rustc_abi/enum.Abi.html">Abi::Vector</a> { element: <a href="#425">e_abi</a>, count: <a href="#392">e_len</a> },
                 largest_niche: <a href="#424">e_ly</a>.largest_niche,
@@ -1696,7 +1692,7 @@
             {
                 <span class="kw">let </span><span class="kw-2">mut </span>variants = <a href="#461">variants</a>;
                 <span class="kw">let </span>tail_replacement = <a href="#100">cx</a>.<a href="../../rustc_middle/ty/layout/trait.LayoutOf.html">layout_of</a>(Ty::new_slice(<a href="#110">tcx</a>, <a href="#110">tcx</a>.types.u8)).unwrap();
-                <span class="kw-2">*</span><a href="#528">variants</a>[<a href="../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>].raw.last_mut().unwrap() = <a href="#529">tail_replacement</a>.layout;
+                <span class="kw-2">*</span><a href="#528">variants</a>[<a href="../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>].raw.last_mut().unwrap() = <a href="#529">tail_replacement</a>.layout;
 
                 <span class="kw">let </span><span class="prelude-val">Some</span>(unsized_layout) = <a href="#100">cx</a>.layout_of_struct_or_enum(
                     <span class="kw-2">&amp;</span><a href="#459">def</a>.repr(),
@@ -1746,11 +1742,7 @@
             </span><span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#75-80">error</a>(<a href="#100">cx</a>, LayoutError::Unknown(<a href="#101">ty</a>)));
         }
 
-        ty::Bound(..)
-        | ty::GeneratorWitness(..)
-        | ty::GeneratorWitnessMIR(..)
-        | ty::Infer(<span class="kw">_</span>)
-        | ty::Error(<span class="kw">_</span>) =&gt; {
+        ty::Bound(..) | ty::GeneratorWitness(..) | ty::Infer(<span class="kw">_</span>) | ty::Error(<span class="kw">_</span>) =&gt; {
             <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Layout::compute: unexpected type `{}`&quot;</span>, ty)
         }
 
@@ -1764,8 +1756,8 @@
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">enum </span><a href="../../rustc_ty_utils/layout/enum.SavedLocalEligibility.html">SavedLocalEligibility</a> {
     Unassigned,
-    Assigned(<a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>),
-    Ineligible(<span class="prelude-ty">Option</span>&lt;<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt;),
+    Assigned(<a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>),
+    Ineligible(<span class="prelude-ty">Option</span>&lt;<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt;),
 }
 
 <span class="comment">// When laying out generators, we divide our saved local fields into two
@@ -1790,15 +1782,15 @@
 </span><span class="doccomment">/// Compute the eligibility and assignment of each local.
 </span><span class="kw">fn </span><a href="../../rustc_ty_utils/layout/fn.generator_saved_local_eligibility.html">generator_saved_local_eligibility</a>(
     info: <span class="kw-2">&amp;</span>GeneratorLayout&lt;<span class="lifetime">&#39;_</span>&gt;,
-) -&gt; (BitSet&lt;<a href="../../rustc_middle/mir/query/struct.GeneratorSavedLocal.html">GeneratorSavedLocal</a>&gt;, IndexVec&lt;<a href="../../rustc_middle/mir/query/struct.GeneratorSavedLocal.html">GeneratorSavedLocal</a>, <a href="#596-600">SavedLocalEligibility</a>&gt;) {
-    <span class="kw">use </span><a href="#596-600">SavedLocalEligibility</a>::<span class="kw-2">*</span>;
+) -&gt; (BitSet&lt;<a href="../../rustc_middle/mir/query/struct.GeneratorSavedLocal.html">GeneratorSavedLocal</a>&gt;, IndexVec&lt;<a href="../../rustc_middle/mir/query/struct.GeneratorSavedLocal.html">GeneratorSavedLocal</a>, <a href="#592-596">SavedLocalEligibility</a>&gt;) {
+    <span class="kw">use </span><a href="#592-596">SavedLocalEligibility</a>::<span class="kw-2">*</span>;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>assignments: IndexVec&lt;<a href="../../rustc_middle/mir/query/struct.GeneratorSavedLocal.html">GeneratorSavedLocal</a>, <a href="#596-600">SavedLocalEligibility</a>&gt; =
-        IndexVec::from_elem(<a href="#597">Unassigned</a>, <span class="kw-2">&amp;</span><a href="#623">info</a>.field_tys);
+    <span class="kw">let </span><span class="kw-2">mut </span>assignments: IndexVec&lt;<a href="../../rustc_middle/mir/query/struct.GeneratorSavedLocal.html">GeneratorSavedLocal</a>, <a href="#592-596">SavedLocalEligibility</a>&gt; =
+        IndexVec::from_elem(<a href="#593">Unassigned</a>, <span class="kw-2">&amp;</span><a href="#619">info</a>.field_tys);
 
     <span class="comment">// The saved locals not eligible for overlap. These will get
     // &quot;promoted&quot; to the prefix of our generator.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>ineligible_locals = BitSet::new_empty(<a href="#623">info</a>.field_tys.len());
+    </span><span class="kw">let </span><span class="kw-2">mut </span>ineligible_locals = BitSet::new_empty(<a href="#619">info</a>.field_tys.len());
 
     <span class="comment">// Figure out which of our saved locals are fields in only
     // one variant. The rest are deemed ineligible for overlap.
@@ -1860,7 +1852,7 @@
     // lay them out with the other locals in the prefix and eliminate
     // unnecessary padding bytes.
     </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>used_variants = BitSet::new_empty(<a href="#623">info</a>.variant_fields.len());
+        <span class="kw">let </span><span class="kw-2">mut </span>used_variants = BitSet::new_empty(<a href="#619">info</a>.variant_fields.len());
         <span class="kw">for </span>assignment <span class="kw">in </span><span class="kw-2">&amp;</span>assignments {
             <span class="kw">if let </span>Assigned(idx) = assignment {
                 used_variants.insert(<span class="kw-2">*</span>idx);
@@ -1870,7 +1862,7 @@
             <span class="kw">for </span>assignment <span class="kw">in </span>assignments.iter_mut() {
                 <span class="kw-2">*</span>assignment = Ineligible(<span class="prelude-val">None</span>);
             }
-            <a href="#632">ineligible_locals</a>.insert_all();
+            <a href="#628">ineligible_locals</a>.insert_all();
         }
     }
 
@@ -1882,7 +1874,7 @@
     }
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;generator saved local assignments: {:?}&quot;</span>, assignments);
 
-    (<a href="#632">ineligible_locals</a>, <a href="#627">assignments</a>)
+    (<a href="#628">ineligible_locals</a>, <a href="#623">assignments</a>)
 }
 
 <span class="doccomment">/// Compute the full generator layout.
@@ -1892,33 +1884,33 @@
     def_id: <a href="../../rustc_span/def_id/struct.DefId.html">hir::def_id::DefId</a>,
     args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Layout&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>LayoutError&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-    <span class="kw">use </span><a href="#596-600">SavedLocalEligibility</a>::<span class="kw-2">*</span>;
-    <span class="kw">let </span>tcx = <a href="#721">cx</a>.tcx;
-    <span class="kw">let </span>subst_field = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| EarlyBinder::bind(<a href="#728">ty</a>).instantiate(<a href="#727">tcx</a>, <a href="#724">args</a>);
+    <span class="kw">use </span><a href="#592-596">SavedLocalEligibility</a>::<span class="kw-2">*</span>;
+    <span class="kw">let </span>tcx = <a href="#717">cx</a>.tcx;
+    <span class="kw">let </span>subst_field = |ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;| EarlyBinder::bind(<a href="#724">ty</a>).instantiate(<a href="#723">tcx</a>, <a href="#720">args</a>);
 
-    <span class="kw">let </span><span class="prelude-val">Some</span>(info) = <a href="#727">tcx</a>.generator_layout(<a href="#723">def_id</a>) <span class="kw">else </span>{
-        <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#75-80">error</a>(<a href="#721">cx</a>, LayoutError::Unknown(<a href="#722">ty</a>)));
+    <span class="kw">let </span><span class="prelude-val">Some</span>(info) = <a href="#723">tcx</a>.generator_layout(<a href="#719">def_id</a>) <span class="kw">else </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(<a href="#75-80">error</a>(<a href="#717">cx</a>, LayoutError::Unknown(<a href="#718">ty</a>)));
     };
-    <span class="kw">let </span>(ineligible_locals, assignments) = <a href="#622-717">generator_saved_local_eligibility</a>(<span class="kw-2">&amp;</span><a href="#730">info</a>);
+    <span class="kw">let </span>(ineligible_locals, assignments) = <a href="#618-713">generator_saved_local_eligibility</a>(<span class="kw-2">&amp;</span><a href="#726">info</a>);
 
     <span class="comment">// Build a prefix layout, including &quot;promoting&quot; all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    </span><span class="kw">let </span>tag_index = <a href="#724">args</a>.as_generator().prefix_tys().len();
+    </span><span class="kw">let </span>tag_index = <a href="#720">args</a>.as_generator().prefix_tys().len();
 
     <span class="comment">// `info.variant_fields` already accounts for the reserved variants, so no need to add them.
-    </span><span class="kw">let </span>max_discr = (<a href="#730">info</a>.variant_fields.len() - <span class="number">1</span>) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
-    <span class="kw">let </span>discr_int = Integer::fit_unsigned(<a href="#741">max_discr</a>);
+    </span><span class="kw">let </span>max_discr = (<a href="#726">info</a>.variant_fields.len() - <span class="number">1</span>) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
+    <span class="kw">let </span>discr_int = Integer::fit_unsigned(<a href="#737">max_discr</a>);
     <span class="kw">let </span>tag = <a href="../../rustc_abi/enum.Scalar.html">Scalar::Initialized</a> {
-        value: Primitive::Int(<a href="#742">discr_int</a>, <span class="bool-val">false</span>),
-        valid_range: <a href="../../rustc_abi/struct.WrappingRange.html">WrappingRange</a> { start: <span class="number">0</span>, end: <a href="#741">max_discr</a> },
+        value: Primitive::Int(<a href="#738">discr_int</a>, <span class="bool-val">false</span>),
+        valid_range: <a href="../../rustc_abi/struct.WrappingRange.html">WrappingRange</a> { start: <span class="number">0</span>, end: <a href="#737">max_discr</a> },
     };
-    <span class="kw">let </span>tag_layout = <a href="#721">cx</a>.tcx.mk_layout(LayoutS::scalar(<a href="#721">cx</a>, <a href="#743">tag</a>));
+    <span class="kw">let </span>tag_layout = <a href="#717">cx</a>.tcx.mk_layout(LayoutS::scalar(<a href="#717">cx</a>, <a href="#739">tag</a>));
 
-    <span class="kw">let </span>promoted_layouts = <a href="#733">ineligible_locals</a>
+    <span class="kw">let </span>promoted_layouts = <a href="#729">ineligible_locals</a>
         .iter()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|local| <a href="#728">subst_field</a>(<a href="#730">info</a>.field_tys[<a href="#751">local</a>].ty))
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| Ty::new_maybe_uninit(<a href="#727">tcx</a>, <a href="#752">ty</a>))
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|local| <a href="#724">subst_field</a>(<a href="#726">info</a>.field_tys[<a href="#747">local</a>].ty))
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| Ty::new_maybe_uninit(<a href="#723">tcx</a>, <a href="#748">ty</a>))
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| <span class="prelude-val">Ok</span>(cx.layout_of(ty)<span class="question-mark">?</span>.layout));
     <span class="kw">let </span>prefix_layouts = args
         .as_generator()
@@ -1936,47 +1928,47 @@
         StructKind::AlwaysSized,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>(prefix_size, prefix_align) = (<a href="#762">prefix</a>.size, <a href="#762">prefix</a>.align);
+    <span class="kw">let </span>(prefix_size, prefix_align) = (<a href="#758">prefix</a>.size, <a href="#758">prefix</a>.align);
 
     <span class="comment">// Split the prefix layout into the &quot;outer&quot; fields (upvars and
     // discriminant) and the &quot;promoted&quot; fields. Promoted fields will
     // get included in each variant that requested them in
     // GeneratorLayout.
     </span><a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;prefix = {:#?}&quot;</span>, prefix);
-    <span class="kw">let </span>(outer_fields, promoted_offsets, promoted_memory_index) = <span class="kw">match </span><a href="#762">prefix</a>.fields {
+    <span class="kw">let </span>(outer_fields, promoted_offsets, promoted_memory_index) = <span class="kw">match </span><a href="#758">prefix</a>.fields {
         <a href="../../rustc_abi/enum.FieldsShape.html">FieldsShape::Arbitrary</a> { <span class="kw-2">mut </span>offsets, memory_index } =&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>inverse_memory_index = <a href="#778">memory_index</a>.invert_bijective_mapping();
+            <span class="kw">let </span><span class="kw-2">mut </span>inverse_memory_index = <a href="#774">memory_index</a>.invert_bijective_mapping();
 
             <span class="comment">// &quot;a&quot; (`0..b_start`) and &quot;b&quot; (`b_start..`) correspond to
             // &quot;outer&quot; and &quot;promoted&quot; fields respectively.
-            </span><span class="kw">let </span>b_start = FieldIdx::from_usize(<a href="#738">tag_index</a> + <span class="number">1</span>);
-            <span class="kw">let </span>offsets_b = IndexVec::from_raw(<a href="#778">offsets</a>.raw.split_off(<a href="#783">b_start</a>.as_usize()));
-            <span class="kw">let </span>offsets_a = <a href="#778">offsets</a>;
+            </span><span class="kw">let </span>b_start = FieldIdx::from_usize(<a href="#734">tag_index</a> + <span class="number">1</span>);
+            <span class="kw">let </span>offsets_b = IndexVec::from_raw(<a href="#774">offsets</a>.raw.split_off(<a href="#779">b_start</a>.as_usize()));
+            <span class="kw">let </span>offsets_a = <a href="#774">offsets</a>;
 
             <span class="comment">// Disentangle the &quot;a&quot; and &quot;b&quot; components of `inverse_memory_index`
             // by preserving the order but keeping only one disjoint &quot;half&quot; each.
             // FIXME(eddyb) build a better abstraction for permutations, if possible.
-            </span><span class="kw">let </span>inverse_memory_index_b: IndexVec&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt; = <a href="#779">inverse_memory_index</a>
+            </span><span class="kw">let </span>inverse_memory_index_b: IndexVec&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt; = <a href="#775">inverse_memory_index</a>
                 .iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|<span class="kw-2">&amp;</span>i| <a href="#792">i</a>.as_u32().checked_sub(<a href="#783">b_start</a>.as_u32()).map(FieldIdx::from_u32))
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|<span class="kw-2">&amp;</span>i| <a href="#788">i</a>.as_u32().checked_sub(<a href="#779">b_start</a>.as_u32()).map(FieldIdx::from_u32))
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-            <a href="#779">inverse_memory_index</a>.raw.retain(|<span class="kw-2">&amp;</span>i| <a href="#794">i</a> &lt; <a href="#783">b_start</a>);
-            <span class="kw">let </span>inverse_memory_index_a = <a href="#779">inverse_memory_index</a>;
+            <a href="#775">inverse_memory_index</a>.raw.retain(|<span class="kw-2">&amp;</span>i| <a href="#790">i</a> &lt; <a href="#779">b_start</a>);
+            <span class="kw">let </span>inverse_memory_index_a = <a href="#775">inverse_memory_index</a>;
 
             <span class="comment">// Since `inverse_memory_index_{a,b}` each only refer to their
             // respective fields, they can be safely inverted
-            </span><span class="kw">let </span>memory_index_a = <a href="#795">inverse_memory_index_a</a>.invert_bijective_mapping();
-            <span class="kw">let </span>memory_index_b = <a href="#790">inverse_memory_index_b</a>.invert_bijective_mapping();
+            </span><span class="kw">let </span>memory_index_a = <a href="#791">inverse_memory_index_a</a>.invert_bijective_mapping();
+            <span class="kw">let </span>memory_index_b = <a href="#786">inverse_memory_index_b</a>.invert_bijective_mapping();
 
             <span class="kw">let </span>outer_fields =
-                <a href="../../rustc_abi/enum.FieldsShape.html">FieldsShape::Arbitrary</a> { offsets: <a href="#785">offsets_a</a>, memory_index: <a href="#799">memory_index_a</a> };
-            (<a href="#802">outer_fields</a>, <a href="#784">offsets_b</a>, <a href="#800">memory_index_b</a>)
+                <a href="../../rustc_abi/enum.FieldsShape.html">FieldsShape::Arbitrary</a> { offsets: <a href="#781">offsets_a</a>, memory_index: <a href="#795">memory_index_a</a> };
+            (<a href="#798">outer_fields</a>, <a href="#780">offsets_b</a>, <a href="#796">memory_index_b</a>)
         }
         <span class="kw">_ </span>=&gt; <a class="macro" href="../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
     };
 
-    <span class="kw">let </span><span class="kw-2">mut </span>size = <a href="#762">prefix</a>.size;
-    <span class="kw">let </span><span class="kw-2">mut </span>align = <a href="#762">prefix</a>.align;
+    <span class="kw">let </span><span class="kw-2">mut </span>size = <a href="#758">prefix</a>.size;
+    <span class="kw">let </span><span class="kw-2">mut </span>align = <a href="#758">prefix</a>.align;
     <span class="kw">let </span>variants = info
         .variant_fields
         .iter_enumerated()
@@ -2059,7 +2051,7 @@
         })
         .try_collect::&lt;IndexVec&lt;VariantIdx, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
-    <a href="#809">size</a> = <a href="#809">size</a>.align_to(<a href="#810">align</a>.abi);
+    <a href="#805">size</a> = <a href="#805">size</a>.align_to(<a href="#806">align</a>.abi);
 
     <span class="kw">let </span>abi = <span class="kw">if </span>prefix.abi.is_uninhabited() || variants.iter().all(|v| v.abi.is_uninhabited()) {
         Abi::Uninhabited
@@ -2067,23 +2059,23 @@
         <a href="../../rustc_abi/enum.Abi.html">Abi::Aggregate</a> { sized: <span class="bool-val">true </span>}
     };
 
-    <span class="kw">let </span>layout = <a href="#727">tcx</a>.mk_layout(<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
+    <span class="kw">let </span>layout = <a href="#723">tcx</a>.mk_layout(<a href="../../rustc_abi/struct.LayoutS.html">LayoutS</a> {
         variants: <a href="../../rustc_abi/enum.Variants.html">Variants::Multiple</a> {
-            <a href="#743">tag</a>,
+            <a href="#739">tag</a>,
             tag_encoding: TagEncoding::Direct,
-            tag_field: <a href="#738">tag_index</a>,
-            <a href="#811">variants</a>,
+            tag_field: <a href="#734">tag_index</a>,
+            <a href="#807">variants</a>,
         },
-        fields: <a href="#777">outer_fields</a>,
-        <a href="#895">abi</a>,
-        largest_niche: <a href="#762">prefix</a>.largest_niche,
-        <a href="#809">size</a>,
-        <a href="#810">align</a>,
+        fields: <a href="#773">outer_fields</a>,
+        <a href="#891">abi</a>,
+        largest_niche: <a href="#758">prefix</a>.largest_niche,
+        <a href="#805">size</a>,
+        <a href="#806">align</a>,
         max_repr_align: <span class="prelude-val">None</span>,
-        unadjusted_abi_align: <a href="#810">align</a>.abi,
+        unadjusted_abi_align: <a href="#806">align</a>.abi,
     });
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;generator layout ({:?}): {:#?}&quot;</span>, ty, layout);
-    <span class="prelude-val">Ok</span>(<a href="#901">layout</a>)
+    <span class="prelude-val">Ok</span>(<a href="#897">layout</a>)
 }
 
 <span class="doccomment">/// This is invoked by the `layout_of` query to record the final
@@ -2093,7 +2085,7 @@
     <span class="comment">// If we are running with `-Zprint-type-sizes`, maybe record layouts
     // for dumping later.
     </span><span class="kw">if </span>cx.tcx.sess.opts.unstable_opts.print_type_sizes {
-        <a href="#931-982">record_layout_for_printing_outlined</a>(<a href="#923">cx</a>, <a href="#923">layout</a>)
+        <a href="#927-978">record_layout_for_printing_outlined</a>(<a href="#919">cx</a>, <a href="#919">layout</a>)
     }
 }
 
@@ -2111,37 +2103,37 @@
     <span class="comment">// (delay format until we actually need it)
     </span><span class="kw">let </span>record = |kind, packed, opt_discr_size, variants| {
         <span class="kw">let </span>type_desc = <a class="macro" href="../../rustc_middle/ty/print/pretty/macro.with_no_trimmed_paths.html">with_no_trimmed_paths!</a>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, layout.ty));
-        <a href="#932">cx</a>.tcx.sess.code_stats.record_type_size(
-            <a href="#943">kind</a>,
-            <a href="#944">type_desc</a>,
-            <a href="#933">layout</a>.align.abi,
-            <a href="#933">layout</a>.size,
-            <a href="#943">packed</a>,
-            <a href="#943">opt_discr_size</a>,
-            <a href="#943">variants</a>,
+        <a href="#928">cx</a>.tcx.sess.code_stats.record_type_size(
+            <a href="#939">kind</a>,
+            <a href="#940">type_desc</a>,
+            <a href="#929">layout</a>.align.abi,
+            <a href="#929">layout</a>.size,
+            <a href="#939">packed</a>,
+            <a href="#939">opt_discr_size</a>,
+            <a href="#939">variants</a>,
         );
     };
 
-    <span class="kw">match </span><span class="kw-2">*</span><a href="#933">layout</a>.ty.kind() {
+    <span class="kw">match </span><span class="kw-2">*</span><a href="#929">layout</a>.ty.kind() {
         ty::Adt(adt_def, <span class="kw">_</span>) =&gt; {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;print-type-size t: `{:?}` process adt&quot;</span>, layout.ty);
-            <span class="kw">let </span>adt_kind = <a href="#957">adt_def</a>.adt_kind();
-            <span class="kw">let </span>adt_packed = <a href="#957">adt_def</a>.repr().pack.is_some();
-            <span class="kw">let </span>(variant_infos, opt_discr_size) = <a href="#984-1053">variant_info_for_adt</a>(<a href="#932">cx</a>, <a href="#933">layout</a>, <a href="#957">adt_def</a>);
-            <a href="#943">record</a>(<a href="#959">adt_kind</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <a href="#960">adt_packed</a>, <a href="#961">opt_discr_size</a>, <a href="#961">variant_infos</a>);
+            <span class="kw">let </span>adt_kind = <a href="#953">adt_def</a>.adt_kind();
+            <span class="kw">let </span>adt_packed = <a href="#953">adt_def</a>.repr().pack.is_some();
+            <span class="kw">let </span>(variant_infos, opt_discr_size) = <a href="#980-1049">variant_info_for_adt</a>(<a href="#928">cx</a>, <a href="#929">layout</a>, <a href="#953">adt_def</a>);
+            <a href="#939">record</a>(<a href="#955">adt_kind</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), <a href="#956">adt_packed</a>, <a href="#957">opt_discr_size</a>, <a href="#957">variant_infos</a>);
         }
 
         ty::Generator(def_id, args, <span class="kw">_</span>) =&gt; {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;print-type-size t: `{:?}` record generator&quot;</span>, layout.ty);
             <span class="comment">// Generators always have a begin/poisoned/end state with additional suspend points
             </span><span class="kw">let </span>(variant_infos, opt_discr_size) =
-                <a href="#1055-1169">variant_info_for_generator</a>(<a href="#932">cx</a>, <a href="#933">layout</a>, <a href="#965">def_id</a>, <a href="#965">args</a>);
-            <a href="#943">record</a>(DataTypeKind::Generator, <span class="bool-val">false</span>, <a href="#968">opt_discr_size</a>, <a href="#968">variant_infos</a>);
+                <a href="#1051-1165">variant_info_for_generator</a>(<a href="#928">cx</a>, <a href="#929">layout</a>, <a href="#961">def_id</a>, <a href="#961">args</a>);
+            <a href="#939">record</a>(DataTypeKind::Generator, <span class="bool-val">false</span>, <a href="#964">opt_discr_size</a>, <a href="#964">variant_infos</a>);
         }
 
         ty::Closure(..) =&gt; {
             <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;print-type-size t: `{:?}` record closure&quot;</span>, layout.ty);
-            <a href="#943">record</a>(DataTypeKind::Closure, <span class="bool-val">false</span>, <span class="prelude-val">None</span>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[]);
+            <a href="#939">record</a>(DataTypeKind::Closure, <span class="bool-val">false</span>, <span class="prelude-val">None</span>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[]);
         }
 
         <span class="kw">_ </span>=&gt; {
@@ -2157,38 +2149,38 @@
 ) -&gt; (Vec&lt;<a href="../../rustc_session/code_stats/struct.VariantInfo.html">VariantInfo</a>&gt;, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_abi/struct.Size.html">Size</a>&gt;) {
     <span class="kw">let </span>build_variant_info = |n: <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>&gt;, flds: <span class="kw-2">&amp;</span>[<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>], layout: TyAndLayout&lt;<span class="lifetime">&#39;tcx</span>&gt;| {
         <span class="kw">let </span><span class="kw-2">mut </span>min_size = Size::ZERO;
-        <span class="kw">let </span>field_info: Vec&lt;<span class="kw">_</span>&gt; = <a href="#989">flds</a>
+        <span class="kw">let </span>field_info: Vec&lt;<span class="kw">_</span>&gt; = <a href="#985">flds</a>
             .iter()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, <span class="kw-2">&amp;</span>name)| {
-                <span class="kw">let </span>field_layout = <a href="#989">layout</a>.field(<a href="#985">cx</a>, <a href="#994">i</a>);
-                <span class="kw">let </span>offset = <a href="#989">layout</a>.fields.offset(<a href="#994">i</a>);
-                <a href="#990">min_size</a> = <a href="#990">min_size</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<a href="#996">offset</a> + <a href="#995">field_layout</a>.size);
+                <span class="kw">let </span>field_layout = <a href="#985">layout</a>.field(<a href="#981">cx</a>, <a href="#990">i</a>);
+                <span class="kw">let </span>offset = <a href="#985">layout</a>.fields.offset(<a href="#990">i</a>);
+                <a href="#986">min_size</a> = <a href="#986">min_size</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<a href="#992">offset</a> + <a href="#991">field_layout</a>.size);
                 <a href="../../rustc_session/code_stats/struct.FieldInfo.html">FieldInfo</a> {
                     kind: FieldKind::AdtField,
-                    <a href="#994">name</a>,
-                    offset: <a href="#996">offset</a>.bytes(),
-                    size: <a href="#995">field_layout</a>.size.bytes(),
-                    align: <a href="#995">field_layout</a>.align.abi.bytes(),
+                    <a href="#990">name</a>,
+                    offset: <a href="#992">offset</a>.bytes(),
+                    size: <a href="#991">field_layout</a>.size.bytes(),
+                    align: <a href="#991">field_layout</a>.align.abi.bytes(),
                 }
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
         <a href="../../rustc_session/code_stats/struct.VariantInfo.html">VariantInfo</a> {
-            name: <a href="#989">n</a>,
+            name: <a href="#985">n</a>,
             kind: <span class="kw">if </span>layout.is_unsized() { SizeKind::Min } <span class="kw">else </span>{ SizeKind::Exact },
-            align: <a href="#989">layout</a>.align.abi.bytes(),
-            size: <span class="kw">if </span>min_size.bytes() == <span class="number">0 </span>{ <a href="#989">layout</a>.size.bytes() } <span class="kw">else </span>{ <a href="#990">min_size</a>.bytes() },
-            fields: <a href="#991">field_info</a>,
+            align: <a href="#985">layout</a>.align.abi.bytes(),
+            size: <span class="kw">if </span>min_size.bytes() == <span class="number">0 </span>{ <a href="#985">layout</a>.size.bytes() } <span class="kw">else </span>{ <a href="#986">min_size</a>.bytes() },
+            fields: <a href="#987">field_info</a>,
         }
     };
 
-    <span class="kw">match </span><a href="#986">layout</a>.variants {
+    <span class="kw">match </span><a href="#982">layout</a>.variants {
         <a href="../../rustc_abi/enum.Variants.html">Variants::Single</a> { index } =&gt; {
             <span class="kw">if </span>!adt_def.variants().is_empty() &amp;&amp; layout.fields != FieldsShape::Primitive {
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;print-type-size `{:#?}` variant {}&quot;</span>, layout, adt_def.variant(index).name);
-                <span class="kw">let </span>variant_def = <span class="kw-2">&amp;</span><a href="#987">adt_def</a>.variant(<a href="#1018">index</a>);
-                <span class="kw">let </span>fields: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1021">variant_def</a>.fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| <a href="#1022">f</a>.name).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+                <span class="kw">let </span>variant_def = <span class="kw-2">&amp;</span><a href="#983">adt_def</a>.variant(<a href="#1014">index</a>);
+                <span class="kw">let </span>fields: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1017">variant_def</a>.fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| <a href="#1018">f</a>.name).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                 (<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[build_variant_info(<span class="prelude-val">Some</span>(variant_def.name), <span class="kw-2">&amp;</span>fields, layout)], <span class="prelude-val">None</span>)
             } <span class="kw">else </span>{
                 (<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <span class="prelude-val">None</span>)
@@ -2201,19 +2193,19 @@
                 layout.ty,
                 adt_def.variants().len()
             );
-            <span class="kw">let </span>variant_infos: Vec&lt;<span class="kw">_</span>&gt; = <a href="#987">adt_def</a>
+            <span class="kw">let </span>variant_infos: Vec&lt;<span class="kw">_</span>&gt; = <a href="#983">adt_def</a>
                 .variants()
                 .iter_enumerated()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, variant_def)| {
-                    <span class="kw">let </span>fields: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1038">variant_def</a>.fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| <a href="#1039">f</a>.name).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-                    <a href="#989">build_variant_info</a>(<span class="prelude-val">Some</span>(<a href="#1038">variant_def</a>.name), <span class="kw-2">&amp;</span><a href="#1039">fields</a>, <a href="#986">layout</a>.for_variant(<a href="#985">cx</a>, <a href="#1038">i</a>))
+                    <span class="kw">let </span>fields: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1034">variant_def</a>.fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|f| <a href="#1035">f</a>.name).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+                    <a href="#985">build_variant_info</a>(<span class="prelude-val">Some</span>(<a href="#1034">variant_def</a>.name), <span class="kw-2">&amp;</span><a href="#1035">fields</a>, <a href="#982">layout</a>.for_variant(<a href="#981">cx</a>, <a href="#1034">i</a>))
                 })
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
             (
-                <a href="#1035">variant_infos</a>,
-                <span class="kw">match </span><a href="#1029">tag_encoding</a> {
-                    TagEncoding::Direct =&gt; <span class="prelude-val">Some</span>(<a href="#1029">tag</a>.size(<a href="#985">cx</a>)),
+                <a href="#1031">variant_infos</a>,
+                <span class="kw">match </span><a href="#1025">tag_encoding</a> {
+                    TagEncoding::Direct =&gt; <span class="prelude-val">Some</span>(<a href="#1025">tag</a>.size(<a href="#981">cx</a>)),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 },
             )
@@ -2227,65 +2219,65 @@
     def_id: <a href="../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     args: ty::GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; (Vec&lt;<a href="../../rustc_session/code_stats/struct.VariantInfo.html">VariantInfo</a>&gt;, <span class="prelude-ty">Option</span>&lt;<a href="../../rustc_abi/struct.Size.html">Size</a>&gt;) {
-    <span class="kw">let </span><a href="../../rustc_abi/enum.Variants.html">Variants::Multiple</a> { tag, <span class="kw-2">ref </span>tag_encoding, tag_field, .. } = <a href="#1057">layout</a>.variants <span class="kw">else </span>{
+    <span class="kw">let </span><a href="../../rustc_abi/enum.Variants.html">Variants::Multiple</a> { tag, <span class="kw-2">ref </span>tag_encoding, tag_field, .. } = <a href="#1053">layout</a>.variants <span class="kw">else </span>{
         <span class="kw">return </span>(<a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[], <span class="prelude-val">None</span>);
     };
 
-    <span class="kw">let </span>generator = <a href="#1056">cx</a>.tcx.optimized_mir(<a href="#1058">def_id</a>).generator_layout().unwrap();
-    <span class="kw">let </span>upvar_names = <a href="#1056">cx</a>.tcx.closure_saved_names_of_captured_variables(<a href="#1058">def_id</a>);
+    <span class="kw">let </span>generator = <a href="#1052">cx</a>.tcx.optimized_mir(<a href="#1054">def_id</a>).generator_layout().unwrap();
+    <span class="kw">let </span>upvar_names = <a href="#1052">cx</a>.tcx.closure_saved_names_of_captured_variables(<a href="#1054">def_id</a>);
 
     <span class="kw">let </span><span class="kw-2">mut </span>upvars_size = Size::ZERO;
-    <span class="kw">let </span>upvar_fields: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1059">args</a>
+    <span class="kw">let </span>upvar_fields: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1055">args</a>
         .as_generator()
         .upvar_tys()
         .iter()
-        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">zip</a>(<a href="#1066">upvar_names</a>)
+        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">zip</a>(<a href="#1062">upvar_names</a>)
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(field_idx, (<span class="kw">_</span>, name))| {
-            <span class="kw">let </span>field_layout = <a href="#1057">layout</a>.field(<a href="#1056">cx</a>, <a href="#1075">field_idx</a>);
-            <span class="kw">let </span>offset = <a href="#1057">layout</a>.fields.offset(<a href="#1075">field_idx</a>);
-            <a href="#1068">upvars_size</a> = <a href="#1068">upvars_size</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<a href="#1077">offset</a> + <a href="#1076">field_layout</a>.size);
+            <span class="kw">let </span>field_layout = <a href="#1053">layout</a>.field(<a href="#1052">cx</a>, <a href="#1071">field_idx</a>);
+            <span class="kw">let </span>offset = <a href="#1053">layout</a>.fields.offset(<a href="#1071">field_idx</a>);
+            <a href="#1064">upvars_size</a> = <a href="#1064">upvars_size</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<a href="#1073">offset</a> + <a href="#1072">field_layout</a>.size);
             <a href="../../rustc_session/code_stats/struct.FieldInfo.html">FieldInfo</a> {
                 kind: FieldKind::Upvar,
-                name: <span class="kw-2">*</span><a href="#1075">name</a>,
-                offset: <a href="#1077">offset</a>.bytes(),
-                size: <a href="#1076">field_layout</a>.size.bytes(),
-                align: <a href="#1076">field_layout</a>.align.abi.bytes(),
+                name: <span class="kw-2">*</span><a href="#1071">name</a>,
+                offset: <a href="#1073">offset</a>.bytes(),
+                size: <a href="#1072">field_layout</a>.size.bytes(),
+                align: <a href="#1072">field_layout</a>.align.abi.bytes(),
             }
         })
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>variant_infos: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1065">generator</a>
+    <span class="kw">let </span><span class="kw-2">mut </span>variant_infos: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1061">generator</a>
         .variant_fields
         .iter_enumerated()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(variant_idx, variant_def)| {
-            <span class="kw">let </span>variant_layout = <a href="#1057">layout</a>.for_variant(<a href="#1056">cx</a>, <a href="#1092">variant_idx</a>);
+            <span class="kw">let </span>variant_layout = <a href="#1053">layout</a>.for_variant(<a href="#1052">cx</a>, <a href="#1088">variant_idx</a>);
             <span class="kw">let </span><span class="kw-2">mut </span>variant_size = Size::ZERO;
-            <span class="kw">let </span>fields = <a href="#1092">variant_def</a>
+            <span class="kw">let </span>fields = <a href="#1088">variant_def</a>
                 .iter()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(field_idx, local)| {
-                    <span class="kw">let </span>field_layout = <a href="#1093">variant_layout</a>.field(<a href="#1056">cx</a>, <a href="#1098">field_idx</a>);
-                    <span class="kw">let </span>offset = <a href="#1093">variant_layout</a>.fields.offset(<a href="#1098">field_idx</a>);
+                    <span class="kw">let </span>field_layout = <a href="#1089">variant_layout</a>.field(<a href="#1052">cx</a>, <a href="#1094">field_idx</a>);
+                    <span class="kw">let </span>offset = <a href="#1089">variant_layout</a>.fields.offset(<a href="#1094">field_idx</a>);
                     <span class="comment">// The struct is as large as the last field&#39;s end
-                    </span><a href="#1094">variant_size</a> = <a href="#1094">variant_size</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<a href="#1100">offset</a> + <a href="#1099">field_layout</a>.size);
+                    </span><a href="#1090">variant_size</a> = <a href="#1090">variant_size</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.Ord.html">max</a>(<a href="#1096">offset</a> + <a href="#1095">field_layout</a>.size);
                     <a href="../../rustc_session/code_stats/struct.FieldInfo.html">FieldInfo</a> {
                         kind: FieldKind::GeneratorLocal,
-                        name: <a href="#1065">generator</a>.field_names[<span class="kw-2">*</span><a href="#1098">local</a>].unwrap_or(Symbol::intern(<span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
+                        name: <a href="#1061">generator</a>.field_names[<span class="kw-2">*</span><a href="#1094">local</a>].unwrap_or(Symbol::intern(<span class="kw-2">&amp;</span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;.generator_field{}&quot;</span>,
                             local.as_usize()
                         ))),
-                        offset: <a href="#1100">offset</a>.bytes(),
-                        size: <a href="#1099">field_layout</a>.size.bytes(),
-                        align: <a href="#1099">field_layout</a>.align.abi.bytes(),
+                        offset: <a href="#1096">offset</a>.bytes(),
+                        size: <a href="#1095">field_layout</a>.size.bytes(),
+                        align: <a href="#1095">field_layout</a>.align.abi.bytes(),
                     }
                 })
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1069">upvar_fields</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>())
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1065">upvar_fields</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>())
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
             <span class="comment">// If the variant has no state-specific fields, then it&#39;s the size of the upvars.
             </span><span class="kw">if </span>variant_size == Size::ZERO {
-                <a href="#1094">variant_size</a> = <a href="#1068">upvars_size</a>;
+                <a href="#1090">variant_size</a> = <a href="#1064">upvars_size</a>;
             }
 
             <span class="comment">// This `if` deserves some explanation.
@@ -2304,18 +2296,18 @@
             // to factor in the size of the discriminant manually. This really should be refactored
             // better, but this &quot;works&quot; for now.
             </span><span class="kw">if </span>layout.fields.offset(tag_field) &gt;= variant_size {
-                <a href="#1094">variant_size</a> += <span class="kw">match </span><a href="#1061">tag_encoding</a> {
-                    TagEncoding::Direct =&gt; <a href="#1061">tag</a>.size(<a href="#1056">cx</a>),
+                <a href="#1090">variant_size</a> += <span class="kw">match </span><a href="#1057">tag_encoding</a> {
+                    TagEncoding::Direct =&gt; <a href="#1057">tag</a>.size(<a href="#1052">cx</a>),
                     <span class="kw">_ </span>=&gt; Size::ZERO,
                 };
             }
 
             <a href="../../rustc_session/code_stats/struct.VariantInfo.html">VariantInfo</a> {
-                name: <span class="prelude-val">Some</span>(Symbol::intern(<span class="kw-2">&amp;</span>ty::GeneratorArgs::variant_name(<a href="#1092">variant_idx</a>))),
+                name: <span class="prelude-val">Some</span>(Symbol::intern(<span class="kw-2">&amp;</span>ty::GeneratorArgs::variant_name(<a href="#1088">variant_idx</a>))),
                 kind: SizeKind::Exact,
-                size: <a href="#1094">variant_size</a>.bytes(),
-                align: <a href="#1093">variant_layout</a>.align.abi.bytes(),
-                <a href="#1095">fields</a>,
+                size: <a href="#1090">variant_size</a>.bytes(),
+                align: <a href="#1089">variant_layout</a>.align.abi.bytes(),
+                <a href="#1091">fields</a>,
             }
         })
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
@@ -2324,14 +2316,14 @@
     // We will move the `RETURNED` and `POISONED` elements to the end so we
     // are left with a sorting order according to the generators yield points:
     // First `Unresumed`, then the `SuspendN` followed by `Returned` and `Panicked` (POISONED).
-    </span><span class="kw">let </span>end_states = <a href="#1089">variant_infos</a>.drain(<span class="number">1</span>..=<span class="number">2</span>);
-    <span class="kw">let </span>end_states: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1158">end_states</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-    <a href="#1089">variant_infos</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1159">end_states</a>);
+    </span><span class="kw">let </span>end_states = <a href="#1085">variant_infos</a>.drain(<span class="number">1</span>..=<span class="number">2</span>);
+    <span class="kw">let </span>end_states: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1154">end_states</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+    <a href="#1085">variant_infos</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#1155">end_states</a>);
 
     (
-        <a href="#1089">variant_infos</a>,
-        <span class="kw">match </span><a href="#1061">tag_encoding</a> {
-            TagEncoding::Direct =&gt; <span class="prelude-val">Some</span>(<a href="#1061">tag</a>.size(<a href="#1056">cx</a>)),
+        <a href="#1085">variant_infos</a>,
+        <span class="kw">match </span><a href="#1057">tag_encoding</a> {
+            TagEncoding::Direct =&gt; <span class="prelude-val">Some</span>(<a href="#1057">tag</a>.size(<a href="#1052">cx</a>)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         },
     )

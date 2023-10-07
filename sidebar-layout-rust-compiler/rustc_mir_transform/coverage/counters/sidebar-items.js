@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BcbCounter"],"struct":["CoverageCounters","MakeBcbCounters"]};
+window.SIDEBAR_ITEMS = {"constant":["NESTED_INDENT"],"enum":["BcbCounter"],"struct":["CoverageCounters","MakeBcbCounters"]};

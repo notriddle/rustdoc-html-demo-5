@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Match"]};
+window.SIDEBAR_ITEMS = {"struct":["MatchAgainstFreshVars"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_query_system/src/dep_graph/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_query_system" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_query_system/src/dep_graph/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_query_system" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1427,9 +1427,6 @@
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
-<a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">rustc_data_structures::fingerprint::Fingerprint</a>;
 <span class="kw">use </span>rustc_data_structures::fx::{FxHashMap, FxHashSet};
 <span class="kw">use </span>rustc_data_structures::profiling::{EventId, QueryInvocationId, <a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>};
@@ -1448,8 +1445,8 @@
 <span class="kw">use </span>std::sync::atomic::Ordering::Relaxed;
 
 <span class="kw">use </span><a href="query.rs.html#7-11"><span class="kw">super</span>::query::DepGraphQuery</a>;
-<span class="kw">use </span><span class="kw">super</span>::serialized::{<a href="serialized.rs.html#507-510">GraphEncoder</a>, <a href="serialized.rs.html#73-89">SerializedDepGraph</a>, <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>};
-<span class="kw">use super</span>::{<a href="mod.rs.html#27-90">DepContext</a>, <a href="mod.rs.html#143-168">DepKind</a>, <a href="dep_node.rs.html#55-58">DepNode</a>, <a href="mod.rs.html#92-97">HasDepContext</a>, <a href="dep_node.rs.html#232-234">WorkProductId</a>};
+<span class="kw">use </span><span class="kw">super</span>::serialized::{<a href="serialized.rs.html#516-519">GraphEncoder</a>, <a href="serialized.rs.html#73-89">SerializedDepGraph</a>, <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>};
+<span class="kw">use super</span>::{<a href="mod.rs.html#25-84">DepContext</a>, <a href="dep_node.rs.html#57-59">DepKind</a>, <a href="dep_node.rs.html#94-97">DepNode</a>, <a href="mod.rs.html#86-106">Deps</a>, <a href="mod.rs.html#108-113">HasDepContext</a>, <a href="dep_node.rs.html#290-292">WorkProductId</a>};
 <span class="kw">use </span><a href="edges.rs.html#8-11"><span class="kw">crate</span>::dep_graph::EdgesVec</a>;
 <span class="kw">use </span><a href="../ich/hcx.rs.html#21-32"><span class="kw">crate</span>::ich::StableHashingContext</a>;
 <span class="kw">use </span><span class="kw">crate</span>::query::{<a href="../query/mod.rs.html#103-136">QueryContext</a>, <a href="../query/mod.rs.html#84-89">QuerySideEffects</a>};
@@ -1458,8 +1455,8 @@
 </span><span class="kw">use </span>{<a href="debug.rs.html#39-43"><span class="kw">super</span>::debug::EdgeFilter</a>, <a href="https://doc.rust-lang.org/nightly/core/macro.env.html">std::env</a>};
 
 <span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.DepGraph.html">DepGraph</a>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; {
-    data: <span class="prelude-ty">Option</span>&lt;Lrc&lt;DepGraphData&lt;K&gt;&gt;&gt;,
+</span><span class="kw">pub struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.DepGraph.html">DepGraph</a>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; {
+    data: <span class="prelude-ty">Option</span>&lt;Lrc&lt;DepGraphData&lt;D&gt;&gt;&gt;,
 
     <span class="doccomment">/// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
@@ -1506,16 +1503,16 @@
     }
 }
 
-<span class="kw">pub struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.DepGraphData.html">DepGraphData</a>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; {
+<span class="kw">pub struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.DepGraphData.html">DepGraphData</a>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; {
     <span class="doccomment">/// The new encoding of the dependency graph, optimized for red/green
     /// tracking. The `current` field is the dependency graph of only the
     /// current compilation session: We don&#39;t merge the previous dep-graph into
     /// current one anymore, but we do reference shared data to save space.
-    </span>current: CurrentDepGraph&lt;K&gt;,
+    </span>current: CurrentDepGraph&lt;D&gt;,
 
     <span class="doccomment">/// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    </span>previous: SerializedDepGraph&lt;K&gt;,
+    </span>previous: <a href="serialized.rs.html#73-89">SerializedDepGraph</a>,
 
     colors: <a href="#1375-1377">DepNodeColorMap</a>,
 
@@ -1527,12 +1524,12 @@
     /// this map. We can later look for and extract that data.
     </span>previous_work_products: <a href="#1049">WorkProductMap</a>,
 
-    dep_node_debug: Lock&lt;FxHashMap&lt;DepNode&lt;K&gt;, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;&gt;,
+    dep_node_debug: Lock&lt;FxHashMap&lt;<a href="dep_node.rs.html#94-97">DepNode</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;&gt;,
 
     <span class="doccomment">/// Used by incremental compilation tests to assert that
     /// a particular query result was decoded from disk
     /// (not just marked green)
-    </span>debug_loaded_from_disk: Lock&lt;FxHashSet&lt;DepNode&lt;K&gt;&gt;&gt;,
+    </span>debug_loaded_from_disk: Lock&lt;FxHashSet&lt;<a href="dep_node.rs.html#94-97">DepNode</a>&gt;&gt;,
 }
 
 <span class="kw">pub fn </span><a href="../../../rustc_query_system/dep_graph/graph/fn.hash_result.html">hash_result</a>&lt;R&gt;(hcx: <span class="kw-2">&amp;mut </span>StableHashingContext&lt;<span class="lifetime">&#39;_</span>&gt;, result: <span class="kw-2">&amp;</span>R) -&gt; <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>
@@ -1544,15 +1541,15 @@
     <a href="#110">stable_hasher</a>.finish()
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraph&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraph&lt;D&gt; {
     <span class="kw">pub fn </span>new(
         profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
-        prev_graph: SerializedDepGraph&lt;K&gt;,
+        prev_graph: <a href="serialized.rs.html#73-89">SerializedDepGraph</a>,
         prev_work_products: <a href="#1049">WorkProductMap</a>,
         encoder: <a href="../../../rustc_serialize/opaque/struct.FileEncoder.html">FileEncoder</a>,
         record_graph: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
         record_stats: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    ) -&gt; DepGraph&lt;K&gt; {
+    ) -&gt; DepGraph&lt;D&gt; {
         <span class="kw">let </span>prev_graph_node_count = <a href="#118">prev_graph</a>.<a href="serialized.rs.html#152-154">node_count</a>();
 
         <span class="kw">let </span>current = CurrentDepGraph::new(
@@ -1568,7 +1565,7 @@
         <span class="comment">// Instantiate a dependy-less node only once for anonymous queries.
         </span><span class="kw">let </span>_green_node_index = <a href="#126">current</a>.<a href="#1192-1213">intern_new_node</a>(
             <a href="#117">profiler</a>,
-            <a href="dep_node.rs.html#55-58">DepNode</a> { kind: <a href="mod.rs.html#145">DepKind::NULL</a>, hash: <a href="#126">current</a>.anon_id_seed.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() },
+            <a href="dep_node.rs.html#94-97">DepNode</a> { kind: D::DEP_KIND_NULL, hash: <a href="#126">current</a>.anon_id_seed.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() },
             EdgesVec::new(),
             Fingerprint::ZERO,
         );
@@ -1578,7 +1575,7 @@
         </span><span class="kw">let </span>(red_node_index, red_node_prev_index_and_color) = <a href="#126">current</a>.<a href="#1215-1287">intern_node</a>(
             <a href="#117">profiler</a>,
             <span class="kw-2">&amp;</span><a href="#118">prev_graph</a>,
-            <a href="dep_node.rs.html#55-58">DepNode</a> { kind: <a href="mod.rs.html#148">DepKind::RED</a>, hash: Fingerprint::ZERO.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() },
+            <a href="dep_node.rs.html#94-97">DepNode</a> { kind: D::DEP_KIND_RED, hash: Fingerprint::ZERO.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>() },
             EdgesVec::new(),
             <span class="prelude-val">None</span>,
             <span class="bool-val">false</span>,
@@ -1613,12 +1610,12 @@
         }
     }
 
-    <span class="kw">pub fn </span>new_disabled() -&gt; DepGraph&lt;K&gt; {
+    <span class="kw">pub fn </span>new_disabled() -&gt; DepGraph&lt;D&gt; {
         <a href="#29-37">DepGraph</a> { data: <span class="prelude-val">None</span>, virtual_dep_node_index: Lrc::new(AtomicU32::new(<span class="number">0</span>)) }
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DepGraphData&lt;K&gt;&gt; {
+    </span><span class="kw">pub fn </span>data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DepGraphData&lt;D&gt;&gt; {
         <a class="self" href="#189">self</a>.data.as_deref()
     }
 
@@ -1628,15 +1625,15 @@
         <a class="self" href="#195">self</a>.data.is_some()
     }
 
-    <span class="kw">pub fn </span>with_query(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;</span>DepGraphQuery&lt;K&gt;)) {
+    <span class="kw">pub fn </span>with_query(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;</span><a href="query.rs.html#7-11">DepGraphQuery</a>)) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span><a class="self" href="#199">self</a>.data {
-            <a href="#200">data</a>.current.encoder.borrow().<a href="serialized.rs.html#524-528">with_query</a>(<a href="#199">f</a>)
+            <a href="#200">data</a>.current.encoder.borrow().<a href="serialized.rs.html#533-537">with_query</a>(<a href="#199">f</a>)
         }
     }
 
     <span class="kw">pub fn </span>assert_ignored(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(..) = <a class="self" href="#205">self</a>.data {
-            K::read_deps(|task_deps| {
+            D::read_deps(|task_deps| {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macros/macro.assert_matches.html">assert_matches!</a>(
                     task_deps,
                     TaskDepsRef::Ignore,
@@ -1650,7 +1647,7 @@
     <span class="kw">where
         </span>OP: FnOnce() -&gt; R,
     {
-        K::with_deps(<a href="#1344">TaskDepsRef::Ignore</a>, <a href="#217">op</a>)
+        D::with_deps(<a href="#1344">TaskDepsRef::Ignore</a>, <a href="#217">op</a>)
     }
 
     <span class="doccomment">/// Used to wrap the deserialization of a query result from disk,
@@ -1703,13 +1700,13 @@
     <span class="kw">where
         </span>OP: FnOnce() -&gt; R,
     {
-        K::with_deps(<a href="#1349">TaskDepsRef::Forbid</a>, <a href="#270">op</a>)
+        D::with_deps(<a href="#1349">TaskDepsRef::Forbid</a>, <a href="#270">op</a>)
     }
 
     <span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>with_task&lt;Ctxt: HasDepContext&lt;DepKind = K&gt;, A: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>, R&gt;(
+    </span><span class="kw">pub fn </span>with_task&lt;Ctxt: HasDepContext&lt;Deps = D&gt;, A: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>, R&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        key: DepNode&lt;K&gt;,
+        key: <a href="dep_node.rs.html#94-97">DepNode</a>,
         cx: Ctxt,
         arg: A,
         task: <span class="kw">fn</span>(Ctxt, A) -&gt; R,
@@ -1721,10 +1718,10 @@
         }
     }
 
-    <span class="kw">pub fn </span>with_anon_task&lt;Tcx: DepContext&lt;DepKind = K&gt;, OP, R&gt;(
+    <span class="kw">pub fn </span>with_anon_task&lt;Tcx: DepContext&lt;Deps = D&gt;, OP, R&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cx: Tcx,
-        dep_kind: K,
+        dep_kind: <a href="dep_node.rs.html#57-59">DepKind</a>,
         op: OP,
     ) -&gt; (R, <a href="#39-41">DepNodeIndex</a>)
     <span class="kw">where
@@ -1737,7 +1734,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraphData&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraphData&lt;D&gt; {
     <span class="doccomment">/// Starts a new dep-graph task. Dep-graph tasks are specified
     /// using a free function (`task`) and **not** a closure -- this
     /// is intentional because we want to exercise tight control over
@@ -1766,9 +1763,9 @@
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
     </span><span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>with_task&lt;Ctxt: HasDepContext&lt;DepKind = K&gt;, A: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>, R&gt;(
+    </span><span class="kw">pub fn </span>with_task&lt;Ctxt: HasDepContext&lt;Deps = D&gt;, A: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>, R&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        key: DepNode&lt;K&gt;,
+        key: <a href="dep_node.rs.html#94-97">DepNode</a>,
         cx: Ctxt,
         arg: A,
         task: <span class="kw">fn</span>(Ctxt, A) -&gt; R,
@@ -1786,7 +1783,7 @@
                  - dep-node: {key:?}&quot;
         </span>);
 
-        <span class="kw">let </span>with_deps = |task_deps| K::with_deps(<a href="#357">task_deps</a>, || <a href="#342">task</a>(<a href="#340">cx</a>, <a href="#341">arg</a>));
+        <span class="kw">let </span>with_deps = |task_deps| D::with_deps(<a href="#357">task_deps</a>, || <a href="#342">task</a>(<a href="#340">cx</a>, <a href="#341">arg</a>));
         <span class="kw">let </span>(result, edges) = <span class="kw">if </span>cx.dep_context().is_eval_always(key.kind) {
             (<a href="#357">with_deps</a>(<a href="#1342">TaskDepsRef::EvalAlways</a>), EdgesVec::new())
         } <span class="kw">else </span>{
@@ -1800,16 +1797,16 @@
             (<a href="#357">with_deps</a>(<a href="#1336">TaskDepsRef::Allow</a>(<span class="kw-2">&amp;</span><a href="#361">task_deps</a>)), <a href="#361">task_deps</a>.into_inner().reads)
         };
 
-        <span class="kw">let </span>dcx = <a href="#340">cx</a>.<a href="mod.rs.html#96">dep_context</a>();
-        <span class="kw">let </span>hashing_timer = <a href="#371">dcx</a>.<a href="mod.rs.html#37">profiler</a>().incr_result_hashing();
+        <span class="kw">let </span>dcx = <a href="#340">cx</a>.<a href="mod.rs.html#112">dep_context</a>();
+        <span class="kw">let </span>hashing_timer = <a href="#371">dcx</a>.<a href="mod.rs.html#35">profiler</a>().incr_result_hashing();
         <span class="kw">let </span>current_fingerprint =
-            <a href="#343">hash_result</a>.map(|f| <a href="#371">dcx</a>.<a href="mod.rs.html#31">with_stable_hashing_context</a>(|<span class="kw-2">mut </span>hcx| <a href="#374">f</a>(<span class="kw-2">&amp;mut </span><a href="#374">hcx</a>, <span class="kw-2">&amp;</span><a href="#358">result</a>)));
+            <a href="#343">hash_result</a>.map(|f| <a href="#371">dcx</a>.<a href="mod.rs.html#29">with_stable_hashing_context</a>(|<span class="kw-2">mut </span>hcx| <a href="#374">f</a>(<span class="kw-2">&amp;mut </span><a href="#374">hcx</a>, <span class="kw-2">&amp;</span><a href="#358">result</a>)));
 
-        <span class="kw">let </span>print_status = <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.cfg.html">cfg!</a>(debug_assertions) &amp;&amp; <a href="#371">dcx</a>.<a href="mod.rs.html#40">sess</a>().opts.unstable_opts.dep_tasks;
+        <span class="kw">let </span>print_status = <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.cfg.html">cfg!</a>(debug_assertions) &amp;&amp; <a href="#371">dcx</a>.<a href="mod.rs.html#38">sess</a>().opts.unstable_opts.dep_tasks;
 
         <span class="comment">// Intern the new `DepNode`.
         </span><span class="kw">let </span>(dep_node_index, prev_and_color) = <a class="self" href="#338">self</a>.current.<a href="#1215-1287">intern_node</a>(
-            <a href="#371">dcx</a>.<a href="mod.rs.html#37">profiler</a>(),
+            <a href="#371">dcx</a>.<a href="mod.rs.html#35">profiler</a>(),
             <span class="kw-2">&amp;</span><a class="self" href="#338">self</a>.previous,
             <a href="#339">key</a>,
             <a href="#358">edges</a>,
@@ -1834,10 +1831,10 @@
 
     <span class="doccomment">/// Executes something within an &quot;anonymous&quot; task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    </span><span class="kw">pub fn </span>with_anon_task&lt;Tcx: DepContext&lt;DepKind = K&gt;, OP, R&gt;(
+    </span><span class="kw">pub fn </span>with_anon_task&lt;Tcx: DepContext&lt;Deps = D&gt;, OP, R&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cx: Tcx,
-        dep_kind: K,
+        dep_kind: <a href="dep_node.rs.html#57-59">DepKind</a>,
         op: OP,
     ) -&gt; (R, <a href="#39-41">DepNodeIndex</a>)
     <span class="kw">where
@@ -1846,7 +1843,7 @@
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(!cx.is_eval_always(dep_kind));
 
         <span class="kw">let </span>task_deps = Lock::new(TaskDeps::default());
-        <span class="kw">let </span>result = K::with_deps(<a href="#1336">TaskDepsRef::Allow</a>(<span class="kw-2">&amp;</span><a href="#416">task_deps</a>), <a href="#409">op</a>);
+        <span class="kw">let </span>result = D::with_deps(<a href="#1336">TaskDepsRef::Allow</a>(<span class="kw-2">&amp;</span><a href="#416">task_deps</a>), <a href="#409">op</a>);
         <span class="kw">let </span>task_deps = <a href="#416">task_deps</a>.into_inner();
         <span class="kw">let </span>task_deps = <a href="#418">task_deps</a>.reads;
 
@@ -1872,7 +1869,7 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>hasher = StableHasher::new();
                 <a href="#419">task_deps</a>.<a href="https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html">hash</a>(<span class="kw-2">&amp;mut </span><a href="#440">hasher</a>);
 
-                <span class="kw">let </span>target_dep_node = <a href="dep_node.rs.html#55-58">DepNode</a> {
+                <span class="kw">let </span>target_dep_node = <a href="dep_node.rs.html#94-97">DepNode</a> {
                     kind: <a href="#408">dep_kind</a>,
                     <span class="comment">// Fingerprint::combine() is faster than sending Fingerprint
                     // through the StableHasher (at least as long as StableHasher
@@ -1881,7 +1878,7 @@
                 };
 
                 <a class="self" href="#406">self</a>.current.<a href="#1192-1213">intern_new_node</a>(
-                    <a href="#407">cx</a>.<a href="mod.rs.html#37">profiler</a>(),
+                    <a href="#407">cx</a>.<a href="mod.rs.html#35">profiler</a>(),
                     <a href="#443">target_dep_node</a>,
                     <a href="#419">task_deps</a>,
                     Fingerprint::ZERO,
@@ -1893,11 +1890,11 @@
     }
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraph&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraph&lt;D&gt; {
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>read_index(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node_index: <a href="#39-41">DepNodeIndex</a>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>data) = <a class="self" href="#466">self</a>.data {
-            K::read_deps(|task_deps| {
+            D::read_deps(|task_deps| {
                 <span class="kw">let </span><span class="kw-2">mut </span>task_deps = <span class="kw">match </span><a href="#468">task_deps</a> {
                     <a href="#1336">TaskDepsRef::Allow</a>(deps) =&gt; <a href="#470">deps</a>.lock(),
                     <a href="#1342">TaskDepsRef::EvalAlways</a> =&gt; {
@@ -1964,9 +1961,9 @@
     /// FIXME: If the code is changed enough for this node to be marked before requiring the
     /// caller&#39;s node, we suppose that those changes will be enough to mark this node red and
     /// force a recomputation using the &quot;normal&quot; way.
-    </span><span class="kw">pub fn </span>with_feed_task&lt;Ctxt: DepContext&lt;DepKind = K&gt;, A: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>, R: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>&gt;(
+    </span><span class="kw">pub fn </span>with_feed_task&lt;Ctxt: DepContext&lt;Deps = D&gt;, A: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>, R: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        node: DepNode&lt;K&gt;,
+        node: <a href="dep_node.rs.html#94-97">DepNode</a>,
         cx: Ctxt,
         key: A,
         result: <span class="kw-2">&amp;</span>R,
@@ -1982,7 +1979,7 @@
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(prev_index) = <a href="#543">data</a>.previous.<a href="serialized.rs.html#142-144">node_to_index_opt</a>(<span class="kw-2">&amp;</span><a href="#537">node</a>) {
                 <span class="kw">let </span>dep_node_index = <a href="#543">data</a>.current.prev_index_to_index.lock()[<a href="#550">prev_index</a>];
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(dep_node_index) = <a href="#551">dep_node_index</a> {
-                    <a href="../query/plumbing.rs.html#637"><span class="kw">crate</span>::query::incremental_verify_ich</a>(
+                    <a href="../query/plumbing.rs.html#635"><span class="kw">crate</span>::query::incremental_verify_ich</a>(
                         <a href="#538">cx</a>,
                         <a href="#543">data</a>,
                         <a href="#540">result</a>,
@@ -2005,7 +2002,7 @@
             }
 
             <span class="kw">let </span><span class="kw-2">mut </span>edges = EdgesVec::new();
-            K::read_deps(|task_deps| <span class="kw">match </span><a href="#576">task_deps</a> {
+            D::read_deps(|task_deps| <span class="kw">match </span><a href="#576">task_deps</a> {
                 <a href="#1336">TaskDepsRef::Allow</a>(deps) =&gt; <a href="#575">edges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#577">deps</a>.lock().reads.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()),
                 <a href="#1342">TaskDepsRef::EvalAlways</a> =&gt; {
                     <a href="#575">edges</a>.<a href="edges.rs.html#29-32">push</a>(DepNodeIndex::FOREVER_RED_NODE);
@@ -2016,16 +2013,16 @@
                 }
             });
 
-            <span class="kw">let </span>hashing_timer = <a href="#538">cx</a>.<a href="mod.rs.html#37">profiler</a>().incr_result_hashing();
+            <span class="kw">let </span>hashing_timer = <a href="#538">cx</a>.<a href="mod.rs.html#35">profiler</a>().incr_result_hashing();
             <span class="kw">let </span>current_fingerprint = <a href="#541">hash_result</a>.map(|hash_result| {
-                <a href="#538">cx</a>.<a href="mod.rs.html#31">with_stable_hashing_context</a>(|<span class="kw-2">mut </span>hcx| <a href="#588">hash_result</a>(<span class="kw-2">&amp;mut </span><a href="#589">hcx</a>, <a href="#540">result</a>))
+                <a href="#538">cx</a>.<a href="mod.rs.html#29">with_stable_hashing_context</a>(|<span class="kw-2">mut </span>hcx| <a href="#588">hash_result</a>(<span class="kw-2">&amp;mut </span><a href="#589">hcx</a>, <a href="#540">result</a>))
             });
 
-            <span class="kw">let </span>print_status = <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.cfg.html">cfg!</a>(debug_assertions) &amp;&amp; <a href="#538">cx</a>.<a href="mod.rs.html#40">sess</a>().opts.unstable_opts.dep_tasks;
+            <span class="kw">let </span>print_status = <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.cfg.html">cfg!</a>(debug_assertions) &amp;&amp; <a href="#538">cx</a>.<a href="mod.rs.html#38">sess</a>().opts.unstable_opts.dep_tasks;
 
             <span class="comment">// Intern the new `DepNode` with the dependencies up-to-now.
             </span><span class="kw">let </span>(dep_node_index, prev_and_color) = <a href="#543">data</a>.current.<a href="#1215-1287">intern_node</a>(
-                <a href="#538">cx</a>.<a href="mod.rs.html#37">profiler</a>(),
+                <a href="#538">cx</a>.<a href="mod.rs.html#35">profiler</a>(),
                 <span class="kw-2">&amp;</span><a href="#543">data</a>.previous,
                 <a href="#537">node</a>,
                 <a href="#575">edges</a>,
@@ -2055,9 +2052,9 @@
     }
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraphData&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraphData&lt;D&gt; {
     <span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>dep_node_index_of_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#39-41">DepNodeIndex</a>&gt; {
+    </span><span class="kw">pub fn </span>dep_node_index_of_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#39-41">DepNodeIndex</a>&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_index) = <a class="self" href="#628">self</a>.previous.<a href="serialized.rs.html#142-144">node_to_index_opt</a>(<a href="#628">dep_node</a>) {
             <a class="self" href="#628">self</a>.current.prev_index_to_index.lock()[<a href="#629">prev_index</a>]
         } <span class="kw">else </span>{
@@ -2066,11 +2063,11 @@
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>dep_node_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    </span><span class="kw">pub fn </span>dep_node_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#637">self</a>.<a href="#628-634">dep_node_index_of_opt</a>(<a href="#637">dep_node</a>).is_some()
     }
 
-    <span class="kw">fn </span>node_color(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#62-65">DepNodeColor</a>&gt; {
+    <span class="kw">fn </span>node_color(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#62-65">DepNodeColor</a>&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_index) = <a class="self" href="#641">self</a>.previous.<a href="serialized.rs.html#142-144">node_to_index_opt</a>(<a href="#641">dep_node</a>) {
             <a class="self" href="#641">self</a>.colors.<a href="#1389-1397">get</a>(<a href="#642">prev_index</a>)
         } <span class="kw">else </span>{
@@ -2092,24 +2089,24 @@
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>prev_node_of(<span class="kw-2">&amp;</span><span class="self">self</span>, prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>) -&gt; DepNode&lt;K&gt; {
+    </span><span class="kw">pub fn </span>prev_node_of(<span class="kw-2">&amp;</span><span class="self">self</span>, prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>) -&gt; <a href="dep_node.rs.html#94-97">DepNode</a> {
         <a class="self" href="#663">self</a>.previous.<a href="serialized.rs.html#137-139">index_to_node</a>(<a href="#663">prev_index</a>)
     }
 
-    <span class="kw">pub fn </span>mark_debug_loaded_from_disk(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: DepNode&lt;K&gt;) {
+    <span class="kw">pub fn </span>mark_debug_loaded_from_disk(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <a href="dep_node.rs.html#94-97">DepNode</a>) {
         <a class="self" href="#667">self</a>.debug_loaded_from_disk.lock().insert(<a href="#667">dep_node</a>);
     }
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraph&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraph&lt;D&gt; {
     <span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>dep_node_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    </span><span class="kw">pub fn </span>dep_node_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#674">self</a>.data.as_ref().is_some_and(|data| <a href="#675">data</a>.<a href="#637-639">dep_node_exists</a>(<a href="#674">dep_node</a>))
     }
 
     <span class="doccomment">/// Checks whether a previous work product exists for `v` and, if
     /// so, return the path that leads to it. Used to skip doing work.
-    </span><span class="kw">pub fn </span>previous_work_product(<span class="kw-2">&amp;</span><span class="self">self</span>, v: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#232-234">WorkProductId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#1039-1047">WorkProduct</a>&gt; {
+    </span><span class="kw">pub fn </span>previous_work_product(<span class="kw-2">&amp;</span><span class="self">self</span>, v: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#290-292">WorkProductId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#1039-1047">WorkProduct</a>&gt; {
         <a class="self" href="#680">self</a>.data.as_ref().and_then(|data| <a href="#681">data</a>.previous_work_products.get(<a href="#680">v</a>).cloned())
     }
 
@@ -2119,12 +2116,12 @@
         <span class="kw-2">&amp;</span><a class="self" href="#686">self</a>.data.as_ref().unwrap().previous_work_products
     }
 
-    <span class="kw">pub fn </span>debug_was_loaded_from_disk(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: DepNode&lt;K&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    <span class="kw">pub fn </span>debug_was_loaded_from_disk(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#690">self</a>.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(<span class="kw-2">&amp;</span><a href="#690">dep_node</a>)
     }
 
     <span class="attr">#[inline(always)]
-    </span><span class="kw">pub fn </span>register_dep_node_debug_str&lt;F&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: DepNode&lt;K&gt;, debug_str_gen: F)
+    </span><span class="kw">pub fn </span>register_dep_node_debug_str&lt;F&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <a href="dep_node.rs.html#94-97">DepNode</a>, debug_str_gen: F)
     <span class="kw">where
         </span>F: FnOnce() -&gt; <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>,
     {
@@ -2137,11 +2134,11 @@
         <a href="#699">dep_node_debug</a>.borrow_mut().insert(<a href="#695">dep_node</a>, <a href="#704">debug_str</a>);
     }
 
-    <span class="kw">pub fn </span>dep_node_debug_str(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: DepNode&lt;K&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt; {
+    <span class="kw">pub fn </span>dep_node_debug_str(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt; {
         <span class="self">self</span>.data.as_ref()<span class="question-mark">?</span>.dep_node_debug.borrow().get(<span class="kw-2">&amp;</span><a href="#708">dep_node</a>).cloned()
     }
 
-    <span class="kw">fn </span>node_color(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#62-65">DepNodeColor</a>&gt; {
+    <span class="kw">fn </span>node_color(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#62-65">DepNodeColor</a>&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>data) = <a class="self" href="#712">self</a>.data {
             <span class="kw">return </span><a href="#713">data</a>.<a href="#641-648">node_color</a>(<a href="#712">dep_node</a>);
         }
@@ -2149,25 +2146,25 @@
         <span class="prelude-val">None
     </span>}
 
-    <span class="kw">pub fn </span>try_mark_green&lt;Qcx: QueryContext&lt;DepKind = K&gt;&gt;(
+    <span class="kw">pub fn </span>try_mark_green&lt;Qcx: QueryContext&lt;Deps = D&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         qcx: Qcx,
-        dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;,
+        dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>, <a href="#39-41">DepNodeIndex</a>)&gt; {
         <a class="self" href="#721">self</a>.<a href="#189-191">data</a>().and_then(|data| <a href="#725">data</a>.<a href="#735-757">try_mark_green</a>(<a href="#722">qcx</a>, <a href="#723">dep_node</a>))
     }
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraphData&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraphData&lt;D&gt; {
     <span class="doccomment">/// Try to mark a node index for the node dep_node.
     ///
     /// A node will have an index, when it&#39;s already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    </span><span class="kw">pub fn </span>try_mark_green&lt;Qcx: QueryContext&lt;DepKind = K&gt;&gt;(
+    </span><span class="kw">pub fn </span>try_mark_green&lt;Qcx: QueryContext&lt;Deps = D&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         qcx: Qcx,
-        dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;,
+        dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>, <a href="#39-41">DepNodeIndex</a>)&gt; {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.debug_assert.html">debug_assert!</a>(!qcx.dep_context().is_eval_always(dep_node.kind));
 
@@ -2189,11 +2186,11 @@
     }
 
     <span class="attr">#[instrument(skip(<span class="self">self</span>, qcx, parent_dep_node_index, frame), level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">fn </span>try_mark_parent_green&lt;Qcx: QueryContext&lt;DepKind = K&gt;&gt;(
+    </span><span class="kw">fn </span>try_mark_parent_green&lt;Qcx: QueryContext&lt;Deps = D&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         qcx: Qcx,
         parent_dep_node_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>,
-        dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;,
+        dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>,
         frame: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MarkFrame&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
         <span class="kw">let </span>dep_dep_node_color = <span class="self">self</span>.colors.get(parent_dep_node_index);
@@ -2277,11 +2274,11 @@
 
     <span class="doccomment">/// Try to mark a dep-node which existed in the previous compilation session as green.
     </span><span class="attr">#[instrument(skip(<span class="self">self</span>, qcx, prev_dep_node_index, frame), level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">fn </span>try_mark_previous_green&lt;Qcx: QueryContext&lt;DepKind = K&gt;&gt;(
+    </span><span class="kw">fn </span>try_mark_previous_green&lt;Qcx: QueryContext&lt;Deps = D&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         qcx: Qcx,
         prev_dep_node_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>,
-        dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;,
+        dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>,
         frame: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MarkFrame&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#39-41">DepNodeIndex</a>&gt; {
         <span class="kw">let </span>frame = MarkFrame { index: prev_dep_node_index, parent: frame };
@@ -2348,7 +2345,7 @@
     /// This may be called concurrently on multiple threads for the same dep node.
     </span><span class="attr">#[cold]
     #[inline(never)]
-    </span><span class="kw">fn </span>emit_side_effects&lt;Qcx: QueryContext&lt;DepKind = K&gt;&gt;(
+    </span><span class="kw">fn </span>emit_side_effects&lt;Qcx: QueryContext&lt;Deps = D&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         qcx: Qcx,
         dep_node_index: <a href="#39-41">DepNodeIndex</a>,
@@ -2363,7 +2360,7 @@
             // Promote the previous diagnostics to the current session.
             </span><a href="#921">qcx</a>.<a href="../query/mod.rs.html#115">store_side_effects</a>(<a href="#922">dep_node_index</a>, <a href="#923">side_effects</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
 
-            <span class="kw">let </span>handle = <a href="#921">qcx</a>.<a href="mod.rs.html#96">dep_context</a>().<a href="mod.rs.html#40">sess</a>().diagnostic();
+            <span class="kw">let </span>handle = <a href="#921">qcx</a>.<a href="mod.rs.html#112">dep_context</a>().<a href="mod.rs.html#38">sess</a>().diagnostic();
 
             <span class="kw">for </span><span class="kw-2">mut </span>diagnostic <span class="kw">in </span>side_effects.diagnostics {
                 handle.emit_diagnostic(<span class="kw-2">&amp;mut </span>diagnostic);
@@ -2372,16 +2369,16 @@
     }
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; DepGraph&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; DepGraph&lt;D&gt; {
     <span class="doccomment">/// Returns true if the given node has been marked as red during the
     /// current compilation session. Used in various assertions
-    </span><span class="kw">pub fn </span>is_red(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    </span><span class="kw">pub fn </span>is_red(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#946">self</a>.<a href="#712-718">node_color</a>(<a href="#946">dep_node</a>) == <span class="prelude-val">Some</span>(<a href="#63">DepNodeColor::Red</a>)
     }
 
     <span class="doccomment">/// Returns true if the given node has been marked as green during the
     /// current compilation session. Used in various assertions
-    </span><span class="kw">pub fn </span>is_green(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span>DepNode&lt;K&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    </span><span class="kw">pub fn </span>is_green(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node: <span class="kw-2">&amp;</span><a href="dep_node.rs.html#94-97">DepNode</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="self" href="#952">self</a>.<a href="#712-718">node_color</a>(<a href="#952">dep_node</a>).is_some_and(|c| <a href="#953">c</a>.<a href="#69-74">is_green</a>())
     }
 
@@ -2393,8 +2390,8 @@
     ///
     /// This method will only load queries that will end up in the disk cache.
     /// Other queries will not be executed.
-    </span><span class="kw">pub fn </span>exec_cache_promotions&lt;Tcx: DepContext&lt;DepKind = K&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: Tcx) {
-        <span class="kw">let </span>_prof_timer = <a href="#964">tcx</a>.<a href="mod.rs.html#37">profiler</a>().generic_activity(<span class="string">&quot;incr_comp_query_cache_promotion&quot;</span>);
+    </span><span class="kw">pub fn </span>exec_cache_promotions&lt;Tcx: <a href="mod.rs.html#25-84">DepContext</a>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: Tcx) {
+        <span class="kw">let </span>_prof_timer = <a href="#964">tcx</a>.<a href="mod.rs.html#35">profiler</a>().generic_activity(<span class="string">&quot;incr_comp_query_cache_promotion&quot;</span>);
 
         <span class="kw">let </span>data = <a class="self" href="#964">self</a>.data.as_ref().unwrap();
         <span class="kw">for </span>prev_index <span class="kw">in </span>data.colors.values.indices() {
@@ -2414,7 +2411,7 @@
 
     <span class="kw">pub fn </span>print_incremental_info(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span><a class="self" href="#983">self</a>.data {
-            <a href="#984">data</a>.current.encoder.borrow().<a href="serialized.rs.html#530-580">print_incremental_info</a>(
+            <a href="#984">data</a>.current.encoder.borrow().<a href="serialized.rs.html#539-589">print_incremental_info</a>(
                 <a href="#984">data</a>.current.total_read_count.load(Relaxed),
                 <a href="#984">data</a>.current.total_duplicate_read_count.load(Relaxed),
             )
@@ -2423,7 +2420,7 @@
 
     <span class="kw">pub fn </span>encode(<span class="kw-2">&amp;</span><span class="self">self</span>, profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>) -&gt; <a href="../../../rustc_serialize/opaque/type.FileEncodeResult.html">FileEncodeResult</a> {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data) = <span class="kw-2">&amp;</span><a class="self" href="#992">self</a>.data {
-            <a href="#993">data</a>.current.encoder.steal().<a href="serialized.rs.html#594-597">finish</a>(<a href="#992">profiler</a>)
+            <a href="#993">data</a>.current.encoder.steal().<a href="serialized.rs.html#603-606">finish</a>(<a href="#992">profiler</a>)
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(<span class="number">0</span>)
         }
@@ -2478,7 +2475,7 @@
     </span><span class="kw">pub </span>saved_files: UnordMap&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;,
 }
 
-<span class="kw">pub type </span><a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a> = UnordMap&lt;<a href="dep_node.rs.html#232-234">WorkProductId</a>, <a href="#1039-1047">WorkProduct</a>&gt;;
+<span class="kw">pub type </span><a href="../../../rustc_query_system/dep_graph/graph/type.WorkProductMap.html">WorkProductMap</a> = UnordMap&lt;<a href="dep_node.rs.html#290-292">WorkProductId</a>, <a href="#1039-1047">WorkProduct</a>&gt;;
 
 <span class="comment">// Index type for `DepNodeData`&#39;s edges.
 </span><a class="macro" href="../../../rustc_macros/rustc_macros/macro.newtype_index.html">rustc_index::newtype_index! </a>{
@@ -2508,9 +2505,9 @@
 /// `new_node_to_index` and `data`, or `prev_index_to_index` and `data`. When
 /// manipulating both, we acquire `new_node_to_index` or `prev_index_to_index`
 /// first, and `data` second.
-</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.CurrentDepGraph.html">CurrentDepGraph</a>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; {
-    encoder: Steal&lt;GraphEncoder&lt;K&gt;&gt;,
-    new_node_to_index: Sharded&lt;FxHashMap&lt;DepNode&lt;K&gt;, <a href="#39-41">DepNodeIndex</a>&gt;&gt;,
+</span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.CurrentDepGraph.html">CurrentDepGraph</a>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; {
+    encoder: Steal&lt;GraphEncoder&lt;D&gt;&gt;,
+    new_node_to_index: Sharded&lt;FxHashMap&lt;<a href="dep_node.rs.html#94-97">DepNode</a>, <a href="#39-41">DepNodeIndex</a>&gt;&gt;,
     prev_index_to_index: Lock&lt;IndexVec&lt;<a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>, <span class="prelude-ty">Option</span>&lt;<a href="#39-41">DepNodeIndex</a>&gt;&gt;&gt;,
 
     <span class="doccomment">/// This is used to verify that fingerprints do not change between the creation of a node
@@ -2521,7 +2518,7 @@
     <span class="doccomment">/// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
     </span><span class="attr">#[cfg(debug_assertions)]
-    </span>forbidden_edge: <span class="prelude-ty">Option</span>&lt;EdgeFilter&lt;K&gt;&gt;,
+    </span>forbidden_edge: <span class="prelude-ty">Option</span>&lt;<a href="debug.rs.html#39-43">EdgeFilter</a>&gt;,
 
     <span class="doccomment">/// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
@@ -2548,14 +2545,14 @@
     </span>node_intern_event_id: <span class="prelude-ty">Option</span>&lt;EventId&gt;,
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; CurrentDepGraph&lt;K&gt; {
+<span class="kw">impl</span>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt; CurrentDepGraph&lt;D&gt; {
     <span class="kw">fn </span>new(
         profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
         prev_graph_node_count: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
         encoder: <a href="../../../rustc_serialize/opaque/struct.FileEncoder.html">FileEncoder</a>,
         record_graph: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
         record_stats: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    ) -&gt; CurrentDepGraph&lt;K&gt; {
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">use </span>std::time::{<a href="https://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html">SystemTime</a>, UNIX_EPOCH};
 
         <span class="kw">let </span>duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -2610,7 +2607,7 @@
     }
 
     <span class="attr">#[cfg(debug_assertions)]
-    </span><span class="kw">fn </span>record_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node_index: <a href="#39-41">DepNodeIndex</a>, key: DepNode&lt;K&gt;, fingerprint: <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>) {
+    </span><span class="kw">fn </span>record_edge(<span class="kw-2">&amp;</span><span class="self">self</span>, dep_node_index: <a href="#39-41">DepNodeIndex</a>, key: <a href="dep_node.rs.html#94-97">DepNode</a>, fingerprint: <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(forbidden_edge) = <span class="kw-2">&amp;</span><a class="self" href="#1181">self</a>.forbidden_edge {
             <a href="#1182">forbidden_edge</a>.index_to_node.lock().insert(<a href="#1181">dep_node_index</a>, <a href="#1181">key</a>);
         }
@@ -2624,7 +2621,7 @@
     </span><span class="kw">fn </span>intern_new_node(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
-        key: DepNode&lt;K&gt;,
+        key: <a href="dep_node.rs.html#94-97">DepNode</a>,
         edges: <a href="edges.rs.html#8-11">EdgesVec</a>,
         current_fingerprint: <a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>,
     ) -&gt; <a href="#39-41">DepNodeIndex</a> {
@@ -2632,7 +2629,7 @@
             Entry::Occupied(entry) =&gt; <span class="kw-2">*</span><a href="#1200">entry</a>.get(),
             Entry::Vacant(entry) =&gt; {
                 <span class="kw">let </span>dep_node_index =
-                    <a class="self" href="#1193">self</a>.encoder.borrow().<a href="serialized.rs.html#582-592">send</a>(<a href="#1194">profiler</a>, <a href="#1195">key</a>, <a href="#1197">current_fingerprint</a>, <a href="#1196">edges</a>);
+                    <a class="self" href="#1193">self</a>.encoder.borrow().<a href="serialized.rs.html#591-601">send</a>(<a href="#1194">profiler</a>, <a href="#1195">key</a>, <a href="#1197">current_fingerprint</a>, <a href="#1196">edges</a>);
                 <a href="#1201">entry</a>.insert(<a href="#1202">dep_node_index</a>);
                 <a href="#1202">dep_node_index</a>
             }
@@ -2647,8 +2644,8 @@
     <span class="kw">fn </span>intern_node(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
-        prev_graph: <span class="kw-2">&amp;</span>SerializedDepGraph&lt;K&gt;,
-        key: DepNode&lt;K&gt;,
+        prev_graph: <span class="kw-2">&amp;</span><a href="serialized.rs.html#73-89">SerializedDepGraph</a>,
+        key: <a href="dep_node.rs.html#94-97">DepNode</a>,
         edges: <a href="edges.rs.html#8-11">EdgesVec</a>,
         fingerprint: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_data_structures/fingerprint/struct.Fingerprint.html">Fingerprint</a>&gt;,
         print_status: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
@@ -2671,7 +2668,7 @@
                     <span class="prelude-val">Some</span>(dep_node_index) =&gt; <a href="#1239">dep_node_index</a>,
                     <span class="prelude-val">None </span>=&gt; {
                         <span class="kw">let </span>dep_node_index =
-                            <a class="self" href="#1216">self</a>.encoder.borrow().<a href="serialized.rs.html#582-592">send</a>(<a href="#1217">profiler</a>, <a href="#1219">key</a>, <a href="#1231">fingerprint</a>, <a href="#1220">edges</a>);
+                            <a class="self" href="#1216">self</a>.encoder.borrow().<a href="serialized.rs.html#591-601">send</a>(<a href="#1217">profiler</a>, <a href="#1219">key</a>, <a href="#1231">fingerprint</a>, <a href="#1220">edges</a>);
                         <a href="#1236">prev_index_to_index</a>[<a href="#1230">prev_index</a>] = <span class="prelude-val">Some</span>(<a href="#1241">dep_node_index</a>);
                         <a href="#1241">dep_node_index</a>
                     }
@@ -2721,7 +2718,7 @@
     <span class="kw">fn </span>promote_node_and_deps_to_current(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         profiler: <span class="kw-2">&amp;</span><a href="../../../rustc_data_structures/profiling/struct.SelfProfilerRef.html">SelfProfilerRef</a>,
-        prev_graph: <span class="kw-2">&amp;</span>SerializedDepGraph&lt;K&gt;,
+        prev_graph: <span class="kw-2">&amp;</span><a href="serialized.rs.html#73-89">SerializedDepGraph</a>,
         prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>,
     ) -&gt; <a href="#39-41">DepNodeIndex</a> {
         <a class="self" href="#1290">self</a>.<a href="#1318-1328">debug_assert_not_in_new_nodes</a>(<a href="#1292">prev_graph</a>, <a href="#1293">prev_index</a>);
@@ -2737,7 +2734,7 @@
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|i| <a href="#1297">prev_index_to_index</a>[<a href="#1305">i</a>].unwrap())
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                 <span class="kw">let </span>fingerprint = <a href="#1292">prev_graph</a>.<a href="serialized.rs.html#147-149">fingerprint_by_index</a>(<a href="#1293">prev_index</a>);
-                <span class="kw">let </span>dep_node_index = <a class="self" href="#1290">self</a>.encoder.borrow().<a href="serialized.rs.html#582-592">send</a>(<a href="#1291">profiler</a>, <a href="#1302">key</a>, <a href="#1307">fingerprint</a>, <a href="#1303">edges</a>);
+                <span class="kw">let </span>dep_node_index = <a class="self" href="#1290">self</a>.encoder.borrow().<a href="serialized.rs.html#591-601">send</a>(<a href="#1291">profiler</a>, <a href="#1302">key</a>, <a href="#1307">fingerprint</a>, <a href="#1303">edges</a>);
                 <a href="#1297">prev_index_to_index</a>[<a href="#1293">prev_index</a>] = <span class="prelude-val">Some</span>(<a href="#1308">dep_node_index</a>);
                 <span class="attr">#[cfg(debug_assertions)]
                 </span><a class="self" href="#1290">self</a>.<a href="#1181-1187">record_edge</a>(<a href="#1308">dep_node_index</a>, <a href="#1302">key</a>, <a href="#1307">fingerprint</a>);
@@ -2749,7 +2746,7 @@
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>debug_assert_not_in_new_nodes(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        prev_graph: <span class="kw-2">&amp;</span>SerializedDepGraph&lt;K&gt;,
+        prev_graph: <span class="kw-2">&amp;</span><a href="serialized.rs.html#73-89">SerializedDepGraph</a>,
         prev_index: <a href="serialized.rs.html#56-59">SerializedDepNodeIndex</a>,
     ) {
         <span class="kw">let </span>node = <span class="kw-2">&amp;</span><a href="#1320">prev_graph</a>.<a href="serialized.rs.html#137-139">index_to_node</a>(<a href="#1321">prev_index</a>);
@@ -2761,11 +2758,11 @@
 }
 
 <span class="attr">#[derive(Debug, Clone, Copy)]
-</span><span class="kw">pub enum </span><a href="../../../rustc_query_system/dep_graph/graph/enum.TaskDepsRef.html">TaskDepsRef</a>&lt;<span class="lifetime">&#39;a</span>, K: <a href="mod.rs.html#143-168">DepKind</a>&gt; {
+</span><span class="kw">pub enum </span><a href="../../../rustc_query_system/dep_graph/graph/enum.TaskDepsRef.html">TaskDepsRef</a>&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="doccomment">/// New dependencies can be added to the
     /// `TaskDeps`. This is used when executing a &#39;normal&#39; query
     /// (no `eval_always` modifier)
-    </span>Allow(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Lock&lt;TaskDeps&lt;K&gt;&gt;),
+    </span>Allow(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Lock&lt;<a href="#1353-1359">TaskDeps</a>&gt;),
     <span class="doccomment">/// This is used when executing an `eval_always` query. We don&#39;t
     /// need to track dependencies for a query that&#39;s always
     /// re-executed -- but we need to know that this is an `eval_always`
@@ -2782,15 +2779,15 @@
 }
 
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.TaskDeps.html">TaskDeps</a>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; {
+</span><span class="kw">pub struct </span><a href="../../../rustc_query_system/dep_graph/graph/struct.TaskDeps.html">TaskDeps</a> {
     <span class="attr">#[cfg(debug_assertions)]
-    </span>node: <span class="prelude-ty">Option</span>&lt;DepNode&lt;K&gt;&gt;,
+    </span>node: <span class="prelude-ty">Option</span>&lt;<a href="dep_node.rs.html#94-97">DepNode</a>&gt;,
     reads: <a href="edges.rs.html#8-11">EdgesVec</a>,
     read_set: FxHashSet&lt;<a href="#39-41">DepNodeIndex</a>&gt;,
-    phantom_data: PhantomData&lt;DepNode&lt;K&gt;&gt;,
+    phantom_data: PhantomData&lt;<a href="dep_node.rs.html#94-97">DepNode</a>&gt;,
 }
 
-<span class="kw">impl</span>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt; <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default</a> <span class="kw">for </span>TaskDeps&lt;K&gt; {
+<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default</a> <span class="kw">for </span><a href="#1353-1359">TaskDeps</a> {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             <span class="attr">#[cfg(debug_assertions)]
@@ -2842,17 +2839,14 @@
 
 <span class="attr">#[inline(never)]
 #[cold]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span><a href="../../../rustc_query_system/dep_graph/graph/fn.print_markframe_trace.html">print_markframe_trace</a>&lt;K: <a href="mod.rs.html#143-168">DepKind</a>&gt;(
-    graph: <span class="kw-2">&amp;</span>DepGraph&lt;K&gt;,
-    frame: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MarkFrame&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
-) {
-    <span class="kw">let </span>data = <a href="#1414">graph</a>.data.as_ref().unwrap();
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span><a href="../../../rustc_query_system/dep_graph/graph/fn.print_markframe_trace.html">print_markframe_trace</a>&lt;D: <a href="mod.rs.html#86-106">Deps</a>&gt;(graph: <span class="kw-2">&amp;</span>DepGraph&lt;D&gt;, frame: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>MarkFrame&lt;<span class="lifetime">&#39;_</span>&gt;&gt;) {
+    <span class="kw">let </span>data = <a href="#1413">graph</a>.data.as_ref().unwrap();
 
     <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.eprintln.html">eprintln!</a>(<span class="string">&quot;there was a panic while trying to force a dep node&quot;</span>);
     <a class="macro" href="https://doc.rust-lang.org/nightly/std/macro.eprintln.html">eprintln!</a>(<span class="string">&quot;try_mark_green dep node stack:&quot;</span>);
 
     <span class="kw">let </span><span class="kw-2">mut </span>i = <span class="number">0</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>current = <a href="#1415">frame</a>;
+    <span class="kw">let </span><span class="kw-2">mut </span>current = <a href="#1413">frame</a>;
     <span class="kw">while let </span><span class="prelude-val">Some</span>(frame) = current {
         <span class="kw">let </span>node = data.previous.index_to_node(frame.index);
         <span class="macro">eprintln!</span>(<span class="string">&quot;#{i} {node:?}&quot;</span>);

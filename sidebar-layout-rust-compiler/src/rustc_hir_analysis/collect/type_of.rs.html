@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/collect/type_of.rs`."><title>type_of.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_hir_analysis/src/collect/type_of.rs`."><title>type_of.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_hir_analysis" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_hir_analysis/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_hir_analysis"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -623,6 +623,28 @@
 <a href="#623" id="623">623</a>
 <a href="#624" id="624">624</a>
 <a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>rustc_errors::{<a href="../../../rustc_lint_defs/enum.Applicability.html">Applicability</a>, <a href="../../../rustc_errors/enum.StashKey.html">StashKey</a>};
 <span class="kw">use </span><a href="../../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
 <span class="kw">use </span>rustc_hir::def_id::{<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>, <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>};
@@ -634,10 +656,10 @@
 <span class="kw">use </span><a href="../../../rustc_span/symbol/struct.Ident.html">rustc_span::symbol::Ident</a>;
 <span class="kw">use </span>rustc_span::{<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>};
 
-<span class="kw">use </span><a href="../collect.rs.html#115-118"><span class="kw">super</span>::ItemCtxt</a>;
-<span class="kw">use super</span>::{<a href="../collect.rs.html#329-338">bad_placeholder</a>, <a href="../collect.rs.html#1064-1085">is_suggestable_infer_ty</a>};
+<span class="kw">use </span><a href="../collect.rs.html#116-119"><span class="kw">super</span>::ItemCtxt</a>;
+<span class="kw">use super</span>::{<a href="../collect.rs.html#330-339">bad_placeholder</a>, <a href="../collect.rs.html#1065-1086">is_suggestable_infer_ty</a>};
 
-<span class="kw">mod </span><a href="type_of/opaque.rs.html#1-353">opaque</a>;
+<span class="kw">mod </span><a href="type_of/opaque.rs.html#1-358">opaque</a>;
 
 <span class="kw">fn </span><a href="../../../rustc_hir_analysis/collect/type_of/fn.anon_const_type_of.html">anon_const_type_of</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">use </span><a href="../../../rustc_hir/index.html">hir</a>::<span class="kw-2">*</span>;
@@ -739,7 +761,7 @@
                 .<span class="number">0
                 </span>.def_id;
             <span class="kw">let </span>item_ctxt = <span class="kw-2">&amp;</span>ItemCtxt::new(<a href="#17">tcx</a>, <a href="#109">item_def_id</a>) <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span><span class="kw">crate</span>::astconv::AstConv&lt;<span class="lifetime">&#39;_</span>&gt;;
-            <span class="kw">let </span>ty = <a href="#116">item_ctxt</a>.<a href="../astconv/mod.rs.html#2430-2432">ast_ty_to_ty</a>(<a href="#103">hir_ty</a>);
+            <span class="kw">let </span>ty = <a href="#116">item_ctxt</a>.<a href="../astconv/mod.rs.html#2421-2423">ast_ty_to_ty</a>(<a href="#103">hir_ty</a>);
 
             <span class="comment">// Iterate through the generics of the projection to find the one that corresponds to
             // the def_id that this query was called with. We filter to only type and const args here
@@ -968,7 +990,7 @@
             }
             TraitItemKind::Const(ty, body_id) =&gt; <a href="#344">body_id</a>
                 .and_then(|body_id| {
-                    <a href="../collect.rs.html#1064-1085">is_suggestable_infer_ty</a>(<a href="#344">ty</a>).then(|| {
+                    <a href="../collect.rs.html#1065-1086">is_suggestable_infer_ty</a>(<a href="#344">ty</a>).then(|| {
                         <a href="#539-611">infer_placeholder_type</a>(
                             <a href="#309">tcx</a>,
                             <a href="#309">def_id</a>,
@@ -979,8 +1001,8 @@
                         )
                     })
                 })
-                .unwrap_or_else(|| <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#344">ty</a>)),
-            TraitItemKind::Type(<span class="kw">_</span>, <span class="prelude-val">Some</span>(ty)) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#358">ty</a>),
+                .unwrap_or_else(|| <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#344">ty</a>)),
+            TraitItemKind::Type(<span class="kw">_</span>, <span class="prelude-val">Some</span>(ty)) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#358">ty</a>),
             TraitItemKind::Type(<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(item.span, <span class="string">&quot;associated type missing default&quot;</span>);
             }
@@ -1002,7 +1024,7 @@
                         <span class="string">&quot;associated constant&quot;</span>,
                     )
                 } <span class="kw">else </span>{
-                    <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#369">ty</a>)
+                    <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#369">ty</a>)
                 }
             }
             ImplItemKind::Type(ty) =&gt; {
@@ -1010,7 +1032,7 @@
                     <a href="#613-625">check_feature_inherent_assoc_ty</a>(<a href="#309">tcx</a>, <a href="#364">item</a>.span);
                 }
 
-                <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#383">ty</a>)
+                <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#383">ty</a>)
             }
         },
 
@@ -1026,17 +1048,17 @@
                         <span class="string">&quot;static variable&quot;</span>,
                     )
                 } <span class="kw">else </span>{
-                    <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#393">ty</a>)
+                    <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#393">ty</a>)
                 }
             }
             ItemKind::Const(ty, <span class="kw">_</span>, body_id) =&gt; {
                 <span class="kw">if </span>is_suggestable_infer_ty(ty) {
                     <a href="#539-611">infer_placeholder_type</a>(<a href="#309">tcx</a>, <a href="#309">def_id</a>, <a href="#407">body_id</a>, <a href="#407">ty</a>.span, <a href="#392">item</a>.ident, <span class="string">&quot;constant&quot;</span>)
                 } <span class="kw">else </span>{
-                    <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#407">ty</a>)
+                    <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#407">ty</a>)
                 }
             }
-            ItemKind::TyAlias(self_ty, <span class="kw">_</span>) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#414">self_ty</a>),
+            ItemKind::TyAlias(self_ty, <span class="kw">_</span>) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#414">self_ty</a>),
             ItemKind::Impl(<a href="../../../rustc_hir/hir/struct.Impl.html">hir::Impl</a> { self_ty, .. }) =&gt; <span class="kw">match </span><a href="#415">self_ty</a>.find_self_aliases() {
                 spans <span class="kw">if </span><a href="#416">spans</a>.len() &gt; <span class="number">0 </span>=&gt; {
                     <span class="kw">let </span>guar = <a href="#309">tcx</a>
@@ -1044,7 +1066,7 @@
                         .emit_err(<a href="../errors.rs.html#303-308"><span class="kw">crate</span>::errors::SelfInImplSelf</a> { span: <a href="#416">spans</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(), note: () });
                     Ty::new_error(<a href="#309">tcx</a>, <a href="#417">guar</a>)
                 }
-                <span class="kw">_ </span>=&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<span class="kw-2">*</span><a href="#415">self_ty</a>),
+                <span class="kw">_ </span>=&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<span class="kw-2">*</span><a href="#415">self_ty</a>),
             },
             ItemKind::Fn(..) =&gt; {
                 <span class="kw">let </span>args = ty::GenericArgs::identity_for_item(<a href="#309">tcx</a>, <a href="#309">def_id</a>);
@@ -1076,7 +1098,7 @@
                 <span class="kw">let </span>args = ty::GenericArgs::identity_for_item(<a href="#309">tcx</a>, <a href="#309">def_id</a>);
                 Ty::new_fn_def(<a href="#309">tcx</a>, <a href="#309">def_id</a>.to_def_id(), <a href="#451">args</a>)
             }
-            ForeignItemKind::Static(t, <span class="kw">_</span>) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#454">t</a>),
+            ForeignItemKind::Static(t, <span class="kw">_</span>) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#454">t</a>),
             ForeignItemKind::Type =&gt; Ty::new_foreign(<a href="#309">tcx</a>, <a href="#309">def_id</a>.to_def_id()),
         },
 
@@ -1090,7 +1112,7 @@
             }
         },
 
-        Node::Field(field) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#468">field</a>.ty),
+        Node::Field(field) =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#468">field</a>.ty),
 
         Node::Expr(<span class="kw-2">&amp;</span><a href="../../../rustc_hir/hir/struct.Expr.html">Expr</a> { kind: <a href="../../../rustc_hir/hir/enum.ExprKind.html">ExprKind::Closure</a> { .. }, .. }) =&gt; {
             <a href="#309">tcx</a>.typeck(<a href="#309">def_id</a>).node_type(<a href="#334">hir_id</a>)
@@ -1105,7 +1127,7 @@
 
         Node::GenericParam(param) =&gt; <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#481">param</a>.kind {
             <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Type</a> { default: <span class="prelude-val">Some</span>(ty), .. }
-            | <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Const</a> { ty, .. } =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#345-347">to_ty</a>(<a href="#482">ty</a>),
+            | <a href="../../../rustc_hir/hir/enum.GenericParamKind.html">GenericParamKind::Const</a> { ty, .. } =&gt; <a href="#336">icx</a>.<a href="../collect.rs.html#346-348">to_ty</a>(<a href="#482">ty</a>),
             x =&gt; <a class="macro" href="../../../rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unexpected non-type Node::GenericParam: {:?}&quot;</span>, x),
         },
 
@@ -1143,7 +1165,7 @@
                             <span class="string">&quot;tried to get type of this RPITIT with no definition&quot;
                         </span>);
                     }
-                    <a href="type_of/opaque.rs.html#219-287">opaque::find_opaque_ty_constraints_for_rpit</a>(<a href="#495">tcx</a>, <a href="#498">def_id</a>, <a href="#511">owner</a>)
+                    <a href="type_of/opaque.rs.html#224-292">opaque::find_opaque_ty_constraints_for_rpit</a>(<a href="#495">tcx</a>, <a href="#498">def_id</a>, <a href="#511">owner</a>)
                 }
                 <span class="kw">_ </span>=&gt; {
                     <a class="macro" href="../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(item.span, <span class="string">&quot;type_of_opaque: unexpected item type: {:?}&quot;</span>, item.kind);
@@ -1206,7 +1228,7 @@
             <a href="#554">err</a>.emit();
         }
         <span class="prelude-val">None </span>=&gt; {
-            <span class="kw">let </span><span class="kw-2">mut </span>diag = <a href="../collect.rs.html#329-338">bad_placeholder</a>(<a href="#540">tcx</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[span], <a href="#545">kind</a>);
+            <span class="kw">let </span><span class="kw-2">mut </span>diag = <a href="../collect.rs.html#330-339">bad_placeholder</a>(<a href="#540">tcx</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[span], <a href="#545">kind</a>);
 
             <span class="kw">if </span>!ty.references_error() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(ty) = <a href="#547">ty</a>.<a href="../../../rustc_middle/ty/diagnostics/trait.IsSuggestable.html">make_suggestable</a>(<a href="#540">tcx</a>, <span class="bool-val">false</span>) {
@@ -1247,5 +1269,27 @@
         )
         .emit();
     }
+}
+
+<span class="kw">pub fn </span><a href="../../../rustc_hir_analysis/collect/type_of/fn.type_alias_is_lazy.html">type_alias_is_lazy</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    <span class="kw">use </span><a href="../../../rustc_hir/intravisit/trait.Visitor.html">hir::intravisit::Visitor</a>;
+    <span class="kw">if </span>tcx.features().lazy_type_alias {
+        <span class="kw">return </span><span class="bool-val">true</span>;
+    }
+    <span class="kw">struct </span>HasTait {
+        has_type_alias_impl_trait: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    }
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#632-634">HasTait</a> {
+        <span class="kw">fn </span>visit_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>hir::Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
+            <span class="kw">if let </span>hir::TyKind::OpaqueDef(..) = <a href="#636">t</a>.kind {
+                <a class="self" href="#636">self</a>.has_type_alias_impl_trait = <span class="bool-val">true</span>;
+            } <span class="kw">else </span>{
+                hir::intravisit::walk_ty(<a class="self" href="#636">self</a>, <a href="#636">t</a>);
+            }
+        }
+    }
+    <span class="kw">let </span><span class="kw-2">mut </span>has_tait = <a href="#632-634">HasTait</a> { has_type_alias_impl_trait: <span class="bool-val">false </span>};
+    <a href="#644">has_tait</a>.<a href="../../../rustc_hir/intravisit/trait.Visitor.html">visit_ty</a>(<a href="#627">tcx</a>.hir().expect_item(<a href="#627">def_id</a>).expect_ty_alias().<span class="number">0</span>);
+    <a href="#644">has_tait</a>.has_type_alias_impl_trait
 }
 </code></pre></div></section></main></body></html>

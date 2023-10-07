@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/util/compare_types.rs`."><title>compare_types.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/util/compare_types.rs`."><title>compare_types.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -69,6 +69,12 @@
 <a href="#69" id="69">69</a>
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Routines to check for relations between fully inferred types.
 //!
 //! FIXME: Move this to a more general place. The utility of this extends to
@@ -76,7 +82,7 @@
 
 </span><span class="kw">use </span><a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">rustc_infer::infer::TyCtxtInferExt</a>;
 <span class="kw">use </span>rustc_middle::traits::{<a href="../../../rustc_middle/traits/enum.DefiningAnchor.html">DefiningAnchor</a>, <a href="../../../rustc_middle/traits/struct.ObligationCause.html">ObligationCause</a>};
-<span class="kw">use </span>rustc_middle::ty::{<a href="../../../rustc_middle/ty/struct.ParamEnv.html">ParamEnv</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
+<span class="kw">use </span>rustc_middle::ty::{<a href="../../../rustc_middle/ty/struct.ParamEnv.html">ParamEnv</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../rustc_type_ir/enum.Variance.html">Variance</a>};
 <span class="kw">use </span><a href="../../../rustc_trait_selection/traits/engine/struct.ObligationCtxt.html">rustc_trait_selection::traits::ObligationCtxt</a>;
 
 <span class="doccomment">/// Returns whether the two types are equal up to subtyping.
@@ -95,16 +101,22 @@
     }
 
     <span class="comment">// Check for subtyping in either direction.
-    </span><a href="#34-71">is_subtype</a>(<a href="#16">tcx</a>, <a href="#17">param_env</a>, <a href="#18">src</a>, <a href="#19">dest</a>) || <a href="#34-71">is_subtype</a>(<a href="#16">tcx</a>, <a href="#17">param_env</a>, <a href="#19">dest</a>, <a href="#18">src</a>)
+    </span><a href="#39-77">relate_types</a>(<a href="#16">tcx</a>, <a href="#17">param_env</a>, Variance::Covariant, <a href="#18">src</a>, <a href="#19">dest</a>)
+        || <a href="#39-77">relate_types</a>(<a href="#16">tcx</a>, <a href="#17">param_env</a>, Variance::Covariant, <a href="#19">dest</a>, <a href="#18">src</a>)
 }
 
 <span class="doccomment">/// Returns whether `src` is a subtype of `dest`, i.e. `src &lt;: dest`.
 ///
+/// When validating assignments, the variance should be `Covariant`. When checking
+/// during `MirPhase` &gt;= `MirPhase::Runtime(RuntimePhase::Initial)` variance should be `Invariant`
+/// because we want to check for type equality.
+///
 /// This mostly ignores opaque types as it can be used in constraining contexts
 /// while still computing the final underlying type.
-</span><span class="kw">pub fn </span><a href="../../../rustc_const_eval/util/compare_types/fn.is_subtype.html">is_subtype</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
+</span><span class="kw">pub fn </span><a href="../../../rustc_const_eval/util/compare_types/fn.relate_types.html">relate_types</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     param_env: ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+    variance: <a href="../../../rustc_type_ir/enum.Variance.html">Variance</a>,
     src: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     dest: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
@@ -113,17 +125,17 @@
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>builder =
-        <a href="#35">tcx</a>.<a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
-    <span class="kw">let </span>infcx = <a href="#44">builder</a>.build();
-    <span class="kw">let </span>ocx = ObligationCtxt::new(<span class="kw-2">&amp;</span><a href="#46">infcx</a>);
+        <a href="#40">tcx</a>.<a href="../../../rustc_infer/infer/trait.TyCtxtInferExt.html">infer_ctxt</a>().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
+    <span class="kw">let </span>infcx = <a href="#50">builder</a>.build();
+    <span class="kw">let </span>ocx = ObligationCtxt::new(<span class="kw-2">&amp;</span><a href="#52">infcx</a>);
     <span class="kw">let </span>cause = ObligationCause::dummy();
-    <span class="kw">let </span>src = <a href="#47">ocx</a>.normalize(<span class="kw-2">&amp;</span><a href="#48">cause</a>, <a href="#36">param_env</a>, <a href="#37">src</a>);
-    <span class="kw">let </span>dest = <a href="#47">ocx</a>.normalize(<span class="kw-2">&amp;</span><a href="#48">cause</a>, <a href="#36">param_env</a>, <a href="#38">dest</a>);
-    <span class="kw">match </span><a href="#47">ocx</a>.sub(<span class="kw-2">&amp;</span><a href="#48">cause</a>, <a href="#36">param_env</a>, <a href="#49">src</a>, <a href="#50">dest</a>) {
+    <span class="kw">let </span>src = <a href="#53">ocx</a>.normalize(<span class="kw-2">&amp;</span><a href="#54">cause</a>, <a href="#41">param_env</a>, <a href="#43">src</a>);
+    <span class="kw">let </span>dest = <a href="#53">ocx</a>.normalize(<span class="kw-2">&amp;</span><a href="#54">cause</a>, <a href="#41">param_env</a>, <a href="#44">dest</a>);
+    <span class="kw">match </span><a href="#53">ocx</a>.relate(<span class="kw-2">&amp;</span><a href="#54">cause</a>, <a href="#41">param_env</a>, <a href="#42">variance</a>, <a href="#55">src</a>, <a href="#56">dest</a>) {
         <span class="prelude-val">Ok</span>(()) =&gt; {}
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
     };
-    <span class="kw">let </span>errors = <a href="#47">ocx</a>.select_all_or_error();
+    <span class="kw">let </span>errors = <a href="#53">ocx</a>.select_all_or_error();
     <span class="comment">// With `Reveal::All`, opaque types get normalized away, with `Reveal::UserFacing`
     // we would get unification errors because we&#39;re unable to look into opaque types,
     // even if they&#39;re constrained in our current function.
@@ -138,6 +150,6 @@
             );
         }
     }
-    <a href="#55">errors</a>.is_empty()
+    <a href="#61">errors</a>.is_empty()
 }
 </code></pre></div></section></main></body></html>

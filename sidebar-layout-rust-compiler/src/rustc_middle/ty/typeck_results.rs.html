@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/typeck_results.rs`."><title>typeck_results.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/typeck_results.rs`."><title>typeck_results.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -663,83 +663,13 @@
 <a href="#663" id="663">663</a>
 <a href="#664" id="664">664</a>
 <a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     <a href="../hir/place.rs.html#60-67">hir::place::Place</a> <span class="kw">as </span>HirPlace,
     <a href="../infer/canonical.rs.html#38-42">infer::canonical::Canonical</a>,
     <a href="../traits/mod.rs.html#91-103">traits::ObligationCause</a>,
     ty::{
-        <a class="self" href="../lib.rs.html#101">self</a>, <a href="context.rs.html#5">tls</a>, <a href="binding.rs.html#4-7">BindingMode</a>, <a href="sty.rs.html#1607-1611">BoundVar</a>, <a href="sty.rs.html#1400">CanonicalPolyFnSig</a>, <a href="mod.rs.html#325-330">ClosureSizeProfileData</a>,
-        <a href="generic_args.rs.html#51-55">GenericArgKind</a>, <a href="generic_args.rs.html#245">GenericArgs</a>, <a href="generic_args.rs.html#247">GenericArgsRef</a>, <a href="mod.rs.html#451">Ty</a>, <a href="generic_args.rs.html#1033-1040">UserArgs</a>,
+        <a class="self" href="../lib.rs.html#102">self</a>, <a href="context.rs.html#5">tls</a>, <a href="binding.rs.html#4-7">BindingMode</a>, <a href="sty.rs.html#1607-1611">BoundVar</a>, <a href="sty.rs.html#1400">CanonicalPolyFnSig</a>, <a href="mod.rs.html#337-342">ClosureSizeProfileData</a>,
+        <a href="generic_args.rs.html#51-55">GenericArgKind</a>, <a href="generic_args.rs.html#245">GenericArgs</a>, <a href="generic_args.rs.html#247">GenericArgsRef</a>, <a href="mod.rs.html#463">Ty</a>, <a href="generic_args.rs.html#1033-1040">UserArgs</a>,
     },
 };
 <span class="kw">use </span>rustc_data_structures::{
@@ -756,10 +686,10 @@
 };
 <span class="kw">use </span>rustc_index::{<a href="../../../rustc_index/idx/trait.Idx.html">Idx</a>, <a href="../../../rustc_index/vec/struct.IndexVec.html">IndexVec</a>};
 <span class="kw">use </span><a href="../../../rustc_macros/derive.HashStable.html">rustc_macros::HashStable</a>;
-<span class="kw">use </span><a href="../mir/syntax.rs.html#468-520">rustc_middle::mir::FakeReadCause</a>;
+<span class="kw">use </span><a href="../mir/syntax.rs.html#459-511">rustc_middle::mir::FakeReadCause</a>;
 <span class="kw">use </span><a href="../../../rustc_session/session/struct.Session.html">rustc_session::Session</a>;
 <span class="kw">use </span><a href="../../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
-<span class="kw">use </span><a href="../../../rustc_abi/struct.FieldIdx.html">rustc_target::abi::FieldIdx</a>;
+<span class="kw">use </span><a href="../../../rustc_target/abi/struct.FieldIdx.html">rustc_target::abi::FieldIdx</a>;
 <span class="kw">use </span>std::{<a href="https://doc.rust-lang.org/nightly/std/collections/hash/map/enum.Entry.html">collections::hash_map::Entry</a>, <a href="https://doc.rust-lang.org/nightly/core/hash/macros/derive.Hash.html">hash::Hash</a>, <a href="https://doc.rust-lang.org/nightly/core/iter/index.html">iter</a>};
 
 <span class="kw">use </span><a href="rvalue_scopes.rs.html#8-10"><span class="kw">super</span>::RvalueScopes</a>;
@@ -777,7 +707,7 @@
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
     /// about the field you also need definition of the variant to which the field
     /// belongs, but it may not exist if it&#39;s a tuple field (`tuple.0`).
-    </span>field_indices: ItemLocalMap&lt;<a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt;,
+    </span>field_indices: ItemLocalMap&lt;<a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt;,
 
     <span class="doccomment">/// Stores the types for various nodes in the AST. Note that this table
     /// is not guaranteed to be populated outside inference. See
@@ -917,16 +847,12 @@
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    </span><span class="kw">pub </span>closure_fake_reads: LocalDefIdMap&lt;Vec&lt;(HirPlace&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../mir/syntax.rs.html#468-520">FakeReadCause</a>, <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>)&gt;&gt;,
+    </span><span class="kw">pub </span>closure_fake_reads: LocalDefIdMap&lt;Vec&lt;(HirPlace&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../mir/syntax.rs.html#459-511">FakeReadCause</a>, <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>)&gt;&gt;,
 
     <span class="doccomment">/// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
     /// by applying extended parameter rules.
     /// Details may be find in `rustc_hir_analysis::check::rvalue_scopes`.
     </span><span class="kw">pub </span>rvalue_scopes: <a href="rvalue_scopes.rs.html#8-10">RvalueScopes</a>,
-
-    <span class="doccomment">/// Stores the type, expression, span and optional scope span of all types
-    /// that are live across the yield of this generator (if a generator).
-    </span><span class="kw">pub </span>generator_interior_types: ty::Binder&lt;<span class="lifetime">&#39;tcx</span>, Vec&lt;GeneratorInteriorTypeCause&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;,
 
     <span class="doccomment">/// Stores the predicates that apply on generator witness types.
     /// formatting modified file tests/ui/generator/retain-resume-ref.rs
@@ -944,56 +870,13 @@
     </span><span class="kw">pub </span>closure_size_eval: LocalDefIdMap&lt;ClosureSizeProfileData&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
 
     <span class="doccomment">/// Container types and field indices of `offset_of!` expressions
-    </span>offset_of_data: ItemLocalMap&lt;(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;<a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt;)&gt;,
-}
-
-<span class="doccomment">/// Whenever a value may be live across a generator yield, the type of that value winds up in the
-/// `GeneratorInteriorTypeCause` struct. This struct adds additional information about such
-/// captured types that can be useful for diagnostics. In particular, it stores the span that
-/// caused a given type to be recorded, along with the scope that enclosed the value (which can
-/// be used to find the await that the value is live across).
-///
-/// For example:
-///
-/// ```ignore (pseudo-Rust)
-/// async move {
-///     let x: T = expr;
-///     foo.await
-///     ...
-/// }
-/// ```
-///
-/// Here, we would store the type `T`, the span of the value `x`, the &quot;scope-span&quot; for
-/// the scope that contains `x`, the expr `T` evaluated from, and the span of `foo.await`.
-</span><span class="attr">#[derive(TyEncodable, TyDecodable, Clone, Debug, Eq, Hash, PartialEq, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-</span><span class="kw">pub struct </span><a href="../../../rustc_middle/ty/typeck_results/struct.GeneratorInteriorTypeCause.html">GeneratorInteriorTypeCause</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="doccomment">/// Type of the captured binding.
-    </span><span class="kw">pub </span>ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    <span class="doccomment">/// Span of the binding that was captured.
-    </span><span class="kw">pub </span>span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    <span class="doccomment">/// Span of the scope of the captured binding.
-    </span><span class="kw">pub </span>scope_span: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;,
-    <span class="doccomment">/// Span of `.await` or `yield` expression.
-    </span><span class="kw">pub </span>yield_span: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
-    <span class="doccomment">/// Expr which the type evaluated from.
-    </span><span class="kw">pub </span>expr: <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>&gt;,
-}
-
-<span class="comment">// This type holds diagnostic information on generators and async functions across crate boundaries
-// and is used to provide better error messages
-</span><span class="attr">#[derive(TyEncodable, TyDecodable, Clone, Debug, HashStable)]
-</span><span class="kw">pub struct </span><a href="../../../rustc_middle/ty/typeck_results/struct.GeneratorDiagnosticData.html">GeneratorDiagnosticData</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">pub </span>generator_interior_types: ty::Binder&lt;<span class="lifetime">&#39;tcx</span>, Vec&lt;GeneratorInteriorTypeCause&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;,
-    <span class="kw">pub </span>hir_owner: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
-    <span class="kw">pub </span>nodes_types: ItemLocalMap&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
-    <span class="kw">pub </span>adjustments: ItemLocalMap&lt;Vec&lt;ty::adjustment::Adjustment&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt;,
+    </span>offset_of_data: ItemLocalMap&lt;(Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;<a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt;)&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeckResults&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>new(hir_owner: <a href="../../../rustc_hir/hir_id/struct.OwnerId.html">OwnerId</a>) -&gt; TypeckResults&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#33-213">TypeckResults</a> {
-            <a href="#259">hir_owner</a>,
+        <a href="#33-209">TypeckResults</a> {
+            <a href="#212">hir_owner</a>,
             type_dependent_defs: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
             field_indices: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
             user_provided_types: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
@@ -1013,7 +896,6 @@
             closure_min_captures: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
             closure_fake_reads: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
             rvalue_scopes: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
-            generator_interior_types: ty::Binder::dummy(<a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>()),
             generator_interior_predicates: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
             treat_byte_string_as_slice: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
             closure_size_eval: <a href="https://doc.rust-lang.org/nightly/core/default/trait.Default.html">Default::default</a>(),
@@ -1023,114 +905,92 @@
 
     <span class="doccomment">/// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
     </span><span class="kw">pub fn </span>qpath_res(<span class="kw-2">&amp;</span><span class="self">self</span>, qpath: <span class="kw-2">&amp;</span>hir::QPath&lt;<span class="lifetime">&#39;_</span>&gt;, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="../../../rustc_hir/def/enum.Res.html">Res</a> {
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#290">qpath</a> {
-            hir::QPath::Resolved(<span class="kw">_</span>, <span class="kw-2">ref </span>path) =&gt; <a href="#292">path</a>.res,
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) =&gt; <span class="self"><a href="#290">self</a>
-                </span>.<a href="#305-308">type_dependent_def</a>(<a href="#290">id</a>)
-                .map_or(Res::Err, |(kind, def_id)| Res::Def(<a href="#295">kind</a>, <a href="#295">def_id</a>)),
+        <span class="kw">match </span><span class="kw-2">*</span><a href="#242">qpath</a> {
+            hir::QPath::Resolved(<span class="kw">_</span>, <span class="kw-2">ref </span>path) =&gt; <a href="#244">path</a>.res,
+            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) =&gt; <span class="self"><a href="#242">self</a>
+                </span>.<a href="#257-260">type_dependent_def</a>(<a href="#242">id</a>)
+                .map_or(Res::Err, |(kind, def_id)| Res::Def(<a href="#247">kind</a>, <a href="#247">def_id</a>)),
         }
     }
 
     <span class="kw">pub fn </span>type_dependent_defs(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, <span class="prelude-ty">Result</span>&lt;(<a href="../../../rustc_hir/def/enum.DefKind.html">DefKind</a>, <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>), <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#300">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#300">self</a>.type_dependent_defs }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#252">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#252">self</a>.type_dependent_defs }
     }
 
     <span class="kw">pub fn </span>type_dependent_def(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="../../../rustc_hir/def/enum.DefKind.html">DefKind</a>, <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>)&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#305">self</a>.hir_owner, <a href="#305">id</a>);
-        <a class="self" href="#305">self</a>.type_dependent_defs.get(<span class="kw-2">&amp;</span><a href="#305">id</a>.local_id).cloned().and_then(|r| <a href="#307">r</a>.ok())
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#257">self</a>.hir_owner, <a href="#257">id</a>);
+        <a class="self" href="#257">self</a>.type_dependent_defs.get(<span class="kw-2">&amp;</span><a href="#257">id</a>.local_id).cloned().and_then(|r| <a href="#259">r</a>.ok())
     }
 
     <span class="kw">pub fn </span>type_dependent_def_id(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt; {
-        <a class="self" href="#310">self</a>.<a href="#305-308">type_dependent_def</a>(<a href="#310">id</a>).map(|(<span class="kw">_</span>, def_id)| <a href="#311">def_id</a>)
+        <a class="self" href="#262">self</a>.<a href="#257-260">type_dependent_def</a>(<a href="#262">id</a>).map(|(<span class="kw">_</span>, def_id)| <a href="#263">def_id</a>)
     }
 
     <span class="kw">pub fn </span>type_dependent_defs_mut(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     ) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, <span class="prelude-ty">Result</span>&lt;(<a href="../../../rustc_hir/def/enum.DefKind.html">DefKind</a>, <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>), <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#315">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#315">self</a>.type_dependent_defs }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#267">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#267">self</a>.type_dependent_defs }
     }
 
-    <span class="kw">pub fn </span>field_indices(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, <a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#320">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#320">self</a>.field_indices }
+    <span class="kw">pub fn </span>field_indices(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, <a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt; {
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#272">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#272">self</a>.field_indices }
     }
 
-    <span class="kw">pub fn </span>field_indices_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, <a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#324">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#324">self</a>.field_indices }
+    <span class="kw">pub fn </span>field_indices_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, <a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt; {
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#276">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#276">self</a>.field_indices }
     }
 
-    <span class="kw">pub fn </span>field_index(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a> {
-        <a class="self" href="#328">self</a>.<a href="#320-322">field_indices</a>().<a href="#583-586">get</a>(<a href="#328">id</a>).cloned().expect(<span class="string">&quot;no index for a field&quot;</span>)
+    <span class="kw">pub fn </span>field_index(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a> {
+        <a class="self" href="#280">self</a>.<a href="#272-274">field_indices</a>().<a href="#513-516">get</a>(<a href="#280">id</a>).cloned().expect(<span class="string">&quot;no index for a field&quot;</span>)
     }
 
-    <span class="kw">pub fn </span>opt_field_index(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt; {
-        <a class="self" href="#332">self</a>.<a href="#320-322">field_indices</a>().<a href="#583-586">get</a>(<a href="#332">id</a>).cloned()
+    <span class="kw">pub fn </span>opt_field_index(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt; {
+        <a class="self" href="#284">self</a>.<a href="#272-274">field_indices</a>().<a href="#513-516">get</a>(<a href="#284">id</a>).cloned()
     }
 
     <span class="kw">pub fn </span>user_provided_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, CanonicalUserType&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#336">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#336">self</a>.user_provided_types }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#288">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#288">self</a>.user_provided_types }
     }
 
     <span class="kw">pub fn </span>user_provided_types_mut(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     ) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, CanonicalUserType&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#341">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#341">self</a>.user_provided_types }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#293">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#293">self</a>.user_provided_types }
     }
 
     <span class="kw">pub fn </span>node_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#346">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#346">self</a>.node_types }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#298">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#298">self</a>.node_types }
     }
 
     <span class="kw">pub fn </span>node_types_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#350">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#350">self</a>.node_types }
-    }
-
-    <span class="kw">pub fn </span>get_generator_diagnostic_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; GeneratorDiagnosticData&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>generator_interior_type = <a class="self" href="#354">self</a>.generator_interior_types.<a href="sty.rs.html#1075-1080">map_bound_ref</a>(|vec| {
-            <a href="#355">vec</a>.iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|item| {
-                    <a href="#235-246">GeneratorInteriorTypeCause</a> {
-                        ty: <a href="#357">item</a>.ty,
-                        span: <a href="#357">item</a>.span,
-                        scope_span: <a href="#357">item</a>.scope_span,
-                        yield_span: <a href="#357">item</a>.yield_span,
-                        expr: <span class="prelude-val">None</span>, <span class="comment">//FIXME: Passing expression over crate boundaries is impossible at the moment
-                    </span>}
-                })
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        });
-        <a href="#251-256">GeneratorDiagnosticData</a> {
-            generator_interior_types: <a href="#355">generator_interior_type</a>,
-            hir_owner: <a class="self" href="#354">self</a>.hir_owner.to_def_id(),
-            nodes_types: <a class="self" href="#354">self</a>.node_types.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
-            adjustments: <a class="self" href="#354">self</a>.adjustments.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(),
-        }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#302">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#302">self</a>.node_types }
     }
 
     <span class="kw">pub fn </span>node_type(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#376">self</a>.<a href="#382-385">node_type_opt</a>(<a href="#376">id</a>).unwrap_or_else(|| {
+        <a class="self" href="#306">self</a>.<a href="#312-315">node_type_opt</a>(<a href="#306">id</a>).unwrap_or_else(|| {
             <a class="macro" href="../macros.rs.html#12-19">bug!</a>(<span class="string">&quot;node_type: no type for node {}&quot;</span>, tls::with(|tcx| tcx.hir().node_to_string(id)))
         })
     }
 
     <span class="kw">pub fn </span>node_type_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#382">self</a>.hir_owner, <a href="#382">id</a>);
-        <a class="self" href="#382">self</a>.node_types.get(<span class="kw-2">&amp;</span><a href="#382">id</a>.local_id).cloned()
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#312">self</a>.hir_owner, <a href="#312">id</a>);
+        <a class="self" href="#312">self</a>.node_types.get(<span class="kw-2">&amp;</span><a href="#312">id</a>.local_id).cloned()
     }
 
     <span class="kw">pub fn </span>node_args_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#387">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#387">self</a>.node_args }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#317">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#317">self</a>.node_args }
     }
 
     <span class="kw">pub fn </span>node_args(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#391">self</a>.hir_owner, <a href="#391">id</a>);
-        <a class="self" href="#391">self</a>.node_args.get(<span class="kw-2">&amp;</span><a href="#391">id</a>.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#321">self</a>.hir_owner, <a href="#321">id</a>);
+        <a class="self" href="#321">self</a>.node_args.get(<span class="kw-2">&amp;</span><a href="#321">id</a>.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
     <span class="kw">pub fn </span>node_args_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#396">self</a>.hir_owner, <a href="#396">id</a>);
-        <a class="self" href="#396">self</a>.node_args.get(<span class="kw-2">&amp;</span><a href="#396">id</a>.local_id).cloned()
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#326">self</a>.hir_owner, <a href="#326">id</a>);
+        <a class="self" href="#326">self</a>.node_args.get(<span class="kw-2">&amp;</span><a href="#326">id</a>.local_id).cloned()
     }
 
     <span class="doccomment">/// Returns the type of a pattern as a monotype. Like [`expr_ty`], this function
@@ -1138,7 +998,7 @@
     ///
     /// [`expr_ty`]: TypeckResults::expr_ty
     </span><span class="kw">pub fn </span>pat_ty(<span class="kw-2">&amp;</span><span class="self">self</span>, pat: <span class="kw-2">&amp;</span>hir::Pat&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#405">self</a>.<a href="#376-380">node_type</a>(<a href="#405">pat</a>.hir_id)
+        <a class="self" href="#335">self</a>.<a href="#306-310">node_type</a>(<a href="#335">pat</a>.hir_id)
     }
 
     <span class="doccomment">/// Returns the type of an expression as a monotype.
@@ -1152,42 +1012,42 @@
     /// ask for the type of `id` in `id(3)`, it will return `fn(&amp;isize) -&gt; isize`
     /// instead of `fn(ty) -&gt; T with T = isize`.
     </span><span class="kw">pub fn </span>expr_ty(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#419">self</a>.<a href="#376-380">node_type</a>(<a href="#419">expr</a>.hir_id)
+        <a class="self" href="#349">self</a>.<a href="#306-310">node_type</a>(<a href="#349">expr</a>.hir_id)
     }
 
     <span class="kw">pub fn </span>expr_ty_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#423">self</a>.<a href="#382-385">node_type_opt</a>(<a href="#423">expr</a>.hir_id)
+        <a class="self" href="#353">self</a>.<a href="#312-315">node_type_opt</a>(<a href="#353">expr</a>.hir_id)
     }
 
     <span class="kw">pub fn </span>adjustments(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, Vec&lt;ty::adjustment::Adjustment&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#427">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#427">self</a>.adjustments }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#357">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#357">self</a>.adjustments }
     }
 
     <span class="kw">pub fn </span>adjustments_mut(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     ) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, Vec&lt;ty::adjustment::Adjustment&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#432">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#432">self</a>.adjustments }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#362">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#362">self</a>.adjustments }
     }
 
     <span class="kw">pub fn </span>expr_adjustments(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="kw-2">&amp;</span>[ty::adjustment::Adjustment&lt;<span class="lifetime">&#39;tcx</span>&gt;] {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#437">self</a>.hir_owner, <a href="#437">expr</a>.hir_id);
-        <a class="self" href="#437">self</a>.adjustments.get(<span class="kw-2">&amp;</span><a href="#437">expr</a>.hir_id.local_id).map_or(<span class="kw-2">&amp;</span>[], |a| <span class="kw-2">&amp;</span><a href="#439">a</a>[..])
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#367">self</a>.hir_owner, <a href="#367">expr</a>.hir_id);
+        <a class="self" href="#367">self</a>.adjustments.get(<span class="kw-2">&amp;</span><a href="#367">expr</a>.hir_id.local_id).map_or(<span class="kw-2">&amp;</span>[], |a| <span class="kw-2">&amp;</span><a href="#369">a</a>[..])
     }
 
     <span class="doccomment">/// Returns the type of `expr`, considering any `Adjustment`
     /// entry recorded for that expression.
     </span><span class="kw">pub fn </span>expr_ty_adjusted(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#444">self</a>.<a href="#437-440">expr_adjustments</a>(<a href="#444">expr</a>).last().map_or_else(|| <a class="self" href="#444">self</a>.<a href="#419-421">expr_ty</a>(<a href="#444">expr</a>), |adj| <a href="#445">adj</a>.target)
+        <a class="self" href="#374">self</a>.<a href="#367-370">expr_adjustments</a>(<a href="#374">expr</a>).last().map_or_else(|| <a class="self" href="#374">self</a>.<a href="#349-351">expr_ty</a>(<a href="#374">expr</a>), |adj| <a href="#375">adj</a>.target)
     }
 
     <span class="kw">pub fn </span>expr_ty_adjusted_opt(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#448">self</a>.<a href="#437-440">expr_adjustments</a>(<a href="#448">expr</a>).last().map(|adj| <a href="#449">adj</a>.target).or_else(|| <a class="self" href="#448">self</a>.<a href="#423-425">expr_ty_opt</a>(<a href="#448">expr</a>))
+        <a class="self" href="#378">self</a>.<a href="#367-370">expr_adjustments</a>(<a href="#378">expr</a>).last().map(|adj| <a href="#379">adj</a>.target).or_else(|| <a class="self" href="#378">self</a>.<a href="#353-355">expr_ty_opt</a>(<a href="#378">expr</a>))
     }
 
     <span class="kw">pub fn </span>is_method_call(<span class="kw-2">&amp;</span><span class="self">self</span>, expr: <span class="kw-2">&amp;</span>hir::Expr&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="comment">// Only paths and method calls/overloaded operators have
         // entries in type_dependent_defs, ignore the former here.
-        </span><span class="kw">if let </span>hir::ExprKind::Path(<span class="kw">_</span>) = <a href="#452">expr</a>.kind {
+        </span><span class="kw">if let </span>hir::ExprKind::Path(<span class="kw">_</span>) = <a href="#382">expr</a>.kind {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
@@ -1195,26 +1055,26 @@
     }
 
     <span class="kw">pub fn </span>extract_binding_mode(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span><a href="../../../rustc_session/session/struct.Session.html">Session</a>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>, sp: <a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="binding.rs.html#4-7">BindingMode</a>&gt; {
-        <a class="self" href="#462">self</a>.<a href="#469-471">pat_binding_modes</a>().<a href="#583-586">get</a>(<a href="#462">id</a>).copied().or_else(|| {
-            <a href="#462">s</a>.delay_span_bug(<a href="#462">sp</a>, <span class="string">&quot;missing binding mode&quot;</span>);
+        <a class="self" href="#392">self</a>.<a href="#399-401">pat_binding_modes</a>().<a href="#513-516">get</a>(<a href="#392">id</a>).copied().or_else(|| {
+            <a href="#392">s</a>.delay_span_bug(<a href="#392">sp</a>, <span class="string">&quot;missing binding mode&quot;</span>);
             <span class="prelude-val">None
         </span>})
     }
 
     <span class="kw">pub fn </span>pat_binding_modes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, <a href="binding.rs.html#4-7">BindingMode</a>&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#469">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#469">self</a>.pat_binding_modes }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#399">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#399">self</a>.pat_binding_modes }
     }
 
     <span class="kw">pub fn </span>pat_binding_modes_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, <a href="binding.rs.html#4-7">BindingMode</a>&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#473">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#473">self</a>.pat_binding_modes }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#403">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#403">self</a>.pat_binding_modes }
     }
 
     <span class="kw">pub fn </span>pat_adjustments(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#477">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#477">self</a>.pat_adjustments }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#407">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#407">self</a>.pat_adjustments }
     }
 
     <span class="kw">pub fn </span>pat_adjustments_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#481">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#481">self</a>.pat_adjustments }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#411">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#411">self</a>.pat_adjustments }
     }
 
     <span class="doccomment">/// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
@@ -1223,58 +1083,58 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         closure_def_id: <a href="../../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>ty::CapturedPlace&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a class="self" href="#488">self</a>.closure_min_captures
-            .get(<span class="kw-2">&amp;</span><a href="#489">closure_def_id</a>)
-            .map(|closure_min_captures| <a href="#493">closure_min_captures</a>.values().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|v| <a href="#493">v</a>.iter()))
+        <a class="self" href="#418">self</a>.closure_min_captures
+            .get(<span class="kw-2">&amp;</span><a href="#419">closure_def_id</a>)
+            .map(|closure_min_captures| <a href="#423">closure_min_captures</a>.values().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|v| <a href="#423">v</a>.iter()))
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flatten</a>()
     }
 
     <span class="kw">pub fn </span>closure_kind_origins(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, (<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>, HirPlace&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#498">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#498">self</a>.closure_kind_origins }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#428">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#428">self</a>.closure_kind_origins }
     }
 
     <span class="kw">pub fn </span>closure_kind_origins_mut(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     ) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, (<a href="../../../rustc_span/span_encoding/struct.Span.html">Span</a>, HirPlace&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#503">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#503">self</a>.closure_kind_origins }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#433">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#433">self</a>.closure_kind_origins }
     }
 
     <span class="kw">pub fn </span>liberated_fn_sigs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, ty::FnSig&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#508">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#508">self</a>.liberated_fn_sigs }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#438">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#438">self</a>.liberated_fn_sigs }
     }
 
     <span class="kw">pub fn </span>liberated_fn_sigs_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, ty::FnSig&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#512">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#512">self</a>.liberated_fn_sigs }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#442">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#442">self</a>.liberated_fn_sigs }
     }
 
     <span class="kw">pub fn </span>fru_field_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#516">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#516">self</a>.fru_field_types }
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#446">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#446">self</a>.fru_field_types }
     }
 
     <span class="kw">pub fn </span>fru_field_types_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#520">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#520">self</a>.fru_field_types }
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#450">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#450">self</a>.fru_field_types }
     }
 
     <span class="kw">pub fn </span>is_coercion_cast(<span class="kw-2">&amp;</span><span class="self">self</span>, hir_id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#524">self</a>.hir_owner, <a href="#524">hir_id</a>);
-        <a class="self" href="#524">self</a>.coercion_casts.contains(<span class="kw-2">&amp;</span><a href="#524">hir_id</a>.local_id)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#454">self</a>.hir_owner, <a href="#454">hir_id</a>);
+        <a class="self" href="#454">self</a>.coercion_casts.contains(<span class="kw-2">&amp;</span><a href="#454">hir_id</a>.local_id)
     }
 
     <span class="kw">pub fn </span>set_coercion_cast(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.ItemLocalId.html">ItemLocalId</a>) {
-        <a class="self" href="#529">self</a>.coercion_casts.insert(<a href="#529">id</a>);
+        <a class="self" href="#459">self</a>.coercion_casts.insert(<a href="#459">id</a>);
     }
 
     <span class="kw">pub fn </span>coercion_casts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><a href="../../../rustc_hir/hir_id/type.ItemLocalSet.html">ItemLocalSet</a> {
-        <span class="kw-2">&amp;</span><a class="self" href="#533">self</a>.coercion_casts
+        <span class="kw-2">&amp;</span><a class="self" href="#463">self</a>.coercion_casts
     }
 
-    <span class="kw">pub fn </span>offset_of_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, (Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;<a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt;)&gt; {
-        <a href="#572-575">LocalTableInContext</a> { hir_owner: <a class="self" href="#537">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#537">self</a>.offset_of_data }
+    <span class="kw">pub fn </span>offset_of_data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocalTableInContext&lt;<span class="lifetime">&#39;_</span>, (Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;<a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt;)&gt; {
+        <a href="#502-505">LocalTableInContext</a> { hir_owner: <a class="self" href="#467">self</a>.hir_owner, data: <span class="kw-2">&amp;</span><a class="self" href="#467">self</a>.offset_of_data }
     }
 
-    <span class="kw">pub fn </span>offset_of_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, (Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;<a href="../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>&gt;)&gt; {
-        <a href="#608-611">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#541">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#541">self</a>.offset_of_data }
+    <span class="kw">pub fn </span>offset_of_data_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;_</span>, (Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, Vec&lt;<a href="../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>&gt;)&gt; {
+        <a href="#538-541">LocalTableInContextMut</a> { hir_owner: <a class="self" href="#471">self</a>.hir_owner, data: <span class="kw-2">&amp;mut </span><a class="self" href="#471">self</a>.offset_of_data }
     }
 }
 
@@ -1288,7 +1148,7 @@
 </span><span class="attr">#[inline]
 </span><span class="kw">fn </span><a href="../../../rustc_middle/ty/typeck_results/fn.validate_hir_id_for_typeck_results.html">validate_hir_id_for_typeck_results</a>(hir_owner: <a href="../../../rustc_hir/hir_id/struct.OwnerId.html">OwnerId</a>, hir_id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) {
     <span class="kw">if </span>hir_id.owner != hir_owner {
-        <a href="#562-570">invalid_hir_id_for_typeck_results</a>(<a href="#554">hir_owner</a>, <a href="#554">hir_id</a>);
+        <a href="#492-500">invalid_hir_id_for_typeck_results</a>(<a href="#484">hir_owner</a>, <a href="#484">hir_id</a>);
     }
 }
 
@@ -1311,24 +1171,24 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, V&gt; LocalTableInContext&lt;<span class="lifetime">&#39;a</span>, V&gt; {
     <span class="kw">pub fn </span>contains_key(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#578">self</a>.hir_owner, <a href="#578">id</a>);
-        <a class="self" href="#578">self</a>.data.contains_key(<span class="kw-2">&amp;</span><a href="#578">id</a>.local_id)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#508">self</a>.hir_owner, <a href="#508">id</a>);
+        <a class="self" href="#508">self</a>.data.contains_key(<span class="kw-2">&amp;</span><a href="#508">id</a>.local_id)
     }
 
     <span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>V&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#583">self</a>.hir_owner, <a href="#583">id</a>);
-        <a class="self" href="#583">self</a>.data.get(<span class="kw-2">&amp;</span><a href="#583">id</a>.local_id)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#513">self</a>.hir_owner, <a href="#513">id</a>);
+        <a class="self" href="#513">self</a>.data.get(<span class="kw-2">&amp;</span><a href="#513">id</a>.local_id)
     }
 
     <span class="kw">pub fn </span>items(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
     ) -&gt; UnordItems&lt;(<a href="../../../rustc_hir/hir_id/struct.ItemLocalId.html">hir::ItemLocalId</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>V), <span class="kw">impl </span>Iterator&lt;Item = (<a href="../../../rustc_hir/hir_id/struct.ItemLocalId.html">hir::ItemLocalId</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>V)&gt;&gt;
     {
-        <a class="self" href="#589">self</a>.data.items().map(|(id, value)| (<span class="kw-2">*</span><a href="#592">id</a>, <a href="#592">value</a>))
+        <a class="self" href="#519">self</a>.data.items().map(|(id, value)| (<span class="kw-2">*</span><a href="#522">id</a>, <a href="#522">value</a>))
     }
 
     <span class="kw">pub fn </span>items_in_stable_order(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(<a href="../../../rustc_hir/hir_id/struct.ItemLocalId.html">ItemLocalId</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>V)&gt; {
-        <a class="self" href="#595">self</a>.data.to_sorted_stable_ord()
+        <a class="self" href="#525">self</a>.data.to_sorted_stable_ord()
     }
 }
 
@@ -1336,7 +1196,7 @@
     <span class="kw">type </span>Output = V;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="kw-2">&amp;</span>V {
-        <a class="self" href="#603">self</a>.<a href="#583-586">get</a>(<a href="#603">key</a>).expect(<span class="string">&quot;LocalTableInContext: key not found&quot;</span>)
+        <a class="self" href="#533">self</a>.<a href="#513-516">get</a>(<a href="#533">key</a>).expect(<span class="string">&quot;LocalTableInContext: key not found&quot;</span>)
     }
 }
 
@@ -1347,32 +1207,32 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, V&gt; LocalTableInContextMut&lt;<span class="lifetime">&#39;a</span>, V&gt; {
     <span class="kw">pub fn </span>get_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;mut </span>V&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#614">self</a>.hir_owner, <a href="#614">id</a>);
-        <a class="self" href="#614">self</a>.data.get_mut(<span class="kw-2">&amp;</span><a href="#614">id</a>.local_id)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#544">self</a>.hir_owner, <a href="#544">id</a>);
+        <a class="self" href="#544">self</a>.data.get_mut(<span class="kw-2">&amp;</span><a href="#544">id</a>.local_id)
     }
 
     <span class="kw">pub fn </span>entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; Entry&lt;<span class="lifetime">&#39;_</span>, <a href="../../../rustc_hir/hir_id/struct.ItemLocalId.html">hir::ItemLocalId</a>, V&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#619">self</a>.hir_owner, <a href="#619">id</a>);
-        <a class="self" href="#619">self</a>.data.entry(<a href="#619">id</a>.local_id)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#549">self</a>.hir_owner, <a href="#549">id</a>);
+        <a class="self" href="#549">self</a>.data.entry(<a href="#549">id</a>.local_id)
     }
 
     <span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>, val: V) -&gt; <span class="prelude-ty">Option</span>&lt;V&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#624">self</a>.hir_owner, <a href="#624">id</a>);
-        <a class="self" href="#624">self</a>.data.insert(<a href="#624">id</a>.local_id, <a href="#624">val</a>)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#554">self</a>.hir_owner, <a href="#554">id</a>);
+        <a class="self" href="#554">self</a>.data.insert(<a href="#554">id</a>.local_id, <a href="#554">val</a>)
     }
 
     <span class="kw">pub fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>) -&gt; <span class="prelude-ty">Option</span>&lt;V&gt; {
-        <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#629">self</a>.hir_owner, <a href="#629">id</a>);
-        <a class="self" href="#629">self</a>.data.remove(<span class="kw-2">&amp;</span><a href="#629">id</a>.local_id)
+        <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#559">self</a>.hir_owner, <a href="#559">id</a>);
+        <a class="self" href="#559">self</a>.data.remove(<span class="kw-2">&amp;</span><a href="#559">id</a>.local_id)
     }
 
     <span class="kw">pub fn </span>extend(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         items: UnordItems&lt;(<a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>, V), <span class="kw">impl </span>Iterator&lt;Item = (<a href="../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>, V)&gt;&gt;,
     ) {
-        <a class="self" href="#635">self</a>.data.<a href="../../../rustc_data_structures/unord/trait.ExtendUnord.html">extend_unord</a>(<a href="#636">items</a>.map(|(id, value)| {
-            <a href="#554-558">validate_hir_id_for_typeck_results</a>(<a class="self" href="#635">self</a>.hir_owner, <a href="#638">id</a>);
-            (<a href="#638">id</a>.local_id, <a href="#638">value</a>)
+        <a class="self" href="#565">self</a>.data.<a href="../../../rustc_data_structures/unord/trait.ExtendUnord.html">extend_unord</a>(<a href="#566">items</a>.map(|(id, value)| {
+            <a href="#484-488">validate_hir_id_for_typeck_results</a>(<a class="self" href="#565">self</a>.hir_owner, <a href="#568">id</a>);
+            (<a href="#568">id</a>.local_id, <a href="#568">value</a>)
         }))
     }
 }
@@ -1380,14 +1240,14 @@
 <a class="macro" href="../../../rustc_macros/macro.newtype_index.html">rustc_index::newtype_index! </a>{
     <span class="attr">#[derive(HashStable)]
     #[debug_format = <span class="string">&quot;UserType({})&quot;</span>]
-    </span><span class="kw">pub struct </span><a href="#645-651">UserTypeAnnotationIndex</a> {
+    </span><span class="kw">pub struct </span><a href="#575-581">UserTypeAnnotationIndex</a> {
         <span class="kw">const </span><a href="../../../rustc_middle/ty/typeck_results/constant.START_INDEX.html">START_INDEX</a> = <span class="number">0</span>;
     }
 }
 
 <span class="doccomment">/// Mapping of type annotation indices to canonical user type annotations.
 </span><span class="kw">pub type </span><a href="../../../rustc_middle/ty/typeck_results/type.CanonicalUserTypeAnnotations.html">CanonicalUserTypeAnnotations</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; =
-    IndexVec&lt;<a href="#645-651">UserTypeAnnotationIndex</a>, CanonicalUserTypeAnnotation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;;
+    IndexVec&lt;<a href="#575-581">UserTypeAnnotationIndex</a>, CanonicalUserTypeAnnotation&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;;
 
 <span class="attr">#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 </span><span class="kw">pub struct </span><a href="../../../rustc_middle/ty/typeck_results/struct.CanonicalUserTypeAnnotation.html">CanonicalUserTypeAnnotation</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -1403,38 +1263,38 @@
     <span class="doccomment">/// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     </span><span class="kw">pub fn </span>is_identity(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><a class="self" href="#670">self</a>.value {
-            <a href="#719">UserType::Ty</a>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-            <a href="#723">UserType::TypeOf</a>(<span class="kw">_</span>, user_args) =&gt; {
+        <span class="kw">match </span><a class="self" href="#600">self</a>.value {
+            <a href="#649">UserType::Ty</a>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            <a href="#653">UserType::TypeOf</a>(<span class="kw">_</span>, user_args) =&gt; {
                 <span class="kw">if </span>user_args.user_self_ty.is_some() {
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
 
-                <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#673">user_args</a>.args, BoundVar::new(<span class="number">0</span>)..).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(kind, cvar)| {
-                    <span class="kw">match </span><a href="#678">kind</a>.<a href="generic_args.rs.html#126-145">unpack</a>() {
-                        <a href="generic_args.rs.html#53">GenericArgKind::Type</a>(ty) =&gt; <span class="kw">match </span><a href="#680">ty</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+                <a href="https://doc.rust-lang.org/nightly/core/iter/adapters/zip/fn.zip.html">iter::zip</a>(<a href="#603">user_args</a>.args, BoundVar::new(<span class="number">0</span>)..).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">all</a>(|(kind, cvar)| {
+                    <span class="kw">match </span><a href="#608">kind</a>.<a href="generic_args.rs.html#126-145">unpack</a>() {
+                        <a href="generic_args.rs.html#53">GenericArgKind::Type</a>(ty) =&gt; <span class="kw">match </span><a href="#610">ty</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
                             ty::Bound(debruijn, b) =&gt; {
                                 <span class="comment">// We only allow a `ty::INNERMOST` index in substitutions.
                                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(<span class="kw-2">*</span>debruijn, ty::INNERMOST);
-                                <a href="#678">cvar</a> == <a href="#681">b</a>.var
+                                <a href="#608">cvar</a> == <a href="#611">b</a>.var
                             }
                             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                         },
 
-                        <a href="generic_args.rs.html#52">GenericArgKind::Lifetime</a>(r) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#689">r</a> {
+                        <a href="generic_args.rs.html#52">GenericArgKind::Lifetime</a>(r) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#619">r</a> {
                             ty::ReLateBound(debruijn, br) =&gt; {
                                 <span class="comment">// We only allow a `ty::INNERMOST` index in substitutions.
                                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(debruijn, ty::INNERMOST);
-                                <a href="#678">cvar</a> == <a href="#690">br</a>.var
+                                <a href="#608">cvar</a> == <a href="#620">br</a>.var
                             }
                             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                         },
 
-                        <a href="generic_args.rs.html#54">GenericArgKind::Const</a>(ct) =&gt; <span class="kw">match </span><a href="#698">ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
+                        <a href="generic_args.rs.html#54">GenericArgKind::Const</a>(ct) =&gt; <span class="kw">match </span><a href="#628">ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
                             ty::ConstKind::Bound(debruijn, b) =&gt; {
                                 <span class="comment">// We only allow a `ty::INNERMOST` index in substitutions.
                                 </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(debruijn, ty::INNERMOST);
-                                <a href="#678">cvar</a> == <a href="#699">b</a>
+                                <a href="#608">cvar</a> == <a href="#629">b</a>
                             }
                             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                         },
@@ -1460,11 +1320,11 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html">std::fmt::Display</a> <span class="kw">for </span>UserType&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
-        <span class="kw">match </span><span class="self"><a href="#727">self</a> </span>{
+        <span class="kw">match </span><span class="self"><a href="#657">self</a> </span>{
             <span class="self">Self</span>::Ty(arg0) =&gt; {
                 <a class="macro" href="print/pretty.rs.html#106-130">ty::print::with_no_trimmed_paths!</a>(<span class="macro">write!</span>(f, <span class="string">&quot;Ty({})&quot;</span>, arg0))
             }
-            <span class="self">Self</span>::TypeOf(arg0, arg1) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#727">f</a>, <span class="string">&quot;TypeOf({:?}, {:?})&quot;</span>, arg0, arg1),
+            <span class="self">Self</span>::TypeOf(arg0, arg1) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#657">f</a>, <span class="string">&quot;TypeOf({:?}, {:?})&quot;</span>, arg0, arg1),
         }
     }
 }

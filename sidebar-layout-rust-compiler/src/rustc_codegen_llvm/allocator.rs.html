@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_llvm/src/allocator.rs`."><title>allocator.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_codegen_llvm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_llvm/src/allocator.rs`."><title>allocator.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_codegen_llvm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -173,8 +173,8 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><a href="lib.rs.html#62"><span class="kw">crate</span>::attributes</a>;
-<span class="kw">use </span><a href="https://docs.rs/libc/0.2.147/libc/unix/type.c_uint.html">libc::c_uint</a>;
+</pre></div><pre class="rust"><code><span class="kw">use </span><a href="lib.rs.html#64"><span class="kw">crate</span>::attributes</a>;
+<span class="kw">use </span><a href="https://docs.rs/libc/0.2.148/libc/unix/type.c_uint.html">libc::c_uint</a>;
 <span class="kw">use </span>rustc_ast::expand::allocator::{
     <a href="../../rustc_ast/expand/allocator/fn.alloc_error_handler_name.html">alloc_error_handler_name</a>, <a href="../../rustc_ast/expand/allocator/fn.default_fn_name.html">default_fn_name</a>, <a href="../../rustc_ast/expand/allocator/fn.global_fn_name.html">global_fn_name</a>, <a href="../../rustc_ast/expand/allocator/enum.AllocatorKind.html">AllocatorKind</a>, <a href="../../rustc_ast/expand/allocator/enum.AllocatorTy.html">AllocatorTy</a>,
     <a href="../../rustc_ast/expand/allocator/static.ALLOCATOR_METHODS.html">ALLOCATOR_METHODS</a>, <a href="../../rustc_ast/expand/allocator/constant.NO_ALLOC_SHIM_IS_UNSTABLE.html">NO_ALLOC_SHIM_IS_UNSTABLE</a>,
@@ -183,19 +183,19 @@
 <span class="kw">use </span><a href="../../rustc_middle/ty/context/struct.TyCtxt.html">rustc_middle::ty::TyCtxt</a>;
 <span class="kw">use </span>rustc_session::config::{<a href="../../rustc_session/config/enum.DebugInfo.html">DebugInfo</a>, <a href="../../rustc_session/config/enum.OomStrategy.html">OomStrategy</a>};
 
-<span class="kw">use </span><a href="lib.rs.html#70"><span class="kw">crate</span>::debuginfo</a>;
-<span class="kw">use </span><span class="kw">crate</span>::llvm::{<a class="self" href="lib.rs.html#78-80">self</a>, <a href="llvm/ffi.rs.html#636">Context</a>, <a href="llvm/ffi.rs.html#21">False</a>, <a href="llvm/ffi.rs.html#633">Module</a>, <a href="llvm/ffi.rs.html#20">True</a>, <a href="llvm/ffi.rs.html#639">Type</a>};
-<span class="kw">use </span><a href="lib.rs.html#401-405"><span class="kw">crate</span>::ModuleLlvm</a>;
+<span class="kw">use </span><a href="lib.rs.html#72"><span class="kw">crate</span>::debuginfo</a>;
+<span class="kw">use </span><span class="kw">crate</span>::llvm::{<a class="self" href="lib.rs.html#80-82">self</a>, <a href="llvm/ffi.rs.html#636">Context</a>, <a href="llvm/ffi.rs.html#21">False</a>, <a href="llvm/ffi.rs.html#633">Module</a>, <a href="llvm/ffi.rs.html#20">True</a>, <a href="llvm/ffi.rs.html#639">Type</a>};
+<span class="kw">use </span><a href="lib.rs.html#403-409"><span class="kw">crate</span>::ModuleLlvm</a>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe fn </span><a href="../../rustc_codegen_llvm/allocator/fn.codegen.html">codegen</a>(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;,
-    module_llvm: <span class="kw-2">&amp;mut </span><a href="lib.rs.html#401-405">ModuleLlvm</a>,
+    module_llvm: <span class="kw-2">&amp;mut </span><a href="lib.rs.html#403-409">ModuleLlvm</a>,
     module_name: <span class="kw-2">&amp;</span><a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>,
     kind: <a href="../../rustc_ast/expand/allocator/enum.AllocatorKind.html">AllocatorKind</a>,
     alloc_error_handler_kind: <a href="../../rustc_ast/expand/allocator/enum.AllocatorKind.html">AllocatorKind</a>,
 ) {
     <span class="kw">let </span>llcx = <span class="kw-2">&amp;*</span><a href="#17">module_llvm</a>.llcx;
-    <span class="kw">let </span>llmod = <a href="#17">module_llvm</a>.<a href="lib.rs.html#448-450">llmod</a>();
+    <span class="kw">let </span>llmod = <a href="#17">module_llvm</a>.<a href="lib.rs.html#452-454">llmod</a>();
     <span class="kw">let </span>usize = <span class="kw">match </span><a href="#16">tcx</a>.sess.target.pointer_width {
         <span class="number">16 </span>=&gt; <a href="llvm/ffi.rs.html#852">llvm::LLVMInt16TypeInContext</a>(<a href="#22">llcx</a>),
         <span class="number">32 </span>=&gt; <a href="llvm/ffi.rs.html#853">llvm::LLVMInt32TypeInContext</a>(<a href="#22">llcx</a>),
@@ -287,7 +287,7 @@
         <span class="kw">let </span>ty = <a href="llvm/ffi.rs.html#864-869">llvm::LLVMFunctionType</a>(
             <a href="#108">output</a>.unwrap_or_else(|| <a href="llvm/ffi.rs.html#890">llvm::LLVMVoidTypeInContext</a>(<a href="#103">llcx</a>)),
             <a href="#107">args</a>.as_ptr(),
-            <a href="#107">args</a>.len() <span class="kw">as </span><a href="https://docs.rs/libc/0.2.147/libc/unix/type.c_uint.html">c_uint</a>,
+            <a href="#107">args</a>.len() <span class="kw">as </span><a href="https://docs.rs/libc/0.2.148/libc/unix/type.c_uint.html">c_uint</a>,
             <a href="llvm/ffi.rs.html#21">False</a>,
         );
         <span class="kw">let </span>llfn = <a href="llvm/ffi.rs.html#1040-1045">llvm::LLVMRustGetOrInsertFunction</a>(
@@ -328,16 +328,16 @@
         <span class="kw">let </span>args = <a href="#107">args</a>
             .iter()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, <span class="kw">_</span>)| <a href="llvm/ffi.rs.html#1057">llvm::LLVMGetParam</a>(<a href="#118">llfn</a>, <a href="#156">i</a> <span class="kw">as </span><a href="https://docs.rs/libc/0.2.147/libc/unix/type.c_uint.html">c_uint</a>))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, <span class="kw">_</span>)| <a href="llvm/ffi.rs.html#1057">llvm::LLVMGetParam</a>(<a href="#118">llfn</a>, <a href="#156">i</a> <span class="kw">as </span><a href="https://docs.rs/libc/0.2.148/libc/unix/type.c_uint.html">c_uint</a>))
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>ret = <a href="llvm/ffi.rs.html#1490-1498">llvm::LLVMRustBuildCall</a>(
             <a href="#151">llbuilder</a>,
             <a href="#112">ty</a>,
             <a href="#141">callee</a>,
             <a href="#153">args</a>.as_ptr(),
-            <a href="#153">args</a>.len() <span class="kw">as </span><a href="https://docs.rs/libc/0.2.147/libc/unix/type.c_uint.html">c_uint</a>,
+            <a href="#153">args</a>.len() <span class="kw">as </span><a href="https://docs.rs/libc/0.2.148/libc/unix/type.c_uint.html">c_uint</a>,
             [].as_ptr(),
-            <span class="number">0 </span><span class="kw">as </span><a href="https://docs.rs/libc/0.2.147/libc/unix/type.c_uint.html">c_uint</a>,
+            <span class="number">0 </span><span class="kw">as </span><a href="https://docs.rs/libc/0.2.148/libc/unix/type.c_uint.html">c_uint</a>,
         );
         <a href="llvm/ffi.rs.html#1016">llvm::LLVMSetTailCall</a>(<a href="#158">ret</a>, <a href="llvm/ffi.rs.html#20">True</a>);
         <span class="kw">if </span>output.is_some() {

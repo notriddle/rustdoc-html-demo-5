@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CacheHit","CanonicalGoalEvaluationKind","GoalEvaluationKind","ProbeKind","ProbeStep"],"struct":["AddedGoalsEvaluation","CanonicalGoalEvaluation","GoalEvaluation","GoalEvaluationStep","Probe"]};
+window.SIDEBAR_ITEMS = {"enum":["CacheHit","CanonicalGoalEvaluationKind","GoalEvaluationKind","ProbeKind","ProbeStep"],"struct":["AddedGoalsEvaluation","CanonicalGoalEvaluation","GoalEvaluation","GoalEvaluationStep","Probe","State"],"type":["CanonicalState"]};

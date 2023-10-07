@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/mir/traversal.rs`."><title>traversal.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/mir/traversal.rs`."><title>traversal.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -281,36 +281,6 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
-<a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a>
-<a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
-<a href="#297" id="297">297</a>
-<a href="#298" id="298">298</a>
-<a href="#299" id="299">299</a>
-<a href="#300" id="300">300</a>
-<a href="#301" id="301">301</a>
-<a href="#302" id="302">302</a>
-<a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../rustc_index/bit_set/struct.BitSet.html">rustc_index::bit_set::BitSet</a>;
 
 <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -336,32 +306,38 @@
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span><a href="../../../rustc_middle/mir/traversal/struct.Preorder.html">Preorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    visited: BitSet&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>&gt;,
-    worklist: Vec&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>&gt;,
+    visited: BitSet&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>&gt;,
+    worklist: Vec&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>&gt;,
     root_is_start_block: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Preorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">pub fn </span>new(body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;, root: <a href="mod.rs.html#1169-1197">BasicBlock</a>) -&gt; Preorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
+    <span class="kw">pub fn </span>new(body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;, root: <a href="mod.rs.html#1106-1134">BasicBlock</a>) -&gt; Preorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>worklist = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[root];
 
         <a href="#24-29">Preorder</a> {
             <a href="#32">body</a>,
             visited: BitSet::new_empty(<a href="#32">body</a>.basic_blocks.len()),
             <a href="#33">worklist</a>,
-            root_is_start_block: <a href="#32">root</a> == <a href="mod.rs.html#1169-1197">START_BLOCK</a>,
+            root_is_start_block: <a href="#32">root</a> == <a href="mod.rs.html#1106-1134">START_BLOCK</a>,
         }
     }
 }
 
-<span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.preorder.html">preorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Preorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    Preorder::new(<a href="#44">body</a>, <a href="mod.rs.html#1169-1197">START_BLOCK</a>)
+<span class="doccomment">/// Preorder traversal of a graph.
+///
+/// This function creates an iterator over the `Body`&#39;s basic blocks, that
+/// returns basic blocks in a preorder.
+///
+/// See [`Preorder`]&#39;s docs to learn what is preorder traversal.
+</span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.preorder.html">preorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Preorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
+    Preorder::new(<a href="#50">body</a>, <a href="mod.rs.html#1106-1134">START_BLOCK</a>)
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">Iterator</a> <span class="kw">for </span>Preorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">type </span>Item = (<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;);
+    <span class="kw">type </span>Item = (<a href="mod.rs.html#1106-1134">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;);
 
-    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="mod.rs.html#1106-1134">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
         <span class="kw">while let </span><span class="prelude-val">Some</span>(idx) = <span class="self">self</span>.worklist.pop() {
             <span class="kw">if </span>!<span class="self">self</span>.visited.insert(idx) {
                 <span class="kw">continue</span>;
@@ -381,16 +357,16 @@
 
     <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;) {
         <span class="comment">// All the blocks, minus the number of blocks we&#39;ve visited.
-        </span><span class="kw">let </span>upper = <a class="self" href="#69">self</a>.body.basic_blocks.len() - <a class="self" href="#69">self</a>.visited.count();
+        </span><span class="kw">let </span>upper = <a class="self" href="#75">self</a>.body.basic_blocks.len() - <a class="self" href="#75">self</a>.visited.count();
 
         <span class="kw">let </span>lower = <span class="kw">if </span><span class="self">self</span>.root_is_start_block {
             <span class="comment">// We will visit all remaining blocks exactly once.
-            </span><a href="#71">upper</a>
+            </span><a href="#77">upper</a>
         } <span class="kw">else </span>{
-            <a class="self" href="#69">self</a>.worklist.len()
+            <a class="self" href="#75">self</a>.worklist.len()
         };
 
-        (<a href="#73">lower</a>, <span class="prelude-val">Some</span>(<a href="#71">upper</a>))
+        (<a href="#79">lower</a>, <span class="prelude-val">Some</span>(<a href="#77">upper</a>))
     }
 }
 
@@ -414,33 +390,33 @@
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 </span><span class="kw">pub struct </span><a href="../../../rustc_middle/mir/traversal/struct.Postorder.html">Postorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    basic_blocks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>IndexSlice&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>, BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
-    visited: BitSet&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>&gt;,
-    visit_stack: Vec&lt;(<a href="mod.rs.html#1169-1197">BasicBlock</a>, Successors&lt;<span class="lifetime">&#39;a</span>&gt;)&gt;,
+    basic_blocks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>IndexSlice&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>, BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
+    visited: BitSet&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>&gt;,
+    visit_stack: Vec&lt;(<a href="mod.rs.html#1106-1134">BasicBlock</a>, Successors&lt;<span class="lifetime">&#39;a</span>&gt;)&gt;,
     root_is_start_block: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Postorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub fn </span>new(
-        basic_blocks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>IndexSlice&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>, BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
-        root: <a href="mod.rs.html#1169-1197">BasicBlock</a>,
+        basic_blocks: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>IndexSlice&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>, BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
+        root: <a href="mod.rs.html#1106-1134">BasicBlock</a>,
     ) -&gt; Postorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>po = <a href="#103-108">Postorder</a> {
-            <a href="#112">basic_blocks</a>,
-            visited: BitSet::new_empty(<a href="#112">basic_blocks</a>.len()),
+        <span class="kw">let </span><span class="kw-2">mut </span>po = <a href="#109-114">Postorder</a> {
+            <a href="#118">basic_blocks</a>,
+            visited: BitSet::new_empty(<a href="#118">basic_blocks</a>.len()),
             visit_stack: Vec::new(),
-            root_is_start_block: <a href="#113">root</a> == <a href="mod.rs.html#1169-1197">START_BLOCK</a>,
+            root_is_start_block: <a href="#119">root</a> == <a href="mod.rs.html#1106-1134">START_BLOCK</a>,
         };
 
-        <span class="kw">let </span>data = <span class="kw-2">&amp;</span><a href="#115">po</a>.basic_blocks[<a href="#113">root</a>];
+        <span class="kw">let </span>data = <span class="kw-2">&amp;</span><a href="#121">po</a>.basic_blocks[<a href="#119">root</a>];
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>term) = <a href="#122">data</a>.terminator {
-            <a href="#115">po</a>.visited.insert(<a href="#113">root</a>);
-            <a href="#115">po</a>.visit_stack.push((<a href="#113">root</a>, <a href="#124">term</a>.<a href="terminator.rs.html#149-151">successors</a>()));
-            <a href="#115">po</a>.<a href="#133-188">traverse_successor</a>();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>term) = <a href="#128">data</a>.terminator {
+            <a href="#121">po</a>.visited.insert(<a href="#119">root</a>);
+            <a href="#121">po</a>.visit_stack.push((<a href="#119">root</a>, <a href="#130">term</a>.<a href="terminator.rs.html#288-290">successors</a>()));
+            <a href="#121">po</a>.<a href="#139-194">traverse_successor</a>();
         }
 
-        <a href="#115">po</a>
+        <a href="#121">po</a>
     }
 
     <span class="kw">fn </span>traverse_successor(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
@@ -491,7 +467,7 @@
         // When we yield `C` and call `traverse_successor`, we push `B` to the stack, but
         // since we&#39;ve already visited `E`, that child isn&#39;t added to the stack. The last
         // two iterations yield `B` and finally `A` for a final traversal of [E, D, C, B, A]
-        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;mut </span>(<span class="kw">_</span>, <span class="kw-2">ref mut </span>iter)) = <span class="self">self</span>.visit_stack.last_mut() &amp;&amp; <span class="kw">let </span><span class="prelude-val">Some</span>(bb) = iter.next_back() {
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(bb) = <span class="self">self</span>.visit_stack.last_mut().and_then(|(<span class="kw">_</span>, iter)| iter.next_back()) {
             <span class="kw">if </span><span class="self">self</span>.visited.insert(bb) {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(term) = <span class="kw-2">&amp;</span><span class="self">self</span>.basic_blocks[bb].terminator {
                     <span class="self">self</span>.visit_stack.push((bb, term.successors()));
@@ -501,45 +477,68 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">Iterator</a> <span class="kw">for </span>Postorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">type </span>Item = (<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;);
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">Iterator</a> <span class="kw">for </span>Postorder&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt; {
+    <span class="kw">type </span>Item = <a href="mod.rs.html#1106-1134">BasicBlock</a>;
 
-    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
-        <span class="kw">let </span>next = <a class="self" href="#194">self</a>.visit_stack.pop();
-        <span class="kw">if </span>next.is_some() {
-            <a class="self" href="#194">self</a>.<a href="#133-188">traverse_successor</a>();
-        }
+    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>&gt; {
+        <span class="kw">let </span>(bb, <span class="kw">_</span>) = <span class="self">self</span>.visit_stack.pop()<span class="question-mark">?</span>;
+        <a class="self" href="#200">self</a>.<a href="#139-194">traverse_successor</a>();
 
-        <a href="#195">next</a>.map(|(bb, <span class="kw">_</span>)| (<a href="#200">bb</a>, <span class="kw-2">&amp;</span><a class="self" href="#194">self</a>.basic_blocks[<a href="#200">bb</a>]))
+        <span class="prelude-val">Some</span>(<a href="#201">bb</a>)
     }
 
     <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;) {
         <span class="comment">// All the blocks, minus the number of blocks we&#39;ve visited.
-        </span><span class="kw">let </span>upper = <a class="self" href="#203">self</a>.basic_blocks.len() - <a class="self" href="#203">self</a>.visited.count();
+        </span><span class="kw">let </span>upper = <a class="self" href="#207">self</a>.basic_blocks.len() - <a class="self" href="#207">self</a>.visited.count();
 
         <span class="kw">let </span>lower = <span class="kw">if </span><span class="self">self</span>.root_is_start_block {
             <span class="comment">// We will visit all remaining blocks exactly once.
-            </span><a href="#205">upper</a>
+            </span><a href="#209">upper</a>
         } <span class="kw">else </span>{
-            <a class="self" href="#203">self</a>.visit_stack.len()
+            <a class="self" href="#207">self</a>.visit_stack.len()
         };
 
-        (<a href="#207">lower</a>, <span class="prelude-val">Some</span>(<a href="#205">upper</a>))
+        (<a href="#211">lower</a>, <span class="prelude-val">Some</span>(<a href="#209">upper</a>))
     }
 }
 
-<span class="doccomment">/// Creates an iterator over the `Body`&#39;s basic blocks, that:
+<span class="doccomment">/// Postorder traversal of a graph.
+///
+/// This function creates an iterator over the `Body`&#39;s basic blocks, that:
 /// - returns basic blocks in a postorder,
 /// - traverses the `BasicBlocks` CFG cache&#39;s reverse postorder backwards, and does not cache the
 ///   postorder itself.
+///
+/// See [`Postorder`]&#39;s docs to learn what is postorder traversal.
 </span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.postorder.html">postorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(
     body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">ExactSizeIterator</a> + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/double_ended/trait.DoubleEndedIterator.html">DoubleEndedIterator</a>
+) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="mod.rs.html#1106-1134">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">ExactSizeIterator</a> + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/double_ended/trait.DoubleEndedIterator.html">DoubleEndedIterator</a>
 {
-    <a href="#308-313">reverse_postorder</a>(<a href="#223">body</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>()
+    <a href="#278-283">reverse_postorder</a>(<a href="#231">body</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>()
 }
 
-<span class="doccomment">/// Reverse postorder traversal of a graph
+<span class="doccomment">/// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
+/// order.
+///
+/// This is clearer than writing `preorder` in cases where the order doesn&#39;t matter.
+</span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.reachable.html">reachable</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(
+    body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;a </span>+ Iterator&lt;Item = (<a href="mod.rs.html#1106-1134">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
+    <a href="#50-52">preorder</a>(<a href="#242">body</a>)
+}
+
+<span class="doccomment">/// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
+</span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.reachable_as_bitset.html">reachable_as_bitset</a>(body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; BitSet&lt;<a href="mod.rs.html#1106-1134">BasicBlock</a>&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>iter = <a href="#50-52">preorder</a>(<a href="#248">body</a>);
+    <a href="#249">iter</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">by_ref</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">for_each</a>(<a href="https://doc.rust-lang.org/nightly/core/mem/fn.drop.html">drop</a>);
+    <a href="#249">iter</a>.visited
+}
+
+<span class="doccomment">/// Reverse postorder traversal of a graph.
+///
+/// This function creates an iterator over the `Body`&#39;s basic blocks, that:
+/// - returns basic blocks in a reverse postorder,
+/// - makes use of the `BasicBlocks` CFG cache&#39;s reverse postorder.
 ///
 /// Reverse postorder is the reverse order of a postorder traversal.
 /// This is different to a preorder traversal and represents a natural
@@ -559,69 +558,10 @@
 /// A reverse postorder traversal of this graph is either `A B C D` or `A C B D`
 /// Note that for a graph containing no loops (i.e., A DAG), this is equivalent to
 /// a topological sort.
-///
-/// Construction of a `ReversePostorder` traversal requires doing a full
-/// postorder traversal of the graph, therefore this traversal should be
-/// constructed as few times as possible. Use the `reset` method to be able
-/// to re-use the traversal
-</span><span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span><a href="../../../rustc_middle/mir/traversal/struct.ReversePostorder.html">ReversePostorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    blocks: Vec&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>&gt;,
-    idx: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; ReversePostorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">pub fn </span>new(body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;, root: <a href="mod.rs.html#1169-1197">BasicBlock</a>) -&gt; ReversePostorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>blocks: Vec&lt;<span class="kw">_</span>&gt; = Postorder::new(<span class="kw-2">&amp;</span><a href="#262">body</a>.basic_blocks, <a href="#262">root</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(bb, <span class="kw">_</span>)| <a href="#263">bb</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <span class="kw">let </span>len = <a href="#263">blocks</a>.len();
-        <a href="#255-259">ReversePostorder</a> { <a href="#262">body</a>, <a href="#263">blocks</a>, idx: <a href="#264">len</a> }
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">Iterator</a> <span class="kw">for </span>ReversePostorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    <span class="kw">type </span>Item = (<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;);
-
-    <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
-        <span class="kw">if </span><span class="self">self</span>.idx == <span class="number">0 </span>{
-            <span class="kw">return </span><span class="prelude-val">None</span>;
-        }
-        <a class="self" href="#272">self</a>.idx -= <span class="number">1</span>;
-
-        <a class="self" href="#272">self</a>.blocks.get(<a class="self" href="#272">self</a>.idx).map(|<span class="kw-2">&amp;</span>bb| (<a href="#278">bb</a>, <span class="kw-2">&amp;</span><a class="self" href="#272">self</a>.body[<a href="#278">bb</a>]))
-    }
-
-    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;) {
-        (<a class="self" href="#281">self</a>.idx, <span class="prelude-val">Some</span>(<a class="self" href="#281">self</a>.idx))
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; <a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">ExactSizeIterator</a> <span class="kw">for </span>ReversePostorder&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {}
-
-<span class="doccomment">/// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
-/// order.
-///
-/// This is clearer than writing `preorder` in cases where the order doesn&#39;t matter.
-</span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.reachable.html">reachable</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(
-    body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <span class="kw">impl </span><span class="lifetime">&#39;a </span>+ Iterator&lt;Item = (<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; {
-    <a href="#44-46">preorder</a>(<a href="#293">body</a>)
-}
-
-<span class="doccomment">/// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-</span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.reachable_as_bitset.html">reachable_as_bitset</a>(body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; BitSet&lt;<a href="mod.rs.html#1169-1197">BasicBlock</a>&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>iter = <a href="#44-46">preorder</a>(<a href="#299">body</a>);
-    (<span class="kw-2">&amp;mut </span><a href="#300">iter</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">for_each</a>(<a href="https://doc.rust-lang.org/nightly/core/mem/fn.drop.html">drop</a>);
-    <a href="#300">iter</a>.visited
-}
-
-<span class="doccomment">/// Creates an iterator over the `Body`&#39;s basic blocks, that:
-/// - returns basic blocks in a reverse postorder,
-/// - makes use of the `BasicBlocks` CFG cache&#39;s reverse postorder.
 </span><span class="kw">pub fn </span><a href="../../../rustc_middle/mir/traversal/fn.reverse_postorder.html">reverse_postorder</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt;(
     body: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="mod.rs.html#1169-1197">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">ExactSizeIterator</a> + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/double_ended/trait.DoubleEndedIterator.html">DoubleEndedIterator</a>
+) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="mod.rs.html#1106-1134">BasicBlock</a>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>BasicBlockData&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">ExactSizeIterator</a> + <a href="https://doc.rust-lang.org/nightly/core/iter/traits/double_ended/trait.DoubleEndedIterator.html">DoubleEndedIterator</a>
 {
-    <a href="#309">body</a>.basic_blocks.<a href="basic_blocks.rs.html#67-74">reverse_postorder</a>().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>bb| (<a href="#312">bb</a>, <span class="kw-2">&amp;</span><a href="#309">body</a>.basic_blocks[<a href="#312">bb</a>]))
+    <a href="#279">body</a>.basic_blocks.<a href="basic_blocks.rs.html#71-77">reverse_postorder</a>().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>bb| (<a href="#282">bb</a>, <span class="kw-2">&amp;</span><a href="#279">body</a>.basic_blocks[<a href="#282">bb</a>]))
 }
 </code></pre></div></section></main></body></html>

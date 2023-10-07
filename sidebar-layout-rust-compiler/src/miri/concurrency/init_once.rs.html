@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/init_once.rs`."><title>init_once.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/concurrency/init_once.rs`."><title>init_once.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -293,7 +293,7 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">fn </span>init_once_observe_attempt(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#12">InitOnceId</a>) {
         <span class="kw">let </span>this = <a class="self" href="#60">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_thread = <a href="#61">this</a>.<a href="thread.rs.html#908-911">get_active_thread</a>();
+        <span class="kw">let </span>current_thread = <a href="#61">this</a>.<a href="thread.rs.html#907-910">get_active_thread</a>();
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(data_race) = <span class="kw-2">&amp;</span><a href="#61">this</a>.machine.data_race {
             <a href="#64">data_race</a>.<a href="data_race.rs.html#1554-1557">validate_lock_acquire</a>(
@@ -310,15 +310,15 @@
         waiter: InitOnceWaiter&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>this = <a class="self" href="#74">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_thread = <a href="#78">this</a>.<a href="thread.rs.html#908-911">get_active_thread</a>();
+        <span class="kw">let </span>current_thread = <a href="#78">this</a>.<a href="thread.rs.html#907-910">get_active_thread</a>();
 
-        <a href="#78">this</a>.<a href="thread.rs.html#989-991">unblock_thread</a>(<a href="#76">waiter</a>.thread);
+        <a href="#78">this</a>.<a href="thread.rs.html#988-990">unblock_thread</a>(<a href="#76">waiter</a>.thread);
 
         <span class="comment">// Call callback, with the woken-up thread as `current`.
-        </span><a href="#78">this</a>.<a href="thread.rs.html#902-905">set_active_thread</a>(<a href="#76">waiter</a>.thread);
+        </span><a href="#78">this</a>.<a href="thread.rs.html#901-904">set_active_thread</a>(<a href="#76">waiter</a>.thread);
         <a href="#78">this</a>.<a href="#60-70">init_once_observe_attempt</a>(<a href="#75">id</a>);
         waiter.callback.call(this)<span class="question-mark">?</span>;
-        <a href="#78">this</a>.<a href="thread.rs.html#902-905">set_active_thread</a>(<a href="#79">current_thread</a>);
+        <a href="#78">this</a>.<a href="thread.rs.html#901-904">set_active_thread</a>(<a href="#79">current_thread</a>);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -377,7 +377,7 @@
         <span class="kw">let </span>init_once = <span class="kw-2">&amp;mut </span><a href="#142">this</a>.machine.threads.sync.init_onces[<a href="#138">id</a>];
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_ne.html">assert_ne!</a>(init_once.status, InitOnceStatus::Complete, <span class="string">&quot;queueing on complete init once&quot;</span>);
         <a href="#143">init_once</a>.waiters.push_back(<a href="#15-20">InitOnceWaiter</a> { <a href="#139">thread</a>, <a href="#140">callback</a> });
-        <a href="#142">this</a>.<a href="thread.rs.html#984-986">block_thread</a>(<a href="#139">thread</a>);
+        <a href="#142">this</a>.<a href="thread.rs.html#983-985">block_thread</a>(<a href="#139">thread</a>);
     }
 
     <span class="doccomment">/// Begin initializing this InitOnce. Must only be called after checking that it is currently
@@ -397,8 +397,8 @@
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>init_once_complete(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#12">InitOnceId</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>this = <a class="self" href="#164">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_thread = <a href="#165">this</a>.<a href="thread.rs.html#908-911">get_active_thread</a>();
-        <span class="kw">let </span>current_span = <a href="#165">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_thread = <a href="#165">this</a>.<a href="thread.rs.html#907-910">get_active_thread</a>();
+        <span class="kw">let </span>current_span = <a href="#165">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>init_once = <span class="kw-2">&amp;mut </span><a href="#165">this</a>.machine.threads.sync.init_onces[<a href="#164">id</a>];
 
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(
@@ -426,8 +426,8 @@
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>init_once_fail(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="#12">InitOnceId</a>) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>this = <a class="self" href="#193">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
-        <span class="kw">let </span>current_thread = <a href="#194">this</a>.<a href="thread.rs.html#908-911">get_active_thread</a>();
-        <span class="kw">let </span>current_span = <a href="#194">this</a>.machine.<a href="../helpers.rs.html#1076-1080">current_span</a>();
+        <span class="kw">let </span>current_thread = <a href="#194">this</a>.<a href="thread.rs.html#907-910">get_active_thread</a>();
+        <span class="kw">let </span>current_span = <a href="#194">this</a>.machine.<a href="../helpers.rs.html#1094-1098">current_span</a>();
         <span class="kw">let </span>init_once = <span class="kw-2">&amp;mut </span><a href="#194">this</a>.machine.threads.sync.init_onces[<a href="#193">id</a>];
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(
             init_once.status,

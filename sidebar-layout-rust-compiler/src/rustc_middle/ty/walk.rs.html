@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/walk.rs`."><title>walk.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/walk.rs`."><title>walk.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -236,13 +236,10 @@
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
-<a href="#241" id="241">241</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="mod.rs.html#451">Ty</a>};
+</span><span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="mod.rs.html#463">Ty</a>};
 <span class="kw">use </span><span class="kw">crate</span>::ty::{<a href="generic_args.rs.html#34-37">GenericArg</a>, <a href="generic_args.rs.html#51-55">GenericArgKind</a>};
 <span class="kw">use </span><a href="../../../rustc_data_structures/sso/set/struct.SsoHashSet.html">rustc_data_structures::sso::SsoHashSet</a>;
 <span class="kw">use </span><a href="https://docs.rs/smallvec/1.11.0/smallvec/struct.SmallVec.html">smallvec::SmallVec</a>;
@@ -296,7 +293,7 @@
             <span class="kw">let </span>next = <span class="self">self</span>.stack.pop()<span class="question-mark">?</span>;
             <a class="self" href="#52">self</a>.last_subtree = <a class="self" href="#52">self</a>.stack.len();
             <span class="kw">if </span><span class="self">self</span>.visited.insert(next) {
-                <a href="#137-241">push_inner</a>(<span class="kw-2">&amp;mut </span><a class="self" href="#52">self</a>.stack, <a href="#55">next</a>);
+                <a href="#137-238">push_inner</a>(<span class="kw-2">&amp;mut </span><a class="self" href="#52">self</a>.stack, <a href="#55">next</a>);
                 <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;next: stack={:?}&quot;</span>, <span class="self">self</span>.stack);
                 <span class="kw">return </span><span class="prelude-val">Some</span>(<a href="#55">next</a>);
             }
@@ -331,7 +328,7 @@
         visited: <span class="kw-2">&amp;mut </span>SsoHashSet&lt;GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>stack = SmallVec::new();
-        <a href="#137-241">push_inner</a>(<span class="kw-2">&amp;mut </span><a href="#92">stack</a>, <a class="self" href="#89">self</a>);
+        <a href="#137-238">push_inner</a>(<span class="kw-2">&amp;mut </span><a href="#92">stack</a>, <a class="self" href="#89">self</a>);
         <a href="#92">stack</a>.retain(|a| <a href="#90">visited</a>.insert(<span class="kw-2">*</span><a href="#94">a</a>));
         <a href="#92">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
     }
@@ -377,7 +374,7 @@
 /// types as they are written).
 </span><span class="kw">fn </span><a href="../../../rustc_middle/ty/walk/fn.push_inner.html">push_inner</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(stack: <span class="kw-2">&amp;mut </span>TypeWalkerStack&lt;<span class="lifetime">&#39;tcx</span>&gt;, parent: GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
     <span class="kw">match </span><a href="#137">parent</a>.<a href="generic_args.rs.html#126-145">unpack</a>() {
-        <a href="generic_args.rs.html#53">GenericArgKind::Type</a>(parent_ty) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#139">parent_ty</a>.<a href="sty.rs.html#2254-2256">kind</a>() {
+        <a href="generic_args.rs.html#53">GenericArgKind::Type</a>(parent_ty) =&gt; <span class="kw">match </span><span class="kw-2">*</span><a href="#139">parent_ty</a>.<a href="sty.rs.html#2246-2248">kind</a>() {
             ty::Bool
             | ty::Char
             | ty::Int(<span class="kw">_</span>)
@@ -422,32 +419,29 @@
                         }
                     };
 
-                    <a href="#174">args</a>.<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#174">opt_ty</a>.map(|term| <span class="kw">match </span><a href="#184">term</a>.<a href="mod.rs.html#973-989">unpack</a>() {
-                        <a href="mod.rs.html#1035">ty::TermKind::Ty</a>(ty) =&gt; <a href="#185">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
-                        <a href="mod.rs.html#1036">ty::TermKind::Const</a>(ct) =&gt; <a href="#186">ct</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+                    <a href="#174">args</a>.<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#174">opt_ty</a>.map(|term| <span class="kw">match </span><a href="#184">term</a>.<a href="mod.rs.html#985-1001">unpack</a>() {
+                        <a href="mod.rs.html#1047">ty::TermKind::Ty</a>(ty) =&gt; <a href="#185">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
+                        <a href="mod.rs.html#1048">ty::TermKind::Const</a>(ct) =&gt; <a href="#186">ct</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>(),
                     }))
                 }));
             }
             ty::Adt(<span class="kw">_</span>, args)
             | ty::Closure(<span class="kw">_</span>, args)
             | ty::Generator(<span class="kw">_</span>, args, <span class="kw">_</span>)
-            | ty::GeneratorWitnessMIR(<span class="kw">_</span>, args)
+            | ty::GeneratorWitness(<span class="kw">_</span>, args)
             | ty::FnDef(<span class="kw">_</span>, args) =&gt; {
                 <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#190">args</a>.<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>());
             }
             ty::Tuple(ts) =&gt; <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#197">ts</a>.<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(GenericArg::from)),
-            ty::GeneratorWitness(ts) =&gt; {
-                <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#198">ts</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| <a href="#199">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()));
-            }
             ty::FnPtr(sig) =&gt; {
-                <a href="#137">stack</a>.push(<a href="#201">sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="sty.rs.html#1337-1339">output</a>().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
-                <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#201">sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="sty.rs.html#1333-1335">inputs</a>().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| <a href="#203">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()));
+                <a href="#137">stack</a>.push(<a href="#198">sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="sty.rs.html#1337-1339">output</a>().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+                <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#198">sig</a>.<a href="sty.rs.html#1048-1050">skip_binder</a>().<a href="sty.rs.html#1333-1335">inputs</a>().iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| <a href="#200">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()));
             }
         },
         <a href="generic_args.rs.html#52">GenericArgKind::Lifetime</a>(<span class="kw">_</span>) =&gt; {}
         <a href="generic_args.rs.html#54">GenericArgKind::Const</a>(parent_ct) =&gt; {
-            <a href="#137">stack</a>.push(<a href="#207">parent_ct</a>.<a href="consts.rs.html#40-42">ty</a>().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
-            <span class="kw">match </span><a href="#207">parent_ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
+            <a href="#137">stack</a>.push(<a href="#204">parent_ct</a>.<a href="consts.rs.html#40-42">ty</a>().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+            <span class="kw">match </span><a href="#204">parent_ct</a>.<a href="consts.rs.html#45-47">kind</a>() {
                 ty::ConstKind::Infer(<span class="kw">_</span>)
                 | ty::ConstKind::Param(<span class="kw">_</span>)
                 | ty::ConstKind::Placeholder(<span class="kw">_</span>)
@@ -455,26 +449,26 @@
                 | ty::ConstKind::Value(<span class="kw">_</span>)
                 | ty::ConstKind::Error(<span class="kw">_</span>) =&gt; {}
 
-                ty::ConstKind::Expr(expr) =&gt; <span class="kw">match </span><a href="#217">expr</a> {
-                    <a href="consts/kind.rs.html#70">ty::Expr::UnOp</a>(<span class="kw">_</span>, v) =&gt; <a href="#137-241">push_inner</a>(<a href="#137">stack</a>, <a href="#218">v</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()),
+                ty::ConstKind::Expr(expr) =&gt; <span class="kw">match </span><a href="#214">expr</a> {
+                    <a href="consts/kind.rs.html#70">ty::Expr::UnOp</a>(<span class="kw">_</span>, v) =&gt; <a href="#137-238">push_inner</a>(<a href="#137">stack</a>, <a href="#215">v</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()),
                     <a href="consts/kind.rs.html#69">ty::Expr::Binop</a>(<span class="kw">_</span>, l, r) =&gt; {
-                        <a href="#137-241">push_inner</a>(<a href="#137">stack</a>, <a href="#219">r</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
-                        <a href="#137-241">push_inner</a>(<a href="#137">stack</a>, <a href="#219">l</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
+                        <a href="#137-238">push_inner</a>(<a href="#137">stack</a>, <a href="#216">r</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+                        <a href="#137-238">push_inner</a>(<a href="#137">stack</a>, <a href="#216">l</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>())
                     }
                     <a href="consts/kind.rs.html#71">ty::Expr::FunctionCall</a>(func, args) =&gt; {
                         <span class="kw">for </span>a <span class="kw">in </span>args.iter().rev() {
                             push_inner(stack, a.into());
                         }
-                        <a href="#137-241">push_inner</a>(<a href="#137">stack</a>, <a href="#223">func</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+                        <a href="#137-238">push_inner</a>(<a href="#137">stack</a>, <a href="#220">func</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
                     }
                     <a href="consts/kind.rs.html#72">ty::Expr::Cast</a>(<span class="kw">_</span>, c, t) =&gt; {
-                        <a href="#137-241">push_inner</a>(<a href="#137">stack</a>, <a href="#229">t</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
-                        <a href="#137-241">push_inner</a>(<a href="#137">stack</a>, <a href="#229">c</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+                        <a href="#137-238">push_inner</a>(<a href="#137">stack</a>, <a href="#226">t</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+                        <a href="#137-238">push_inner</a>(<a href="#137">stack</a>, <a href="#226">c</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
                     }
                 },
 
                 ty::ConstKind::Unevaluated(ct) =&gt; {
-                    <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#235">ct</a>.args.<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>());
+                    <a href="#137">stack</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#232">ct</a>.args.<a href="list.rs.html#113-115">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">rev</a>());
                 }
             }
         }

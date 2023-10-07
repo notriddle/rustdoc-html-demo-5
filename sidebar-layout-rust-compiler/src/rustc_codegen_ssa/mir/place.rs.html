@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/mir/place.rs`."><title>place.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_ssa/src/mir/place.rs`."><title>place.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_ssa" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_codegen_ssa/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_codegen_ssa"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -551,6 +551,9 @@
 <a href="#551" id="551">551</a>
 <a href="#552" id="552">552</a>
 <a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="operand.rs.html#21-56"><span class="kw">super</span>::operand::OperandValue</a>;
 <span class="kw">use super</span>::{<a href="mod.rs.html#43-113">FunctionCx</a>, <a href="mod.rs.html#129-140">LocalRef</a>};
 
@@ -563,7 +566,7 @@
 <span class="kw">use </span>rustc_middle::ty::layout::{<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">HasTyCtxt</a>, <a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">LayoutOf</a>, <a href="../../../rustc_middle/ty/layout/type.TyAndLayout.html">TyAndLayout</a>};
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>};
 <span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_abi/enum.Abi.html">Abi</a>, <a href="../../../rustc_abi/struct.Align.html">Align</a>, <a href="../../../rustc_abi/enum.FieldsShape.html">FieldsShape</a>, Int, Pointer, <a href="../../../rustc_abi/enum.TagEncoding.html">TagEncoding</a>};
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../rustc_abi/enum.Variants.html">Variants</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../rustc_abi/enum.Variants.html">Variants</a>};
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
 </span><span class="kw">pub struct </span><a href="../../../rustc_codegen_ssa/mir/place/struct.PlaceRef.html">PlaceRef</a>&lt;<span class="lifetime">&#39;tcx</span>, V&gt; {
@@ -742,7 +745,7 @@
         </span><span class="kw">let </span>(<span class="kw">_</span>, unsized_align) = <a href="../glue.rs.html#11-126">glue::size_and_align_of_dst</a>(<a href="#95">bx</a>, <a href="#98">field</a>.ty, <a href="#184">meta</a>);
 
         <span class="comment">// Bump the unaligned offset up to the appropriate alignment
-        </span><span class="kw">let </span>offset = <a href="#513-553">round_up_const_value_to_alignment</a>(<a href="#95">bx</a>, <a href="#186">unaligned_offset</a>, <a href="#189">unsized_align</a>);
+        </span><span class="kw">let </span>offset = <a href="#516-556">round_up_const_value_to_alignment</a>(<a href="#95">bx</a>, <a href="#186">unaligned_offset</a>, <a href="#189">unsized_align</a>);
 
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;struct_field_ptr: DST field offset: {:?}&quot;</span>, offset);
 
@@ -879,7 +882,7 @@
     </span><span class="kw">pub fn </span>codegen_set_discr&lt;Bx: BuilderMethods&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Value = V&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         bx: <span class="kw-2">&amp;mut </span>Bx,
-        variant_index: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
     ) {
         <span class="kw">if </span><span class="self">self</span>.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
             <span class="comment">// We play it safe by using a well-defined `abort`, but we could go for immediate UB
@@ -919,7 +922,7 @@
                     } <span class="kw">else </span>{
                         <a href="#328">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>().<a href="../traits/consts.rs.html#18">const_uint_big</a>(<a href="#359">niche_llty</a>, <a href="#361">niche_value</a>)
                     };
-                    <a href="operand.rs.html#38">OperandValue::Immediate</a>(<a href="#363">niche_llval</a>).<a href="operand.rs.html#376-382">store</a>(<a href="#328">bx</a>, <a href="#358">niche</a>);
+                    <a href="operand.rs.html#38">OperandValue::Immediate</a>(<a href="#363">niche_llval</a>).<a href="operand.rs.html#372-378">store</a>(<a href="#328">bx</a>, <a href="#358">niche</a>);
                 }
             }
         }
@@ -954,7 +957,7 @@
     <span class="kw">pub fn </span>project_downcast&lt;Bx: BuilderMethods&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>, Value = V&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         bx: <span class="kw-2">&amp;mut </span>Bx,
-        variant_index: <a href="../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>downcast = <span class="kw-2">*</span><a class="self" href="#402">self</a>;
         <a href="#406">downcast</a>.layout = <a class="self" href="#402">self</a>.layout.for_variant(<a href="#403">bx</a>.<a href="../traits/builder.rs.html#46">cx</a>(), <a href="#404">variant_index</a>);
@@ -1016,7 +1019,10 @@
                 mir::ProjectionElem::Field(<span class="kw-2">ref </span>field, <span class="kw">_</span>) =&gt; {
                     cg_base.project_field(bx, field.index())
                 }
-                mir::ProjectionElem::OpaqueCast(ty) =&gt; cg_base.project_type(bx, ty),
+                mir::ProjectionElem::OpaqueCast(ty) =&gt; {
+                    <span class="macro">bug!</span>(<span class="string">&quot;encountered OpaqueCast({ty}) in codegen&quot;</span>)
+                }
+                mir::ProjectionElem::Subtype(ty) =&gt; cg_base.project_type(bx, <span class="self">self</span>.monomorphize(ty)),
                 mir::ProjectionElem::Index(index) =&gt; {
                     <span class="kw">let </span>index = <span class="kw-2">&amp;</span>mir::Operand::Copy(mir::Place::from(index));
                     <span class="kw">let </span>index = <span class="self">self</span>.codegen_operand(bx, index);
@@ -1057,9 +1063,9 @@
     }
 
     <span class="kw">pub fn </span>monomorphized_place_ty(<span class="kw-2">&amp;</span><span class="self">self</span>, place_ref: mir::PlaceRef&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#506">self</a>.cx.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>();
-        <span class="kw">let </span>place_ty = <a href="#506">place_ref</a>.ty(<a class="self" href="#506">self</a>.mir, <a href="#507">tcx</a>);
-        <a class="self" href="#506">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#508">place_ty</a>.ty)
+        <span class="kw">let </span>tcx = <a class="self" href="#509">self</a>.cx.<a href="../../../rustc_middle/ty/layout/trait.HasTyCtxt.html">tcx</a>();
+        <span class="kw">let </span>place_ty = <a href="#509">place_ref</a>.ty(<a class="self" href="#509">self</a>.mir, <a href="#510">tcx</a>);
+        <a class="self" href="#509">self</a>.<a href="mod.rs.html#116-126">monomorphize</a>(<a href="#511">place_ty</a>.ty)
     }
 }
 
@@ -1098,10 +1104,10 @@
     //
     // Even though `-align == !(align - 1)`, LLVM failed to optimize this even for
     // `value = 0`. Bug report: https://bugs.llvm.org/show_bug.cgi?id=48559
-    </span><span class="kw">let </span>one = <a href="#514">bx</a>.<a href="../traits/consts.rs.html#25">const_usize</a>(<span class="number">1</span>);
-    <span class="kw">let </span>align_minus_1 = <a href="#514">bx</a>.<a href="../traits/builder.rs.html#89">sub</a>(<a href="#516">align</a>, <a href="#548">one</a>);
-    <span class="kw">let </span>neg_value = <a href="#514">bx</a>.<a href="../traits/builder.rs.html#117">neg</a>(<a href="#515">value</a>);
-    <span class="kw">let </span>offset = <a href="#514">bx</a>.<a href="../traits/builder.rs.html#114">and</a>(<a href="#550">neg_value</a>, <a href="#549">align_minus_1</a>);
-    <a href="#514">bx</a>.<a href="../traits/builder.rs.html#86">add</a>(<a href="#515">value</a>, <a href="#551">offset</a>)
+    </span><span class="kw">let </span>one = <a href="#517">bx</a>.<a href="../traits/consts.rs.html#25">const_usize</a>(<span class="number">1</span>);
+    <span class="kw">let </span>align_minus_1 = <a href="#517">bx</a>.<a href="../traits/builder.rs.html#89">sub</a>(<a href="#519">align</a>, <a href="#551">one</a>);
+    <span class="kw">let </span>neg_value = <a href="#517">bx</a>.<a href="../traits/builder.rs.html#117">neg</a>(<a href="#518">value</a>);
+    <span class="kw">let </span>offset = <a href="#517">bx</a>.<a href="../traits/builder.rs.html#114">and</a>(<a href="#553">neg_value</a>, <a href="#552">align_minus_1</a>);
+    <a href="#517">bx</a>.<a href="../traits/builder.rs.html#86">add</a>(<a href="#518">value</a>, <a href="#554">offset</a>)
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["def_id_debug","setup_callbacks","track_diagnostic","track_span_parent"]};
+window.SIDEBAR_ITEMS = {"fn":["def_id_debug","dep_kind_debug","dep_node_debug","setup_callbacks","track_diagnostic","track_span_parent"]};

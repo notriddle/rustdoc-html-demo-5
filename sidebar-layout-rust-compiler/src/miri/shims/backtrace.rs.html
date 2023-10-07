@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/shims/backtrace.rs`."><title>backtrace.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/tools/miri/src/shims/backtrace.rs`."><title>backtrace.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="miri" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -243,9 +243,6 @@
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
-<a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::<span class="kw-2">*</span>;
 <span class="kw">use </span><a href="../../../rustc_ast/ast/enum.Mutability.html">rustc_ast::ast::Mutability</a>;
 <span class="kw">use </span><a href="../../../rustc_middle/ty/layout/trait.LayoutOf.html">rustc_middle::ty::layout::LayoutOf</a> <span class="kw">as _</span>;
@@ -270,7 +267,7 @@
             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_unsup_format.html">throw_unsup_format!</a>(<span class="string">&quot;unknown `miri_backtrace_size` flags {}&quot;</span>, flags);
         }
 
-        <span class="kw">let </span>frame_count = <a href="#17">this</a>.<a href="../concurrency/thread.rs.html#944-947">active_thread_stack</a>().len();
+        <span class="kw">let </span>frame_count = <a href="#17">this</a>.<a href="../concurrency/thread.rs.html#943-946">active_thread_stack</a>().len();
 
         <a href="#17">this</a>.write_scalar(Scalar::from_target_usize(<a href="#25">frame_count</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>().unwrap(), <a href="#17">this</a>), <a href="#15">dest</a>)
     }
@@ -336,10 +333,7 @@
                     this.write_pointer(ptr, <span class="kw-2">&amp;</span>place)<span class="question-mark">?</span>;
                 }
 
-                this.write_immediate(
-                    Immediate::new_slice(Scalar::from_maybe_pointer(alloc.ptr(), this), len, this),
-                    dest,
-                )<span class="question-mark">?</span>;
+                this.write_immediate(Immediate::new_slice(alloc.ptr(), len, this), dest)<span class="question-mark">?</span>;
             }
             <span class="comment">// storage for pointers is allocated by the caller
             </span><span class="number">1 </span>=&gt; {
@@ -367,7 +361,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         ptr: <span class="kw-2">&amp;</span>OpTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>, (Instance&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../../rustc_span/struct.Loc.html">Loc</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>)&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#119">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#116">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
 
         <span class="kw">let </span>ptr = this.read_pointer(ptr)<span class="question-mark">?</span>;
         <span class="comment">// Take apart the pointer, we need its pieces. The offset encodes the span.
@@ -375,20 +369,20 @@
 
         <span class="comment">// This has to be an actual global fn ptr, not a dlsym function.
         </span><span class="kw">let </span>fn_instance = <span class="kw">if let </span><span class="prelude-val">Some</span>(GlobalAlloc::Function(instance)) =
-            <a href="#122">this</a>.tcx.try_get_global_alloc(<a href="#126">alloc_id</a>)
+            <a href="#119">this</a>.tcx.try_get_global_alloc(<a href="#123">alloc_id</a>)
         {
-            <a href="#129">instance</a>
+            <a href="#126">instance</a>
         } <span class="kw">else </span>{
             <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_format.html">throw_ub_format!</a>(<span class="string">&quot;expected static function pointer, found {:?}&quot;</span>, ptr);
         };
 
         <span class="kw">let </span>lo =
-            <a href="#122">this</a>.tcx.sess.source_map().lookup_char_pos(BytePos(<a href="#126">offset</a>.bytes().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>().unwrap()));
+            <a href="#119">this</a>.tcx.sess.source_map().lookup_char_pos(BytePos(<a href="#123">offset</a>.bytes().<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>().unwrap()));
 
-        <span class="kw">let </span>name = <a href="#129">fn_instance</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
-        <span class="kw">let </span>filename = <a href="#137">lo</a>.file.name.prefer_remapped().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
+        <span class="kw">let </span>name = <a href="#126">fn_instance</a>.<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
+        <span class="kw">let </span>filename = <a href="#134">lo</a>.file.name.prefer_remapped().<a href="https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html">to_string</a>();
 
-        <span class="prelude-val">Ok</span>((<a href="#129">fn_instance</a>, <a href="#137">lo</a>, <a href="#140">name</a>, <a href="#141">filename</a>))
+        <span class="prelude-val">Ok</span>((<a href="#126">fn_instance</a>, <a href="#134">lo</a>, <a href="#137">name</a>, <a href="#138">filename</a>))
     }
 
     <span class="kw">fn </span>handle_miri_resolve_frame(
@@ -398,7 +392,7 @@
         args: <span class="kw-2">&amp;</span>[OpTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>&gt;],
         dest: <span class="kw-2">&amp;</span>PlaceTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>&gt;,
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#147">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#144">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
         <span class="kw">let </span>[ptr, flags] = this.check_shim(abi, Abi::Rust, link_name, args)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>flags = this.read_scalar(flags)<span class="question-mark">?</span>.to_u64()<span class="question-mark">?</span>;
@@ -407,9 +401,9 @@
 
         <span class="comment">// Reconstruct the original function pointer,
         // which we pass to user code.
-        </span><span class="kw">let </span>fn_ptr = <a href="#153">this</a>.fn_ptr(FnVal::Instance(<a href="#158">fn_instance</a>));
+        </span><span class="kw">let </span>fn_ptr = <a href="#150">this</a>.fn_ptr(FnVal::Instance(<a href="#155">fn_instance</a>));
 
-        <span class="kw">let </span>num_fields = <a href="#151">dest</a>.layout.fields.count();
+        <span class="kw">let </span>num_fields = <a href="#148">dest</a>.layout.fields.count();
 
         <span class="kw">if </span>!(<span class="number">4</span>..=<span class="number">5</span>).contains(<span class="kw-2">&amp;</span>num_fields) {
             <span class="comment">// Always mention 5 fields, since the 4-field struct
@@ -421,12 +415,12 @@
 
         <span class="comment">// `u32` is not enough to fit line/colno, which can be `usize`. It seems unlikely that a
         // file would have more than 2^32 lines or columns, but whatever, just default to 0.
-        </span><span class="kw">let </span>lineno: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = u32::try_from(<a href="#158">lo</a>.line).unwrap_or(<span class="number">0</span>);
+        </span><span class="kw">let </span>lineno: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = u32::try_from(<a href="#155">lo</a>.line).unwrap_or(<span class="number">0</span>);
         <span class="comment">// `lo.col` is 0-based - add 1 to make it 1-based for the caller.
-        </span><span class="kw">let </span>colno: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = u32::try_from(<a href="#158">lo</a>.col.<span class="number">0</span>.saturating_add(<span class="number">1</span>)).unwrap_or(<span class="number">0</span>);
+        </span><span class="kw">let </span>colno: <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> = u32::try_from(<a href="#155">lo</a>.col.<span class="number">0</span>.saturating_add(<span class="number">1</span>)).unwrap_or(<span class="number">0</span>);
 
         <span class="kw">let </span>dest = this.force_allocation(dest)<span class="question-mark">?</span>;
-        <span class="kw">if let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#180">dest</a>.layout.ty.kind() {
+        <span class="kw">if let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#177">dest</a>.layout.ty.kind() {
             <span class="kw">if </span>!adt.repr().c() {
                 <a class="macro" href="../../../rustc_middle/rustc_middle/macro.throw_ub_format.html">throw_ub_format!</a>(
                     <span class="string">&quot;miri_resolve_frame must be declared with a `#[repr(C)]` return type&quot;
@@ -434,7 +428,7 @@
             }
         }
 
-        <span class="kw">match </span><a href="#156">flags</a> {
+        <span class="kw">match </span><a href="#153">flags</a> {
             <span class="number">0 </span>=&gt; {
                 <span class="comment">// These are &quot;mutable&quot; allocations as we consider them to be owned by the callee.
                 </span><span class="kw">let </span>name_alloc =
@@ -476,7 +470,7 @@
         link_name: <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>,
         args: <span class="kw-2">&amp;</span>[OpTy&lt;<span class="lifetime">&#39;tcx</span>, <a href="../machine.rs.html#171-178">Provenance</a>&gt;],
     ) -&gt; InterpResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>this = <a class="self" href="#226">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
+        <span class="kw">let </span>this = <a class="self" href="#223">self</a>.<a href="../machine.rs.html#854">eval_context_mut</a>();
 
         <span class="kw">let </span>[ptr, flags, name_ptr, filename_ptr] =
             this.check_shim(abi, Abi::Rust, link_name, args)<span class="question-mark">?</span>;

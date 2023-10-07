@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/value_analysis.rs`."><title>value_analysis.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_dataflow/src/value_analysis.rs`."><title>value_analysis.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_dataflow" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1188,6 +1188,8 @@
 <a href="#1188" id="1188">1188</a>
 <a href="#1189" id="1189">1189</a>
 <a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module provides a framework on top of the normal MIR dataflow framework to simplify the
 //! implementation of analyses that track information about the values stored in certain places.
 //! We are using the term &quot;place&quot; here to refer to a `mir::Place` (a place expression) instead of
@@ -1233,7 +1235,7 @@
 <span class="kw">use </span>rustc_middle::mir::visit::{<a href="../../rustc_middle/mir/visit/enum.MutatingUseContext.html">MutatingUseContext</a>, <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <a href="../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>};
 <span class="kw">use </span><a href="../../rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>};
-<span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>};
 
 <span class="kw">use </span><span class="kw">crate</span>::lattice::{<a href="framework/lattice.rs.html#77-79">HasBottom</a>, <a href="framework/lattice.rs.html#82-84">HasTop</a>};
 <span class="kw">use crate</span>::{
@@ -1287,7 +1289,7 @@
     <span class="kw">fn </span>handle_set_discriminant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        variant_index: <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        variant_index: <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) {
         <a class="self" href="#98">self</a>.<a href="#106-113">super_set_discriminant</a>(<a href="#99">place</a>, <a href="#100">variant_index</a>, <a href="#101">state</a>)
@@ -1296,7 +1298,7 @@
     <span class="kw">fn </span>super_set_discriminant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         place: Place&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        _variant_index: <a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>,
+        _variant_index: <a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) {
         <a href="#110">state</a>.<a href="#502-504">flood_discr</a>(<a href="#108">place</a>.as_ref(), <a class="self" href="#107">self</a>.<a href="#59">map</a>());
@@ -1400,14 +1402,14 @@
     ) -&gt; ValueOrPlace&lt;<span class="self">Self</span>::Value&gt; {
         <span class="kw">match </span><a href="#208">operand</a> {
             Operand::Constant(<span class="kw">box </span>constant) =&gt; {
-                <a href="#1011">ValueOrPlace::Value</a>(<a class="self" href="#207">self</a>.<a href="#226-232">handle_constant</a>(<a href="#212">constant</a>, <a href="#209">state</a>))
+                <a href="#1013">ValueOrPlace::Value</a>(<a class="self" href="#207">self</a>.<a href="#226-232">handle_constant</a>(<a href="#212">constant</a>, <a href="#209">state</a>))
             }
             Operand::Copy(place) | Operand::Move(place) =&gt; {
                 <span class="comment">// On move, we would ideally flood the place with bottom. But with the current
                 // framework this is not possible (similar to `InterpCx::eval_operand`).
                 </span><a class="self" href="#207">self</a>.<a href="#59">map</a>()
-                    .<a href="#837-839">find</a>(<a href="#215">place</a>.as_ref())
-                    .map(<a href="#1012">ValueOrPlace::Place</a>)
+                    .<a href="#839-841">find</a>(<a href="#215">place</a>.as_ref())
+                    .map(<a href="#1014">ValueOrPlace::Place</a>)
                     .unwrap_or(ValueOrPlace::TOP)
             }
         }
@@ -1415,7 +1417,7 @@
 
     <span class="kw">fn </span>handle_constant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        constant: <span class="kw-2">&amp;</span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        constant: <span class="kw-2">&amp;</span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; <span class="self">Self</span>::Value {
         <a class="self" href="#227">self</a>.<a href="#234-240">super_constant</a>(<a href="#228">constant</a>, <a href="#229">state</a>)
@@ -1423,7 +1425,7 @@
 
     <span class="kw">fn </span>super_constant(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        _constant: <span class="kw-2">&amp;</span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        _constant: <span class="kw-2">&amp;</span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         _state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; <span class="self">Self</span>::Value {
         <span class="self">Self</span>::Value::TOP
@@ -1494,7 +1496,7 @@
     <span class="kw">fn </span>handle_switch_int&lt;<span class="lifetime">&#39;mir</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         discr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/terminator/struct.SwitchTargets.html">SwitchTargets</a>,
+        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
         state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
         <a class="self" href="#305">self</a>.<a href="#313-320">super_switch_int</a>(<a href="#306">discr</a>, <a href="#307">targets</a>, <a href="#308">state</a>)
@@ -1503,7 +1505,7 @@
     <span class="kw">fn </span>super_switch_int&lt;<span class="lifetime">&#39;mir</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         discr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/terminator/struct.SwitchTargets.html">SwitchTargets</a>,
+        targets: <span class="kw-2">&amp;</span><span class="lifetime">&#39;mir </span><a href="../../rustc_middle/mir/syntax/struct.SwitchTargets.html">SwitchTargets</a>,
         _state: <span class="kw-2">&amp;mut </span>State&lt;<span class="self">Self</span>::Value&gt;,
     ) -&gt; TerminatorEdges&lt;<span class="lifetime">&#39;mir</span>, <span class="lifetime">&#39;tcx</span>&gt; {
         <a href="../../rustc_middle/mir/terminator/enum.TerminatorEdges.html">TerminatorEdges::SwitchInt</a> { <a href="#315">discr</a>, <a href="#316">targets</a> }
@@ -1673,7 +1675,7 @@
 
     <span class="kw">pub fn </span>flood_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>, value: V) {
         <span class="kw">let </span><a href="#420">StateData::Reachable</a>(values) = <span class="kw-2">&amp;mut </span><a class="self" href="#484">self</a>.<span class="number">0 </span><span class="kw">else </span>{ <span class="kw">return </span>};
-        <a href="#484">map</a>.<a href="#863-901">for_each_aliasing_place</a>(<a href="#484">place</a>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span>|vi| {
+        <a href="#484">map</a>.<a href="#865-903">for_each_aliasing_place</a>(<a href="#484">place</a>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span>|vi| {
             <a href="#485">values</a>[<a href="#486">vi</a>] = <a href="#484">value</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
         });
     }
@@ -1684,7 +1686,7 @@
 
     <span class="kw">pub fn </span>flood_discr_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>, value: V) {
         <span class="kw">let </span><a href="#420">StateData::Reachable</a>(values) = <span class="kw-2">&amp;mut </span><a class="self" href="#495">self</a>.<span class="number">0 </span><span class="kw">else </span>{ <span class="kw">return </span>};
-        <a href="#495">map</a>.<a href="#863-901">for_each_aliasing_place</a>(<a href="#495">place</a>, <span class="prelude-val">Some</span>(<a href="#1026">TrackElem::Discriminant</a>), <span class="kw-2">&amp;mut </span>|vi| {
+        <a href="#495">map</a>.<a href="#865-903">for_each_aliasing_place</a>(<a href="#495">place</a>, <span class="prelude-val">Some</span>(<a href="#1028">TrackElem::Discriminant</a>), <span class="kw-2">&amp;mut </span>|vi| {
             <a href="#496">values</a>[<a href="#497">vi</a>] = <a href="#495">value</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
         });
     }
@@ -1699,8 +1701,8 @@
     /// The target place must have been flooded before calling this method.
     </span><span class="kw">pub fn </span>insert_idx(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <a href="#402-408">PlaceIndex</a>, result: ValueOrPlace&lt;V&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>) {
         <span class="kw">match </span><a href="#510">result</a> {
-            <a href="#1011">ValueOrPlace::Value</a>(value) =&gt; <a class="self" href="#510">self</a>.<a href="#521-526">insert_value_idx</a>(<a href="#510">target</a>, <a href="#512">value</a>, <a href="#510">map</a>),
-            <a href="#1012">ValueOrPlace::Place</a>(source) =&gt; <a class="self" href="#510">self</a>.<a href="#535-553">insert_place_idx</a>(<a href="#510">target</a>, <a href="#513">source</a>, <a href="#510">map</a>),
+            <a href="#1013">ValueOrPlace::Value</a>(value) =&gt; <a class="self" href="#510">self</a>.<a href="#521-526">insert_value_idx</a>(<a href="#510">target</a>, <a href="#512">value</a>, <a href="#510">map</a>),
+            <a href="#1014">ValueOrPlace::Place</a>(source) =&gt; <a class="self" href="#510">self</a>.<a href="#535-553">insert_place_idx</a>(<a href="#510">target</a>, <a href="#513">source</a>, <a href="#510">map</a>),
         }
     }
 
@@ -1745,7 +1747,7 @@
     <span class="doccomment">/// Helper method to interpret `target = result`.
     </span><span class="kw">pub fn </span>assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, result: ValueOrPlace&lt;V&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>) {
         <a class="self" href="#556">self</a>.<a href="#491-493">flood</a>(<a href="#556">target</a>, <a href="#556">map</a>);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#556">map</a>.<a href="#837-839">find</a>(<a href="#556">target</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#556">map</a>.<a href="#839-841">find</a>(<a href="#556">target</a>) {
             <a class="self" href="#556">self</a>.<a href="#510-515">insert_idx</a>(<a href="#558">target</a>, <a href="#556">result</a>, <a href="#556">map</a>);
         }
     }
@@ -1753,19 +1755,19 @@
     <span class="doccomment">/// Helper method for assignments to a discriminant.
     </span><span class="kw">pub fn </span>assign_discr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, result: ValueOrPlace&lt;V&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>) {
         <a class="self" href="#564">self</a>.<a href="#502-504">flood_discr</a>(<a href="#564">target</a>, <a href="#564">map</a>);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#564">map</a>.<a href="#842-844">find_discr</a>(<a href="#564">target</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#564">map</a>.<a href="#844-846">find_discr</a>(<a href="#564">target</a>) {
             <a class="self" href="#564">self</a>.<a href="#510-515">insert_idx</a>(<a href="#566">target</a>, <a href="#564">result</a>, <a href="#564">map</a>);
         }
     }
 
     <span class="doccomment">/// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>) -&gt; V {
-        <a href="#572">map</a>.<a href="#837-839">find</a>(<a href="#572">place</a>).map(|place| <a class="self" href="#572">self</a>.<a href="#593-603">get_idx</a>(<a href="#573">place</a>, <a href="#572">map</a>)).unwrap_or(V::TOP)
+        <a href="#572">map</a>.<a href="#839-841">find</a>(<a href="#572">place</a>).map(|place| <a class="self" href="#572">self</a>.<a href="#593-603">get_idx</a>(<a href="#573">place</a>, <a href="#572">map</a>)).unwrap_or(V::TOP)
     }
 
     <span class="doccomment">/// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     </span><span class="kw">pub fn </span>get_discr(<span class="kw-2">&amp;</span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>) -&gt; V {
-        <span class="kw">match </span><a href="#577">map</a>.<a href="#842-844">find_discr</a>(<a href="#577">place</a>) {
+        <span class="kw">match </span><a href="#577">map</a>.<a href="#844-846">find_discr</a>(<a href="#577">place</a>) {
             <span class="prelude-val">Some</span>(place) =&gt; <a class="self" href="#577">self</a>.<a href="#593-603">get_idx</a>(<a href="#579">place</a>, <a href="#577">map</a>),
             <span class="prelude-val">None </span>=&gt; V::TOP,
         }
@@ -1773,7 +1775,7 @@
 
     <span class="doccomment">/// Retrieve the value stored for a place, or ⊤ if it is not tracked.
     </span><span class="kw">pub fn </span>get_len(<span class="kw-2">&amp;</span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;, map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>) -&gt; V {
-        <span class="kw">match </span><a href="#585">map</a>.<a href="#847-849">find_len</a>(<a href="#585">place</a>) {
+        <span class="kw">match </span><a href="#585">map</a>.<a href="#849-851">find_len</a>(<a href="#585">place</a>) {
             <span class="prelude-val">Some</span>(place) =&gt; <a class="self" href="#585">self</a>.<a href="#593-603">get_idx</a>(<a href="#587">place</a>, <a href="#585">map</a>),
             <span class="prelude-val">None </span>=&gt; V::TOP,
         }
@@ -1815,8 +1817,8 @@
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span><a href="../../rustc_mir_dataflow/value_analysis/struct.Map.html">Map</a> {
     locals: IndexVec&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>, <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt;&gt;,
-    projections: FxHashMap&lt;(<a href="#402-408">PlaceIndex</a>, <a href="#1023-1029">TrackElem</a>), <a href="#402-408">PlaceIndex</a>&gt;,
-    places: IndexVec&lt;<a href="#402-408">PlaceIndex</a>, <a href="#963-975">PlaceInfo</a>&gt;,
+    projections: FxHashMap&lt;(<a href="#402-408">PlaceIndex</a>, <a href="#1025-1031">TrackElem</a>), <a href="#402-408">PlaceIndex</a>&gt;,
+    places: IndexVec&lt;<a href="#402-408">PlaceIndex</a>, <a href="#965-977">PlaceInfo</a>&gt;,
     value_count: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
     <span class="comment">// The Range corresponds to a slice into `inner_values_buffer`.
     </span>inner_values: IndexVec&lt;<a href="#402-408">PlaceIndex</a>, Range&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;&gt;,
@@ -1838,7 +1840,7 @@
             inner_values: IndexVec::new(),
             inner_values_buffer: Vec::new(),
         };
-        <span class="kw">let </span>exclude = <a href="#1079-1102">excluded_locals</a>(<a href="#642">body</a>);
+        <span class="kw">let </span>exclude = <a href="#1081-1104">excluded_locals</a>(<a href="#642">body</a>);
         <a href="#643">map</a>.<a href="#658-726">register</a>(<a href="#642">tcx</a>, <a href="#642">body</a>, <a href="#651">exclude</a>, <a href="#642">value_limit</a>);
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;registered {} places ({} nodes in total)&quot;</span>, map.value_count, map.places.len());
         <a href="#643">map</a>
@@ -1924,7 +1926,7 @@
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         place: <a href="#402-408">PlaceIndex</a>,
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        worklist: <span class="kw-2">&amp;mut </span>VecDeque&lt;(<a href="#402-408">PlaceIndex</a>, <span class="prelude-ty">Option</span>&lt;<a href="#1023-1029">TrackElem</a>&gt;, <a href="#1023-1029">TrackElem</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt;,
+        worklist: <span class="kw-2">&amp;mut </span>VecDeque&lt;(<a href="#402-408">PlaceIndex</a>, <span class="prelude-ty">Option</span>&lt;<a href="#1025-1031">TrackElem</a>&gt;, <a href="#1025-1031">TrackElem</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt;,
     ) {
         <span class="comment">// Allocate a value slot if it doesn&#39;t have one, and the user requested one.
         </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.places[place].value_index.is_none());
@@ -1936,10 +1938,10 @@
         <span class="comment">// For enums, directly create the `Discriminant`, as that&#39;s their main use.
         </span><span class="kw">if </span>ty.is_enum() {
             <span class="comment">// Prepend new child to the linked list.
-            </span><span class="kw">let </span>discr = <a class="self" href="#732">self</a>.places.push(PlaceInfo::new(<span class="prelude-val">Some</span>(<a href="#1026">TrackElem::Discriminant</a>)));
+            </span><span class="kw">let </span>discr = <a class="self" href="#732">self</a>.places.push(PlaceInfo::new(<span class="prelude-val">Some</span>(<a href="#1028">TrackElem::Discriminant</a>)));
             <a class="self" href="#732">self</a>.places[<a href="#749">discr</a>].next_sibling = <a class="self" href="#732">self</a>.places[<a href="#735">place</a>].first_child;
             <a class="self" href="#732">self</a>.places[<a href="#735">place</a>].first_child = <span class="prelude-val">Some</span>(<a href="#749">discr</a>);
-            <span class="kw">let </span>old = <a class="self" href="#732">self</a>.projections.insert((<a href="#735">place</a>, <a href="#1026">TrackElem::Discriminant</a>), <a href="#749">discr</a>);
+            <span class="kw">let </span>old = <a class="self" href="#732">self</a>.projections.insert((<a href="#735">place</a>, <a href="#1028">TrackElem::Discriminant</a>), <a href="#749">discr</a>);
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(old.is_none());
 
             <span class="comment">// Allocate a value slot since it doesn&#39;t have one.
@@ -1948,30 +1950,32 @@
             <a class="self" href="#732">self</a>.value_count += <span class="number">1</span>;
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(ref_ty) = <a href="#736">ty</a>.builtin_deref(<span class="bool-val">true</span>) &amp;&amp; <span class="kw">let </span>ty::Slice(..) = <a href="#761">ref_ty</a>.ty.kind() {
+        <span class="kw">if let </span>ty::Ref(<span class="kw">_</span>, ref_ty, <span class="kw">_</span>) | ty::RawPtr(<a href="../../rustc_middle/ty/sty/struct.TypeAndMut.html">ty::TypeAndMut</a> { ty: ref_ty, .. }) = <a href="#736">ty</a>.kind()
+            &amp;&amp; <span class="kw">let </span>ty::Slice(..) = <a href="#761">ref_ty</a>.kind()
+        {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(<span class="self">self</span>.places[place].value_index.is_none(), <span class="string">&quot;slices are not scalars&quot;</span>);
 
             <span class="comment">// Prepend new child to the linked list.
-            </span><span class="kw">let </span>len = <a class="self" href="#732">self</a>.places.push(PlaceInfo::new(<span class="prelude-val">Some</span>(<a href="#1028">TrackElem::DerefLen</a>)));
-            <a class="self" href="#732">self</a>.places[<a href="#765">len</a>].next_sibling = <a class="self" href="#732">self</a>.places[<a href="#735">place</a>].first_child;
-            <a class="self" href="#732">self</a>.places[<a href="#735">place</a>].first_child = <span class="prelude-val">Some</span>(<a href="#765">len</a>);
+            </span><span class="kw">let </span>len = <a class="self" href="#732">self</a>.places.push(PlaceInfo::new(<span class="prelude-val">Some</span>(<a href="#1030">TrackElem::DerefLen</a>)));
+            <a class="self" href="#732">self</a>.places[<a href="#767">len</a>].next_sibling = <a class="self" href="#732">self</a>.places[<a href="#735">place</a>].first_child;
+            <a class="self" href="#732">self</a>.places[<a href="#735">place</a>].first_child = <span class="prelude-val">Some</span>(<a href="#767">len</a>);
 
-            <span class="kw">let </span>old = <a class="self" href="#732">self</a>.projections.insert((<a href="#735">place</a>, <a href="#1028">TrackElem::DerefLen</a>), <a href="#765">len</a>);
+            <span class="kw">let </span>old = <a class="self" href="#732">self</a>.projections.insert((<a href="#735">place</a>, <a href="#1030">TrackElem::DerefLen</a>), <a href="#767">len</a>);
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(old.is_none());
 
             <span class="comment">// Allocate a value slot since it doesn&#39;t have one.
             </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>( <span class="self">self</span>.places[len].value_index.is_none() );
-            <a class="self" href="#732">self</a>.places[<a href="#765">len</a>].value_index = <span class="prelude-val">Some</span>(<a class="self" href="#732">self</a>.value_count.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
+            <a class="self" href="#732">self</a>.places[<a href="#767">len</a>].value_index = <span class="prelude-val">Some</span>(<a class="self" href="#732">self</a>.value_count.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>());
             <a class="self" href="#732">self</a>.value_count += <span class="number">1</span>;
         }
 
         <span class="comment">// Recurse with all fields of this place.
-        </span><a href="#1044-1076">iter_fields</a>(<a href="#736">ty</a>, <a href="#733">tcx</a>, <a href="#734">param_env</a>, |variant, field, ty| {
+        </span><a href="#1046-1078">iter_fields</a>(<a href="#736">ty</a>, <a href="#733">tcx</a>, <a href="#734">param_env</a>, |variant, field, ty| {
             <a href="#737">worklist</a>.push_back((
                 <a href="#735">place</a>,
-                <a href="#779">variant</a>.map(<a href="#1025">TrackElem::Variant</a>),
-                <a href="#1024">TrackElem::Field</a>(<a href="#779">field</a>),
-                <a href="#779">ty</a>,
+                <a href="#781">variant</a>.map(<a href="#1027">TrackElem::Variant</a>),
+                <a href="#1026">TrackElem::Field</a>(<a href="#781">field</a>),
+                <a href="#781">ty</a>,
             ))
         });
     }
@@ -1979,37 +1983,37 @@
     <span class="doccomment">/// Precompute the list of values inside `root` and store it inside
     /// as a slice within `inner_values_buffer`.
     </span><span class="kw">fn </span>cache_preorder_invoke(<span class="kw-2">&amp;mut </span><span class="self">self</span>, root: <a href="#402-408">PlaceIndex</a>) {
-        <span class="kw">let </span>start = <a class="self" href="#791">self</a>.inner_values_buffer.len();
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(vi) = <a class="self" href="#791">self</a>.places[<a href="#791">root</a>].value_index {
-            <a class="self" href="#791">self</a>.inner_values_buffer.push(<a href="#793">vi</a>);
+        <span class="kw">let </span>start = <a class="self" href="#793">self</a>.inner_values_buffer.len();
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(vi) = <a class="self" href="#793">self</a>.places[<a href="#793">root</a>].value_index {
+            <a class="self" href="#793">self</a>.inner_values_buffer.push(<a href="#795">vi</a>);
         }
 
         <span class="comment">// We manually iterate instead of using `children` as we need to mutate `self`.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>next_child = <a class="self" href="#791">self</a>.places[<a href="#791">root</a>].first_child;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>next_child = <a class="self" href="#793">self</a>.places[<a href="#793">root</a>].first_child;
         <span class="kw">while let </span><span class="prelude-val">Some</span>(child) = next_child {
             ensure_sufficient_stack(|| <span class="self">self</span>.cache_preorder_invoke(child));
             next_child = <span class="self">self</span>.places[child].next_sibling;
         }
 
-        <span class="kw">let </span>end = <a class="self" href="#791">self</a>.inner_values_buffer.len();
-        <a class="self" href="#791">self</a>.inner_values[<a href="#791">root</a>] = <a href="#792">start</a>..<a href="#804">end</a>;
+        <span class="kw">let </span>end = <a class="self" href="#793">self</a>.inner_values_buffer.len();
+        <a class="self" href="#793">self</a>.inner_values[<a href="#793">root</a>] = <a href="#794">start</a>..<a href="#806">end</a>;
     }
 
     <span class="doccomment">/// Returns the number of tracked places, i.e., those for which a value can be stored.
     </span><span class="kw">pub fn </span>tracked_places(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <a class="self" href="#809">self</a>.value_count
+        <a class="self" href="#811">self</a>.value_count
     }
 
     <span class="doccomment">/// Applies a single projection element, yielding the corresponding child.
-    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, place: <a href="#402-408">PlaceIndex</a>, elem: <a href="#1023-1029">TrackElem</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt; {
-        <a class="self" href="#814">self</a>.projections.get(<span class="kw-2">&amp;</span>(<a href="#814">place</a>, <a href="#814">elem</a>)).copied()
+    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;</span><span class="self">self</span>, place: <a href="#402-408">PlaceIndex</a>, elem: <a href="#1025-1031">TrackElem</a>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt; {
+        <a class="self" href="#816">self</a>.projections.get(<span class="kw-2">&amp;</span>(<a href="#816">place</a>, <a href="#816">elem</a>)).copied()
     }
 
     <span class="doccomment">/// Locates the given place, if it exists in the tree.
     </span><span class="kw">pub fn </span>find_extra(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;,
-        extra: <span class="kw">impl </span>IntoIterator&lt;Item = <a href="#1023-1029">TrackElem</a>&gt;,
+        extra: <span class="kw">impl </span>IntoIterator&lt;Item = <a href="#1025-1031">TrackElem</a>&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>index = <span class="kw-2">*</span><span class="self">self</span>.locals[place.local].as_ref()<span class="question-mark">?</span>;
 
@@ -2020,27 +2024,27 @@
             index = <span class="self">self</span>.apply(index, elem)<span class="question-mark">?</span>;
         }
 
-        <span class="prelude-val">Some</span>(<a href="#824">index</a>)
+        <span class="prelude-val">Some</span>(<a href="#826">index</a>)
     }
 
     <span class="doccomment">/// Locates the given place, if it exists in the tree.
     </span><span class="kw">pub fn </span>find(<span class="kw-2">&amp;</span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt; {
-        <a class="self" href="#837">self</a>.<a href="#819-834">find_extra</a>(<a href="#837">place</a>, [])
+        <a class="self" href="#839">self</a>.<a href="#821-836">find_extra</a>(<a href="#839">place</a>, [])
     }
 
     <span class="doccomment">/// Locates the given place and applies `Discriminant`, if it exists in the tree.
     </span><span class="kw">pub fn </span>find_discr(<span class="kw-2">&amp;</span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt; {
-        <a class="self" href="#842">self</a>.<a href="#819-834">find_extra</a>(<a href="#842">place</a>, [<a href="#1026">TrackElem::Discriminant</a>])
+        <a class="self" href="#844">self</a>.<a href="#821-836">find_extra</a>(<a href="#844">place</a>, [<a href="#1028">TrackElem::Discriminant</a>])
     }
 
     <span class="doccomment">/// Locates the given place and applies `DerefLen`, if it exists in the tree.
     </span><span class="kw">pub fn </span>find_len(<span class="kw-2">&amp;</span><span class="self">self</span>, place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt; {
-        <a class="self" href="#847">self</a>.<a href="#819-834">find_extra</a>(<a href="#847">place</a>, [<a href="#1028">TrackElem::DerefLen</a>])
+        <a class="self" href="#849">self</a>.<a href="#821-836">find_extra</a>(<a href="#849">place</a>, [<a href="#1030">TrackElem::DerefLen</a>])
     }
 
     <span class="doccomment">/// Iterate over all direct children.
     </span><span class="kw">pub fn </span>children(<span class="kw-2">&amp;</span><span class="self">self</span>, parent: <a href="#402-408">PlaceIndex</a>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <a href="#402-408">PlaceIndex</a>&gt; + <span class="lifetime">&#39;_ </span>{
-        Children::new(<a class="self" href="#852">self</a>, <a href="#852">parent</a>)
+        Children::new(<a class="self" href="#854">self</a>, <a href="#854">parent</a>)
     }
 
     <span class="doccomment">/// Invoke a function on the given place and all places that may alias it.
@@ -2053,22 +2057,22 @@
     </span><span class="kw">fn </span>for_each_aliasing_place(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         place: PlaceRef&lt;<span class="lifetime">&#39;_</span>&gt;,
-        tail_elem: <span class="prelude-ty">Option</span>&lt;<a href="#1023-1029">TrackElem</a>&gt;,
+        tail_elem: <span class="prelude-ty">Option</span>&lt;<a href="#1025-1031">TrackElem</a>&gt;,
         f: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>FnMut(<a href="#410-415">ValueIndex</a>),
     ) {
         <span class="kw">if </span>place.is_indirect_first_projection() {
             <span class="comment">// We do not track indirect places.
             </span><span class="kw">return</span>;
         }
-        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>index) = <a class="self" href="#864">self</a>.locals[<a href="#865">place</a>.local] <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>index) = <a class="self" href="#866">self</a>.locals[<a href="#867">place</a>.local] <span class="kw">else </span>{
             <span class="comment">// The local is not tracked at all, so it does not alias anything.
             </span><span class="kw">return</span>;
         };
-        <span class="kw">let </span>elems = <a href="#865">place</a>
+        <span class="kw">let </span>elems = <a href="#867">place</a>
             .projection
             .iter()
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>elem| <a href="#880">elem</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>())
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#866">tail_elem</a>.map(<span class="prelude-val">Ok</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>());
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw-2">&amp;</span>elem| <a href="#882">elem</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.TryInto.html">try_into</a>())
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#868">tail_elem</a>.map(<span class="prelude-val">Ok</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>());
         <span class="kw">for </span>elem <span class="kw">in </span>elems {
             <span class="comment">// A field aliases the parent place.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vi) = <span class="self">self</span>.places[index].value_index {
@@ -2087,7 +2091,7 @@
                 <span class="kw">return</span>;
             }
         }
-        <a class="self" href="#864">self</a>.<a href="#924-930">for_each_value_inside</a>(<a href="#873">index</a>, <a href="#867">f</a>);
+        <a class="self" href="#866">self</a>.<a href="#926-932">for_each_value_inside</a>(<a href="#875">index</a>, <a href="#869">f</a>);
     }
 
     <span class="doccomment">/// Invoke the given function on all the descendants of the given place, except one branch.
@@ -2112,8 +2116,8 @@
 
     <span class="doccomment">/// Invoke a function on each value in the given place and all descendants.
     </span><span class="kw">fn </span>for_each_value_inside(<span class="kw-2">&amp;</span><span class="self">self</span>, root: <a href="#402-408">PlaceIndex</a>, f: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>FnMut(<a href="#410-415">ValueIndex</a>)) {
-        <span class="kw">let </span>range = <a class="self" href="#924">self</a>.inner_values[<a href="#924">root</a>].<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
-        <span class="kw">let </span>values = <span class="kw-2">&amp;</span><a class="self" href="#924">self</a>.inner_values_buffer[<a href="#925">range</a>];
+        <span class="kw">let </span>range = <a class="self" href="#926">self</a>.inner_values[<a href="#926">root</a>].<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>();
+        <span class="kw">let </span>values = <span class="kw-2">&amp;</span><a class="self" href="#926">self</a>.inner_values_buffer[<a href="#927">range</a>];
         <span class="kw">for </span><span class="kw-2">&amp;</span>v <span class="kw">in </span>values {
             f(v)
         }
@@ -2124,7 +2128,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         root: <a href="#402-408">PlaceIndex</a>,
         value: O,
-        project: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>FnMut(<a href="#1023-1029">TrackElem</a>, <span class="kw-2">&amp;</span>O) -&gt; <span class="prelude-ty">Option</span>&lt;O&gt;,
+        project: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>FnMut(<a href="#1025-1031">TrackElem</a>, <span class="kw-2">&amp;</span>O) -&gt; <span class="prelude-ty">Option</span>&lt;O&gt;,
         f: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>FnMut(<a href="#402-408">PlaceIndex</a>, <span class="kw-2">&amp;</span>O),
     ) {
         <span class="comment">// Fast path is there is nothing to do.
@@ -2133,7 +2137,7 @@
         }
 
         <span class="kw">if </span><span class="self">self</span>.places[root].value_index.is_some() {
-            <a href="#938">f</a>(<a href="#935">root</a>, <span class="kw-2">&amp;</span><a href="#936">value</a>)
+            <a href="#940">f</a>(<a href="#937">root</a>, <span class="kw-2">&amp;</span><a href="#938">value</a>)
         }
 
         <span class="kw">for </span>child <span class="kw">in </span><span class="self">self</span>.children(root) {
@@ -2155,7 +2159,7 @@
     </span>value_index: <span class="prelude-ty">Option</span>&lt;<a href="#410-415">ValueIndex</a>&gt;,
 
     <span class="doccomment">/// The projection used to go from parent to this node (only None for root).
-    </span>proj_elem: <span class="prelude-ty">Option</span>&lt;<a href="#1023-1029">TrackElem</a>&gt;,
+    </span>proj_elem: <span class="prelude-ty">Option</span>&lt;<a href="#1025-1031">TrackElem</a>&gt;,
 
     <span class="doccomment">/// The left-most child.
     </span>first_child: <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt;,
@@ -2164,9 +2168,9 @@
     </span>next_sibling: <span class="prelude-ty">Option</span>&lt;<a href="#402-408">PlaceIndex</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#963-975">PlaceInfo</a> {
-    <span class="kw">fn </span>new(proj_elem: <span class="prelude-ty">Option</span>&lt;<a href="#1023-1029">TrackElem</a>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ next_sibling: <span class="prelude-val">None</span>, first_child: <span class="prelude-val">None</span>, <a href="#978">proj_elem</a>, value_index: <span class="prelude-val">None </span>}
+<span class="kw">impl </span><a href="#965-977">PlaceInfo</a> {
+    <span class="kw">fn </span>new(proj_elem: <span class="prelude-ty">Option</span>&lt;<a href="#1025-1031">TrackElem</a>&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ next_sibling: <span class="prelude-val">None</span>, first_child: <span class="prelude-val">None</span>, <a href="#980">proj_elem</a>, value_index: <span class="prelude-val">None </span>}
     }
 }
 
@@ -2177,7 +2181,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Children&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">fn </span>new(map: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="#626-634">Map</a>, parent: <a href="#402-408">PlaceIndex</a>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{ <a href="#989">map</a>, next: <a href="#989">map</a>.places[<a href="#989">parent</a>].first_child }
+        <span class="self">Self </span>{ <a href="#991">map</a>, next: <a href="#991">map</a>.places[<a href="#991">parent</a>].first_child }
     }
 }
 
@@ -2185,10 +2189,10 @@
     <span class="kw">type </span>Item = <a href="#402-408">PlaceIndex</a>;
 
     <span class="kw">fn </span>next(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt; {
-        <span class="kw">match </span><a class="self" href="#997">self</a>.next {
+        <span class="kw">match </span><a class="self" href="#999">self</a>.next {
             <span class="prelude-val">Some</span>(child) =&gt; {
-                <a class="self" href="#997">self</a>.next = <a class="self" href="#997">self</a>.map.places[<a href="#999">child</a>].next_sibling;
-                <span class="prelude-val">Some</span>(<a href="#999">child</a>)
+                <a class="self" href="#999">self</a>.next = <a class="self" href="#999">self</a>.map.places[<a href="#1001">child</a>].next_sibling;
+                <span class="prelude-val">Some</span>(<a href="#1001">child</a>)
             }
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
         }
@@ -2203,7 +2207,7 @@
 }
 
 <span class="kw">impl</span>&lt;V: <a href="framework/lattice.rs.html#82-84">HasTop</a>&gt; ValueOrPlace&lt;V&gt; {
-    <span class="kw">pub const </span>TOP: <span class="self">Self </span>= <a href="#1011">ValueOrPlace::Value</a>(V::TOP);
+    <span class="kw">pub const </span>TOP: <span class="self">Self </span>= <a href="#1013">ValueOrPlace::Value</a>(V::TOP);
 }
 
 <span class="doccomment">/// The set of projection elements that can be used by a tracked place.
@@ -2211,20 +2215,20 @@
 /// Although only field projections are currently allowed, this could change in the future.
 </span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub enum </span><a href="../../rustc_mir_dataflow/value_analysis/enum.TrackElem.html">TrackElem</a> {
-    Field(<a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>),
-    Variant(<a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>),
+    Field(<a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>),
+    Variant(<a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>),
     Discriminant,
     <span class="comment">// Length of a slice.
     </span>DerefLen,
 }
 
-<span class="kw">impl</span>&lt;V, T&gt; TryFrom&lt;ProjectionElem&lt;V, T&gt;&gt; <span class="kw">for </span><a href="#1023-1029">TrackElem</a> {
+<span class="kw">impl</span>&lt;V, T&gt; TryFrom&lt;ProjectionElem&lt;V, T&gt;&gt; <span class="kw">for </span><a href="#1025-1031">TrackElem</a> {
     <span class="kw">type </span>Error = ();
 
     <span class="kw">fn </span>try_from(value: ProjectionElem&lt;V, T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span><a href="#1034">value</a> {
-            ProjectionElem::Field(field, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<a href="#1024">TrackElem::Field</a>(<a href="#1036">field</a>)),
-            ProjectionElem::Downcast(<span class="kw">_</span>, idx) =&gt; <span class="prelude-val">Ok</span>(<a href="#1025">TrackElem::Variant</a>(<a href="#1037">idx</a>)),
+        <span class="kw">match </span><a href="#1036">value</a> {
+            ProjectionElem::Field(field, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<a href="#1026">TrackElem::Field</a>(<a href="#1038">field</a>)),
+            ProjectionElem::Downcast(<span class="kw">_</span>, idx) =&gt; <span class="prelude-val">Ok</span>(<a href="#1027">TrackElem::Variant</a>(<a href="#1039">idx</a>)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2235,9 +2239,9 @@
     ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    <span class="kw-2">mut </span>f: <span class="kw">impl </span>FnMut(<span class="prelude-ty">Option</span>&lt;<a href="../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>&gt;, <a href="../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;),
+    <span class="kw-2">mut </span>f: <span class="kw">impl </span>FnMut(<span class="prelude-ty">Option</span>&lt;<a href="../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>&gt;, <a href="../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;),
 ) {
-    <span class="kw">match </span><a href="#1045">ty</a>.kind() {
+    <span class="kw">match </span><a href="#1047">ty</a>.kind() {
         ty::Tuple(list) =&gt; {
             <span class="kw">for </span>(field, ty) <span class="kw">in </span>list.iter().enumerate() {
                 f(<span class="prelude-val">None</span>, field.into(), ty);
@@ -2259,7 +2263,7 @@
             }
         }
         ty::Closure(<span class="kw">_</span>, args) =&gt; {
-            <a href="#1044-1076">iter_fields</a>(<a href="#1071">args</a>.as_closure().tupled_upvars_ty(), <a href="#1046">tcx</a>, <a href="#1047">param_env</a>, <a href="#1048">f</a>);
+            <a href="#1046-1078">iter_fields</a>(<a href="#1073">args</a>.as_closure().tupled_upvars_ty(), <a href="#1048">tcx</a>, <a href="#1049">param_env</a>, <a href="#1050">f</a>);
         }
         <span class="kw">_ </span>=&gt; (),
     }
@@ -2271,7 +2275,7 @@
         result: BitSet&lt;<a href="../../rustc_middle/mir/struct.Local.html">Local</a>&gt;,
     }
 
-    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#1080-1082">Collector</a> {
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#1082-1084">Collector</a> {
         <span class="kw">fn </span>visit_place(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;, context: <a href="../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, _location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
             <span class="kw">if </span>(context.is_borrow()
                 || context.is_address_of()
@@ -2281,14 +2285,14 @@
             {
                 <span class="comment">// A pointer to a place could be used to access other places with the same local,
                 // hence we have to exclude the local completely.
-                </span><a class="self" href="#1085">self</a>.result.insert(<a href="#1085">place</a>.local);
+                </span><a class="self" href="#1087">self</a>.result.insert(<a href="#1087">place</a>.local);
             }
         }
     }
 
-    <span class="kw">let </span><span class="kw-2">mut </span>collector = <a href="#1080-1082">Collector</a> { result: BitSet::new_empty(<a href="#1079">body</a>.local_decls.len()) };
-    <a href="#1099">collector</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#1079">body</a>);
-    <a href="#1099">collector</a>.result
+    <span class="kw">let </span><span class="kw-2">mut </span>collector = <a href="#1082-1084">Collector</a> { result: BitSet::new_empty(<a href="#1081">body</a>.local_decls.len()) };
+    <a href="#1101">collector</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#1081">body</a>);
+    <a href="#1101">collector</a>.result
 }
 
 <span class="doccomment">/// This is used to visualize the dataflow analysis.
@@ -2298,9 +2302,9 @@
     T::Value: <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>,
 {
     <span class="kw">fn </span>fmt_with(<span class="kw-2">&amp;</span><span class="self">self</span>, ctxt: <span class="kw-2">&amp;</span>ValueAnalysisWrapper&lt;T&gt;, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#1110">self</a>.<span class="number">0 </span>{
-            <a href="#420">StateData::Reachable</a>(values) =&gt; <a href="#1178-1190">debug_with_context</a>(<a href="#1112">values</a>, <span class="prelude-val">None</span>, <a href="#1110">ctxt</a>.<span class="number">0</span>.<a href="#59">map</a>(), <a href="#1110">f</a>),
-            <a href="#421">StateData::Unreachable</a> =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1110">f</a>, <span class="string">&quot;unreachable&quot;</span>),
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.<span class="number">0 </span>{
+            <a href="#420">StateData::Reachable</a>(values) =&gt; <a href="#1180-1192">debug_with_context</a>(<a href="#1114">values</a>, <span class="prelude-val">None</span>, <a href="#1112">ctxt</a>.<span class="number">0</span>.<a href="#59">map</a>(), <a href="#1112">f</a>),
+            <a href="#421">StateData::Unreachable</a> =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1112">f</a>, <span class="string">&quot;unreachable&quot;</span>),
         }
     }
 
@@ -2310,9 +2314,9 @@
         ctxt: <span class="kw-2">&amp;</span>ValueAnalysisWrapper&lt;T&gt;,
         f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;,
     ) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
-        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a class="self" href="#1118">self</a>.<span class="number">0</span>, <span class="kw-2">&amp;</span><a href="#1119">old</a>.<span class="number">0</span>) {
+        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a class="self" href="#1120">self</a>.<span class="number">0</span>, <span class="kw-2">&amp;</span><a href="#1121">old</a>.<span class="number">0</span>) {
             (<a href="#420">StateData::Reachable</a>(this), <a href="#420">StateData::Reachable</a>(old)) =&gt; {
-                <a href="#1178-1190">debug_with_context</a>(<a href="#1124">this</a>, <span class="prelude-val">Some</span>(<a href="#1124">old</a>), <a href="#1120">ctxt</a>.<span class="number">0</span>.<a href="#59">map</a>(), <a href="#1121">f</a>)
+                <a href="#1180-1192">debug_with_context</a>(<a href="#1126">this</a>, <span class="prelude-val">Some</span>(<a href="#1126">old</a>), <a href="#1122">ctxt</a>.<span class="number">0</span>.<a href="#59">map</a>(), <a href="#1123">f</a>)
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(()), <span class="comment">// Consider printing something here.
         </span>}
@@ -2327,8 +2331,8 @@
     map: <span class="kw-2">&amp;</span><a href="#626-634">Map</a>,
     f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;,
 ) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">std::fmt::Result</a> {
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a href="#1137">map</a>.places[<a href="#1133">place</a>].value_index {
-        <span class="kw">match </span><a href="#1136">old</a> {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <a href="#1139">map</a>.places[<a href="#1135">place</a>].value_index {
+        <span class="kw">match </span><a href="#1138">old</a> {
             <span class="prelude-val">None </span>=&gt; <span class="macro">writeln!</span>(f, <span class="string">&quot;{}: {:?}&quot;</span>, place_str, new[value])<span class="question-mark">?</span>,
             <span class="prelude-val">Some</span>(old) =&gt; {
                 <span class="kw">if </span>new[value] != old[value] {

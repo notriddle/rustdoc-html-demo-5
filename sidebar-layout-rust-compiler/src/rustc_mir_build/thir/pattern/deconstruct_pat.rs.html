@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/thir/pattern/deconstruct_pat.rs`."><title>deconstruct_pat.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/thir/pattern/deconstruct_pat.rs`."><title>deconstruct_pat.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1687,10 +1687,6 @@
 <a href="#1687" id="1687">1687</a>
 <a href="#1688" id="1688">1688</a>
 <a href="#1689" id="1689">1689</a>
-<a href="#1690" id="1690">1690</a>
-<a href="#1691" id="1691">1691</a>
-<a href="#1692" id="1692">1692</a>
-<a href="#1693" id="1693">1693</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! [`super::usefulness`] explains most of what is happening in this file. As explained there,
 //! values and patterns are made from constructors applied to fields. This file defines a
 //! `Constructor` enum, a `Fields` struct, and various operations to manipulate them and convert
@@ -1743,6 +1739,7 @@
 
 <span class="kw">use </span>smallvec::{<a href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec</a>, <a href="https://docs.rs/smallvec/1.11.0/smallvec/struct.SmallVec.html">SmallVec</a>};
 
+<span class="kw">use </span>rustc_apfloat::ieee::{DoubleS, <a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/struct.IeeeFloat.html">IeeeFloat</a>, SingleS};
 <span class="kw">use </span><a href="../../../../rustc_data_structures/captures/trait.Captures.html">rustc_data_structures::captures::Captures</a>;
 <span class="kw">use </span>rustc_hir::{<a href="../../../../rustc_hir/hir_id/struct.HirId.html">HirId</a>, <a href="../../../../rustc_hir/hir/enum.RangeEnd.html">RangeEnd</a>};
 <span class="kw">use </span><a href="../../../../rustc_index/idx/trait.Idx.html">rustc_index::Idx</a>;
@@ -1753,14 +1750,13 @@
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../../rustc_middle/ty/index.html">self</a>, <a href="../../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../../rustc_middle/ty/struct.VariantDef.html">VariantDef</a>};
 <span class="kw">use </span><a href="../../../../rustc_lint_defs/index.html">rustc_session::lint</a>;
 <span class="kw">use </span>rustc_span::{<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>};
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../../rustc_abi/enum.Integer.html">Integer</a>, <a href="../../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../../rustc_abi/enum.Integer.html">Integer</a>, <a href="../../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>, <a href="../../../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
 
-<span class="kw">use </span><a href="#613-642"><span class="self">self</span>::Constructor</a>::<span class="kw-2">*</span>;
-<span class="kw">use </span><a href="#411-420"><span class="self">self</span>::SliceKind</a>::<span class="kw-2">*</span>;
+<span class="kw">use </span><a href="#580-612"><span class="self">self</span>::Constructor</a>::<span class="kw-2">*</span>;
+<span class="kw">use </span><a href="#378-387"><span class="self">self</span>::SliceKind</a>::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><a href="mod.rs.html#838"><span class="kw">super</span>::compare_const_vals</a>;
 <span class="kw">use </span><span class="kw">super</span>::usefulness::{<a href="usefulness.rs.html#327-339">MatchCheckCtxt</a>, <a href="usefulness.rs.html#362-373">PatCtxt</a>};
-<span class="kw">use </span><span class="kw">crate</span>::errors::{<a href="../../errors.rs.html#761-764">Overlap</a>, <a href="../../errors.rs.html#754-759">OverlappingRangeEndpoints</a>};
+<span class="kw">use </span><span class="kw">crate</span>::errors::{<a href="../../errors.rs.html#767-770">Overlap</a>, <a href="../../errors.rs.html#760-765">OverlappingRangeEndpoints</a>};
 
 <span class="doccomment">/// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 </span><span class="kw">fn </span><a href="../../../../rustc_mir_build/thir/pattern/deconstruct_pat/fn.expand_or_pat.html">expand_or_pat</a>&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;(pat: <span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
@@ -1792,58 +1788,29 @@
 </span><span class="attr">#[derive(Clone, PartialEq, Eq)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span><a href="../../../../rustc_mir_build/thir/pattern/deconstruct_pat/struct.IntRange.html">IntRange</a> {
     range: RangeInclusive&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>&gt;,
-    <span class="doccomment">/// Keeps the bias used for encoding the range. It depends on the type of the range and
-    /// possibly the pointer size of the current architecture. The algorithm ensures we never
-    /// compare `IntRange`s with different types/architectures.
-    </span>bias: <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>,
 }
 
-<span class="kw">impl </span><a href="#100-106">IntRange</a> {
+<span class="kw">impl </span><a href="#100-102">IntRange</a> {
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>is_integral(ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(ty.kind(), ty::Char | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) | ty::Bool)
     }
 
     <span class="kw">fn </span>is_singleton(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#114">self</a>.range.start() == <a class="self" href="#114">self</a>.range.end()
+        <a class="self" href="#110">self</a>.range.start() == <a class="self" href="#110">self</a>.range.end()
     }
 
     <span class="kw">fn </span>boundaries(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>) {
-        (<span class="kw-2">*</span><a class="self" href="#118">self</a>.range.start(), <span class="kw-2">*</span><a class="self" href="#118">self</a>.range.end())
+        (<span class="kw-2">*</span><a class="self" href="#114">self</a>.range.start(), <span class="kw-2">*</span><a class="self" href="#114">self</a>.range.end())
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">fn </span>integral_size_and_signed_bias(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="../../../../rustc_abi/struct.Size.html">Size</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>)&gt; {
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#123">ty</a>.kind() {
-            ty::Bool =&gt; <span class="prelude-val">Some</span>((Size::from_bytes(<span class="number">1</span>), <span class="number">0</span>)),
-            ty::Char =&gt; <span class="prelude-val">Some</span>((Size::from_bytes(<span class="number">4</span>), <span class="number">0</span>)),
-            ty::Int(ity) =&gt; {
-                <span class="kw">let </span>size = Integer::from_int_ty(<span class="kw-2">&amp;</span><a href="#123">tcx</a>, <a href="#127">ity</a>).size();
-                <span class="prelude-val">Some</span>((<a href="#128">size</a>, <span class="number">1u128 </span>&lt;&lt; (<a href="#128">size</a>.bits() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a> - <span class="number">1</span>)))
-            }
-            ty::Uint(uty) =&gt; <span class="prelude-val">Some</span>((Integer::from_uint_ty(<span class="kw-2">&amp;</span><a href="#123">tcx</a>, <a href="#131">uty</a>).size(), <span class="number">0</span>)),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-    }
-
-    <span class="attr">#[inline]
-    </span><span class="kw">fn </span>from_constant&lt;<span class="lifetime">&#39;tcx</span>&gt;(
-        tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        value: mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#100-106">IntRange</a>&gt; {
-        <span class="kw">let </span>ty = <a href="#140">value</a>.ty();
-        <span class="kw">let </span>(target_size, bias) = <span class="self">Self</span>::integral_size_and_signed_bias(tcx, ty)<span class="question-mark">?</span>;
-        <span class="kw">let </span>val = <span class="kw">match </span>value {
-            mir::ConstantKind::Ty(c) <span class="kw">if let </span>ty::ConstKind::Value(valtree) = c.kind() =&gt; {
-                valtree.unwrap_leaf().to_bits(target_size).ok()
-            },
-            <span class="comment">// This is a more general form of the previous case.
-            </span><span class="kw">_ </span>=&gt; value.try_eval_bits(tcx, param_env, ty),
-        }<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>val = <a href="#144">val</a> ^ <a href="#143">bias</a>;
-        <span class="prelude-val">Some</span>(<a href="#100-106">IntRange</a> { range: <a href="#152">val</a>..=<a href="#152">val</a>, <a href="#143">bias</a> })
+    </span><span class="kw">fn </span>from_bits&lt;<span class="lifetime">&#39;tcx</span>&gt;(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, bits: <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>) -&gt; <a href="#100-102">IntRange</a> {
+        <span class="kw">let </span>bias = IntRange::signed_bias(<a href="#119">tcx</a>, <a href="#119">ty</a>);
+        <span class="comment">// Perform a shift if the underlying types are signed,
+        // which makes the interval arithmetic simpler.
+        </span><span class="kw">let </span>val = <a href="#119">bits</a> ^ <a href="#120">bias</a>;
+        <a href="#100-102">IntRange</a> { range: <a href="#123">val</a>..=<a href="#123">val</a> }
     }
 
     <span class="attr">#[inline]
@@ -1852,42 +1819,40 @@
         lo: <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>,
         hi: <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>,
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
-        end: <span class="kw-2">&amp;</span><a href="../../../../rustc_hir/hir/enum.RangeEnd.html">RangeEnd</a>,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#100-106">IntRange</a>&gt; {
-        <span class="self">Self</span>::is_integral(<a href="#161">ty</a>).then(|| {
-            <span class="comment">// Perform a shift if the underlying types are signed,
-            // which makes the interval arithmetic simpler.
-            </span><span class="kw">let </span>bias = IntRange::signed_bias(<a href="#158">tcx</a>, <a href="#161">ty</a>);
-            <span class="kw">let </span>(lo, hi) = (<a href="#159">lo</a> ^ <a href="#167">bias</a>, <a href="#160">hi</a> ^ <a href="#167">bias</a>);
-            <span class="kw">let </span>offset = (<span class="kw-2">*</span><a href="#162">end</a> == RangeEnd::Excluded) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
-            <span class="kw">if </span>lo &gt; hi || (lo == hi &amp;&amp; <span class="kw-2">*</span>end == RangeEnd::Excluded) {
-                <span class="comment">// This should have been caught earlier by E0030.
-                </span><a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;malformed range pattern: {}..={}&quot;</span>, lo, (hi - offset));
-            }
-            <a href="#100-106">IntRange</a> { range: <a href="#168">lo</a>..=(<a href="#168">hi</a> - <a href="#169">offset</a>), <a href="#167">bias</a> }
-        })
+        end: <a href="../../../../rustc_hir/hir/enum.RangeEnd.html">RangeEnd</a>,
+    ) -&gt; <a href="#100-102">IntRange</a> {
+        <span class="comment">// Perform a shift if the underlying types are signed,
+        // which makes the interval arithmetic simpler.
+        </span><span class="kw">let </span>bias = IntRange::signed_bias(<a href="#129">tcx</a>, <a href="#132">ty</a>);
+        <span class="kw">let </span>(lo, hi) = (<a href="#130">lo</a> ^ <a href="#137">bias</a>, <a href="#131">hi</a> ^ <a href="#137">bias</a>);
+        <span class="kw">let </span>offset = (<a href="#133">end</a> == RangeEnd::Excluded) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
+        <span class="kw">if </span>lo &gt; hi || (lo == hi &amp;&amp; end == RangeEnd::Excluded) {
+            <span class="comment">// This should have been caught earlier by E0030.
+            </span><a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;malformed range pattern: {}..={}&quot;</span>, lo, (hi - offset));
+        }
+        <a href="#100-102">IntRange</a> { range: <a href="#138">lo</a>..=(<a href="#138">hi</a> - <a href="#139">offset</a>) }
     }
 
     <span class="comment">// The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
     </span><span class="kw">fn </span>signed_bias(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;, ty: Ty&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a> {
-        <span class="kw">match </span><span class="kw-2">*</span><a href="#179">ty</a>.kind() {
+        <span class="kw">match </span><span class="kw-2">*</span><a href="#148">ty</a>.kind() {
             ty::Int(ity) =&gt; {
-                <span class="kw">let </span>bits = Integer::from_int_ty(<span class="kw-2">&amp;</span><a href="#179">tcx</a>, <a href="#181">ity</a>).size().bits() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
-                <span class="number">1u128 </span>&lt;&lt; (<a href="#182">bits</a> - <span class="number">1</span>)
+                <span class="kw">let </span>bits = Integer::from_int_ty(<span class="kw-2">&amp;</span><a href="#148">tcx</a>, <a href="#150">ity</a>).size().bits() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
+                <span class="number">1u128 </span>&lt;&lt; (<a href="#151">bits</a> - <span class="number">1</span>)
             }
             <span class="kw">_ </span>=&gt; <span class="number">0</span>,
         }
     }
 
     <span class="kw">fn </span>is_subrange(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#189">other</a>.range.start() &lt;= <a class="self" href="#189">self</a>.range.start() &amp;&amp; <a class="self" href="#189">self</a>.range.end() &lt;= <a href="#189">other</a>.range.end()
+        <a href="#158">other</a>.range.start() &lt;= <a class="self" href="#158">self</a>.range.start() &amp;&amp; <a class="self" href="#158">self</a>.range.end() &lt;= <a href="#158">other</a>.range.end()
     }
 
     <span class="kw">fn </span>intersection(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>(lo, hi) = <a class="self" href="#193">self</a>.<a href="#118-120">boundaries</a>();
-        <span class="kw">let </span>(other_lo, other_hi) = <a href="#193">other</a>.<a href="#118-120">boundaries</a>();
+        <span class="kw">let </span>(lo, hi) = <a class="self" href="#162">self</a>.<a href="#114-116">boundaries</a>();
+        <span class="kw">let </span>(other_lo, other_hi) = <a href="#162">other</a>.<a href="#114-116">boundaries</a>();
         <span class="kw">if </span>lo &lt;= other_hi &amp;&amp; other_lo &lt;= hi {
-            <span class="prelude-val">Some</span>(<a href="#100-106">IntRange</a> { range: <a href="https://doc.rust-lang.org/nightly/core/cmp/fn.max.html">max</a>(<a href="#194">lo</a>, <a href="#195">other_lo</a>)..=<a href="https://doc.rust-lang.org/nightly/core/cmp/fn.min.html">min</a>(<a href="#194">hi</a>, <a href="#195">other_hi</a>), bias: <a class="self" href="#193">self</a>.bias })
+            <span class="prelude-val">Some</span>(<a href="#100-102">IntRange</a> { range: <a href="https://doc.rust-lang.org/nightly/core/cmp/fn.max.html">max</a>(<a href="#163">lo</a>, <a href="#164">other_lo</a>)..=<a href="https://doc.rust-lang.org/nightly/core/cmp/fn.min.html">min</a>(<a href="#163">hi</a>, <a href="#164">other_hi</a>) })
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>}
@@ -1905,33 +1870,33 @@
         // `true` in the following cases:
         // 1 -------          // 1       -------
         // 2       --------   // 2 -------
-        </span><span class="kw">let </span>(lo, hi) = <a class="self" href="#203">self</a>.<a href="#118-120">boundaries</a>();
-        <span class="kw">let </span>(other_lo, other_hi) = <a href="#203">other</a>.<a href="#118-120">boundaries</a>();
-        (<a href="#215">lo</a> == <a href="#216">other_hi</a> || <a href="#215">hi</a> == <a href="#216">other_lo</a>) &amp;&amp; !<a class="self" href="#203">self</a>.<a href="#114-116">is_singleton</a>() &amp;&amp; !<a href="#203">other</a>.<a href="#114-116">is_singleton</a>()
+        </span><span class="kw">let </span>(lo, hi) = <a class="self" href="#172">self</a>.<a href="#114-116">boundaries</a>();
+        <span class="kw">let </span>(other_lo, other_hi) = <a href="#172">other</a>.<a href="#114-116">boundaries</a>();
+        (<a href="#184">lo</a> == <a href="#185">other_hi</a> || <a href="#184">hi</a> == <a href="#185">other_lo</a>) &amp;&amp; !<a class="self" href="#172">self</a>.<a href="#110-112">is_singleton</a>() &amp;&amp; !<a href="#172">other</a>.<a href="#110-112">is_singleton</a>()
     }
 
     <span class="doccomment">/// Only used for displaying the range properly.
     </span><span class="kw">fn </span>to_pat&lt;<span class="lifetime">&#39;tcx</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Pat&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>(lo, hi) = <a class="self" href="#221">self</a>.<a href="#118-120">boundaries</a>();
+        <span class="kw">let </span>(lo, hi) = <a class="self" href="#190">self</a>.<a href="#114-116">boundaries</a>();
 
-        <span class="kw">let </span>bias = <a class="self" href="#221">self</a>.bias;
-        <span class="kw">let </span>(lo, hi) = (<a href="#222">lo</a> ^ <a href="#224">bias</a>, <a href="#222">hi</a> ^ <a href="#224">bias</a>);
+        <span class="kw">let </span>bias = IntRange::signed_bias(<a href="#190">tcx</a>, <a href="#190">ty</a>);
+        <span class="kw">let </span>(lo, hi) = (<a href="#191">lo</a> ^ <a href="#193">bias</a>, <a href="#191">hi</a> ^ <a href="#193">bias</a>);
 
-        <span class="kw">let </span>env = ty::ParamEnv::empty().and(<a href="#221">ty</a>);
-        <span class="kw">let </span>lo_const = mir::ConstantKind::from_bits(<a href="#221">tcx</a>, <a href="#225">lo</a>, <a href="#227">env</a>);
-        <span class="kw">let </span>hi_const = mir::ConstantKind::from_bits(<a href="#221">tcx</a>, <a href="#225">hi</a>, <a href="#227">env</a>);
+        <span class="kw">let </span>env = ty::ParamEnv::empty().and(<a href="#190">ty</a>);
+        <span class="kw">let </span>lo_const = mir::Const::from_bits(<a href="#190">tcx</a>, <a href="#194">lo</a>, <a href="#196">env</a>);
+        <span class="kw">let </span>hi_const = mir::Const::from_bits(<a href="#190">tcx</a>, <a href="#194">hi</a>, <a href="#196">env</a>);
 
         <span class="kw">let </span>kind = <span class="kw">if </span>lo == hi {
-            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Constant</a> { value: <a href="#228">lo_const</a> }
+            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Constant</a> { value: <a href="#197">lo_const</a> }
         } <span class="kw">else </span>{
             PatKind::Range(Box::new(<a href="../../../../rustc_middle/thir/struct.PatRange.html">PatRange</a> {
-                lo: <a href="#228">lo_const</a>,
-                hi: <a href="#229">hi_const</a>,
+                lo: <a href="#197">lo_const</a>,
+                hi: <a href="#198">hi_const</a>,
                 end: RangeEnd::Included,
             }))
         };
 
-        <a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> { <a href="#221">ty</a>, span: <a href="../../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#231">kind</a> }
+        <a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> { <a href="#190">ty</a>, span: <a href="../../../../rustc_span/span_encoding/constant.DUMMY_SP.html">DUMMY_SP</a>, <a href="#200">kind</a> }
     }
 
     <span class="doccomment">/// Lint on likely incorrect range patterns (#63987)
@@ -1960,21 +1925,21 @@
             </span><span class="kw">return</span>;
         }
 
-        <span class="kw">let </span>overlap: Vec&lt;<span class="kw">_</span>&gt; = <a href="#248">pats</a>
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|pat| <span class="prelude-val">Some</span>((pat.ctor().as_int_range()<span class="question-mark">?</span>, <a href="#271">pat</a>.<a href="#1519-1521">span</a>())))
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(range, <span class="kw">_</span>)| <a class="self" href="#246">self</a>.<a href="#203-218">suspicious_intersection</a>(<a href="#272">range</a>))
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(range, span)| <a href="../../errors.rs.html#761-764">Overlap</a> {
-                range: <a class="self" href="#246">self</a>.<a href="#193-201">intersection</a>(<span class="kw-2">&amp;</span><a href="#273">range</a>).unwrap().<a href="#221-242">to_pat</a>(<a href="#247">pcx</a>.cx.tcx, <a href="#247">pcx</a>.ty),
-                <a href="#273">span</a>,
+        <span class="kw">let </span>overlap: Vec&lt;<span class="kw">_</span>&gt; = <a href="#217">pats</a>
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|pat| <span class="prelude-val">Some</span>((pat.ctor().as_int_range()<span class="question-mark">?</span>, <a href="#240">pat</a>.<a href="#1518-1520">span</a>())))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(range, <span class="kw">_</span>)| <a class="self" href="#215">self</a>.<a href="#172-187">suspicious_intersection</a>(<a href="#241">range</a>))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(range, span)| <a href="../../errors.rs.html#767-770">Overlap</a> {
+                range: <a class="self" href="#215">self</a>.<a href="#162-170">intersection</a>(<span class="kw-2">&amp;</span><a href="#242">range</a>).unwrap().<a href="#190-211">to_pat</a>(<a href="#216">pcx</a>.cx.tcx, <a href="#216">pcx</a>.ty),
+                <a href="#242">span</a>,
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
         <span class="kw">if </span>!overlap.is_empty() {
-            <a href="#247">pcx</a>.cx.tcx.emit_spanned_lint(
+            <a href="#216">pcx</a>.cx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                <a href="#250">lint_root</a>,
-                <a href="#247">pcx</a>.span,
-                <a href="../../errors.rs.html#754-759">OverlappingRangeEndpoints</a> { <a href="#270">overlap</a>, range: <a href="#247">pcx</a>.span },
+                <a href="#219">lint_root</a>,
+                <a href="#216">pcx</a>.span,
+                <a href="../../errors.rs.html#760-765">OverlappingRangeEndpoints</a> { <a href="#239">overlap</a>, range: <a href="#216">pcx</a>.span },
             );
         }
     }
@@ -1994,14 +1959,12 @@
 
 <span class="doccomment">/// Note: this is often not what we want: e.g. `false` is converted into the range `0..=0` and
 /// would be displayed as such. To render properly, convert to a pattern first.
-</span><span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">fmt::Debug</a> <span class="kw">for </span><a href="#100-106">IntRange</a> {
+</span><span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">fmt::Debug</a> <span class="kw">for </span><a href="#100-102">IntRange</a> {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html">fmt::Result</a> {
-        <span class="kw">let </span>(lo, hi) = <a class="self" href="#305">self</a>.<a href="#118-120">boundaries</a>();
-        <span class="kw">let </span>bias = <a class="self" href="#305">self</a>.bias;
-        <span class="kw">let </span>(lo, hi) = (<a href="#306">lo</a> ^ <a href="#307">bias</a>, <a href="#306">hi</a> ^ <a href="#307">bias</a>);
+        <span class="kw">let </span>(lo, hi) = <a class="self" href="#274">self</a>.<a href="#114-116">boundaries</a>();
         <span class="macro">write!</span>(f, <span class="string">&quot;{lo}&quot;</span>)<span class="question-mark">?</span>;
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, RangeEnd::Included)<span class="question-mark">?</span>;
-        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#305">f</a>, <span class="string">&quot;{hi}&quot;</span>)
+        <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#274">f</a>, <span class="string">&quot;{hi}&quot;</span>)
     }
 }
 
@@ -2033,69 +1996,69 @@
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">struct </span><a href="../../../../rustc_mir_build/thir/pattern/deconstruct_pat/struct.SplitIntRange.html">SplitIntRange</a> {
     <span class="doccomment">/// The range we are splitting
-    </span>range: <a href="#100-106">IntRange</a>,
+    </span>range: <a href="#100-102">IntRange</a>,
     <span class="doccomment">/// The borders of ranges we have seen. They are all contained within `range`. This is kept
     /// sorted.
-    </span>borders: Vec&lt;<a href="#318-321">IntBorder</a>&gt;,
+    </span>borders: Vec&lt;<a href="#285-288">IntBorder</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#341-347">SplitIntRange</a> {
-    <span class="kw">fn </span>new(range: <a href="#100-106">IntRange</a>) -&gt; <span class="self">Self </span>{
-        <a href="#341-347">SplitIntRange</a> { <a href="#350">range</a>, borders: Vec::new() }
+<span class="kw">impl </span><a href="#308-314">SplitIntRange</a> {
+    <span class="kw">fn </span>new(range: <a href="#100-102">IntRange</a>) -&gt; <span class="self">Self </span>{
+        <a href="#308-314">SplitIntRange</a> { <a href="#317">range</a>, borders: Vec::new() }
     }
 
     <span class="doccomment">/// Internal use
-    </span><span class="kw">fn </span>to_borders(r: <a href="#100-106">IntRange</a>) -&gt; [<a href="#318-321">IntBorder</a>; <span class="number">2</span>] {
-        <span class="kw">use </span><a href="#318-321">IntBorder</a>::<span class="kw-2">*</span>;
-        <span class="kw">let </span>(lo, hi) = <a href="#355">r</a>.<a href="#118-120">boundaries</a>();
-        <span class="kw">let </span>lo = <a href="#319">JustBefore</a>(<a href="#357">lo</a>);
-        <span class="kw">let </span>hi = <span class="kw">match </span><a href="#357">hi</a>.checked_add(<span class="number">1</span>) {
-            <span class="prelude-val">Some</span>(m) =&gt; <a href="#319">JustBefore</a>(<a href="#360">m</a>),
-            <span class="prelude-val">None </span>=&gt; <a href="#320">AfterMax</a>,
+    </span><span class="kw">fn </span>to_borders(r: <a href="#100-102">IntRange</a>) -&gt; [<a href="#285-288">IntBorder</a>; <span class="number">2</span>] {
+        <span class="kw">use </span><a href="#285-288">IntBorder</a>::<span class="kw-2">*</span>;
+        <span class="kw">let </span>(lo, hi) = <a href="#322">r</a>.<a href="#114-116">boundaries</a>();
+        <span class="kw">let </span>lo = <a href="#286">JustBefore</a>(<a href="#324">lo</a>);
+        <span class="kw">let </span>hi = <span class="kw">match </span><a href="#324">hi</a>.checked_add(<span class="number">1</span>) {
+            <span class="prelude-val">Some</span>(m) =&gt; <a href="#286">JustBefore</a>(<a href="#327">m</a>),
+            <span class="prelude-val">None </span>=&gt; <a href="#287">AfterMax</a>,
         };
-        [<a href="#358">lo</a>, <a href="#359">hi</a>]
+        [<a href="#325">lo</a>, <a href="#326">hi</a>]
     }
 
     <span class="doccomment">/// Add ranges relative to which we split.
-    </span><span class="kw">fn </span>split(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ranges: <span class="kw">impl </span>Iterator&lt;Item = <a href="#100-106">IntRange</a>&gt;) {
-        <span class="kw">let </span>this_range = <span class="kw-2">&amp;</span><a class="self" href="#367">self</a>.range;
-        <span class="kw">let </span>included_ranges = <a href="#367">ranges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|r| <a href="#368">this_range</a>.<a href="#193-201">intersection</a>(<span class="kw-2">&amp;</span><a href="#369">r</a>));
-        <span class="kw">let </span>included_borders = <a href="#369">included_ranges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|r| {
-            <span class="kw">let </span>borders = <span class="self">Self</span>::to_borders(<a href="#370">r</a>);
-            <a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a href="#371">borders</a>[<span class="number">0</span>]).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a href="#371">borders</a>[<span class="number">1</span>]))
+    </span><span class="kw">fn </span>split(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ranges: <span class="kw">impl </span>Iterator&lt;Item = <a href="#100-102">IntRange</a>&gt;) {
+        <span class="kw">let </span>this_range = <span class="kw-2">&amp;</span><a class="self" href="#334">self</a>.range;
+        <span class="kw">let </span>included_ranges = <a href="#334">ranges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|r| <a href="#335">this_range</a>.<a href="#162-170">intersection</a>(<span class="kw-2">&amp;</span><a href="#336">r</a>));
+        <span class="kw">let </span>included_borders = <a href="#336">included_ranges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|r| {
+            <span class="kw">let </span>borders = <span class="self">Self</span>::to_borders(<a href="#337">r</a>);
+            <a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a href="#338">borders</a>[<span class="number">0</span>]).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a href="#338">borders</a>[<span class="number">1</span>]))
         });
-        <a class="self" href="#367">self</a>.borders.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#370">included_borders</a>);
-        <a class="self" href="#367">self</a>.borders.sort_unstable();
+        <a class="self" href="#334">self</a>.borders.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#337">included_borders</a>);
+        <a class="self" href="#334">self</a>.borders.sort_unstable();
     }
 
     <span class="doccomment">/// Iterate over the contained ranges.
-    </span><span class="kw">fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <a href="#100-106">IntRange</a>&gt; + Captures&lt;<span class="lifetime">&#39;_</span>&gt; {
-        <span class="kw">use </span><a href="#318-321">IntBorder</a>::<span class="kw-2">*</span>;
+    </span><span class="kw">fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <a href="#100-102">IntRange</a>&gt; + Captures&lt;<span class="lifetime">&#39;_</span>&gt; {
+        <span class="kw">use </span><a href="#285-288">IntBorder</a>::<span class="kw-2">*</span>;
 
-        <span class="kw">let </span>self_range = <span class="self">Self</span>::to_borders(<a class="self" href="#379">self</a>.range.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
+        <span class="kw">let </span>self_range = <span class="self">Self</span>::to_borders(<a class="self" href="#346">self</a>.range.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
         <span class="comment">// Start with the start of the range.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>prev_border = <a href="#382">self_range</a>[<span class="number">0</span>];
-        <a class="self" href="#379">self</a>.borders
+        </span><span class="kw">let </span><span class="kw-2">mut </span>prev_border = <a href="#349">self_range</a>[<span class="number">0</span>];
+        <a class="self" href="#346">self</a>.borders
             .iter()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">copied</a>()
             <span class="comment">// End with the end of the range.
-            </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a href="#382">self_range</a>[<span class="number">1</span>]))
+            </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a href="#349">self_range</a>[<span class="number">1</span>]))
             <span class="comment">// List pairs of adjacent borders.
             </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<span class="kw">move </span>|border| {
-                <span class="kw">let </span>ret = (<a href="#384">prev_border</a>, <a href="#391">border</a>);
-                <a href="#384">prev_border</a> = <a href="#391">border</a>;
-                <a href="#392">ret</a>
+                <span class="kw">let </span>ret = (<a href="#351">prev_border</a>, <a href="#358">border</a>);
+                <a href="#351">prev_border</a> = <a href="#358">border</a>;
+                <a href="#359">ret</a>
             })
             <span class="comment">// Skip duplicates.
-            </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(prev_border, border)| <a href="#397">prev_border</a> != <a href="#397">border</a>)
+            </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(prev_border, border)| <a href="#364">prev_border</a> != <a href="#364">border</a>)
             <span class="comment">// Finally, convert to ranges.
             </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<span class="kw">move </span>|(prev_border, border)| {
-                <span class="kw">let </span>range = <span class="kw">match </span>(<a href="#399">prev_border</a>, <a href="#399">border</a>) {
-                    (<a href="#319">JustBefore</a>(n), <a href="#319">JustBefore</a>(m)) <span class="kw">if </span><a href="#401">n</a> &lt; <a href="#401">m</a> =&gt; <a href="#401">n</a>..=(<a href="#401">m</a> - <span class="number">1</span>),
-                    (<a href="#319">JustBefore</a>(n), <a href="#320">AfterMax</a>) =&gt; <a href="#402">n</a>..=u128::MAX,
+                <span class="kw">let </span>range = <span class="kw">match </span>(<a href="#366">prev_border</a>, <a href="#366">border</a>) {
+                    (<a href="#286">JustBefore</a>(n), <a href="#286">JustBefore</a>(m)) <span class="kw">if </span><a href="#368">n</a> &lt; <a href="#368">m</a> =&gt; <a href="#368">n</a>..=(<a href="#368">m</a> - <span class="number">1</span>),
+                    (<a href="#286">JustBefore</a>(n), <a href="#287">AfterMax</a>) =&gt; <a href="#369">n</a>..=u128::MAX,
                     <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(), <span class="comment">// Ruled out by the sorting and filtering we did
                 </span>};
-                <a href="#100-106">IntRange</a> { <a href="#400">range</a>, bias: <a class="self" href="#379">self</a>.range.bias }
+                <a href="#100-102">IntRange</a> { <a href="#367">range</a> }
             })
     }
 }
@@ -2112,19 +2075,19 @@
     </span>VarLen(<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>),
 }
 
-<span class="kw">impl </span><a href="#411-420">SliceKind</a> {
+<span class="kw">impl </span><a href="#378-387">SliceKind</a> {
     <span class="kw">fn </span>arity(<span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <span class="kw">match </span><span class="self"><a href="#423">self</a> </span>{
-            <a href="#413">FixedLen</a>(length) =&gt; <a href="#425">length</a>,
-            <a href="#419">VarLen</a>(prefix, suffix) =&gt; <a href="#426">prefix</a> + <a href="#426">suffix</a>,
+        <span class="kw">match </span><span class="self"><a href="#390">self</a> </span>{
+            <a href="#380">FixedLen</a>(length) =&gt; <a href="#392">length</a>,
+            <a href="#386">VarLen</a>(prefix, suffix) =&gt; <a href="#393">prefix</a> + <a href="#393">suffix</a>,
         }
     }
 
     <span class="doccomment">/// Whether this pattern includes patterns of length `other_len`.
     </span><span class="kw">fn </span>covers_length(<span class="self">self</span>, other_len: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">match </span><span class="self"><a href="#431">self</a> </span>{
-            <a href="#413">FixedLen</a>(len) =&gt; <a href="#433">len</a> == <a href="#431">other_len</a>,
-            <a href="#419">VarLen</a>(prefix, suffix) =&gt; <a href="#434">prefix</a> + <a href="#434">suffix</a> &lt;= <a href="#431">other_len</a>,
+        <span class="kw">match </span><span class="self"><a href="#398">self</a> </span>{
+            <a href="#380">FixedLen</a>(len) =&gt; <a href="#400">len</a> == <a href="#398">other_len</a>,
+            <a href="#386">VarLen</a>(prefix, suffix) =&gt; <a href="#401">prefix</a> + <a href="#401">suffix</a> &lt;= <a href="#398">other_len</a>,
         }
     }
 }
@@ -2135,26 +2098,26 @@
     <span class="doccomment">/// `None` if the matched value is a slice, `Some(n)` if it is an array of size `n`.
     </span>array_len: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;,
     <span class="doccomment">/// The kind of pattern it is: fixed-length `[x, y]` or variable length `[x, .., y]`.
-    </span>kind: <a href="#411-420">SliceKind</a>,
+    </span>kind: <a href="#378-387">SliceKind</a>,
 }
 
-<span class="kw">impl </span><a href="#441-446">Slice</a> {
-    <span class="kw">fn </span>new(array_len: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;, kind: <a href="#411-420">SliceKind</a>) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>kind = <span class="kw">match </span>(<a href="#449">array_len</a>, <a href="#449">kind</a>) {
+<span class="kw">impl </span><a href="#408-413">Slice</a> {
+    <span class="kw">fn </span>new(array_len: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;, kind: <a href="#378-387">SliceKind</a>) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>kind = <span class="kw">match </span>(<a href="#416">array_len</a>, <a href="#416">kind</a>) {
             <span class="comment">// If the middle `..` is empty, we effectively have a fixed-length pattern.
-            </span>(<span class="prelude-val">Some</span>(len), <a href="#419">VarLen</a>(prefix, suffix)) <span class="kw">if </span><a href="#452">prefix</a> + <a href="#452">suffix</a> &gt;= <a href="#452">len</a> =&gt; <a href="#413">FixedLen</a>(<a href="#452">len</a>),
-            <span class="kw">_ </span>=&gt; <a href="#449">kind</a>,
+            </span>(<span class="prelude-val">Some</span>(len), <a href="#386">VarLen</a>(prefix, suffix)) <span class="kw">if </span><a href="#419">prefix</a> + <a href="#419">suffix</a> &gt;= <a href="#419">len</a> =&gt; <a href="#380">FixedLen</a>(<a href="#419">len</a>),
+            <span class="kw">_ </span>=&gt; <a href="#416">kind</a>,
         };
-        <a href="#441-446">Slice</a> { <a href="#449">array_len</a>, <a href="#450">kind</a> }
+        <a href="#408-413">Slice</a> { <a href="#416">array_len</a>, <a href="#417">kind</a> }
     }
 
     <span class="kw">fn </span>arity(<span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <a class="self" href="#458">self</a>.kind.<a href="#423-428">arity</a>()
+        <a class="self" href="#425">self</a>.kind.<a href="#390-395">arity</a>()
     }
 
     <span class="doccomment">/// See `Constructor::is_covered_by`
     </span><span class="kw">fn </span>is_covered_by(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a href="#463">other</a>.kind.<a href="#431-436">covers_length</a>(<a class="self" href="#463">self</a>.<a href="#458-460">arity</a>())
+        <a href="#430">other</a>.kind.<a href="#398-403">covers_length</a>(<a class="self" href="#430">self</a>.<a href="#425-427">arity</a>())
     }
 }
 
@@ -2232,17 +2195,17 @@
     </span>arity: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
     <span class="doccomment">/// The smallest slice bigger than any slice seen. `max_slice.arity()` is the length `L`
     /// described above.
-    </span>max_slice: <a href="#411-420">SliceKind</a>,
+    </span>max_slice: <a href="#378-387">SliceKind</a>,
 }
 
-<span class="kw">impl </span><a href="#535-543">SplitVarLenSlice</a> {
+<span class="kw">impl </span><a href="#502-510">SplitVarLenSlice</a> {
     <span class="kw">fn </span>new(prefix: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, suffix: <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, array_len: <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;) -&gt; <span class="self">Self </span>{
-        <a href="#535-543">SplitVarLenSlice</a> { <a href="#546">array_len</a>, arity: <a href="#546">prefix</a> + <a href="#546">suffix</a>, max_slice: <a href="#419">VarLen</a>(<a href="#546">prefix</a>, <a href="#546">suffix</a>) }
+        <a href="#502-510">SplitVarLenSlice</a> { <a href="#513">array_len</a>, arity: <a href="#513">prefix</a> + <a href="#513">suffix</a>, max_slice: <a href="#386">VarLen</a>(<a href="#513">prefix</a>, <a href="#513">suffix</a>) }
     }
 
     <span class="doccomment">/// Pass a set of slices relative to which to split this one.
-    </span><span class="kw">fn </span>split(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slices: <span class="kw">impl </span>Iterator&lt;Item = <a href="#411-420">SliceKind</a>&gt;) {
-        <span class="kw">let </span><a href="#419">VarLen</a>(max_prefix_len, max_suffix_len) = <span class="kw-2">&amp;mut </span><a class="self" href="#551">self</a>.max_slice <span class="kw">else </span>{
+    </span><span class="kw">fn </span>split(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slices: <span class="kw">impl </span>Iterator&lt;Item = <a href="#378-387">SliceKind</a>&gt;) {
+        <span class="kw">let </span><a href="#386">VarLen</a>(max_prefix_len, max_suffix_len) = <span class="kw-2">&amp;mut </span><a class="self" href="#518">self</a>.max_slice <span class="kw">else </span>{
             <span class="comment">// No need to split
             </span><span class="kw">return</span>;
         };
@@ -2266,19 +2229,19 @@
         </span><span class="kw">if </span>max_fixed_len + <span class="number">1 </span>&gt;= <span class="kw-2">*</span>max_prefix_len + <span class="kw-2">*</span>max_suffix_len {
             <span class="comment">// The subtraction can&#39;t overflow thanks to the above check.
             // The new `max_prefix_len` is larger than its previous value.
-            </span><span class="kw-2">*</span><a href="#552">max_prefix_len</a> = <a href="#559">max_fixed_len</a> + <span class="number">1 </span>- <span class="kw-2">*</span><a href="#552">max_suffix_len</a>;
+            </span><span class="kw-2">*</span><a href="#519">max_prefix_len</a> = <a href="#526">max_fixed_len</a> + <span class="number">1 </span>- <span class="kw-2">*</span><a href="#519">max_suffix_len</a>;
         }
 
         <span class="comment">// We cap the arity of `max_slice` at the array size.
-        </span><span class="kw">match </span><a class="self" href="#551">self</a>.array_len {
-            <span class="prelude-val">Some</span>(len) <span class="kw">if </span><a class="self" href="#551">self</a>.max_slice.<a href="#423-428">arity</a>() &gt;= <a href="#581">len</a> =&gt; <a class="self" href="#551">self</a>.max_slice = <a href="#413">FixedLen</a>(<a href="#581">len</a>),
+        </span><span class="kw">match </span><a class="self" href="#518">self</a>.array_len {
+            <span class="prelude-val">Some</span>(len) <span class="kw">if </span><a class="self" href="#518">self</a>.max_slice.<a href="#390-395">arity</a>() &gt;= <a href="#548">len</a> =&gt; <a class="self" href="#518">self</a>.max_slice = <a href="#380">FixedLen</a>(<a href="#548">len</a>),
             <span class="kw">_ </span>=&gt; {}
         }
     }
 
     <span class="doccomment">/// Iterate over the partition of this slice.
-    </span><span class="kw">fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <a href="#441-446">Slice</a>&gt; + Captures&lt;<span class="lifetime">&#39;_</span>&gt; {
-        <span class="kw">let </span>smaller_lengths = <span class="kw">match </span><a class="self" href="#587">self</a>.array_len {
+    </span><span class="kw">fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <a href="#408-413">Slice</a>&gt; + Captures&lt;<span class="lifetime">&#39;_</span>&gt; {
+        <span class="kw">let </span>smaller_lengths = <span class="kw">match </span><a class="self" href="#554">self</a>.array_len {
             <span class="comment">// The only admissible fixed-length slice is one of the array size. Whether `max_slice`
             // is fixed-length or variable-length, it will be the only relevant slice to output
             // here.
@@ -2286,12 +2249,12 @@
             // We cover all arities in the range `(self.arity..infinity)`. We split that range into
             // two: lengths smaller than `max_slice.arity()` are treated independently as
             // fixed-lengths slices, and lengths above are captured by `max_slice`.
-            </span><span class="prelude-val">None </span>=&gt; <a class="self" href="#587">self</a>.arity..<a class="self" href="#587">self</a>.max_slice.<a href="#423-428">arity</a>(),
+            </span><span class="prelude-val">None </span>=&gt; <a class="self" href="#554">self</a>.arity..<a class="self" href="#554">self</a>.max_slice.<a href="#390-395">arity</a>(),
         };
-        <a href="#588">smaller_lengths</a>
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#413">FixedLen</a>)
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a class="self" href="#587">self</a>.max_slice))
-            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<span class="kw">move </span>|kind| Slice::new(<a class="self" href="#587">self</a>.array_len, <a href="#601">kind</a>))
+        <a href="#555">smaller_lengths</a>
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#380">FixedLen</a>)
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="https://doc.rust-lang.org/nightly/core/iter/sources/once/fn.once.html">once</a>(<a class="self" href="#554">self</a>.max_slice))
+            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<span class="kw">move </span>|kind| Slice::new(<a class="self" href="#554">self</a>.array_len, <a href="#568">kind</a>))
     }
 }
 
@@ -2308,15 +2271,16 @@
     /// and fixed-length arrays.
     </span>Single,
     <span class="doccomment">/// Enum variants.
-    </span>Variant(<a href="../../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>),
+    </span>Variant(<a href="../../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>),
     <span class="doccomment">/// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
-    </span>IntRange(<a href="#100-106">IntRange</a>),
+    </span>IntRange(<a href="#100-102">IntRange</a>),
     <span class="doccomment">/// Ranges of floating-point literal values (`2.0..=5.2`).
-    </span>FloatRange(mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;, mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../../../rustc_hir/hir/enum.RangeEnd.html">RangeEnd</a>),
+    </span>F32Range(IeeeFloat&lt;<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/struct.SingleS.html">SingleS</a>&gt;, IeeeFloat&lt;<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/struct.SingleS.html">SingleS</a>&gt;, <a href="../../../../rustc_hir/hir/enum.RangeEnd.html">RangeEnd</a>),
+    F64Range(IeeeFloat&lt;<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/struct.DoubleS.html">DoubleS</a>&gt;, IeeeFloat&lt;<a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/ieee/struct.DoubleS.html">DoubleS</a>&gt;, <a href="../../../../rustc_hir/hir/enum.RangeEnd.html">RangeEnd</a>),
     <span class="doccomment">/// String literals. Strings are not quite the same as `&amp;[u8]` so we treat them separately.
-    </span>Str(mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;),
+    </span>Str(mir::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;),
     <span class="doccomment">/// Array and slice patterns.
-    </span>Slice(<a href="#441-446">Slice</a>),
+    </span>Slice(<a href="#408-413">Slice</a>),
     <span class="doccomment">/// Constants that must not be matched structurally. They are treated as black
     /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
     /// don&#39;t count towards making a match exhaustive.
@@ -2327,7 +2291,9 @@
     <span class="doccomment">/// Stands for constructors that are not seen in the matrix, as explained in the documentation
     /// for [`SplitWildcard`]. The carried `bool` is used for the `non_exhaustive_omitted_patterns`
     /// lint.
-    </span>Missing { nonexhaustive_enum_missing_real_variants: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> },
+    </span>Missing {
+        nonexhaustive_enum_missing_real_variants: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    },
     <span class="doccomment">/// Wildcard pattern.
     </span>Wildcard,
     <span class="doccomment">/// Or-pattern.
@@ -2343,16 +2309,16 @@
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(<span class="self">self</span>, NonExhaustive)
     }
 
-    <span class="kw">fn </span>as_int_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><a href="#100-106">IntRange</a>&gt; {
-        <span class="kw">match </span><span class="self"><a href="#653">self</a> </span>{
-            <a href="#620">IntRange</a>(range) =&gt; <span class="prelude-val">Some</span>(<a href="#655">range</a>),
+    <span class="kw">fn </span>as_int_range(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><a href="#100-102">IntRange</a>&gt; {
+        <span class="kw">match </span><span class="self"><a href="#623">self</a> </span>{
+            <a href="#587">IntRange</a>(range) =&gt; <span class="prelude-val">Some</span>(<a href="#625">range</a>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
 
-    <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#441-446">Slice</a>&gt; {
-        <span class="kw">match </span><span class="self"><a href="#660">self</a> </span>{
-            <a href="#626">Slice</a>(slice) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span><a href="#662">slice</a>),
+    <span class="kw">fn </span>as_slice(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<a href="#408-413">Slice</a>&gt; {
+        <span class="kw">match </span><span class="self"><a href="#630">self</a> </span>{
+            <a href="#594">Slice</a>(slice) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span><a href="#632">slice</a>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -2362,8 +2328,8 @@
     ///
     /// This means that the variant has a stdlib unstable feature marking it.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>is_unstable_variant(<span class="kw-2">&amp;</span><span class="self">self</span>, pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span><a href="#618">Constructor::Variant</a>(idx) = <span class="self"><a href="#671">self</a> </span>&amp;&amp; <span class="kw">let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#671">pcx</a>.ty.kind() {
-            <span class="kw">let </span>variant_def_id = <a href="#672">adt</a>.variant(<span class="kw-2">*</span><a href="#672">idx</a>).def_id;
+        <span class="kw">if let </span><a href="#585">Constructor::Variant</a>(idx) = <span class="self"><a href="#641">self</a> </span>&amp;&amp; <span class="kw">let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#641">pcx</a>.ty.kind() {
+            <span class="kw">let </span>variant_def_id = <a href="#642">adt</a>.variant(<span class="kw-2">*</span><a href="#642">idx</a>).def_id;
             <span class="comment">// Filter variants that depend on a disabled unstable feature.
             </span><span class="kw">return </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(
                 pcx.cx.tcx.eval_stability(variant_def_id, <span class="prelude-val">None</span>, DUMMY_SP, <span class="prelude-val">None</span>),
@@ -2376,19 +2342,19 @@
     <span class="doccomment">/// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
     /// attribute from a type not local to the current crate.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>is_doc_hidden_variant(<span class="kw-2">&amp;</span><span class="self">self</span>, pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <span class="kw">if let </span><a href="#618">Constructor::Variant</a>(idx) = <span class="self"><a href="#685">self</a> </span>&amp;&amp; <span class="kw">let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#685">pcx</a>.ty.kind() {
-            <span class="kw">let </span>variant_def_id = <a href="#686">adt</a>.variants()[<span class="kw-2">*</span><a href="#686">idx</a>].def_id;
-            <span class="kw">return </span><a href="#685">pcx</a>.cx.tcx.is_doc_hidden(<a href="#687">variant_def_id</a>) &amp;&amp; !<a href="#687">variant_def_id</a>.is_local();
+        <span class="kw">if let </span><a href="#585">Constructor::Variant</a>(idx) = <span class="self"><a href="#655">self</a> </span>&amp;&amp; <span class="kw">let </span>ty::Adt(adt, <span class="kw">_</span>) = <a href="#655">pcx</a>.ty.kind() {
+            <span class="kw">let </span>variant_def_id = <a href="#656">adt</a>.variants()[<span class="kw-2">*</span><a href="#656">idx</a>].def_id;
+            <span class="kw">return </span><a href="#655">pcx</a>.cx.tcx.is_doc_hidden(<a href="#657">variant_def_id</a>) &amp;&amp; !<a href="#657">variant_def_id</a>.is_local();
         }
         <span class="bool-val">false
     </span>}
 
-    <span class="kw">fn </span>variant_index_for_adt(<span class="kw-2">&amp;</span><span class="self">self</span>, adt: ty::AdtDef&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a> {
-        <span class="kw">match </span><span class="kw-2">*</span><span class="self"><a href="#693">self</a> </span>{
-            <a href="#618">Variant</a>(idx) =&gt; <a href="#695">idx</a>,
-            <a href="#616">Single</a> =&gt; {
+    <span class="kw">fn </span>variant_index_for_adt(<span class="kw-2">&amp;</span><span class="self">self</span>, adt: ty::AdtDef&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="../../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a> {
+        <span class="kw">match </span><span class="kw-2">*</span><span class="self"><a href="#663">self</a> </span>{
+            <a href="#585">Variant</a>(idx) =&gt; <a href="#665">idx</a>,
+            <a href="#583">Single</a> =&gt; {
                 <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(!adt.is_enum());
-                <a href="../../../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>
+                <a href="../../../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>
             }
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;bad constructor {:?} for adt {:?}&quot;</span>, <span class="self">self</span>, adt),
         }
@@ -2397,9 +2363,9 @@
     <span class="doccomment">/// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>arity(<span class="kw-2">&amp;</span><span class="self">self</span>, pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <span class="kw">match </span><span class="self"><a href="#706">self</a> </span>{
-            <a href="#616">Single</a> | <a href="#618">Variant</a>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a href="#706">pcx</a>.ty.kind() {
-                ty::Tuple(fs) =&gt; <a href="#709">fs</a>.len(),
+        <span class="kw">match </span><span class="self"><a href="#676">self</a> </span>{
+            <a href="#583">Single</a> | <a href="#585">Variant</a>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a href="#676">pcx</a>.ty.kind() {
+                ty::Tuple(fs) =&gt; <a href="#679">fs</a>.len(),
                 ty::Ref(..) =&gt; <span class="number">1</span>,
                 ty::Adt(adt, ..) =&gt; {
                     <span class="kw">if </span>adt.is_box() {
@@ -2407,21 +2373,22 @@
                         // patterns. If we&#39;re here we can assume this is a box pattern.
                         </span><span class="number">1
                     </span>} <span class="kw">else </span>{
-                        <span class="kw">let </span>variant = <span class="kw-2">&amp;</span><a href="#711">adt</a>.variant(<a class="self" href="#706">self</a>.<a href="#693-702">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#711">adt</a>));
-                        Fields::list_variant_nonhidden_fields(<a href="#706">pcx</a>.cx, <a href="#706">pcx</a>.ty, <a href="#717">variant</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">count</a>()
+                        <span class="kw">let </span>variant = <span class="kw-2">&amp;</span><a href="#681">adt</a>.variant(<a class="self" href="#676">self</a>.<a href="#663-672">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#681">adt</a>));
+                        Fields::list_variant_nonhidden_fields(<a href="#676">pcx</a>.cx, <a href="#676">pcx</a>.ty, <a href="#687">variant</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">count</a>()
                     }
                 }
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;Unexpected type for `Single` constructor: {:?}&quot;</span>, pcx.ty),
             },
-            <a href="#626">Slice</a>(slice) =&gt; <a href="#723">slice</a>.<a href="#458-460">arity</a>(),
-            <a href="#624">Str</a>(..)
-            | <a href="#622">FloatRange</a>(..)
-            | <a href="#620">IntRange</a>(..)
-            | <a href="#633">NonExhaustive</a>
-            | <a href="#630">Opaque</a>
-            | <a href="#637">Missing</a> { .. }
-            | <a href="#639">Wildcard</a> =&gt; <span class="number">0</span>,
-            <a href="#641">Or</a> =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;The `Or` constructor doesn&#39;t have a fixed arity&quot;</span>),
+            <a href="#594">Slice</a>(slice) =&gt; <a href="#693">slice</a>.<a href="#425-427">arity</a>(),
+            <a href="#592">Str</a>(..)
+            | <a href="#589">F32Range</a>(..)
+            | <a href="#590">F64Range</a>(..)
+            | <a href="#587">IntRange</a>(..)
+            | <a href="#601">NonExhaustive</a>
+            | <a href="#598">Opaque</a>
+            | <a href="#605-607">Missing</a> { .. }
+            | <a href="#609">Wildcard</a> =&gt; <span class="number">0</span>,
+            <a href="#611">Or</a> =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;The `Or` constructor doesn&#39;t have a fixed arity&quot;</span>),
         }
     }
 
@@ -2446,25 +2413,25 @@
     <span class="kw">where
         </span><span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;a</span>,
     {
-        <span class="kw">match </span><span class="self"><a href="#749">self</a> </span>{
-            <a href="#639">Wildcard</a> =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>split_wildcard = SplitWildcard::new(<a href="#750">pcx</a>);
-                <a href="#758">split_wildcard</a>.<a href="#1017-1028">split</a>(<a href="#750">pcx</a>, <a href="#751">ctors</a>);
-                <a href="#758">split_wildcard</a>.<a href="#1045-1093">into_ctors</a>(<a href="#750">pcx</a>)
+        <span class="kw">match </span><span class="self"><a href="#720">self</a> </span>{
+            <a href="#609">Wildcard</a> =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>split_wildcard = SplitWildcard::new(<a href="#721">pcx</a>);
+                <a href="#729">split_wildcard</a>.<a href="#988-999">split</a>(<a href="#721">pcx</a>, <a href="#722">ctors</a>);
+                <a href="#729">split_wildcard</a>.<a href="#1016-1064">into_ctors</a>(<a href="#721">pcx</a>)
             }
             <span class="comment">// Fast-track if the range is trivial. In particular, we don&#39;t do the overlapping
             // ranges check.
-            </span><a href="#620">IntRange</a>(ctor_range) <span class="kw">if </span>!<a href="#764">ctor_range</a>.<a href="#114-116">is_singleton</a>() =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>split_range = SplitIntRange::new(<a href="#764">ctor_range</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
-                <span class="kw">let </span>int_ranges = <a href="#751">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|ctor| <a href="#766">ctor</a>.<a href="#653-658">as_int_range</a>());
-                <a href="#765">split_range</a>.<a href="#367-376">split</a>(<a href="#766">int_ranges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>());
-                <a href="#765">split_range</a>.<a href="#379-407">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#620">IntRange</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
+            </span><a href="#587">IntRange</a>(ctor_range) <span class="kw">if </span>!<a href="#735">ctor_range</a>.<a href="#110-112">is_singleton</a>() =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>split_range = SplitIntRange::new(<a href="#735">ctor_range</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>());
+                <span class="kw">let </span>int_ranges = <a href="#722">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|ctor| <a href="#737">ctor</a>.<a href="#623-628">as_int_range</a>());
+                <a href="#736">split_range</a>.<a href="#334-343">split</a>(<a href="#737">int_ranges</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>());
+                <a href="#736">split_range</a>.<a href="#346-374">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#587">IntRange</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
             }
-            <span class="kw-2">&amp;</span><a href="#626">Slice</a>(<a href="#441-446">Slice</a> { kind: <a href="#419">VarLen</a>(self_prefix, self_suffix), array_len }) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>split_self = SplitVarLenSlice::new(<a href="#770">self_prefix</a>, <a href="#770">self_suffix</a>, <a href="#770">array_len</a>);
-                <span class="kw">let </span>slices = <a href="#751">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|c| <a href="#772">c</a>.<a href="#660-665">as_slice</a>()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|s| <a href="#772">s</a>.kind);
-                <a href="#771">split_self</a>.<a href="#551-584">split</a>(<a href="#772">slices</a>);
-                <a href="#771">split_self</a>.<a href="#587-602">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#626">Slice</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
+            <span class="kw-2">&amp;</span><a href="#594">Slice</a>(<a href="#408-413">Slice</a> { kind: <a href="#386">VarLen</a>(self_prefix, self_suffix), array_len }) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>split_self = SplitVarLenSlice::new(<a href="#741">self_prefix</a>, <a href="#741">self_suffix</a>, <a href="#741">array_len</a>);
+                <span class="kw">let </span>slices = <a href="#722">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|c| <a href="#743">c</a>.<a href="#630-635">as_slice</a>()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|s| <a href="#743">s</a>.kind);
+                <a href="#742">split_self</a>.<a href="#518-551">split</a>(<a href="#743">slices</a>);
+                <a href="#742">split_self</a>.<a href="#554-569">iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#594">Slice</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
             }
             <span class="comment">// Any other constructor can be used unchanged.
             </span><span class="kw">_ </span>=&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[<span class="self">self</span>.clone()],
@@ -2478,43 +2445,43 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>is_covered_by&lt;<span class="lifetime">&#39;p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="comment">// This must be kept in sync with `is_covered_by_any`.
-        </span><span class="kw">match </span>(<a class="self" href="#786">self</a>, <a href="#786">other</a>) {
+        </span><span class="kw">match </span>(<a class="self" href="#757">self</a>, <a href="#757">other</a>) {
             <span class="comment">// Wildcards cover anything
-            </span>(<span class="kw">_</span>, <a href="#639">Wildcard</a>) =&gt; <span class="bool-val">true</span>,
+            </span>(<span class="kw">_</span>, <a href="#609">Wildcard</a>) =&gt; <span class="bool-val">true</span>,
             <span class="comment">// The missing ctors are not covered by anything in the matrix except wildcards.
-            </span>(<a href="#637">Missing</a> { .. } | <a href="#639">Wildcard</a>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            </span>(<a href="#605-607">Missing</a> { .. } | <a href="#609">Wildcard</a>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
-            (<a href="#616">Single</a>, <a href="#616">Single</a>) =&gt; <span class="bool-val">true</span>,
-            (<a href="#618">Variant</a>(self_id), <a href="#618">Variant</a>(other_id)) =&gt; <a href="#795">self_id</a> == <a href="#795">other_id</a>,
+            (<a href="#583">Single</a>, <a href="#583">Single</a>) =&gt; <span class="bool-val">true</span>,
+            (<a href="#585">Variant</a>(self_id), <a href="#585">Variant</a>(other_id)) =&gt; <a href="#766">self_id</a> == <a href="#766">other_id</a>,
 
-            (<a href="#620">IntRange</a>(self_range), <a href="#620">IntRange</a>(other_range)) =&gt; <a href="#797">self_range</a>.<a href="#290-299">is_covered_by</a>(<a href="#797">other_range</a>),
-            (
-                <a href="#622">FloatRange</a>(self_from, self_to, self_end),
-                <a href="#622">FloatRange</a>(other_from, other_to, other_end),
-            ) =&gt; {
-                <span class="kw">match </span>(
-                    <a href="mod.rs.html#838">compare_const_vals</a>(<a href="#786">pcx</a>.cx.tcx, <span class="kw-2">*</span><a href="#799">self_to</a>, <span class="kw-2">*</span><a href="#800">other_to</a>, <a href="#786">pcx</a>.cx.param_env),
-                    <a href="mod.rs.html#838">compare_const_vals</a>(<a href="#786">pcx</a>.cx.tcx, <span class="kw-2">*</span><a href="#799">self_from</a>, <span class="kw-2">*</span><a href="#800">other_from</a>, <a href="#786">pcx</a>.cx.param_env),
-                ) {
-                    (<span class="prelude-val">Some</span>(to), <span class="prelude-val">Some</span>(from)) =&gt; {
-                        (<a href="#806">from</a> == Ordering::Greater || <a href="#806">from</a> == Ordering::Equal)
-                            &amp;&amp; (<a href="#806">to</a> == Ordering::Less
-                                || (<a href="#800">other_end</a> == <a href="#799">self_end</a> &amp;&amp; <a href="#806">to</a> == Ordering::Equal))
+            (<a href="#587">IntRange</a>(self_range), <a href="#587">IntRange</a>(other_range)) =&gt; <a href="#768">self_range</a>.<a href="#259-268">is_covered_by</a>(<a href="#768">other_range</a>),
+            (<a href="#589">F32Range</a>(self_from, self_to, self_end), <a href="#589">F32Range</a>(other_from, other_to, other_end)) =&gt; {
+                <a href="#769">self_from</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html">ge</a>(<a href="#769">other_from</a>)
+                    &amp;&amp; <span class="kw">match </span><a href="#769">self_to</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html">partial_cmp</a>(<a href="#769">other_to</a>) {
+                        <span class="prelude-val">Some</span>(Ordering::Less) =&gt; <span class="bool-val">true</span>,
+                        <span class="prelude-val">Some</span>(Ordering::Equal) =&gt; <a href="#769">other_end</a> == <a href="#769">self_end</a>,
+                        <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
                     }
-                    <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
-                }
             }
-            (<a href="#624">Str</a>(self_val), <a href="#624">Str</a>(other_val)) =&gt; {
+            (<a href="#590">F64Range</a>(self_from, self_to, self_end), <a href="#590">F64Range</a>(other_from, other_to, other_end)) =&gt; {
+                <a href="#777">self_from</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html">ge</a>(<a href="#777">other_from</a>)
+                    &amp;&amp; <span class="kw">match </span><a href="#777">self_to</a>.<a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialOrd.html">partial_cmp</a>(<a href="#777">other_to</a>) {
+                        <span class="prelude-val">Some</span>(Ordering::Less) =&gt; <span class="bool-val">true</span>,
+                        <span class="prelude-val">Some</span>(Ordering::Equal) =&gt; <a href="#777">other_end</a> == <a href="#777">self_end</a>,
+                        <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+                    }
+            }
+            (<a href="#592">Str</a>(self_val), <a href="#592">Str</a>(other_val)) =&gt; {
                 <span class="comment">// FIXME Once valtrees are available we can directly use the bytes
                 // in the `Str` variant of the valtree for the comparison here.
-                </span><a href="#814">self_val</a> == <a href="#814">other_val</a>
+                </span><a href="#785">self_val</a> == <a href="#785">other_val</a>
             }
-            (<a href="#626">Slice</a>(self_slice), <a href="#626">Slice</a>(other_slice)) =&gt; <a href="#819">self_slice</a>.<a href="#463-465">is_covered_by</a>(<span class="kw-2">*</span><a href="#819">other_slice</a>),
+            (<a href="#594">Slice</a>(self_slice), <a href="#594">Slice</a>(other_slice)) =&gt; <a href="#790">self_slice</a>.<a href="#430-432">is_covered_by</a>(<span class="kw-2">*</span><a href="#790">other_slice</a>),
 
             <span class="comment">// We are trying to inspect an opaque constant. Thus we skip the row.
-            </span>(<a href="#630">Opaque</a>, <span class="kw">_</span>) | (<span class="kw">_</span>, <a href="#630">Opaque</a>) =&gt; <span class="bool-val">false</span>,
+            </span>(<a href="#598">Opaque</a>, <span class="kw">_</span>) | (<span class="kw">_</span>, <a href="#598">Opaque</a>) =&gt; <span class="bool-val">false</span>,
             <span class="comment">// Only a wildcard pattern can match the special extra constructor.
-            </span>(<a href="#633">NonExhaustive</a>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            </span>(<a href="#601">NonExhaustive</a>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
 
             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(
                 pcx.span,
@@ -2538,21 +2505,21 @@
         }
 
         <span class="comment">// This must be kept in sync with `is_covered_by`.
-        </span><span class="kw">match </span><span class="self"><a href="#839">self</a> </span>{
+        </span><span class="kw">match </span><span class="self"><a href="#810">self</a> </span>{
             <span class="comment">// If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
-            </span><a href="#616">Single</a> =&gt; !<a href="#841">used_ctors</a>.is_empty(),
-            <a href="#618">Variant</a>(vid) =&gt; <a href="#841">used_ctors</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|c| <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(c, Variant(i) <span class="kw">if </span>i == vid)),
-            <a href="#620">IntRange</a>(range) =&gt; <a href="#841">used_ctors</a>
+            </span><a href="#583">Single</a> =&gt; !<a href="#812">used_ctors</a>.is_empty(),
+            <a href="#585">Variant</a>(vid) =&gt; <a href="#812">used_ctors</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|c| <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(c, Variant(i) <span class="kw">if </span>i == vid)),
+            <a href="#587">IntRange</a>(range) =&gt; <a href="#812">used_ctors</a>
                 .iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|c| <a href="#854">c</a>.<a href="#653-658">as_int_range</a>())
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|other| <a href="#852">range</a>.<a href="#290-299">is_covered_by</a>(<a href="#855">other</a>)),
-            <a href="#626">Slice</a>(slice) =&gt; <a href="#841">used_ctors</a>
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|c| <a href="#825">c</a>.<a href="#623-628">as_int_range</a>())
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|other| <a href="#823">range</a>.<a href="#259-268">is_covered_by</a>(<a href="#826">other</a>)),
+            <a href="#594">Slice</a>(slice) =&gt; <a href="#812">used_ctors</a>
                 .iter()
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|c| <a href="#858">c</a>.<a href="#660-665">as_slice</a>())
-                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|other| <a href="#856">slice</a>.<a href="#463-465">is_covered_by</a>(<a href="#859">other</a>)),
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|c| <a href="#829">c</a>.<a href="#630-635">as_slice</a>())
+                .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|other| <a href="#827">slice</a>.<a href="#430-432">is_covered_by</a>(<a href="#830">other</a>)),
             <span class="comment">// This constructor is never covered by anything else
-            </span><a href="#633">NonExhaustive</a> =&gt; <span class="bool-val">false</span>,
-            <a href="#624">Str</a>(..) | <a href="#622">FloatRange</a>(..) | <a href="#630">Opaque</a> | <a href="#637">Missing</a> { .. } | <a href="#639">Wildcard</a> | <a href="#641">Or</a> =&gt; {
+            </span><a href="#601">NonExhaustive</a> =&gt; <span class="bool-val">false</span>,
+            <a href="#592">Str</a>(..) | <a href="#589">F32Range</a>(..) | <a href="#590">F64Range</a>(..) | <a href="#598">Opaque</a> | <a href="#605-607">Missing</a> { .. } | <a href="#609">Wildcard</a> | <a href="#611">Or</a> =&gt; {
                 <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(pcx.span, <span class="string">&quot;found unexpected ctor in all_ctors: {:?}&quot;</span>, <span class="self">self</span>)
             }
         }
@@ -2585,11 +2552,11 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; SplitWildcard&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new&lt;<span class="lifetime">&#39;p</span>&gt;(pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;SplitWildcard::new({:?})&quot;</span>, pcx.ty);
-        <span class="kw">let </span>cx = <a href="#893">pcx</a>.cx;
+        <span class="kw">let </span>cx = <a href="#864">pcx</a>.cx;
         <span class="kw">let </span>make_range = |start, end| {
-            <a href="#620">IntRange</a>(
+            <a href="#587">IntRange</a>(
                 <span class="comment">// `unwrap()` is ok because we know the type is an integer.
-                </span>IntRange::from_range(<a href="#895">cx</a>.tcx, <a href="#896">start</a>, <a href="#896">end</a>, <a href="#893">pcx</a>.ty, <span class="kw-2">&amp;</span>RangeEnd::Included).unwrap(),
+                </span>IntRange::from_range(<a href="#866">cx</a>.tcx, <a href="#867">start</a>, <a href="#867">end</a>, <a href="#864">pcx</a>.ty, RangeEnd::Included),
             )
         };
         <span class="comment">// This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
@@ -2600,10 +2567,10 @@
         // returned list of constructors.
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
-        </span><span class="kw">let </span>all_ctors = <span class="kw">match </span><a href="#893">pcx</a>.ty.kind() {
+        </span><span class="kw">let </span>all_ctors = <span class="kw">match </span><a href="#864">pcx</a>.ty.kind() {
             ty::Bool =&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[make_range(<span class="number">0</span>, <span class="number">1</span>)],
-            ty::Array(sub_ty, len) <span class="kw">if </span><a href="#912">len</a>.try_eval_target_usize(<a href="#895">cx</a>.tcx, <a href="#895">cx</a>.param_env).is_some() =&gt; {
-                <span class="kw">let </span>len = <a href="#912">len</a>.eval_target_usize(<a href="#895">cx</a>.tcx, <a href="#895">cx</a>.param_env) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>;
+            ty::Array(sub_ty, len) <span class="kw">if </span><a href="#883">len</a>.try_eval_target_usize(<a href="#866">cx</a>.tcx, <a href="#866">cx</a>.param_env).is_some() =&gt; {
+                <span class="kw">let </span>len = <a href="#883">len</a>.eval_target_usize(<a href="#866">cx</a>.tcx, <a href="#866">cx</a>.param_env) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>;
                 <span class="kw">if </span>len != <span class="number">0 </span>&amp;&amp; cx.is_uninhabited(<span class="kw-2">*</span>sub_ty) {
                     <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[]
                 } <span class="kw">else </span>{
@@ -2612,10 +2579,10 @@
             }
             <span class="comment">// Treat arrays of a constant but unknown length like slices.
             </span>ty::Array(sub_ty, <span class="kw">_</span>) | ty::Slice(sub_ty) =&gt; {
-                <span class="kw">let </span>kind = <span class="kw">if </span>cx.is_uninhabited(<span class="kw-2">*</span>sub_ty) { <a href="#413">FixedLen</a>(<span class="number">0</span>) } <span class="kw">else </span>{ <a href="#419">VarLen</a>(<span class="number">0</span>, <span class="number">0</span>) };
+                <span class="kw">let </span>kind = <span class="kw">if </span>cx.is_uninhabited(<span class="kw-2">*</span>sub_ty) { <a href="#380">FixedLen</a>(<span class="number">0</span>) } <span class="kw">else </span>{ <a href="#386">VarLen</a>(<span class="number">0</span>, <span class="number">0</span>) };
                 <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[Slice(Slice::new(<span class="prelude-val">None</span>, kind))]
             }
-            ty::Adt(def, args) <span class="kw">if </span><a href="#925">def</a>.is_enum() =&gt; {
+            ty::Adt(def, args) <span class="kw">if </span><a href="#896">def</a>.is_enum() =&gt; {
                 <span class="comment">// If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
                 // additional &quot;unknown&quot; constructor.
                 // There is no point in enumerating all possible variants, because the user can&#39;t
@@ -2632,35 +2599,35 @@
                 //
                 // we don&#39;t want to show every possible IO error, but instead have only `_` as the
                 // witness.
-                </span><span class="kw">let </span>is_declared_nonexhaustive = <a href="#895">cx</a>.<a href="usefulness.rs.html#351-358">is_foreign_non_exhaustive_enum</a>(<a href="#893">pcx</a>.ty);
+                </span><span class="kw">let </span>is_declared_nonexhaustive = <a href="#866">cx</a>.<a href="usefulness.rs.html#351-358">is_foreign_non_exhaustive_enum</a>(<a href="#864">pcx</a>.ty);
 
-                <span class="kw">let </span>is_exhaustive_pat_feature = <a href="#895">cx</a>.tcx.features().exhaustive_patterns;
+                <span class="kw">let </span>is_exhaustive_pat_feature = <a href="#866">cx</a>.tcx.features().exhaustive_patterns;
 
                 <span class="comment">// If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
                 // as though it had an &quot;unknown&quot; constructor to avoid exposing its emptiness. The
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
                 </span><span class="kw">let </span>is_secretly_empty =
-                    <a href="#925">def</a>.variants().is_empty() &amp;&amp; !<a href="#944">is_exhaustive_pat_feature</a> &amp;&amp; !<a href="#893">pcx</a>.is_top_level;
+                    <a href="#896">def</a>.variants().is_empty() &amp;&amp; !<a href="#915">is_exhaustive_pat_feature</a> &amp;&amp; !<a href="#864">pcx</a>.is_top_level;
 
                 <span class="kw">let </span><span class="kw-2">mut </span>ctors: SmallVec&lt;[<span class="kw">_</span>; <span class="number">1</span>]&gt; =
-                    <a href="#925">def</a>.variants()
+                    <a href="#896">def</a>.variants()
                         .iter_enumerated()
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|(<span class="kw">_</span>, v)| {
                             <span class="comment">// If `exhaustive_patterns` is enabled, we exclude variants known to be
                             // uninhabited.
-                            </span>!<a href="#944">is_exhaustive_pat_feature</a>
-                                || <a href="#956">v</a>.inhabited_predicate(<a href="#895">cx</a>.tcx, <span class="kw-2">*</span><a href="#925">def</a>)
-                                    .instantiate(<a href="#895">cx</a>.tcx, <a href="#925">args</a>)
-                                    .apply(<a href="#895">cx</a>.tcx, <a href="#895">cx</a>.param_env, <a href="#895">cx</a>.module)
+                            </span>!<a href="#915">is_exhaustive_pat_feature</a>
+                                || <a href="#927">v</a>.inhabited_predicate(<a href="#866">cx</a>.tcx, <span class="kw-2">*</span><a href="#896">def</a>)
+                                    .instantiate(<a href="#866">cx</a>.tcx, <a href="#896">args</a>)
+                                    .apply(<a href="#866">cx</a>.tcx, <a href="#866">cx</a>.param_env, <a href="#866">cx</a>.module)
                         })
-                        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(idx, <span class="kw">_</span>)| <a href="#618">Variant</a>(<a href="#964">idx</a>))
+                        .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(idx, <span class="kw">_</span>)| <a href="#585">Variant</a>(<a href="#935">idx</a>))
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
                 <span class="kw">if </span>is_secretly_empty || is_declared_nonexhaustive {
-                    <a href="#953">ctors</a>.push(<a href="#633">NonExhaustive</a>);
+                    <a href="#924">ctors</a>.push(<a href="#601">NonExhaustive</a>);
                 }
-                <a href="#953">ctors</a>
+                <a href="#924">ctors</a>
             }
             ty::Char =&gt; {
                 <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[
@@ -2670,8 +2637,8 @@
                 ]
             }
             ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>)
-                <span class="kw">if </span><a href="#893">pcx</a>.ty.is_ptr_sized_integral()
-                    &amp;&amp; !<a href="#895">cx</a>.tcx.features().precise_pointer_size_matching =&gt;
+                <span class="kw">if </span><a href="#864">pcx</a>.ty.is_ptr_sized_integral()
+                    &amp;&amp; !<a href="#866">cx</a>.tcx.features().precise_pointer_size_matching =&gt;
             {
                 <span class="comment">// `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled. So we treat those types like
@@ -2679,30 +2646,30 @@
                 </span><a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[NonExhaustive]
             }
             <span class="kw-2">&amp;</span>ty::Int(ity) =&gt; {
-                <span class="kw">let </span>bits = Integer::from_int_ty(<span class="kw-2">&amp;</span><a href="#895">cx</a>.tcx, <a href="#988">ity</a>).size().bits() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
-                <span class="kw">let </span>min = <span class="number">1u128 </span>&lt;&lt; (<a href="#989">bits</a> - <span class="number">1</span>);
-                <span class="kw">let </span>max = <a href="#990">min</a> - <span class="number">1</span>;
+                <span class="kw">let </span>bits = Integer::from_int_ty(<span class="kw-2">&amp;</span><a href="#866">cx</a>.tcx, <a href="#959">ity</a>).size().bits() <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html">u128</a>;
+                <span class="kw">let </span>min = <span class="number">1u128 </span>&lt;&lt; (<a href="#960">bits</a> - <span class="number">1</span>);
+                <span class="kw">let </span>max = <a href="#961">min</a> - <span class="number">1</span>;
                 <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[make_range(min, max)]
             }
             <span class="kw-2">&amp;</span>ty::Uint(uty) =&gt; {
-                <span class="kw">let </span>size = Integer::from_uint_ty(<span class="kw-2">&amp;</span><a href="#895">cx</a>.tcx, <a href="#994">uty</a>).size();
-                <span class="kw">let </span>max = <a href="#995">size</a>.truncate(u128::MAX);
+                <span class="kw">let </span>size = Integer::from_uint_ty(<span class="kw-2">&amp;</span><a href="#866">cx</a>.tcx, <a href="#965">uty</a>).size();
+                <span class="kw">let </span>max = <a href="#966">size</a>.truncate(u128::MAX);
                 <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[make_range(<span class="number">0</span>, max)]
             }
             <span class="comment">// If `exhaustive_patterns` is disabled and our scrutinee is the never type, we cannot
             // expose its emptiness. The exception is if the pattern is at the top level, because we
             // want empty matches to be considered exhaustive.
-            </span>ty::Never <span class="kw">if </span>!<a href="#895">cx</a>.tcx.features().exhaustive_patterns &amp;&amp; !<a href="#893">pcx</a>.is_top_level =&gt; {
+            </span>ty::Never <span class="kw">if </span>!<a href="#866">cx</a>.tcx.features().exhaustive_patterns &amp;&amp; !<a href="#864">pcx</a>.is_top_level =&gt; {
                 <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[NonExhaustive]
             }
             ty::Never =&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[],
-            <span class="kw">_ if </span><a href="#895">cx</a>.<a href="usefulness.rs.html#342-348">is_uninhabited</a>(<a href="#893">pcx</a>.ty) =&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[],
+            <span class="kw">_ if </span><a href="#866">cx</a>.<a href="usefulness.rs.html#342-348">is_uninhabited</a>(<a href="#864">pcx</a>.ty) =&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[],
             ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) =&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[Single],
             <span class="comment">// This type is one for which we cannot list constructors, like `str` or `f64`.
             </span><span class="kw">_ </span>=&gt; <a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[NonExhaustive],
         };
 
-        <a href="#885-890">SplitWildcard</a> { matrix_ctors: Vec::new(), <a href="#910">all_ctors</a> }
+        <a href="#856-861">SplitWildcard</a> { matrix_ctors: Vec::new(), <a href="#881">all_ctors</a> }
     }
 
     <span class="doccomment">/// Pass a set of constructors relative to which to split this one. Don&#39;t call twice, it won&#39;t
@@ -2715,14 +2682,14 @@
         </span><span class="lifetime">&#39;tcx</span>: <span class="lifetime">&#39;a</span>,
     {
         <span class="comment">// Since `all_ctors` never contains wildcards, this won&#39;t recurse further.
-        </span><a class="self" href="#1018">self</a>.all_ctors =
-            <a class="self" href="#1018">self</a>.all_ctors.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|ctor| <a href="#1026">ctor</a>.<a href="#748-779">split</a>(<a href="#1019">pcx</a>, <a href="#1020">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-        <a class="self" href="#1018">self</a>.matrix_ctors = <a href="#1020">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|c| !<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(c, Wildcard | Opaque)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        </span><a class="self" href="#989">self</a>.all_ctors =
+            <a class="self" href="#989">self</a>.all_ctors.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">flat_map</a>(|ctor| <a href="#997">ctor</a>.<a href="#719-750">split</a>(<a href="#990">pcx</a>, <a href="#991">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>())).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+        <a class="self" href="#989">self</a>.matrix_ctors = <a href="#991">ctors</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(|c| !<a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(c, Wildcard | Opaque)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">cloned</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
     }
 
     <span class="doccomment">/// Whether there are any value constructors for this type that are not present in the matrix.
     </span><span class="kw">fn </span>any_missing(<span class="kw-2">&amp;</span><span class="self">self</span>, pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#1031">self</a>.<a href="#1036-1041">iter_missing</a>(<a href="#1031">pcx</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().is_some()
+        <a class="self" href="#1002">self</a>.<a href="#1007-1012">iter_missing</a>(<a href="#1002">pcx</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().is_some()
     }
 
     <span class="doccomment">/// Iterate over the constructors for this type that are not present in the matrix.
@@ -2730,7 +2697,7 @@
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
         pcx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>PatCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Constructor&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; + Captures&lt;<span class="lifetime">&#39;p</span>&gt; {
-        <a class="self" href="#1037">self</a>.all_ctors.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(<span class="kw">move </span>|ctor| !<a href="#1040">ctor</a>.<a href="#838-866">is_covered_by_any</a>(<a href="#1038">pcx</a>, <span class="kw-2">&amp;</span><a class="self" href="#1037">self</a>.matrix_ctors))
+        <a class="self" href="#1008">self</a>.all_ctors.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter</a>(<span class="kw">move </span>|ctor| !<a href="#1011">ctor</a>.<a href="#809-837">is_covered_by_any</a>(<a href="#1009">pcx</a>, <span class="kw-2">&amp;</span><a class="self" href="#1008">self</a>.matrix_ctors))
     }
 
     <span class="doccomment">/// Return the set of constructors resulting from splitting the wildcard. As explained at the
@@ -2764,25 +2731,25 @@
             //
             // The exception is: if we are at the top-level, for example in an empty match, we
             // sometimes prefer reporting the list of constructors instead of just `_`.
-            </span><span class="kw">let </span>report_when_all_missing = <a href="#1045">pcx</a>.is_top_level &amp;&amp; !IntRange::is_integral(<a href="#1045">pcx</a>.ty);
+            </span><span class="kw">let </span>report_when_all_missing = <a href="#1016">pcx</a>.is_top_level &amp;&amp; !IntRange::is_integral(<a href="#1016">pcx</a>.ty);
             <span class="kw">let </span>ctor = <span class="kw">if </span>!<span class="self">self</span>.matrix_ctors.is_empty() || report_when_all_missing {
                 <span class="kw">if </span>pcx.is_non_exhaustive {
-                    <a href="#637">Missing</a> {
-                        nonexhaustive_enum_missing_real_variants: <span class="self"><a href="#1045">self</a>
-                            </span>.<a href="#1036-1041">iter_missing</a>(<a href="#1045">pcx</a>)
-                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|c| !(<a href="#1080">c</a>.<a href="#649-651">is_non_exhaustive</a>() || <a href="#1080">c</a>.<a href="#671-681">is_unstable_variant</a>(<a href="#1045">pcx</a>))),
+                    <a href="#605-607">Missing</a> {
+                        nonexhaustive_enum_missing_real_variants: <span class="self"><a href="#1016">self</a>
+                            </span>.<a href="#1007-1012">iter_missing</a>(<a href="#1016">pcx</a>)
+                            .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">any</a>(|c| !(<a href="#1051">c</a>.<a href="#619-621">is_non_exhaustive</a>() || <a href="#1051">c</a>.<a href="#641-651">is_unstable_variant</a>(<a href="#1016">pcx</a>))),
                     }
                 } <span class="kw">else </span>{
-                    <a href="#637">Missing</a> { nonexhaustive_enum_missing_real_variants: <span class="bool-val">false </span>}
+                    <a href="#605-607">Missing</a> { nonexhaustive_enum_missing_real_variants: <span class="bool-val">false </span>}
                 }
             } <span class="kw">else </span>{
-                <a href="#639">Wildcard</a>
+                <a href="#609">Wildcard</a>
             };
             <span class="kw">return </span><a class="macro" href="https://docs.rs/smallvec/1.11.0/smallvec/macro.smallvec.html">smallvec!</a>[ctor];
         }
 
         <span class="comment">// All the constructors are present in the matrix, so we just go through them all.
-        </span><a class="self" href="#1045">self</a>.all_ctors
+        </span><a class="self" href="#1016">self</a>.all_ctors
     }
 }
 
@@ -2815,20 +2782,20 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt; Fields&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>empty() -&gt; <span class="self">Self </span>{
-        <a href="#1119-1121">Fields</a> { fields: <span class="kw-2">&amp;</span>[] }
+        <a href="#1090-1092">Fields</a> { fields: <span class="kw-2">&amp;</span>[] }
     }
 
     <span class="kw">fn </span>singleton(cx: <span class="kw-2">&amp;</span>MatchCheckCtxt&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;, field: DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>field: <span class="kw-2">&amp;</span><span class="kw">_ </span>= <a href="#1128">cx</a>.pattern_arena.alloc(<a href="#1128">field</a>);
-        <a href="#1119-1121">Fields</a> { fields: std::slice::from_ref(<a href="#1129">field</a>) }
+        <span class="kw">let </span>field: <span class="kw-2">&amp;</span><span class="kw">_ </span>= <a href="#1099">cx</a>.pattern_arena.alloc(<a href="#1099">field</a>);
+        <a href="#1090-1092">Fields</a> { fields: std::slice::from_ref(<a href="#1100">field</a>) }
     }
 
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>from_iter(
         cx: <span class="kw-2">&amp;</span>MatchCheckCtxt&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         fields: <span class="kw">impl </span>IntoIterator&lt;Item = DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>fields: <span class="kw-2">&amp;</span>[<span class="kw">_</span>] = <a href="#1134">cx</a>.pattern_arena.alloc_from_iter(<a href="#1135">fields</a>);
-        <a href="#1119-1121">Fields</a> { <a href="#1137">fields</a> }
+        <span class="kw">let </span>fields: <span class="kw-2">&amp;</span>[<span class="kw">_</span>] = <a href="#1105">cx</a>.pattern_arena.alloc_from_iter(<a href="#1106">fields</a>);
+        <a href="#1090-1092">Fields</a> { <a href="#1108">fields</a> }
     }
 
     <span class="kw">fn </span>wildcards_from_tys(
@@ -2836,7 +2803,7 @@
         tys: <span class="kw">impl </span>IntoIterator&lt;Item = Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     ) -&gt; <span class="self">Self </span>{
-        Fields::from_iter(<a href="#1142">cx</a>, <a href="#1143">tys</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| DeconstructedPat::wildcard(<a href="#1146">ty</a>, <a href="#1144">span</a>)))
+        Fields::from_iter(<a href="#1113">cx</a>, <a href="#1114">tys</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| DeconstructedPat::wildcard(<a href="#1117">ty</a>, <a href="#1115">span</a>)))
     }
 
     <span class="comment">// In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
@@ -2846,22 +2813,22 @@
         cx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>MatchCheckCtxt&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         variant: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><a href="../../../../rustc_middle/ty/struct.VariantDef.html">VariantDef</a>,
-    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; + Captures&lt;<span class="lifetime">&#39;a</span>&gt; + Captures&lt;<span class="lifetime">&#39;p</span>&gt; {
-        <span class="kw">let </span>ty::Adt(adt, args) = <a href="#1154">ty</a>.kind() <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>() };
+    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt; + Captures&lt;<span class="lifetime">&#39;a</span>&gt; + Captures&lt;<span class="lifetime">&#39;p</span>&gt; {
+        <span class="kw">let </span>ty::Adt(adt, args) = <a href="#1125">ty</a>.kind() <span class="kw">else </span>{ <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>() };
         <span class="comment">// Whether we must not match the fields of this variant exhaustively.
-        </span><span class="kw">let </span>is_non_exhaustive = <a href="#1155">variant</a>.is_field_list_non_exhaustive() &amp;&amp; !<a href="#1157">adt</a>.did().is_local();
+        </span><span class="kw">let </span>is_non_exhaustive = <a href="#1126">variant</a>.is_field_list_non_exhaustive() &amp;&amp; !<a href="#1128">adt</a>.did().is_local();
 
-        <a href="#1155">variant</a>.fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(<span class="kw">move </span>|(i, field)| {
-            <span class="kw">let </span>ty = <a href="#1161">field</a>.ty(<a href="#1153">cx</a>.tcx, <a href="#1157">args</a>);
+        <a href="#1126">variant</a>.fields.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(<span class="kw">move </span>|(i, field)| {
+            <span class="kw">let </span>ty = <a href="#1132">field</a>.ty(<a href="#1124">cx</a>.tcx, <a href="#1128">args</a>);
             <span class="comment">// `field.ty()` doesn&#39;t normalize after substituting.
-            </span><span class="kw">let </span>ty = <a href="#1153">cx</a>.tcx.normalize_erasing_regions(<a href="#1153">cx</a>.param_env, <a href="#1162">ty</a>);
-            <span class="kw">let </span>is_visible = <a href="#1157">adt</a>.is_enum() || <a href="#1161">field</a>.vis.is_accessible_from(<a href="#1153">cx</a>.module, <a href="#1153">cx</a>.tcx);
-            <span class="kw">let </span>is_uninhabited = <a href="#1153">cx</a>.<a href="usefulness.rs.html#342-348">is_uninhabited</a>(<a href="#1164">ty</a>);
+            </span><span class="kw">let </span>ty = <a href="#1124">cx</a>.tcx.normalize_erasing_regions(<a href="#1124">cx</a>.param_env, <a href="#1133">ty</a>);
+            <span class="kw">let </span>is_visible = <a href="#1128">adt</a>.is_enum() || <a href="#1132">field</a>.vis.is_accessible_from(<a href="#1124">cx</a>.module, <a href="#1124">cx</a>.tcx);
+            <span class="kw">let </span>is_uninhabited = <a href="#1124">cx</a>.<a href="usefulness.rs.html#342-348">is_uninhabited</a>(<a href="#1135">ty</a>);
 
             <span class="kw">if </span>is_uninhabited &amp;&amp; (!is_visible || is_non_exhaustive) {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>((FieldIdx::new(<a href="#1161">i</a>), <a href="#1164">ty</a>))
+                <span class="prelude-val">Some</span>((FieldIdx::new(<a href="#1132">i</a>), <a href="#1135">ty</a>))
             }
         })
     }
@@ -2896,7 +2863,8 @@
                 <span class="kw">_ </span>=&gt; <span class="macro">bug!</span>(<span class="string">&quot;bad slice pattern {:?} {:?}&quot;</span>, constructor, pcx),
             },
             Str(..)
-            | FloatRange(..)
+            | F32Range(..)
+            | F64Range(..)
             | IntRange(..)
             | NonExhaustive
             | Opaque
@@ -2914,7 +2882,7 @@
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>iter_patterns&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; + Captures&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <a class="self" href="#1222">self</a>.fields.iter()
+        <a class="self" href="#1194">self</a>.fields.iter()
     }
 }
 
@@ -2933,7 +2901,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt; DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>wildcard(ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::new(<a href="#639">Wildcard</a>, Fields::empty(), <a href="#1242">ty</a>, <a href="#1242">span</a>)
+        <span class="self">Self</span>::new(<a href="#609">Wildcard</a>, Fields::empty(), <a href="#1214">ty</a>, <a href="#1214">span</a>)
     }
 
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>new(
@@ -2942,50 +2910,50 @@
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
     ) -&gt; <span class="self">Self </span>{
-        <a href="#1233-1239">DeconstructedPat</a> { <a href="#1247">ctor</a>, <a href="#1248">fields</a>, <a href="#1249">ty</a>, <a href="#1250">span</a>, reachable: Cell::new(<span class="bool-val">false</span>) }
+        <a href="#1205-1211">DeconstructedPat</a> { <a href="#1219">ctor</a>, <a href="#1220">fields</a>, <a href="#1221">ty</a>, <a href="#1222">span</a>, reachable: Cell::new(<span class="bool-val">false</span>) }
     }
 
     <span class="doccomment">/// Construct a pattern that matches everything that starts with this constructor.
     /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
     /// `Some(_)`.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>wild_from_ctor(pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;, ctor: Constructor&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>fields = Fields::wildcards(<a href="#1258">pcx</a>, <span class="kw-2">&amp;</span><a href="#1258">ctor</a>);
-        DeconstructedPat::new(<a href="#1258">ctor</a>, <a href="#1259">fields</a>, <a href="#1258">pcx</a>.ty, <a href="#1258">pcx</a>.span)
+        <span class="kw">let </span>fields = Fields::wildcards(<a href="#1230">pcx</a>, <span class="kw-2">&amp;</span><a href="#1230">ctor</a>);
+        DeconstructedPat::new(<a href="#1230">ctor</a>, <a href="#1231">fields</a>, <a href="#1230">pcx</a>.ty, <a href="#1230">pcx</a>.span)
     }
 
     <span class="doccomment">/// Clone this value. This method emphasizes that cloning loses reachability information and
     /// should be done carefully.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>clone_and_forget_reachability(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        DeconstructedPat::new(<a class="self" href="#1265">self</a>.ctor.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a class="self" href="#1265">self</a>.fields, <a class="self" href="#1265">self</a>.ty, <a class="self" href="#1265">self</a>.span)
+        DeconstructedPat::new(<a class="self" href="#1237">self</a>.ctor.<a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html">clone</a>(), <a class="self" href="#1237">self</a>.fields, <a class="self" href="#1237">self</a>.ty, <a class="self" href="#1237">self</a>.span)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_pat(cx: <span class="kw-2">&amp;</span>MatchCheckCtxt&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;, pat: <span class="kw-2">&amp;</span>Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>mkpat = |pat| DeconstructedPat::from_pat(<a href="#1269">cx</a>, <a href="#1270">pat</a>);
+        <span class="kw">let </span>mkpat = |pat| DeconstructedPat::from_pat(<a href="#1241">cx</a>, <a href="#1242">pat</a>);
         <span class="kw">let </span>ctor;
         <span class="kw">let </span>fields;
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1269">pat</a>.kind {
-            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::AscribeUserType</a> { subpattern, .. } =&gt; <span class="kw">return </span><a href="#1270">mkpat</a>(<a href="#1274">subpattern</a>),
-            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Binding</a> { subpattern: <span class="prelude-val">Some</span>(subpat), .. } =&gt; <span class="kw">return </span><a href="#1270">mkpat</a>(<a href="#1275">subpat</a>),
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1241">pat</a>.kind {
+            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::AscribeUserType</a> { subpattern, .. } =&gt; <span class="kw">return </span><a href="#1242">mkpat</a>(<a href="#1246">subpattern</a>),
+            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Binding</a> { subpattern: <span class="prelude-val">Some</span>(subpat), .. } =&gt; <span class="kw">return </span><a href="#1242">mkpat</a>(<a href="#1247">subpat</a>),
             <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Binding</a> { subpattern: <span class="prelude-val">None</span>, .. } | PatKind::Wild =&gt; {
-                <a href="#1271">ctor</a> = <a href="#639">Wildcard</a>;
-                <a href="#1272">fields</a> = Fields::empty();
+                <a href="#1243">ctor</a> = <a href="#609">Wildcard</a>;
+                <a href="#1244">fields</a> = Fields::empty();
             }
             <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Deref</a> { subpattern } =&gt; {
-                <a href="#1271">ctor</a> = <a href="#616">Single</a>;
-                <a href="#1272">fields</a> = Fields::singleton(<a href="#1269">cx</a>, <a href="#1270">mkpat</a>(<a href="#1280">subpattern</a>));
+                <a href="#1243">ctor</a> = <a href="#583">Single</a>;
+                <a href="#1244">fields</a> = Fields::singleton(<a href="#1241">cx</a>, <a href="#1242">mkpat</a>(<a href="#1252">subpattern</a>));
             }
             <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Leaf</a> { subpatterns } | <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Variant</a> { subpatterns, .. } =&gt; {
-                <span class="kw">match </span><a href="#1269">pat</a>.ty.kind() {
+                <span class="kw">match </span><a href="#1241">pat</a>.ty.kind() {
                     ty::Tuple(fs) =&gt; {
-                        <a href="#1271">ctor</a> = <a href="#616">Single</a>;
+                        <a href="#1243">ctor</a> = <a href="#583">Single</a>;
                         <span class="kw">let </span><span class="kw-2">mut </span>wilds: SmallVec&lt;[<span class="kw">_</span>; <span class="number">2</span>]&gt; =
-                            <a href="#1286">fs</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| DeconstructedPat::wildcard(<a href="#1289">ty</a>, <a href="#1269">pat</a>.span)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+                            <a href="#1258">fs</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| DeconstructedPat::wildcard(<a href="#1261">ty</a>, <a href="#1241">pat</a>.span)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                         <span class="kw">for </span>pat <span class="kw">in </span>subpatterns {
                             wilds[pat.field.index()] = mkpat(<span class="kw-2">&amp;</span>pat.pattern);
                         }
-                        <a href="#1272">fields</a> = Fields::from_iter(<a href="#1269">cx</a>, <a href="#1288">wilds</a>);
+                        <a href="#1244">fields</a> = Fields::from_iter(<a href="#1241">cx</a>, <a href="#1260">wilds</a>);
                     }
-                    ty::Adt(adt, args) <span class="kw">if </span><a href="#1295">adt</a>.is_box() =&gt; {
+                    ty::Adt(adt, args) <span class="kw">if </span><a href="#1267">adt</a>.is_box() =&gt; {
                         <span class="comment">// The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we&#39;re here we can assume this is a box pattern.
                         // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
@@ -2998,124 +2966,152 @@
                         // normally or through box-patterns. We&#39;ll have to figure out a proper
                         // solution when we introduce generalized deref patterns. Also need to
                         // prevent mixing of those two options.
-                        </span><span class="kw">let </span>pattern = <a href="#1284">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|pat| <a href="#1308">pat</a>.field.index() == <span class="number">0</span>);
-                        <span class="kw">let </span>pat = <span class="kw">if let </span><span class="prelude-val">Some</span>(pat) = <a href="#1308">pattern</a> {
-                            <a href="#1270">mkpat</a>(<span class="kw-2">&amp;</span><a href="#1309">pat</a>.pattern)
+                        </span><span class="kw">let </span>pattern = <a href="#1256">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">find</a>(|pat| <a href="#1280">pat</a>.field.index() == <span class="number">0</span>);
+                        <span class="kw">let </span>pat = <span class="kw">if let </span><span class="prelude-val">Some</span>(pat) = <a href="#1280">pattern</a> {
+                            <a href="#1242">mkpat</a>(<span class="kw-2">&amp;</span><a href="#1281">pat</a>.pattern)
                         } <span class="kw">else </span>{
-                            DeconstructedPat::wildcard(<a href="#1295">args</a>.type_at(<span class="number">0</span>), <a href="#1269">pat</a>.span)
+                            DeconstructedPat::wildcard(<a href="#1267">args</a>.type_at(<span class="number">0</span>), <a href="#1241">pat</a>.span)
                         };
-                        <a href="#1271">ctor</a> = <a href="#616">Single</a>;
-                        <a href="#1272">fields</a> = Fields::singleton(<a href="#1269">cx</a>, <a href="#1309">pat</a>);
+                        <a href="#1243">ctor</a> = <a href="#583">Single</a>;
+                        <a href="#1244">fields</a> = Fields::singleton(<a href="#1241">cx</a>, <a href="#1281">pat</a>);
                     }
                     ty::Adt(adt, <span class="kw">_</span>) =&gt; {
-                        <a href="#1271">ctor</a> = <span class="kw">match </span><a href="#1269">pat</a>.kind {
-                            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Leaf</a> { .. } =&gt; <a href="#616">Single</a>,
-                            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Variant</a> { variant_index, .. } =&gt; <a href="#618">Variant</a>(<a href="#1320">variant_index</a>),
+                        <a href="#1243">ctor</a> = <span class="kw">match </span><a href="#1241">pat</a>.kind {
+                            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Leaf</a> { .. } =&gt; <a href="#583">Single</a>,
+                            <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Variant</a> { variant_index, .. } =&gt; <a href="#585">Variant</a>(<a href="#1292">variant_index</a>),
                             <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(),
                         };
-                        <span class="kw">let </span>variant = <span class="kw-2">&amp;</span><a href="#1317">adt</a>.variant(<a href="#1271">ctor</a>.<a href="#693-702">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#1317">adt</a>));
+                        <span class="kw">let </span>variant = <span class="kw-2">&amp;</span><a href="#1289">adt</a>.variant(<a href="#1243">ctor</a>.<a href="#663-672">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#1289">adt</a>));
                         <span class="comment">// For each field in the variant, we store the relevant index into `self.fields` if any.
                         </span><span class="kw">let </span><span class="kw-2">mut </span>field_id_to_id: Vec&lt;<span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;&gt; =
-                            (<span class="number">0</span>..<a href="#1323">variant</a>.fields.len()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw">_</span>| <span class="prelude-val">None</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
-                        <span class="kw">let </span>tys = Fields::list_variant_nonhidden_fields(<a href="#1269">cx</a>, <a href="#1269">pat</a>.ty, <a href="#1323">variant</a>)
+                            (<span class="number">0</span>..<a href="#1295">variant</a>.fields.len()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw">_</span>| <span class="prelude-val">None</span>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+                        <span class="kw">let </span>tys = Fields::list_variant_nonhidden_fields(<a href="#1241">cx</a>, <a href="#1241">pat</a>.ty, <a href="#1295">variant</a>)
                             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
                             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(i, (field, ty))| {
-                                <a href="#1325">field_id_to_id</a>[<a href="#1329">field</a>.index()] = <span class="prelude-val">Some</span>(<a href="#1329">i</a>);
-                                <a href="#1329">ty</a>
+                                <a href="#1297">field_id_to_id</a>[<a href="#1301">field</a>.index()] = <span class="prelude-val">Some</span>(<a href="#1301">i</a>);
+                                <a href="#1301">ty</a>
                             });
                         <span class="kw">let </span><span class="kw-2">mut </span>wilds: SmallVec&lt;[<span class="kw">_</span>; <span class="number">2</span>]&gt; =
-                            <a href="#1327">tys</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| DeconstructedPat::wildcard(<a href="#1334">ty</a>, <a href="#1269">pat</a>.span)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
+                            <a href="#1299">tys</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| DeconstructedPat::wildcard(<a href="#1306">ty</a>, <a href="#1241">pat</a>.span)).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                         <span class="kw">for </span>pat <span class="kw">in </span>subpatterns {
                             <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = field_id_to_id[pat.field.index()] {
                                 wilds[i] = mkpat(<span class="kw-2">&amp;</span>pat.pattern);
                             }
                         }
-                        <a href="#1272">fields</a> = Fields::from_iter(<a href="#1269">cx</a>, <a href="#1333">wilds</a>);
+                        <a href="#1244">fields</a> = Fields::from_iter(<a href="#1241">cx</a>, <a href="#1305">wilds</a>);
                     }
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;pattern has unexpected type: pat: {:?}, ty: {:?}&quot;</span>, pat, pat.ty),
                 }
             }
             <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Constant</a> { value } =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(int_range) = IntRange::from_constant(<a href="#1269">cx</a>.tcx, <a href="#1269">cx</a>.param_env, <span class="kw-2">*</span><a href="#1345">value</a>) {
-                    <a href="#1271">ctor</a> = <a href="#620">IntRange</a>(<a href="#1346">int_range</a>);
-                    <a href="#1272">fields</a> = Fields::empty();
-                } <span class="kw">else </span>{
-                    <span class="kw">match </span><a href="#1269">pat</a>.ty.kind() {
-                        ty::Float(<span class="kw">_</span>) =&gt; {
-                            <a href="#1271">ctor</a> = <a href="#622">FloatRange</a>(<span class="kw-2">*</span><a href="#1345">value</a>, <span class="kw-2">*</span><a href="#1345">value</a>, RangeEnd::Included);
-                            <a href="#1272">fields</a> = Fields::empty();
-                        }
-                        ty::Ref(<span class="kw">_</span>, t, <span class="kw">_</span>) <span class="kw">if </span><a href="#1355">t</a>.is_str() =&gt; {
-                            <span class="comment">// We want a `&amp;str` constant to behave like a `Deref` pattern, to be compatible
-                            // with other `Deref` patterns. This could have been done in `const_to_pat`,
-                            // but that causes issues with the rest of the matching code.
-                            // So here, the constructor for a `&quot;foo&quot;` pattern is `&amp;` (represented by
-                            // `Single`), and has one field. That field has constructor `Str(value)` and no
-                            // fields.
-                            // Note: `t` is `str`, not `&amp;str`.
-                            </span><span class="kw">let </span>subpattern =
-                                DeconstructedPat::new(<a href="#624">Str</a>(<span class="kw-2">*</span><a href="#1345">value</a>), Fields::empty(), <span class="kw-2">*</span><a href="#1355">t</a>, <a href="#1269">pat</a>.span);
-                            <a href="#1271">ctor</a> = <a href="#616">Single</a>;
-                            <a href="#1272">fields</a> = Fields::singleton(<a href="#1269">cx</a>, <a href="#1363">subpattern</a>)
-                        }
-                        <span class="comment">// All constants that can be structurally matched have already been expanded
-                        // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
-                        // opaque.
-                        </span><span class="kw">_ </span>=&gt; {
-                            <a href="#1271">ctor</a> = <a href="#630">Opaque</a>;
-                            <a href="#1272">fields</a> = Fields::empty();
-                        }
+                <span class="kw">match </span><a href="#1241">pat</a>.ty.kind() {
+                    ty::Bool | ty::Char | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) =&gt; {
+                        <a href="#1243">ctor</a> = <span class="kw">match </span><a href="#1317">value</a>.try_eval_bits(<a href="#1241">cx</a>.tcx, <a href="#1241">cx</a>.param_env) {
+                            <span class="prelude-val">Some</span>(bits) =&gt; <a href="#587">IntRange</a>(IntRange::from_bits(<a href="#1241">cx</a>.tcx, <a href="#1241">pat</a>.ty, <a href="#1321">bits</a>)),
+                            <span class="prelude-val">None </span>=&gt; <a href="#598">Opaque</a>,
+                        };
+                        <a href="#1244">fields</a> = Fields::empty();
+                    }
+                    ty::Float(ty::FloatTy::F32) =&gt; {
+                        <a href="#1243">ctor</a> = <span class="kw">match </span><a href="#1317">value</a>.try_eval_bits(<a href="#1241">cx</a>.tcx, <a href="#1241">cx</a>.param_env) {
+                            <span class="prelude-val">Some</span>(bits) =&gt; {
+                                <span class="kw">use </span><a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">rustc_apfloat::Float</a>;
+                                <span class="kw">let </span>value = rustc_apfloat::ieee::Single::from_bits(<a href="#1328">bits</a>);
+                                <a href="#589">F32Range</a>(<a href="#1330">value</a>, <a href="#1330">value</a>, RangeEnd::Included)
+                            }
+                            <span class="prelude-val">None </span>=&gt; <a href="#598">Opaque</a>,
+                        };
+                        <a href="#1244">fields</a> = Fields::empty();
+                    }
+                    ty::Float(ty::FloatTy::F64) =&gt; {
+                        <a href="#1243">ctor</a> = <span class="kw">match </span><a href="#1317">value</a>.try_eval_bits(<a href="#1241">cx</a>.tcx, <a href="#1241">cx</a>.param_env) {
+                            <span class="prelude-val">Some</span>(bits) =&gt; {
+                                <span class="kw">use </span><a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">rustc_apfloat::Float</a>;
+                                <span class="kw">let </span>value = rustc_apfloat::ieee::Double::from_bits(<a href="#1339">bits</a>);
+                                <a href="#590">F64Range</a>(<a href="#1341">value</a>, <a href="#1341">value</a>, RangeEnd::Included)
+                            }
+                            <span class="prelude-val">None </span>=&gt; <a href="#598">Opaque</a>,
+                        };
+                        <a href="#1244">fields</a> = Fields::empty();
+                    }
+                    ty::Ref(<span class="kw">_</span>, t, <span class="kw">_</span>) <span class="kw">if </span><a href="#1348">t</a>.is_str() =&gt; {
+                        <span class="comment">// We want a `&amp;str` constant to behave like a `Deref` pattern, to be compatible
+                        // with other `Deref` patterns. This could have been done in `const_to_pat`,
+                        // but that causes issues with the rest of the matching code.
+                        // So here, the constructor for a `&quot;foo&quot;` pattern is `&amp;` (represented by
+                        // `Single`), and has one field. That field has constructor `Str(value)` and no
+                        // fields.
+                        // Note: `t` is `str`, not `&amp;str`.
+                        </span><span class="kw">let </span>subpattern =
+                            DeconstructedPat::new(<a href="#592">Str</a>(<span class="kw-2">*</span><a href="#1317">value</a>), Fields::empty(), <span class="kw-2">*</span><a href="#1348">t</a>, <a href="#1241">pat</a>.span);
+                        <a href="#1243">ctor</a> = <a href="#583">Single</a>;
+                        <a href="#1244">fields</a> = Fields::singleton(<a href="#1241">cx</a>, <a href="#1356">subpattern</a>)
+                    }
+                    <span class="comment">// All constants that can be structurally matched have already been expanded
+                    // into the corresponding `Pat`s by `const_to_pat`. Constants that remain are
+                    // opaque.
+                    </span><span class="kw">_ </span>=&gt; {
+                        <a href="#1243">ctor</a> = <a href="#598">Opaque</a>;
+                        <a href="#1244">fields</a> = Fields::empty();
                     }
                 }
             }
-            <span class="kw-2">&amp;</span>PatKind::Range(<span class="kw">box </span><a href="../../../../rustc_middle/thir/struct.PatRange.html">PatRange</a> { lo, hi, end }) =&gt; {
-                <span class="kw">let </span>ty = <a href="#1378">lo</a>.ty();
-                <a href="#1271">ctor</a> = <span class="kw">if let </span><span class="prelude-val">Some</span>(int_range) = IntRange::from_range(
-                    <a href="#1269">cx</a>.tcx,
-                    <a href="#1378">lo</a>.eval_bits(<a href="#1269">cx</a>.tcx, <a href="#1269">cx</a>.param_env, <a href="#1378">lo</a>.ty()),
-                    <a href="#1378">hi</a>.eval_bits(<a href="#1269">cx</a>.tcx, <a href="#1269">cx</a>.param_env, <a href="#1378">hi</a>.ty()),
-                    <a href="#1379">ty</a>,
-                    <span class="kw-2">&amp;</span><a href="#1378">end</a>,
-                ) {
-                    <a href="#620">IntRange</a>(<a href="#1380">int_range</a>)
-                } <span class="kw">else </span>{
-                    <a href="#622">FloatRange</a>(<a href="#1378">lo</a>, <a href="#1378">hi</a>, <a href="#1378">end</a>)
+            PatKind::Range(<span class="kw">box </span><a href="../../../../rustc_middle/thir/struct.PatRange.html">PatRange</a> { lo, hi, end }) =&gt; {
+                <span class="kw">use </span><a href="https://docs.rs/rustc_apfloat/0.2.0+llvm-462a31f5a5ab/rustc_apfloat/trait.Float.html">rustc_apfloat::Float</a>;
+                <span class="kw">let </span>ty = <a href="#1370">lo</a>.ty();
+                <span class="kw">let </span>lo = <a href="#1370">lo</a>.try_eval_bits(<a href="#1241">cx</a>.tcx, <a href="#1241">cx</a>.param_env).unwrap();
+                <span class="kw">let </span>hi = <a href="#1370">hi</a>.try_eval_bits(<a href="#1241">cx</a>.tcx, <a href="#1241">cx</a>.param_env).unwrap();
+                <a href="#1243">ctor</a> = <span class="kw">match </span><a href="#1372">ty</a>.kind() {
+                    ty::Char | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) =&gt; {
+                        <a href="#587">IntRange</a>(IntRange::from_range(<a href="#1241">cx</a>.tcx, <a href="#1373">lo</a>, <a href="#1374">hi</a>, <a href="#1372">ty</a>, <span class="kw-2">*</span><a href="#1370">end</a>))
+                    }
+                    ty::Float(ty::FloatTy::F32) =&gt; {
+                        <span class="kw">let </span>lo = rustc_apfloat::ieee::Single::from_bits(<a href="#1373">lo</a>);
+                        <span class="kw">let </span>hi = rustc_apfloat::ieee::Single::from_bits(<a href="#1374">hi</a>);
+                        <a href="#589">F32Range</a>(<a href="#1380">lo</a>, <a href="#1381">hi</a>, <span class="kw-2">*</span><a href="#1370">end</a>)
+                    }
+                    ty::Float(ty::FloatTy::F64) =&gt; {
+                        <span class="kw">let </span>lo = rustc_apfloat::ieee::Double::from_bits(<a href="#1373">lo</a>);
+                        <span class="kw">let </span>hi = rustc_apfloat::ieee::Double::from_bits(<a href="#1374">hi</a>);
+                        <a href="#590">F64Range</a>(<a href="#1385">lo</a>, <a href="#1386">hi</a>, <span class="kw-2">*</span><a href="#1370">end</a>)
+                    }
+                    <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;invalid type for range pattern: {}&quot;</span>, ty),
                 };
-                <a href="#1272">fields</a> = Fields::empty();
+                <a href="#1244">fields</a> = Fields::empty();
             }
             <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Array</a> { prefix, slice, suffix } | <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Slice</a> { prefix, slice, suffix } =&gt; {
-                <span class="kw">let </span>array_len = <span class="kw">match </span><a href="#1269">pat</a>.ty.kind() {
+                <span class="kw">let </span>array_len = <span class="kw">match </span><a href="#1241">pat</a>.ty.kind() {
                     ty::Array(<span class="kw">_</span>, length) =&gt; {
-                        <span class="prelude-val">Some</span>(<a href="#1395">length</a>.eval_target_usize(<a href="#1269">cx</a>.tcx, <a href="#1269">cx</a>.param_env) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)
+                        <span class="prelude-val">Some</span>(<a href="#1395">length</a>.eval_target_usize(<a href="#1241">cx</a>.tcx, <a href="#1241">cx</a>.param_env) <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)
                     }
                     ty::Slice(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
                     <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(pat.span, <span class="string">&quot;bad ty {:?} for slice pattern&quot;</span>, pat.ty),
                 };
                 <span class="kw">let </span>kind = <span class="kw">if </span>slice.is_some() {
-                    <a href="#419">VarLen</a>(<a href="#1393">prefix</a>.len(), <a href="#1393">suffix</a>.len())
+                    <a href="#386">VarLen</a>(<a href="#1393">prefix</a>.len(), <a href="#1393">suffix</a>.len())
                 } <span class="kw">else </span>{
-                    <a href="#413">FixedLen</a>(<a href="#1393">prefix</a>.len() + <a href="#1393">suffix</a>.len())
+                    <a href="#380">FixedLen</a>(<a href="#1393">prefix</a>.len() + <a href="#1393">suffix</a>.len())
                 };
-                <a href="#1271">ctor</a> = <a href="#626">Slice</a>(Slice::new(<a href="#1394">array_len</a>, <a href="#1401">kind</a>));
-                <a href="#1272">fields</a> =
-                    Fields::from_iter(<a href="#1269">cx</a>, <a href="#1393">prefix</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1393">suffix</a>.iter()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|p| <a href="#1270">mkpat</a>(<span class="kw-2">&amp;*</span><a href="#1408">p</a>)));
+                <a href="#1243">ctor</a> = <a href="#594">Slice</a>(Slice::new(<a href="#1394">array_len</a>, <a href="#1401">kind</a>));
+                <a href="#1244">fields</a> =
+                    Fields::from_iter(<a href="#1241">cx</a>, <a href="#1393">prefix</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1393">suffix</a>.iter()).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|p| <a href="#1242">mkpat</a>(<span class="kw-2">&amp;*</span><a href="#1408">p</a>)));
             }
             <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Or</a> { .. } =&gt; {
-                <a href="#1271">ctor</a> = <a href="#641">Or</a>;
-                <span class="kw">let </span>pats = <a href="#73-87">expand_or_pat</a>(<a href="#1269">pat</a>);
-                <a href="#1272">fields</a> = Fields::from_iter(<a href="#1269">cx</a>, <a href="#1412">pats</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#1270">mkpat</a>));
+                <a href="#1243">ctor</a> = <a href="#611">Or</a>;
+                <span class="kw">let </span>pats = <a href="#73-87">expand_or_pat</a>(<a href="#1241">pat</a>);
+                <a href="#1244">fields</a> = Fields::from_iter(<a href="#1241">cx</a>, <a href="#1412">pats</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(<a href="#1242">mkpat</a>));
             }
         }
-        DeconstructedPat::new(<a href="#1271">ctor</a>, <a href="#1272">fields</a>, <a href="#1269">pat</a>.ty, <a href="#1269">pat</a>.span)
+        DeconstructedPat::new(<a href="#1243">ctor</a>, <a href="#1244">fields</a>, <a href="#1241">pat</a>.ty, <a href="#1241">pat</a>.span)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_pat(<span class="kw-2">&amp;</span><span class="self">self</span>, cx: <span class="kw-2">&amp;</span>MatchCheckCtxt&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;) -&gt; Pat&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="kw">let </span>is_wildcard = |pat: <span class="kw-2">&amp;</span>Pat&lt;<span class="lifetime">&#39;_</span>&gt;| {
             <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(pat.kind, PatKind::Binding { subpattern: <span class="prelude-val">None</span>, .. } | PatKind::Wild)
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>subpatterns = <a class="self" href="#1419">self</a>.<a href="#1523-1527">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|p| Box::new(<a href="#1423">p</a>.<a href="#1419-1507">to_pat</a>(<a href="#1419">cx</a>)));
+        <span class="kw">let </span><span class="kw-2">mut </span>subpatterns = <a class="self" href="#1419">self</a>.<a href="#1522-1526">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|p| Box::new(<a href="#1423">p</a>.<a href="#1419-1506">to_pat</a>(<a href="#1419">cx</a>)));
         <span class="kw">let </span>kind = <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#1419">self</a>.ctor {
-            <a href="#616">Single</a> | <a href="#618">Variant</a>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#1419">self</a>.ty.kind() {
+            <a href="#583">Single</a> | <a href="#585">Variant</a>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#1419">self</a>.ty.kind() {
                 ty::Tuple(..) =&gt; <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Leaf</a> {
                     subpatterns: <a href="#1423">subpatterns</a>
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
@@ -3129,7 +3125,7 @@
                     </span><a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Deref</a> { subpattern: <a href="#1423">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap() }
                 }
                 ty::Adt(adt_def, args) =&gt; {
-                    <span class="kw">let </span>variant_index = <a class="self" href="#1419">self</a>.ctor.<a href="#693-702">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#1438">adt_def</a>);
+                    <span class="kw">let </span>variant_index = <a class="self" href="#1419">self</a>.ctor.<a href="#663-672">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#1438">adt_def</a>);
                     <span class="kw">let </span>variant = <span class="kw-2">&amp;</span><a href="#1438">adt_def</a>.variant(<a href="#1439">variant_index</a>);
                     <span class="kw">let </span>subpatterns = Fields::list_variant_nonhidden_fields(<a href="#1419">cx</a>, <a class="self" href="#1419">self</a>.ty, <a href="#1440">variant</a>)
                         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">zip</a>(<a href="#1423">subpatterns</a>)
@@ -3149,14 +3145,14 @@
                 </span>ty::Ref(..) =&gt; <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Deref</a> { subpattern: <a href="#1423">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap() },
                 <span class="kw">_ </span>=&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unexpected ctor for type {:?} {:?}&quot;</span>, <span class="self">self</span>.ctor, <span class="self">self</span>.ty),
             },
-            <a href="#626">Slice</a>(slice) =&gt; {
+            <a href="#594">Slice</a>(slice) =&gt; {
                 <span class="kw">match </span><a href="#1459">slice</a>.kind {
-                    <a href="#413">FixedLen</a>(<span class="kw">_</span>) =&gt; <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Slice</a> {
+                    <a href="#380">FixedLen</a>(<span class="kw">_</span>) =&gt; <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Slice</a> {
                         prefix: <a href="#1423">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(),
                         slice: <span class="prelude-val">None</span>,
                         suffix: Box::new([]),
                     },
-                    <a href="#419">VarLen</a>(prefix, <span class="kw">_</span>) =&gt; {
+                    <a href="#386">VarLen</a>(prefix, <span class="kw">_</span>) =&gt; {
                         <span class="kw">let </span><span class="kw-2">mut </span>subpatterns = <a href="#1423">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">peekable</a>();
                         <span class="kw">let </span><span class="kw-2">mut </span>prefix: Vec&lt;<span class="kw">_</span>&gt; = <a href="#1467">subpatterns</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">by_ref</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">take</a>(<a href="#1466">prefix</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
                         <span class="kw">if </span>slice.array_len.is_some() {
@@ -3183,15 +3179,14 @@
                     }
                 }
             }
-            <span class="kw-2">&amp;</span><a href="#624">Str</a>(value) =&gt; <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Constant</a> { <a href="#1493">value</a> },
-            <span class="kw-2">&amp;</span><a href="#622">FloatRange</a>(lo, hi, end) =&gt; PatKind::Range(Box::new(<a href="../../../../rustc_middle/thir/struct.PatRange.html">PatRange</a> { <a href="#1494">lo</a>, <a href="#1494">hi</a>, <a href="#1494">end</a> })),
-            <a href="#620">IntRange</a>(range) =&gt; <span class="kw">return </span><a href="#1495">range</a>.<a href="#221-242">to_pat</a>(<a href="#1419">cx</a>.tcx, <a class="self" href="#1419">self</a>.ty),
-            <a href="#639">Wildcard</a> | <a href="#633">NonExhaustive</a> =&gt; PatKind::Wild,
-            <a href="#637">Missing</a> { .. } =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(
+            <span class="kw-2">&amp;</span><a href="#592">Str</a>(value) =&gt; <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Constant</a> { <a href="#1493">value</a> },
+            <a href="#587">IntRange</a>(range) =&gt; <span class="kw">return </span><a href="#1494">range</a>.<a href="#190-211">to_pat</a>(<a href="#1419">cx</a>.tcx, <a class="self" href="#1419">self</a>.ty),
+            <a href="#609">Wildcard</a> | <a href="#601">NonExhaustive</a> =&gt; PatKind::Wild,
+            <a href="#605-607">Missing</a> { .. } =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(
                 <span class="string">&quot;trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,
                 `Missing` should have been processed in `apply_constructors`&quot;
             </span>),
-            <a href="#630">Opaque</a> | <a href="#641">Or</a> =&gt; {
+            <a href="#589">F32Range</a>(..) | <a href="#590">F64Range</a>(..) | <a href="#598">Opaque</a> | <a href="#611">Or</a> =&gt; {
                 <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;can&#39;t convert to pattern: {:?}&quot;</span>, <span class="self">self</span>)
             }
         };
@@ -3204,19 +3199,19 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>ctor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constructor&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw-2">&amp;</span><a class="self" href="#1513">self</a>.ctor
+        <span class="kw-2">&amp;</span><a class="self" href="#1512">self</a>.ctor
     }
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>ty(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#1516">self</a>.ty
+        <a class="self" href="#1515">self</a>.ty
     }
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>span(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a> {
-        <a class="self" href="#1519">self</a>.span
+        <a class="self" href="#1518">self</a>.span
     }
 
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>iter_fields&lt;<span class="lifetime">&#39;a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span><span class="self">self</span>,
     ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;&gt; + Captures&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <a class="self" href="#1524">self</a>.fields.<a href="#1221-1225">iter_patterns</a>()
+        <a class="self" href="#1523">self</a>.fields.<a href="#1193-1197">iter_patterns</a>()
     }
 
     <span class="doccomment">/// Specialize this pattern with a constructor.
@@ -3226,61 +3221,61 @@
         pcx: <span class="kw-2">&amp;</span>PatCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         other_ctor: <span class="kw-2">&amp;</span>Constructor&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; SmallVec&lt;[<span class="kw-2">&amp;</span><span class="lifetime">&#39;p </span>DeconstructedPat&lt;<span class="lifetime">&#39;p</span>, <span class="lifetime">&#39;tcx</span>&gt;; <span class="number">2</span>]&gt; {
-        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a class="self" href="#1532">self</a>.ctor, <a href="#1534">other_ctor</a>) {
-            (<a href="#639">Wildcard</a>, <span class="kw">_</span>) =&gt; {
+        <span class="kw">match </span>(<span class="kw-2">&amp;</span><a class="self" href="#1531">self</a>.ctor, <a href="#1533">other_ctor</a>) {
+            (<a href="#609">Wildcard</a>, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// We return a wildcard for each field of `other_ctor`.
-                </span>Fields::wildcards(<a href="#1533">pcx</a>, <a href="#1534">other_ctor</a>).<a href="#1221-1225">iter_patterns</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
+                </span>Fields::wildcards(<a href="#1532">pcx</a>, <a href="#1533">other_ctor</a>).<a href="#1193-1197">iter_patterns</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
             }
-            (<a href="#626">Slice</a>(self_slice), <a href="#626">Slice</a>(other_slice))
-                <span class="kw">if </span><a href="#1541">self_slice</a>.<a href="#458-460">arity</a>() != <a href="#1541">other_slice</a>.<a href="#458-460">arity</a>() =&gt;
+            (<a href="#594">Slice</a>(self_slice), <a href="#594">Slice</a>(other_slice))
+                <span class="kw">if </span><a href="#1540">self_slice</a>.<a href="#425-427">arity</a>() != <a href="#1540">other_slice</a>.<a href="#425-427">arity</a>() =&gt;
             {
                 <span class="comment">// The only tricky case: two slices of different arity. Since `self_slice` covers
                 // `other_slice`, `self_slice` must be `VarLen`, i.e. of the form
                 // `[prefix, .., suffix]`. Moreover `other_slice` is guaranteed to have a larger
                 // arity. So we fill the middle part with enough wildcards to reach the length of
                 // the new, larger slice.
-                </span><span class="kw">match </span><a href="#1541">self_slice</a>.kind {
-                    <a href="#413">FixedLen</a>(<span class="kw">_</span>) =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;{:?} doesn&#39;t cover {:?}&quot;</span>, self_slice, other_slice),
-                    <a href="#419">VarLen</a>(prefix, suffix) =&gt; {
-                        <span class="kw">let </span>(ty::Slice(inner_ty) | ty::Array(inner_ty, <span class="kw">_</span>)) = <span class="kw-2">*</span><a class="self" href="#1532">self</a>.ty.kind() <span class="kw">else </span>{
+                </span><span class="kw">match </span><a href="#1540">self_slice</a>.kind {
+                    <a href="#380">FixedLen</a>(<span class="kw">_</span>) =&gt; <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;{:?} doesn&#39;t cover {:?}&quot;</span>, self_slice, other_slice),
+                    <a href="#386">VarLen</a>(prefix, suffix) =&gt; {
+                        <span class="kw">let </span>(ty::Slice(inner_ty) | ty::Array(inner_ty, <span class="kw">_</span>)) = <span class="kw-2">*</span><a class="self" href="#1531">self</a>.ty.kind() <span class="kw">else </span>{
                             <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;bad slice pattern {:?} {:?}&quot;</span>, <span class="self">self</span>.ctor, <span class="self">self</span>.ty);
                         };
-                        <span class="kw">let </span>prefix = <span class="kw-2">&amp;</span><a class="self" href="#1532">self</a>.fields.fields[..<a href="#1551">prefix</a>];
-                        <span class="kw">let </span>suffix = <span class="kw-2">&amp;</span><a class="self" href="#1532">self</a>.fields.fields[<a href="#1541">self_slice</a>.<a href="#458-460">arity</a>() - <a href="#1551">suffix</a>..];
-                        <span class="kw">let </span>wildcard: <span class="kw-2">&amp;</span><span class="kw">_ </span>= <a href="#1533">pcx</a>
+                        <span class="kw">let </span>prefix = <span class="kw-2">&amp;</span><a class="self" href="#1531">self</a>.fields.fields[..<a href="#1550">prefix</a>];
+                        <span class="kw">let </span>suffix = <span class="kw-2">&amp;</span><a class="self" href="#1531">self</a>.fields.fields[<a href="#1540">self_slice</a>.<a href="#425-427">arity</a>() - <a href="#1550">suffix</a>..];
+                        <span class="kw">let </span>wildcard: <span class="kw-2">&amp;</span><span class="kw">_ </span>= <a href="#1532">pcx</a>
                             .cx
                             .pattern_arena
-                            .alloc(DeconstructedPat::wildcard(<a href="#1552">inner_ty</a>, <a href="#1533">pcx</a>.span));
-                        <span class="kw">let </span>extra_wildcards = <a href="#1541">other_slice</a>.<a href="#458-460">arity</a>() - <a href="#1541">self_slice</a>.<a href="#458-460">arity</a>();
-                        <span class="kw">let </span>extra_wildcards = (<span class="number">0</span>..<a href="#1561">extra_wildcards</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw">_</span>| <a href="#1557">wildcard</a>);
-                        <a href="#1555">prefix</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1562">extra_wildcards</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1556">suffix</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
+                            .alloc(DeconstructedPat::wildcard(<a href="#1551">inner_ty</a>, <a href="#1532">pcx</a>.span));
+                        <span class="kw">let </span>extra_wildcards = <a href="#1540">other_slice</a>.<a href="#425-427">arity</a>() - <a href="#1540">self_slice</a>.<a href="#425-427">arity</a>();
+                        <span class="kw">let </span>extra_wildcards = (<span class="number">0</span>..<a href="#1560">extra_wildcards</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|<span class="kw">_</span>| <a href="#1556">wildcard</a>);
+                        <a href="#1554">prefix</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1561">extra_wildcards</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">chain</a>(<a href="#1555">suffix</a>).<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
                     }
                 }
             }
-            <span class="kw">_ </span>=&gt; <a class="self" href="#1532">self</a>.fields.<a href="#1221-1225">iter_patterns</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(),
+            <span class="kw">_ </span>=&gt; <a class="self" href="#1531">self</a>.fields.<a href="#1193-1197">iter_patterns</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>(),
         }
     }
 
     <span class="doccomment">/// We keep track for each pattern if it was ever reachable during the analysis. This is used
     /// with `unreachable_spans` to report unreachable subpatterns arising from or patterns.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>set_reachable(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <a class="self" href="#1573">self</a>.reachable.set(<span class="bool-val">true</span>)
+        <a class="self" href="#1572">self</a>.reachable.set(<span class="bool-val">true</span>)
     }
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>is_reachable(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
-        <a class="self" href="#1576">self</a>.reachable.get()
+        <a class="self" href="#1575">self</a>.reachable.get()
     }
 
     <span class="doccomment">/// Report the spans of subpatterns that were not reachable, if any.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>unreachable_spans(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>spans = Vec::new();
-        <a class="self" href="#1581">self</a>.<a href="#1587-1596">collect_unreachable_spans</a>(<span class="kw-2">&amp;mut </span><a href="#1582">spans</a>);
-        <a href="#1582">spans</a>
+        <a class="self" href="#1580">self</a>.<a href="#1586-1595">collect_unreachable_spans</a>(<span class="kw-2">&amp;mut </span><a href="#1581">spans</a>);
+        <a href="#1581">spans</a>
     }
 
     <span class="kw">fn </span>collect_unreachable_spans(<span class="kw-2">&amp;</span><span class="self">self</span>, spans: <span class="kw-2">&amp;mut </span>Vec&lt;<a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>&gt;) {
         <span class="comment">// We don&#39;t look at subpatterns if we already reported the whole pattern as unreachable.
         </span><span class="kw">if </span>!<span class="self">self</span>.is_reachable() {
-            <a href="#1587">spans</a>.push(<a class="self" href="#1587">self</a>.span);
+            <a href="#1586">spans</a>.push(<a class="self" href="#1586">self</a>.span);
         } <span class="kw">else </span>{
             <span class="kw">for </span>p <span class="kw">in </span><span class="self">self</span>.iter_fields() {
                 p.collect_unreachable_spans(spans);
@@ -3297,31 +3292,31 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>first = <span class="bool-val">true</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>start_or_continue = |s| {
             <span class="kw">if </span>first {
-                <a href="#1604">first</a> = <span class="bool-val">false</span>;
+                <a href="#1603">first</a> = <span class="bool-val">false</span>;
                 <span class="string">&quot;&quot;
             </span>} <span class="kw">else </span>{
-                <a href="#1605">s</a>
+                <a href="#1604">s</a>
             }
         };
-        <span class="kw">let </span><span class="kw-2">mut </span>start_or_comma = || <a href="#1605">start_or_continue</a>(<span class="string">&quot;, &quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>start_or_comma = || <a href="#1604">start_or_continue</a>(<span class="string">&quot;, &quot;</span>);
 
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#1602">self</a>.ctor {
-            <a href="#616">Single</a> | <a href="#618">Variant</a>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#1602">self</a>.ty.kind() {
-                ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#1617">def</a>.is_box() =&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a class="self" href="#1601">self</a>.ctor {
+            <a href="#583">Single</a> | <a href="#585">Variant</a>(<span class="kw">_</span>) =&gt; <span class="kw">match </span><a class="self" href="#1601">self</a>.ty.kind() {
+                ty::Adt(def, <span class="kw">_</span>) <span class="kw">if </span><a href="#1616">def</a>.is_box() =&gt; {
                     <span class="comment">// Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
                     // of `std`). So this branch is only reachable when the feature is enabled and
                     // the pattern is a box pattern.
-                    </span><span class="kw">let </span>subpattern = <a class="self" href="#1602">self</a>.<a href="#1523-1527">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
-                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;box {subpattern:?}&quot;</span>)
+                    </span><span class="kw">let </span>subpattern = <a class="self" href="#1601">self</a>.<a href="#1522-1526">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;box {subpattern:?}&quot;</span>)
                 }
                 ty::Adt(..) | ty::Tuple(..) =&gt; {
-                    <span class="kw">let </span>variant = <span class="kw">match </span><a class="self" href="#1602">self</a>.ty.kind() {
-                        ty::Adt(adt, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#1626">adt</a>.variant(<a class="self" href="#1602">self</a>.ctor.<a href="#693-702">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#1626">adt</a>))),
+                    <span class="kw">let </span>variant = <span class="kw">match </span><a class="self" href="#1601">self</a>.ty.kind() {
+                        ty::Adt(adt, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<a href="#1625">adt</a>.variant(<a class="self" href="#1601">self</a>.ctor.<a href="#663-672">variant_index_for_adt</a>(<span class="kw-2">*</span><a href="#1625">adt</a>))),
                         ty::Tuple(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
                         <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
                     };
 
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(variant) = <a href="#1625">variant</a> {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(variant) = <a href="#1624">variant</a> {
                         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, variant.name)<span class="question-mark">?</span>;
                     }
 
@@ -3333,27 +3328,27 @@
                         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, start_or_comma())<span class="question-mark">?</span>;
                         <span class="macro">write!</span>(f, <span class="string">&quot;{p:?}&quot;</span>)<span class="question-mark">?</span>;
                     }
-                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;)&quot;</span>)
+                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;)&quot;</span>)
                 }
                 <span class="comment">// Note: given the expansion of `&amp;str` patterns done in `expand_pattern`, we should
                 // be careful to detect strings here. However a string literal pattern will never
                 // be reported as a non-exhaustiveness witness, so we can ignore this issue.
                 </span>ty::Ref(<span class="kw">_</span>, <span class="kw">_</span>, mutbl) =&gt; {
-                    <span class="kw">let </span>subpattern = <a class="self" href="#1602">self</a>.<a href="#1523-1527">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
-                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;&amp;{}{:?}&quot;</span>, mutbl.prefix_str(), subpattern)
+                    <span class="kw">let </span>subpattern = <a class="self" href="#1601">self</a>.<a href="#1522-1526">iter_fields</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">next</a>().unwrap();
+                    <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;&amp;{}{:?}&quot;</span>, mutbl.prefix_str(), subpattern)
                 }
-                <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;_&quot;</span>),
+                <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;_&quot;</span>),
             },
-            <a href="#626">Slice</a>(slice) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>subpatterns = <a class="self" href="#1602">self</a>.fields.<a href="#1221-1225">iter_patterns</a>();
+            <a href="#594">Slice</a>(slice) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>subpatterns = <a class="self" href="#1601">self</a>.fields.<a href="#1193-1197">iter_patterns</a>();
                 <span class="macro">write!</span>(f, <span class="string">&quot;[&quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">match </span><a href="#1654">slice</a>.kind {
-                    <a href="#413">FixedLen</a>(<span class="kw">_</span>) =&gt; {
+                <span class="kw">match </span><a href="#1653">slice</a>.kind {
+                    <a href="#380">FixedLen</a>(<span class="kw">_</span>) =&gt; {
                         <span class="kw">for </span>p <span class="kw">in </span>subpatterns {
                             <span class="macro">write!</span>(f, <span class="string">&quot;{}{:?}&quot;</span>, start_or_comma(), p)<span class="question-mark">?</span>;
                         }
                     }
-                    <a href="#419">VarLen</a>(prefix_len, <span class="kw">_</span>) =&gt; {
+                    <a href="#386">VarLen</a>(prefix_len, <span class="kw">_</span>) =&gt; {
                         <span class="kw">for </span>p <span class="kw">in </span>subpatterns.by_ref().take(prefix_len) {
                             <span class="macro">write!</span>(f, <span class="string">&quot;{}{:?}&quot;</span>, start_or_comma(), p)<span class="question-mark">?</span>;
                         }
@@ -3364,23 +3359,20 @@
                         }
                     }
                 }
-                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;]&quot;</span>)
+                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;]&quot;</span>)
             }
-            <span class="kw-2">&amp;</span><a href="#622">FloatRange</a>(lo, hi, end) =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;{lo}&quot;</span>)<span class="question-mark">?</span>;
-                <span class="macro">write!</span>(f, <span class="string">&quot;{end}&quot;</span>)<span class="question-mark">?</span>;
-                <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;{hi}&quot;</span>)
-            }
-            <a href="#620">IntRange</a>(range) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;{range:?}&quot;</span>), <span class="comment">// Best-effort, will render e.g. `false` as `0..=0`
-            </span><a href="#639">Wildcard</a> | <a href="#637">Missing</a> { .. } | <a href="#633">NonExhaustive</a> =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;_ : {:?}&quot;</span>, <span class="self">self</span>.ty),
-            <a href="#641">Or</a> =&gt; {
+            <a href="#589">F32Range</a>(lo, hi, end) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;{lo}{end}{hi}&quot;</span>),
+            <a href="#590">F64Range</a>(lo, hi, end) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;{lo}{end}{hi}&quot;</span>),
+            <a href="#587">IntRange</a>(range) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;{range:?}&quot;</span>), <span class="comment">// Best-effort, will render e.g. `false` as `0..=0`
+            </span><a href="#609">Wildcard</a> | <a href="#605-607">Missing</a> { .. } | <a href="#601">NonExhaustive</a> =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;_ : {:?}&quot;</span>, <span class="self">self</span>.ty),
+            <a href="#611">Or</a> =&gt; {
                 <span class="kw">for </span>pat <span class="kw">in </span><span class="self">self</span>.iter_fields() {
                     <span class="macro">write!</span>(f, <span class="string">&quot;{}{:?}&quot;</span>, start_or_continue(<span class="string">&quot; | &quot;</span>), pat)<span class="question-mark">?</span>;
                 }
                 <span class="prelude-val">Ok</span>(())
             }
-            <a href="#624">Str</a>(value) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;{value}&quot;</span>),
-            <a href="#630">Opaque</a> =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1602">f</a>, <span class="string">&quot;&lt;constant pattern&gt;&quot;</span>),
+            <a href="#592">Str</a>(value) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;{value}&quot;</span>),
+            <a href="#598">Opaque</a> =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.write.html">write!</a>(<a href="#1601">f</a>, <span class="string">&quot;&lt;constant pattern&gt;&quot;</span>),
         }
     }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/thir/pattern/const_to_pat.rs`."><title>const_to_pat.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_build/src/thir/pattern/const_to_pat.rs`."><title>const_to_pat.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="rustc_mir_build" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -479,6 +479,31 @@
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
 <a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
+<a href="#487" id="487">487</a>
+<a href="#488" id="488">488</a>
+<a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../../../../rustc_hir/index.html">rustc_hir</a> <span class="kw">as </span>hir;
 <span class="kw">use </span><a href="../../../../rustc_span/def_id/struct.DefId.html">rustc_hir::def_id::DefId</a>;
 <span class="kw">use </span><a href="../../../../rustc_index/idx/trait.Idx.html">rustc_index::Idx</a>;
@@ -489,7 +514,7 @@
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../../rustc_middle/ty/index.html">self</a>, <a href="../../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../../rustc_middle/ty/consts/valtree/enum.ValTree.html">ValTree</a>};
 <span class="kw">use </span><a href="../../../../rustc_lint_defs/index.html">rustc_session::lint</a>;
 <span class="kw">use </span><a href="../../../../rustc_span/span_encoding/struct.Span.html">rustc_span::Span</a>;
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../../rustc_abi/struct.VariantIdx.html">VariantIdx</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../../rustc_target/abi/struct.FieldIdx.html">FieldIdx</a>, <a href="../../../../rustc_target/abi/struct.VariantIdx.html">VariantIdx</a>};
 <span class="kw">use </span><a href="../../../../rustc_trait_selection/traits/query/evaluate_obligation/trait.InferCtxtExt.html">rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt</a>;
 <span class="kw">use </span>rustc_trait_selection::traits::{<a class="self" href="../../../../rustc_trait_selection/traits/index.html">self</a>, <a href="../../../../rustc_middle/traits/struct.ObligationCause.html">ObligationCause</a>};
 
@@ -497,18 +522,20 @@
 
 <span class="kw">use </span><a href="mod.rs.html#35-39"><span class="kw">super</span>::PatCtxt</a>;
 <span class="kw">use </span><span class="kw">crate</span>::errors::{
-    <a href="../../errors.rs.html#729">FloatPattern</a>, <a href="../../errors.rs.html#739-741">IndirectStructuralMatch</a>, <a href="../../errors.rs.html#713-717">InvalidPattern</a>, <a href="../../errors.rs.html#747-749">NontrivialStructuralMatch</a>,
-    <a href="../../errors.rs.html#733">PointerPattern</a>, <a href="../../errors.rs.html#705-709">TypeNotStructural</a>, <a href="../../errors.rs.html#696-699">UnionPattern</a>, <a href="../../errors.rs.html#721-725">UnsizedPattern</a>,
+    <a href="../../errors.rs.html#729">FloatPattern</a>, <a href="../../errors.rs.html#739-741">IndirectStructuralMatch</a>, <a href="../../errors.rs.html#713-717">InvalidPattern</a>, <a href="../../errors.rs.html#753-755">NonPartialEqMatch</a>,
+    <a href="../../errors.rs.html#747-749">NontrivialStructuralMatch</a>, <a href="../../errors.rs.html#733">PointerPattern</a>, <a href="../../errors.rs.html#705-709">TypeNotStructural</a>, <a href="../../errors.rs.html#696-699">UnionPattern</a>, <a href="../../errors.rs.html#721-725">UnsizedPattern</a>,
 };
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; PatCtxt&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="doccomment">/// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you&#39;d compared via structural equality).
+    ///
+    /// `cv` must be a valtree or a `mir::ConstValue`.
     </span><span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(<span class="self">self</span>), ret)]
     </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>const_to_pat(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cv: mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        cv: mir::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         id: <a href="../../../../rustc_hir/hir_id/struct.HirId.html">hir::HirId</a>,
         span: <a href="../../../../rustc_span/span_encoding/struct.Span.html">Span</a>,
         check_body_for_struct_match_violation: <span class="prelude-ty">Option</span>&lt;<a href="../../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt;,
@@ -545,12 +572,10 @@
 }
 
 <span class="doccomment">/// This error type signals that we encountered a non-struct-eq situation.
-/// We bubble this up in order to get back to the reference destructuring and make that emit
-/// a const pattern instead of a deref pattern. This allows us to simply call `PartialEq::eq`
-/// on such patterns (since that function takes a reference) and not have to jump through any
-/// hoops to get a reference to the value.
+/// We will fall back to calling `PartialEq::eq` on such patterns,
+/// and exhaustiveness checking will consider them as matching nothing.
 </span><span class="attr">#[derive(Debug)]
-</span><span class="kw">struct </span><a href="../../../../rustc_mir_build/thir/pattern/const_to_pat/struct.FallbackToConstRef.html">FallbackToConstRef</a>;
+</span><span class="kw">struct </span><a href="../../../../rustc_mir_build/thir/pattern/const_to_pat/struct.FallbackToOpaqueConst.html">FallbackToOpaqueConst</a>;
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; ConstToPat&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>new(
@@ -560,7 +585,7 @@
         infcx: InferCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; <span class="self">Self </span>{
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="question-mark">?</span>pat_ctxt.typeck_results.hir_owner);
-        <a href="#41-64">ConstToPat</a> {
+        <a href="#43-66">ConstToPat</a> {
             <a href="#77">id</a>,
             <a href="#78">span</a>,
             <a href="#79">infcx</a>,
@@ -585,7 +610,7 @@
 
     <span class="kw">fn </span>to_pat(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        cv: mir::ConstantKind&lt;<span class="lifetime">&#39;tcx</span>&gt;,
+        cv: mir::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         check_body_for_struct_match_violation: <span class="prelude-ty">Option</span>&lt;<a href="../../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt;,
     ) -&gt; Box&lt;Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="self">self</span>.treat_byte_string_as_slice);
@@ -605,7 +630,7 @@
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>check_body_for_struct_match_violation, <span class="question-mark">?</span>mir_structural_match_violation);
 
         <span class="kw">let </span>inlined_const_as_pat = <span class="kw">match </span><a href="#107">cv</a> {
-            mir::ConstantKind::Ty(c) =&gt; <span class="kw">match </span><a href="#127">c</a>.kind() {
+            mir::Const::Ty(c) =&gt; <span class="kw">match </span><a href="#127">c</a>.kind() {
                 ty::ConstKind::Param(<span class="kw">_</span>)
                 | ty::ConstKind::Infer(<span class="kw">_</span>)
                 | ty::ConstKind::Bound(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -616,8 +641,8 @@
                     <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.span, <span class="string">&quot;unexpected const in `to_pat`: {:?}&quot;</span>, c.kind())
                 }
                 ty::ConstKind::Value(valtree) =&gt; <span class="self"><a href="#106">self</a>
-                    </span>.<a href="#281">recur</a>(<a href="#137">valtree</a>, <a href="#107">cv</a>.ty(), <a href="#118">mir_structural_match_violation</a>.unwrap_or(<span class="bool-val">false</span>))
-                    .unwrap_or_else(|<span class="kw">_</span>| {
+                    </span>.<a href="#300">recur</a>(<a href="#137">valtree</a>, <a href="#107">cv</a>.ty(), <a href="#118">mir_structural_match_violation</a>.unwrap_or(<span class="bool-val">false</span>))
+                    .unwrap_or_else(|<span class="kw">_</span>: <a href="#72">FallbackToOpaqueConst</a>| {
                         Box::new(<a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> {
                             span: <a class="self" href="#106">self</a>.span,
                             ty: <a href="#107">cv</a>.ty(),
@@ -625,10 +650,10 @@
                         })
                     }),
             },
-            mir::ConstantKind::Unevaluated(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+            mir::Const::Unevaluated(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                 <a class="macro" href="../../../../rustc_middle/rustc_middle/macro.span_bug.html">span_bug!</a>(<span class="self">self</span>.span, <span class="string">&quot;unevaluated const in `to_pat`: {cv:?}&quot;</span>)
             }
-            mir::ConstantKind::Val(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; Box::new(<a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> {
+            mir::Const::Val(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; Box::new(<a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> {
                 span: <a class="self" href="#106">self</a>.span,
                 ty: <a href="#107">cv</a>.ty(),
                 kind: <a href="../../../../rustc_middle/thir/enum.PatKind.html">PatKind::Constant</a> { value: <a href="#107">cv</a> },
@@ -636,8 +661,9 @@
         };
 
         <span class="kw">if </span>!<span class="self">self</span>.saw_const_match_error.get() {
-            <span class="comment">// If we were able to successfully convert the const to some pat,
-            // double-check that all types in the const implement `Structural`.
+            <span class="comment">// If we were able to successfully convert the const to some pat (possibly with some
+            // lints, but no errors), double-check that all types in the const implement
+            // `Structural` and `PartialEq`.
 
             </span><span class="kw">let </span>structural =
                 traits::search_for_structural_match_violation(<a class="self" href="#106">self</a>.span, <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>(), <a href="#107">cv</a>.ty());
@@ -658,28 +684,30 @@
                 <span class="kw">return </span><a href="#126">inlined_const_as_pat</a>;
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(non_sm_ty) = <a href="#161">structural</a> {
-                <span class="kw">if </span>!<span class="self">self</span>.type_may_have_partial_eq_impl(cv.ty()) {
-                    <span class="kw">if let </span>ty::Adt(def, ..) = <a href="#180">non_sm_ty</a>.kind() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(non_sm_ty) = <a href="#162">structural</a> {
+                <span class="kw">if </span>!<span class="self">self</span>.type_has_partial_eq_impl(cv.ty()) {
+                    <span class="kw">if let </span>ty::Adt(def, ..) = <a href="#181">non_sm_ty</a>.kind() {
                         <span class="kw">if </span>def.is_union() {
                             <span class="kw">let </span>err = <a href="../../errors.rs.html#696-699">UnionPattern</a> { span: <a class="self" href="#106">self</a>.span };
-                            <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().sess.emit_err(<a href="#184">err</a>);
+                            <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().sess.emit_err(<a href="#185">err</a>);
                         } <span class="kw">else </span>{
                             <span class="comment">// fatal avoids ICE from resolution of nonexistent method (rare case).
                             </span><a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>()
                                 .sess
-                                .emit_fatal(<a href="../../errors.rs.html#705-709">TypeNotStructural</a> { span: <a class="self" href="#106">self</a>.span, <a href="#180">non_sm_ty</a> });
+                                .emit_fatal(<a href="../../errors.rs.html#705-709">TypeNotStructural</a> { span: <a class="self" href="#106">self</a>.span, <a href="#181">non_sm_ty</a> });
                         }
                     } <span class="kw">else </span>{
-                        <span class="kw">let </span>err = <a href="../../errors.rs.html#713-717">InvalidPattern</a> { span: <a class="self" href="#106">self</a>.span, <a href="#180">non_sm_ty</a> };
-                        <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().sess.emit_err(<a href="#193">err</a>);
-                        <span class="kw">return </span>Box::new(<a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> { span: <a class="self" href="#106">self</a>.span, ty: <a href="#107">cv</a>.ty(), kind: PatKind::Wild });
+                        <span class="kw">let </span>err = <a href="../../errors.rs.html#713-717">InvalidPattern</a> { span: <a class="self" href="#106">self</a>.span, <a href="#181">non_sm_ty</a> };
+                        <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().sess.emit_err(<a href="#194">err</a>);
                     }
+                    <span class="comment">// All branches above emitted an error. Don&#39;t print any more lints.
+                    // The pattern we return is irrelevant since we errored.
+                    </span><span class="kw">return </span>Box::new(<a href="../../../../rustc_middle/thir/struct.Pat.html">Pat</a> { span: <a class="self" href="#106">self</a>.span, ty: <a href="#107">cv</a>.ty(), kind: PatKind::Wild });
                 } <span class="kw">else if </span>!<span class="self">self</span>.saw_const_match_lint.get() {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(mir_structural_match_violation) = <a href="#118">mir_structural_match_violation</a> {
-                        <span class="kw">match </span><a href="#180">non_sm_ty</a>.kind() {
+                        <span class="kw">match </span><a href="#181">non_sm_ty</a>.kind() {
                             ty::RawPtr(pointee)
-                                <span class="kw">if </span><a href="#200">pointee</a>.ty.is_sized(<a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>(), <a class="self" href="#106">self</a>.param_env) =&gt; {}
+                                <span class="kw">if </span><a href="#203">pointee</a>.ty.is_sized(<a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>(), <a class="self" href="#106">self</a>.param_env) =&gt; {}
                             ty::FnPtr(..) | ty::RawPtr(..) =&gt; {
                                 <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().emit_spanned_lint(
                                     lint::builtin::POINTER_STRUCTURAL_MATCH,
@@ -688,12 +716,12 @@
                                     <a href="../../errors.rs.html#733">PointerPattern</a>,
                                 );
                             }
-                            ty::Adt(..) <span class="kw">if </span><a href="#198">mir_structural_match_violation</a> =&gt; {
+                            ty::Adt(..) <span class="kw">if </span><a href="#201">mir_structural_match_violation</a> =&gt; {
                                 <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().emit_spanned_lint(
                                     lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                     <a class="self" href="#106">self</a>.id,
                                     <a class="self" href="#106">self</a>.span,
-                                    <a href="../../errors.rs.html#739-741">IndirectStructuralMatch</a> { <a href="#180">non_sm_ty</a> },
+                                    <a href="../../errors.rs.html#739-741">IndirectStructuralMatch</a> { <a href="#181">non_sm_ty</a> },
                                 );
                             }
                             <span class="kw">_ </span>=&gt; {
@@ -707,7 +735,7 @@
                 }
             } <span class="kw">else if </span>!<span class="self">self</span>.saw_const_match_lint.get() {
                 <span class="kw">match </span><a href="#107">cv</a>.ty().kind() {
-                    ty::RawPtr(pointee) <span class="kw">if </span><a href="#229">pointee</a>.ty.is_sized(<a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>(), <a class="self" href="#106">self</a>.param_env) =&gt; {}
+                    ty::RawPtr(pointee) <span class="kw">if </span><a href="#232">pointee</a>.ty.is_sized(<a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>(), <a class="self" href="#106">self</a>.param_env) =&gt; {}
                     ty::FnPtr(..) | ty::RawPtr(..) =&gt; {
                         <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().emit_spanned_lint(
                             lint::builtin::POINTER_STRUCTURAL_MATCH,
@@ -719,13 +747,24 @@
                     <span class="kw">_ </span>=&gt; {}
                 }
             }
+
+            <span class="comment">// Always check for `PartialEq`, even if we emitted other lints. (But not if there were
+            // any errors.) This ensures it shows up in cargo&#39;s future-compat reports as well.
+            </span><span class="kw">if </span>!<span class="self">self</span>.type_has_partial_eq_impl(cv.ty()) {
+                <a class="self" href="#106">self</a>.<a href="#97-99">tcx</a>().emit_spanned_lint(
+                    lint::builtin::CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
+                    <a class="self" href="#106">self</a>.id,
+                    <a class="self" href="#106">self</a>.span,
+                    <a href="../../errors.rs.html#753-755">NonPartialEqMatch</a> { non_peq_ty: <a href="#107">cv</a>.ty() },
+                );
+            }
         }
 
         <a href="#126">inlined_const_as_pat</a>
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>), ret)]
-    </span><span class="kw">fn </span>type_may_have_partial_eq_impl(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
+    </span><span class="kw">fn </span>type_has_partial_eq_impl(<span class="kw-2">&amp;</span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> {
         <span class="comment">// double-check there even *is* a semantic `PartialEq` to dispatch to.
         //
         // (If there isn&#39;t, then we can safely issue a hard
@@ -740,20 +779,25 @@
             ty::TraitRef::new(<span class="self">self</span>.tcx(), partial_eq_trait_id, [ty, ty]),
         );
 
-        <span class="comment">// FIXME: should this call a `predicate_must_hold` variant instead?
-        </span><span class="self">self</span>.infcx.predicate_may_hold(<span class="kw-2">&amp;</span>partial_eq_obligation)
+        <span class="comment">// This *could* accept a type that isn&#39;t actually `PartialEq`, because region bounds get
+        // ignored. However that should be pretty much impossible since consts that do not depend on
+        // generics can only mention the `&#39;static` lifetime, and how would one have a type that&#39;s
+        // `PartialEq` for some lifetime but *not* for `&#39;static`? If this ever becomes a problem
+        // we&#39;ll need to leave some sort of trace of this requirement in the MIR so that borrowck
+        // can ensure that the type really implements `PartialEq`.
+        </span><span class="self">self</span>.infcx.predicate_must_hold_modulo_regions(<span class="kw-2">&amp;</span>partial_eq_obligation)
     }
 
     <span class="kw">fn </span>field_pats(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         vals: <span class="kw">impl </span>Iterator&lt;Item = (ValTree&lt;<span class="lifetime">&#39;tcx</span>&gt;, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;)&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;FieldPat&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, <a href="#72">FallbackToConstRef</a>&gt; {
-        <a href="#268">vals</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;FieldPat&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, <a href="#72">FallbackToOpaqueConst</a>&gt; {
+        <a href="#287">vals</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">enumerate</a>()
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(idx, (val, ty))| {
-                <span class="kw">let </span>field = FieldIdx::new(<a href="#271">idx</a>);
+                <span class="kw">let </span>field = FieldIdx::new(<a href="#290">idx</a>);
                 <span class="comment">// Patterns can only use monomorphic types.
-                </span><span class="kw">let </span>ty = <a class="self" href="#267">self</a>.<a href="#97-99">tcx</a>().normalize_erasing_regions(<a class="self" href="#267">self</a>.param_env, <a href="#271">ty</a>);
-                <span class="prelude-val">Ok</span>(<a href="../../../../rustc_middle/thir/struct.FieldPat.html">FieldPat</a> { <a href="#272">field</a>, pattern: <span class="self">self</span>.recur(val, ty, <span class="bool-val">false</span>)<span class="question-mark">? </span>})
+                </span><span class="kw">let </span>ty = <a class="self" href="#286">self</a>.<a href="#97-99">tcx</a>().normalize_erasing_regions(<a class="self" href="#286">self</a>.param_env, <a href="#290">ty</a>);
+                <span class="prelude-val">Ok</span>(<a href="../../../../rustc_middle/thir/struct.FieldPat.html">FieldPat</a> { <a href="#291">field</a>, pattern: <span class="self">self</span>.recur(val, ty, <span class="bool-val">false</span>)<span class="question-mark">? </span>})
             })
             .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>()
     }
@@ -765,7 +809,7 @@
         cv: ValTree&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         mir_structural_match_violation: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, <a href="#72">FallbackToConstRef</a>&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;Pat&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, <a href="#72">FallbackToOpaqueConst</a>&gt; {
         <span class="kw">let </span>id = <span class="self">self</span>.id;
         <span class="kw">let </span>span = <span class="self">self</span>.span;
         <span class="kw">let </span>tcx = <span class="self">self</span>.tcx();
@@ -780,7 +824,7 @@
                     span,
                     FloatPattern,
                 );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(FallbackToConstRef);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(FallbackToOpaqueConst);
             }
             <span class="comment">// If the type is not structurally comparable, just emit the constant directly,
             // causing the pattern match code to treat it opaquely.
@@ -804,19 +848,21 @@
                 <span class="comment">// Since we are behind a reference, we can just bubble the error up so we get a
                 // constant at reference type, making it easy to let the fallback call
                 // `PartialEq::eq` on it.
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(FallbackToConstRef);
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(FallbackToOpaqueConst);
             }
             ty::FnDef(..) =&gt; {
                 <span class="self">self</span>.saw_const_match_error.set(<span class="bool-val">true</span>);
                 tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
-                PatKind::Wild
+                <span class="comment">// We errored, so the pattern we generate is irrelevant.
+                </span>PatKind::Wild
             }
             ty::Adt(adt_def, <span class="kw">_</span>) <span class="kw">if </span>!<span class="self">self</span>.type_marked_structural(ty) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;adt_def {:?} has !type_marked_structural for cv.ty: {:?}&quot;</span>, adt_def, ty,);
                 <span class="self">self</span>.saw_const_match_error.set(<span class="bool-val">true</span>);
                 <span class="kw">let </span>err = TypeNotStructural { span, non_sm_ty: ty };
                 tcx.sess.emit_err(err);
-                PatKind::Wild
+                <span class="comment">// We errored, so the pattern we generate is irrelevant.
+                </span>PatKind::Wild
             }
             ty::Adt(adt_def, args) <span class="kw">if </span>adt_def.is_enum() =&gt; {
                 <span class="kw">let </span>(<span class="kw-2">&amp;</span>variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
@@ -866,9 +912,9 @@
             ty::Ref(<span class="kw">_</span>, pointee_ty, ..) =&gt; <span class="kw">match </span><span class="kw-2">*</span>pointee_ty.kind() {
                 <span class="comment">// `&amp;str` is represented as a valtree, let&#39;s keep using this
                 // optimization for now.
-                </span>ty::Str =&gt; PatKind::Constant {
-                    value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
-                },
+                </span>ty::Str =&gt; {
+                    PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
+                }
                 <span class="comment">// Backwards compatibility hack: support references to non-structural types,
                 // but hard error if we aren&#39;t behind a double reference. We could just use
                 // the fallback code path below, but that would allow *more* of this fishy
@@ -885,14 +931,16 @@
                                 IndirectStructuralMatch { non_sm_ty: <span class="kw-2">*</span>pointee_ty },
                             );
                         }
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(FallbackToConstRef);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(FallbackToOpaqueConst);
                     } <span class="kw">else </span>{
                         <span class="kw">if </span>!<span class="self">self</span>.saw_const_match_error.get() {
                             <span class="self">self</span>.saw_const_match_error.set(<span class="bool-val">true</span>);
                             <span class="kw">let </span>err = TypeNotStructural { span, non_sm_ty: <span class="kw-2">*</span>pointee_ty };
                             tcx.sess.emit_err(err);
                         }
-                        PatKind::Wild
+                        tcx.sess.delay_span_bug(span, <span class="string">&quot;`saw_const_match_error` set but no error?&quot;</span>);
+                        <span class="comment">// We errored, so the pattern we generate is irrelevant.
+                        </span>PatKind::Wild
                     }
                 }
                 <span class="comment">// All other references are converted into deref patterns and then recursively
@@ -904,6 +952,7 @@
                         tcx.sess.emit_err(err);
 
                         <span class="comment">// FIXME: introduce PatKind::Error to silence follow up diagnostics due to unreachable patterns.
+                        // We errored, so the pattern we generate is irrelevant.
                         </span>PatKind::Wild
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>old = <span class="self">self</span>.behind_reference.replace(<span class="bool-val">true</span>);
@@ -926,15 +975,16 @@
                     }
                 }
             },
-            ty::Bool | ty::Char | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) =&gt; PatKind::Constant {
-                value: mir::ConstantKind::Ty(ty::Const::new_value(tcx, cv, ty)),
-            },
+            ty::Bool | ty::Char | ty::Int(<span class="kw">_</span>) | ty::Uint(<span class="kw">_</span>) =&gt; {
+                PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
+            }
             ty::FnPtr(..) | ty::RawPtr(..) =&gt; <span class="macro">unreachable!</span>(),
             <span class="kw">_ </span>=&gt; {
                 <span class="self">self</span>.saw_const_match_error.set(<span class="bool-val">true</span>);
                 <span class="kw">let </span>err = InvalidPattern { span, non_sm_ty: ty };
                 tcx.sess.emit_err(err);
-                PatKind::Wild
+                <span class="comment">// We errored, so the pattern we generate is irrelevant.
+                </span>PatKind::Wild
             }
         };
 

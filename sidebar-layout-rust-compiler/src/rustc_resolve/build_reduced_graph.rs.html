@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_resolve/src/build_reduced_graph.rs`."><title>build_reduced_graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_resolve" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_resolve/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_resolve"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_resolve/src/build_reduced_graph.rs`."><title>build_reduced_graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_resolve" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../rustc_resolve/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_resolve"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1509,9 +1509,6 @@
 <a href="#1509" id="1509">1509</a>
 <a href="#1510" id="1510">1510</a>
 <a href="#1511" id="1511">1511</a>
-<a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! After we obtain a fresh AST fragment from a macro, code in this module helps to integrate
 //! that fragment into the module structures that are already partially built.
 //!
@@ -2168,7 +2165,7 @@
             }
 
             ItemKind::ExternCrate(orig_name) =&gt; {
-                <a class="self" href="#629">self</a>.<a href="#808-895">build_reduced_graph_for_extern_crate</a>(
+                <a class="self" href="#629">self</a>.<a href="#805-892">build_reduced_graph_for_extern_crate</a>(
                     <a href="#656">orig_name</a>,
                     <a href="#629">item</a>,
                     <a href="#636">local_def_id</a>,
@@ -2207,15 +2204,12 @@
 
                 <span class="comment">// Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
-                </span><a class="self" href="#629">self</a>.<a href="#1196-1280">define_macro</a>(<a href="#629">item</a>);
+                </span><a class="self" href="#629">self</a>.<a href="#1193-1277">define_macro</a>(<a href="#629">item</a>);
             }
 
             <span class="comment">// These items live in the type namespace.
             </span>ItemKind::TyAlias(..) =&gt; {
-                <span class="kw">let </span>res = Res::Def(
-                    <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { lazy: <a class="self" href="#629">self</a>.r.tcx.features().lazy_type_alias },
-                    <a href="#637">def_id</a>,
-                );
+                <span class="kw">let </span>res = Res::Def(DefKind::TyAlias, <a href="#637">def_id</a>);
                 <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#701">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
             }
 
@@ -2227,28 +2221,28 @@
                     <a href="#629">item</a>.span,
                     <a href="#631">parent</a>.no_implicit_prelude,
                 );
-                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#709">module</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
-                <a class="self" href="#629">self</a>.parent_scope.module = <a href="#709">module</a>;
+                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#706">module</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
+                <a class="self" href="#629">self</a>.parent_scope.module = <a href="#706">module</a>;
             }
 
             ItemKind::TraitAlias(..) =&gt; {
                 <span class="kw">let </span>res = Res::Def(DefKind::TraitAlias, <a href="#637">def_id</a>);
-                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#721">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
+                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#718">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
             }
 
             <span class="comment">// These items live in both the type and value namespaces.
             </span>ItemKind::Struct(<span class="kw-2">ref </span>vdata, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// Define a name in the type namespace.
                 </span><span class="kw">let </span>res = Res::Def(DefKind::Struct, <a href="#637">def_id</a>);
-                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#728">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
+                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#725">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
 
                 <span class="comment">// Record field names for error reporting.
-                </span><a class="self" href="#629">self</a>.<a href="#318-325">insert_field_def_ids</a>(<a href="#636">local_def_id</a>, <a href="#726">vdata</a>);
-                <a class="self" href="#629">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#637">def_id</a>, <a href="#726">vdata</a>);
+                </span><a class="self" href="#629">self</a>.<a href="#318-325">insert_field_def_ids</a>(<a href="#636">local_def_id</a>, <a href="#723">vdata</a>);
+                <a class="self" href="#629">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#637">def_id</a>, <a href="#723">vdata</a>);
 
                 <span class="comment">// If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>((ctor_kind, ctor_node_id)) = CtorKind::from_ast(<a href="#726">vdata</a>) {
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>((ctor_kind, ctor_node_id)) = CtorKind::from_ast(<a href="#723">vdata</a>) {
                     <span class="comment">// If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
                     </span><span class="kw">let </span><span class="kw-2">mut </span>ctor_vis = <span class="kw">if </span>vis.is_public()
@@ -2259,7 +2253,7 @@
                         <a href="#635">vis</a>
                     };
 
-                    <span class="kw">let </span><span class="kw-2">mut </span>ret_fields = Vec::with_capacity(<a href="#726">vdata</a>.fields().len());
+                    <span class="kw">let </span><span class="kw-2">mut </span>ret_fields = Vec::with_capacity(<a href="#723">vdata</a>.fields().len());
 
                     <span class="kw">for </span>field <span class="kw">in </span>vdata.fields() {
                         <span class="comment">// NOTE: The field may be an expansion placeholder, but expansion sets
@@ -2273,27 +2267,27 @@
                         }
                         ret_fields.push(field_vis.to_def_id());
                     }
-                    <span class="kw">let </span>ctor_def_id = <a class="self" href="#629">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#737">ctor_node_id</a>);
+                    <span class="kw">let </span>ctor_def_id = <a class="self" href="#629">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#734">ctor_node_id</a>);
                     <span class="kw">let </span>ctor_res =
-                        Res::Def(DefKind::Ctor(CtorOf::Struct, <a href="#737">ctor_kind</a>), <a href="#762">ctor_def_id</a>.to_def_id());
-                    <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, ValueNS, (<a href="#763">ctor_res</a>, <a href="#740">ctor_vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
-                    <a class="self" href="#629">self</a>.r.visibilities.insert(<a href="#762">ctor_def_id</a>, <a href="#740">ctor_vis</a>);
+                        Res::Def(DefKind::Ctor(CtorOf::Struct, <a href="#734">ctor_kind</a>), <a href="#759">ctor_def_id</a>.to_def_id());
+                    <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, ValueNS, (<a href="#760">ctor_res</a>, <a href="#737">ctor_vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
+                    <a class="self" href="#629">self</a>.r.visibilities.insert(<a href="#759">ctor_def_id</a>, <a href="#737">ctor_vis</a>);
                     <span class="comment">// We need the field visibility spans also for the constructor for E0603.
-                    </span><a class="self" href="#629">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#762">ctor_def_id</a>.to_def_id(), <a href="#726">vdata</a>);
+                    </span><a class="self" href="#629">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#759">ctor_def_id</a>.to_def_id(), <a href="#723">vdata</a>);
 
                     <a class="self" href="#629">self</a>.r
                         .struct_constructors
-                        .insert(<a href="#636">local_def_id</a>, (<a href="#763">ctor_res</a>, <a href="#740">ctor_vis</a>.to_def_id(), <a href="#748">ret_fields</a>));
+                        .insert(<a href="#636">local_def_id</a>, (<a href="#760">ctor_res</a>, <a href="#737">ctor_vis</a>.to_def_id(), <a href="#745">ret_fields</a>));
                 }
             }
 
             ItemKind::Union(<span class="kw-2">ref </span>vdata, <span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span>res = Res::Def(DefKind::Union, <a href="#637">def_id</a>);
-                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#777">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
+                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#774">res</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
 
                 <span class="comment">// Record field names for error reporting.
-                </span><a class="self" href="#629">self</a>.<a href="#318-325">insert_field_def_ids</a>(<a href="#636">local_def_id</a>, <a href="#776">vdata</a>);
-                <a class="self" href="#629">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#637">def_id</a>, <a href="#776">vdata</a>);
+                </span><a class="self" href="#629">self</a>.<a href="#318-325">insert_field_def_ids</a>(<a href="#636">local_def_id</a>, <a href="#773">vdata</a>);
+                <a class="self" href="#629">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#637">def_id</a>, <a href="#773">vdata</a>);
             }
 
             ItemKind::Trait(..) =&gt; {
@@ -2305,8 +2299,8 @@
                     <a href="#629">item</a>.span,
                     <a href="#631">parent</a>.no_implicit_prelude,
                 );
-                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#787">module</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
-                <a class="self" href="#629">self</a>.parent_scope.module = <a href="#787">module</a>;
+                <a class="self" href="#629">self</a>.r.<a href="#68-77">define</a>(<a href="#631">parent</a>, <a href="#633">ident</a>, TypeNS, (<a href="#784">module</a>, <a href="#635">vis</a>, <a href="#634">sp</a>, <a href="#632">expansion</a>));
+                <a class="self" href="#629">self</a>.parent_scope.module = <a href="#784">module</a>;
             }
 
             <span class="comment">// These items do not add names to modules.
@@ -2327,18 +2321,18 @@
         vis: <a href="../../rustc_middle/ty/enum.Visibility.html">ty::Visibility</a>,
         parent: Module&lt;<span class="lifetime">&#39;a</span>&gt;,
     ) {
-        <span class="kw">let </span>ident = <a href="#811">item</a>.ident;
-        <span class="kw">let </span>sp = <a href="#811">item</a>.span;
-        <span class="kw">let </span>parent_scope = <a class="self" href="#809">self</a>.parent_scope;
-        <span class="kw">let </span>expansion = <a href="#818">parent_scope</a>.expansion;
+        <span class="kw">let </span>ident = <a href="#808">item</a>.ident;
+        <span class="kw">let </span>sp = <a href="#808">item</a>.span;
+        <span class="kw">let </span>parent_scope = <a class="self" href="#806">self</a>.parent_scope;
+        <span class="kw">let </span>expansion = <a href="#815">parent_scope</a>.expansion;
 
         <span class="kw">let </span>(used, module, binding) = <span class="kw">if </span>orig_name.is_none() &amp;&amp; ident.name == kw::SelfLower {
-            <a class="self" href="#809">self</a>.r
+            <a class="self" href="#806">self</a>.r
                 .tcx
                 .sess
-                .struct_span_err(<a href="#811">item</a>.span, <span class="string">&quot;`extern crate self;` requires renaming&quot;</span>)
+                .struct_span_err(<a href="#808">item</a>.span, <span class="string">&quot;`extern crate self;` requires renaming&quot;</span>)
                 .span_suggestion(
-                    <a href="#811">item</a>.span,
+                    <a href="#808">item</a>.span,
                     <span class="string">&quot;rename the `self` crate to be able to import it&quot;</span>,
                     <span class="string">&quot;extern crate self as name;&quot;</span>,
                     Applicability::HasPlaceholders,
@@ -2346,46 +2340,46 @@
                 .emit();
             <span class="kw">return</span>;
         } <span class="kw">else if </span>orig_name == <span class="prelude-val">Some</span>(kw::SelfLower) {
-            <span class="prelude-val">Some</span>(<a class="self" href="#809">self</a>.r.graph_root)
+            <span class="prelude-val">Some</span>(<a class="self" href="#806">self</a>.r.graph_root)
         } <span class="kw">else </span>{
-            <span class="kw">let </span>tcx = <a class="self" href="#809">self</a>.r.tcx;
-            <span class="kw">let </span>crate_id = <a class="self" href="#809">self</a>.r.<a href="lib.rs.html#1554-1560">crate_loader</a>(|c| {
-                <a href="#838">c</a>.process_extern_crate(<a href="#811">item</a>, <a href="#812">local_def_id</a>, <span class="kw-2">&amp;</span><a href="#837">tcx</a>.definitions_untracked())
+            <span class="kw">let </span>tcx = <a class="self" href="#806">self</a>.r.tcx;
+            <span class="kw">let </span>crate_id = <a class="self" href="#806">self</a>.r.<a href="lib.rs.html#1554-1560">crate_loader</a>(|c| {
+                <a href="#835">c</a>.process_extern_crate(<a href="#808">item</a>, <a href="#809">local_def_id</a>, <span class="kw-2">&amp;</span><a href="#834">tcx</a>.definitions_untracked())
             });
-            <a href="#838">crate_id</a>.map(|crate_id| {
-                <a class="self" href="#809">self</a>.r.extern_crate_map.insert(<a href="#812">local_def_id</a>, <a href="#841">crate_id</a>);
-                <a class="self" href="#809">self</a>.r.<a href="#104-106">expect_module</a>(<a href="#841">crate_id</a>.as_def_id())
+            <a href="#835">crate_id</a>.map(|crate_id| {
+                <a class="self" href="#806">self</a>.r.extern_crate_map.insert(<a href="#809">local_def_id</a>, <a href="#838">crate_id</a>);
+                <a class="self" href="#806">self</a>.r.<a href="#104-106">expect_module</a>(<a href="#838">crate_id</a>.as_def_id())
             })
         }
         .map(|module| {
-            <span class="kw">let </span>used = <a class="self" href="#809">self</a>.<a href="#1014-1119">process_macro_use_imports</a>(<a href="#811">item</a>, <a href="#846">module</a>);
+            <span class="kw">let </span>used = <a class="self" href="#806">self</a>.<a href="#1011-1116">process_macro_use_imports</a>(<a href="#808">item</a>, <a href="#843">module</a>);
             <span class="kw">let </span>vis = ty::Visibility::&lt;<a href="../../rustc_span/def_id/struct.LocalDefId.html">LocalDefId</a>&gt;::Public;
-            <span class="kw">let </span>binding = (<a href="#846">module</a>, <a href="#848">vis</a>, <a href="#817">sp</a>, <a href="#819">expansion</a>).<a href="lib.rs.html#677">to_name_binding</a>(<a class="self" href="#809">self</a>.r.arenas);
-            (<a href="#847">used</a>, <span class="prelude-val">Some</span>(<a href="lib.rs.html#377">ModuleOrUniformRoot::Module</a>(<a href="#846">module</a>)), <a href="#849">binding</a>)
+            <span class="kw">let </span>binding = (<a href="#843">module</a>, <a href="#845">vis</a>, <a href="#814">sp</a>, <a href="#816">expansion</a>).<a href="lib.rs.html#677">to_name_binding</a>(<a class="self" href="#806">self</a>.r.arenas);
+            (<a href="#844">used</a>, <span class="prelude-val">Some</span>(<a href="lib.rs.html#377">ModuleOrUniformRoot::Module</a>(<a href="#843">module</a>)), <a href="#846">binding</a>)
         })
-        .unwrap_or((<span class="bool-val">true</span>, <span class="prelude-val">None</span>, <a class="self" href="#809">self</a>.r.dummy_binding));
-        <span class="kw">let </span>import = <a class="self" href="#809">self</a>.r.arenas.<a href="lib.rs.html#1169-1171">alloc_import</a>(<a href="imports.rs.html#138-173">ImportData</a> {
-            kind: <a href="imports.rs.html#78-82">ImportKind::ExternCrate</a> { source: <a href="#810">orig_name</a>, target: <a href="#816">ident</a>, id: <a href="#811">item</a>.id },
-            root_id: <a href="#811">item</a>.id,
-            parent_scope: <a class="self" href="#809">self</a>.parent_scope,
-            imported_module: Cell::new(<a href="#821">module</a>),
-            has_attributes: !<a href="#811">item</a>.attrs.is_empty(),
-            use_span_with_attributes: <a href="#811">item</a>.span_with_attributes(),
-            use_span: <a href="#811">item</a>.span,
-            root_span: <a href="#811">item</a>.span,
-            span: <a href="#811">item</a>.span,
+        .unwrap_or((<span class="bool-val">true</span>, <span class="prelude-val">None</span>, <a class="self" href="#806">self</a>.r.dummy_binding));
+        <span class="kw">let </span>import = <a class="self" href="#806">self</a>.r.arenas.<a href="lib.rs.html#1169-1171">alloc_import</a>(<a href="imports.rs.html#138-173">ImportData</a> {
+            kind: <a href="imports.rs.html#78-82">ImportKind::ExternCrate</a> { source: <a href="#807">orig_name</a>, target: <a href="#813">ident</a>, id: <a href="#808">item</a>.id },
+            root_id: <a href="#808">item</a>.id,
+            parent_scope: <a class="self" href="#806">self</a>.parent_scope,
+            imported_module: Cell::new(<a href="#818">module</a>),
+            has_attributes: !<a href="#808">item</a>.attrs.is_empty(),
+            use_span_with_attributes: <a href="#808">item</a>.span_with_attributes(),
+            use_span: <a href="#808">item</a>.span,
+            root_span: <a href="#808">item</a>.span,
+            span: <a href="#808">item</a>.span,
             module_path: Vec::new(),
-            vis: Cell::new(<span class="prelude-val">Some</span>(<a href="#813">vis</a>)),
-            used: Cell::new(<a href="#821">used</a>),
+            vis: Cell::new(<span class="prelude-val">Some</span>(<a href="#810">vis</a>)),
+            used: Cell::new(<a href="#818">used</a>),
         });
-        <a class="self" href="#809">self</a>.r.potentially_unused_imports.push(<a href="#853">import</a>);
-        <span class="kw">let </span>imported_binding = <a class="self" href="#809">self</a>.r.<a href="imports.rs.html#266-292">import</a>(<a href="#821">binding</a>, <a href="#853">import</a>);
+        <a class="self" href="#806">self</a>.r.potentially_unused_imports.push(<a href="#850">import</a>);
+        <span class="kw">let </span>imported_binding = <a class="self" href="#806">self</a>.r.<a href="imports.rs.html#266-292">import</a>(<a href="#818">binding</a>, <a href="#850">import</a>);
         <span class="kw">if </span>parent == <span class="self">self</span>.r.graph_root {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(entry) = <a class="self" href="#809">self</a>.r.extern_prelude.get(<span class="kw-2">&amp;</span><a href="#816">ident</a>.normalize_to_macros_2_0()) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(entry) = <a class="self" href="#806">self</a>.r.extern_prelude.get(<span class="kw-2">&amp;</span><a href="#813">ident</a>.normalize_to_macros_2_0()) {
                 <span class="kw">if </span>expansion != LocalExpnId::ROOT &amp;&amp; orig_name.is_some() &amp;&amp; !entry.is_import() {
                     <span class="kw">let </span>msg = <span class="string">&quot;macro-expanded `extern crate` items cannot \
                                        shadow names passed with `--extern`&quot;</span>;
-                    <a class="self" href="#809">self</a>.r.tcx.sess.span_err(<a href="#811">item</a>.span, <a href="#872">msg</a>);
+                    <a class="self" href="#806">self</a>.r.tcx.sess.span_err(<a href="#808">item</a>.span, <a href="#869">msg</a>);
                     <span class="comment">// `return` is intended to discard this binding because it&#39;s an
                     // unregistered ambiguity error which would result in a panic
                     // caused by inconsistency `path_res`
@@ -2393,78 +2387,78 @@
                     </span><span class="kw">return</span>;
                 }
             }
-            <span class="kw">let </span>entry = <span class="self"><a href="#809">self</a>
+            <span class="kw">let </span>entry = <span class="self"><a href="#806">self</a>
                 </span>.r
                 .extern_prelude
-                .entry(<a href="#816">ident</a>.normalize_to_macros_2_0())
+                .entry(<a href="#813">ident</a>.normalize_to_macros_2_0())
                 .or_insert(<a href="lib.rs.html#902-905">ExternPreludeEntry</a> { binding: <span class="prelude-val">None</span>, introduced_by_item: <span class="bool-val">true </span>});
             <span class="comment">// Binding from `extern crate` item in source code can replace
             // a binding from `--extern` on command line here.
-            </span><a href="#882">entry</a>.binding = <span class="prelude-val">Some</span>(<a href="#868">imported_binding</a>);
+            </span><a href="#879">entry</a>.binding = <span class="prelude-val">Some</span>(<a href="#865">imported_binding</a>);
             <span class="kw">if </span>orig_name.is_some() {
-                <a href="#882">entry</a>.introduced_by_item = <span class="bool-val">true</span>;
+                <a href="#879">entry</a>.introduced_by_item = <span class="bool-val">true</span>;
             }
         }
-        <a class="self" href="#809">self</a>.r.<a href="#68-77">define</a>(<a href="#814">parent</a>, <a href="#816">ident</a>, TypeNS, <a href="#868">imported_binding</a>);
+        <a class="self" href="#806">self</a>.r.<a href="#68-77">define</a>(<a href="#811">parent</a>, <a href="#813">ident</a>, TypeNS, <a href="#865">imported_binding</a>);
     }
 
     <span class="doccomment">/// Constructs the reduced graph for one foreign item.
     </span><span class="kw">fn </span>build_reduced_graph_for_foreign_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/type.ForeignItem.html">ForeignItem</a>) {
-        <span class="kw">let </span>local_def_id = <a class="self" href="#898">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#898">item</a>.id);
-        <span class="kw">let </span>def_id = <a href="#899">local_def_id</a>.to_def_id();
-        <span class="kw">let </span>(def_kind, ns) = <span class="kw">match </span><a href="#898">item</a>.kind {
+        <span class="kw">let </span>local_def_id = <a class="self" href="#895">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#895">item</a>.id);
+        <span class="kw">let </span>def_id = <a href="#896">local_def_id</a>.to_def_id();
+        <span class="kw">let </span>(def_kind, ns) = <span class="kw">match </span><a href="#895">item</a>.kind {
             ForeignItemKind::Fn(..) =&gt; (DefKind::Fn, ValueNS),
-            ForeignItemKind::Static(<span class="kw">_</span>, mt, <span class="kw">_</span>) =&gt; (DefKind::Static(<a href="#903">mt</a>), ValueNS),
+            ForeignItemKind::Static(<span class="kw">_</span>, mt, <span class="kw">_</span>) =&gt; (DefKind::Static(<a href="#900">mt</a>), ValueNS),
             ForeignItemKind::TyAlias(..) =&gt; (DefKind::ForeignTy, TypeNS),
             ForeignItemKind::MacCall(<span class="kw">_</span>) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
         };
-        <span class="kw">let </span>parent = <a class="self" href="#898">self</a>.parent_scope.module;
-        <span class="kw">let </span>expansion = <a class="self" href="#898">self</a>.parent_scope.expansion;
-        <span class="kw">let </span>vis = <a class="self" href="#898">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#898">item</a>.vis);
-        <span class="kw">let </span>res = Res::Def(<a href="#901">def_kind</a>, <a href="#900">def_id</a>);
-        <a class="self" href="#898">self</a>.r.<a href="#68-77">define</a>(<a href="#907">parent</a>, <a href="#898">item</a>.ident, <a href="#901">ns</a>, (<a href="#910">res</a>, <a href="#909">vis</a>, <a href="#898">item</a>.span, <a href="#908">expansion</a>));
-        <a class="self" href="#898">self</a>.r.visibilities.insert(<a href="#899">local_def_id</a>, <a href="#909">vis</a>);
+        <span class="kw">let </span>parent = <a class="self" href="#895">self</a>.parent_scope.module;
+        <span class="kw">let </span>expansion = <a class="self" href="#895">self</a>.parent_scope.expansion;
+        <span class="kw">let </span>vis = <a class="self" href="#895">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#895">item</a>.vis);
+        <span class="kw">let </span>res = Res::Def(<a href="#898">def_kind</a>, <a href="#897">def_id</a>);
+        <a class="self" href="#895">self</a>.r.<a href="#68-77">define</a>(<a href="#904">parent</a>, <a href="#895">item</a>.ident, <a href="#898">ns</a>, (<a href="#907">res</a>, <a href="#906">vis</a>, <a href="#895">item</a>.span, <a href="#905">expansion</a>));
+        <a class="self" href="#895">self</a>.r.visibilities.insert(<a href="#896">local_def_id</a>, <a href="#906">vis</a>);
     }
 
     <span class="kw">fn </span>build_reduced_graph_for_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Block.html">Block</a>) {
-        <span class="kw">let </span>parent = <a class="self" href="#915">self</a>.parent_scope.module;
-        <span class="kw">let </span>expansion = <a class="self" href="#915">self</a>.parent_scope.expansion;
+        <span class="kw">let </span>parent = <a class="self" href="#912">self</a>.parent_scope.module;
+        <span class="kw">let </span>expansion = <a class="self" href="#912">self</a>.parent_scope.expansion;
         <span class="kw">if </span><span class="self">self</span>.block_needs_anonymous_module(block) {
-            <span class="kw">let </span>module = <a class="self" href="#915">self</a>.r.<a href="lib.rs.html#1455-1474">new_module</a>(
-                <span class="prelude-val">Some</span>(<a href="#916">parent</a>),
+            <span class="kw">let </span>module = <a class="self" href="#912">self</a>.r.<a href="lib.rs.html#1455-1474">new_module</a>(
+                <span class="prelude-val">Some</span>(<a href="#913">parent</a>),
                 <a href="lib.rs.html#434">ModuleKind::Block</a>,
-                <a href="#917">expansion</a>.to_expn_id(),
-                <a href="#915">block</a>.span,
-                <a href="#916">parent</a>.no_implicit_prelude,
+                <a href="#914">expansion</a>.to_expn_id(),
+                <a href="#912">block</a>.span,
+                <a href="#913">parent</a>.no_implicit_prelude,
             );
-            <a class="self" href="#915">self</a>.r.block_map.insert(<a href="#915">block</a>.id, <a href="#919">module</a>);
-            <a class="self" href="#915">self</a>.parent_scope.module = <a href="#919">module</a>; <span class="comment">// Descend into the block.
+            <a class="self" href="#912">self</a>.r.block_map.insert(<a href="#912">block</a>.id, <a href="#916">module</a>);
+            <a class="self" href="#912">self</a>.parent_scope.module = <a href="#916">module</a>; <span class="comment">// Descend into the block.
         </span>}
     }
 
     <span class="doccomment">/// Builds the reduced graph for a single item in an external crate.
     </span><span class="kw">fn </span>build_reduced_graph_for_external_crate_res(<span class="kw-2">&amp;mut </span><span class="self">self</span>, child: <span class="kw-2">&amp;</span><a href="../../rustc_middle/metadata/struct.ModChild.html">ModChild</a>) {
-        <span class="kw">let </span>parent = <a class="self" href="#932">self</a>.parent_scope.module;
-        <span class="kw">let </span><a href="../../rustc_middle/metadata/struct.ModChild.html">ModChild</a> { ident, res, vis, <span class="kw-2">ref </span>reexport_chain } = <span class="kw-2">*</span><a href="#932">child</a>;
-        <span class="kw">let </span>span = <a class="self" href="#932">self</a>.r.<a href="lib.rs.html#2014-2020">def_span</a>(
-            <a href="#934">reexport_chain</a>
+        <span class="kw">let </span>parent = <a class="self" href="#929">self</a>.parent_scope.module;
+        <span class="kw">let </span><a href="../../rustc_middle/metadata/struct.ModChild.html">ModChild</a> { ident, res, vis, <span class="kw-2">ref </span>reexport_chain } = <span class="kw-2">*</span><a href="#929">child</a>;
+        <span class="kw">let </span>span = <a class="self" href="#929">self</a>.r.<a href="lib.rs.html#2014-2020">def_span</a>(
+            <a href="#931">reexport_chain</a>
                 .first()
-                .and_then(|reexport| <a href="#938">reexport</a>.id())
-                .unwrap_or_else(|| <a href="#934">res</a>.def_id()),
+                .and_then(|reexport| <a href="#935">reexport</a>.id())
+                .unwrap_or_else(|| <a href="#931">res</a>.def_id()),
         );
-        <span class="kw">let </span>res = <a href="#934">res</a>.expect_non_local();
-        <span class="kw">let </span>expansion = <a class="self" href="#932">self</a>.parent_scope.expansion;
+        <span class="kw">let </span>res = <a href="#931">res</a>.expect_non_local();
+        <span class="kw">let </span>expansion = <a class="self" href="#929">self</a>.parent_scope.expansion;
         <span class="comment">// Record primary definitions.
-        </span><span class="kw">match </span><a href="#941">res</a> {
+        </span><span class="kw">match </span><a href="#938">res</a> {
             Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, def_id) =&gt; {
-                <span class="kw">let </span>module = <a class="self" href="#932">self</a>.r.<a href="#104-106">expect_module</a>(<a href="#945">def_id</a>);
-                <a class="self" href="#932">self</a>.r.<a href="#68-77">define</a>(<a href="#933">parent</a>, <a href="#934">ident</a>, TypeNS, (<a href="#946">module</a>, <a href="#934">vis</a>, <a href="#935">span</a>, <a href="#942">expansion</a>));
+                <span class="kw">let </span>module = <a class="self" href="#929">self</a>.r.<a href="#104-106">expect_module</a>(<a href="#942">def_id</a>);
+                <a class="self" href="#929">self</a>.r.<a href="#68-77">define</a>(<a href="#930">parent</a>, <a href="#931">ident</a>, TypeNS, (<a href="#943">module</a>, <a href="#931">vis</a>, <a href="#932">span</a>, <a href="#939">expansion</a>));
             }
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union
                 | DefKind::Variant
-                | <a href="../../rustc_hir/def/enum.DefKind.html">DefKind::TyAlias</a> { .. }
+                | DefKind::TyAlias
                 | DefKind::ForeignTy
                 | DefKind::OpaqueTy
                 | DefKind::TraitAlias
@@ -2472,7 +2466,7 @@
                 <span class="kw">_</span>,
             )
             | Res::PrimTy(..)
-            | Res::ToolMod =&gt; <a class="self" href="#932">self</a>.r.<a href="#68-77">define</a>(<a href="#933">parent</a>, <a href="#934">ident</a>, TypeNS, (<a href="#941">res</a>, <a href="#934">vis</a>, <a href="#935">span</a>, <a href="#942">expansion</a>)),
+            | Res::ToolMod =&gt; <a class="self" href="#929">self</a>.r.<a href="#68-77">define</a>(<a href="#930">parent</a>, <a href="#931">ident</a>, TypeNS, (<a href="#938">res</a>, <a href="#931">vis</a>, <a href="#932">span</a>, <a href="#939">expansion</a>)),
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
@@ -2481,9 +2475,9 @@
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 <span class="kw">_</span>,
-            ) =&gt; <a class="self" href="#932">self</a>.r.<a href="#68-77">define</a>(<a href="#933">parent</a>, <a href="#934">ident</a>, ValueNS, (<a href="#941">res</a>, <a href="#934">vis</a>, <a href="#935">span</a>, <a href="#942">expansion</a>)),
+            ) =&gt; <a class="self" href="#929">self</a>.r.<a href="#68-77">define</a>(<a href="#930">parent</a>, <a href="#931">ident</a>, ValueNS, (<a href="#938">res</a>, <a href="#931">vis</a>, <a href="#932">span</a>, <a href="#939">expansion</a>)),
             Res::Def(DefKind::Macro(..), <span class="kw">_</span>) | Res::NonMacroAttr(..) =&gt; {
-                <a class="self" href="#932">self</a>.r.<a href="#68-77">define</a>(<a href="#933">parent</a>, <a href="#934">ident</a>, MacroNS, (<a href="#941">res</a>, <a href="#934">vis</a>, <a href="#935">span</a>, <a href="#942">expansion</a>))
+                <a class="self" href="#929">self</a>.r.<a href="#68-77">define</a>(<a href="#930">parent</a>, <a href="#931">ident</a>, MacroNS, (<a href="#938">res</a>, <a href="#931">vis</a>, <a href="#932">span</a>, <a href="#939">expansion</a>))
             }
             Res::Def(
                 DefKind::TyParam
@@ -2520,7 +2514,7 @@
             <span class="kw">let </span>msg = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`{name}` is already in scope&quot;</span>);
             <span class="kw">let </span>note =
                 <span class="string">&quot;macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)&quot;</span>;
-            <a class="self" href="#999">self</a>.r.tcx.sess.struct_span_err(<a href="#1002">span</a>, <a href="#1006">msg</a>).note(<a href="#1007">note</a>).emit();
+            <a class="self" href="#996">self</a>.r.tcx.sess.struct_span_err(<a href="#999">span</a>, <a href="#1003">msg</a>).note(<a href="#1004">note</a>).emit();
         }
     }
 
@@ -2574,30 +2568,30 @@
         }
 
         <span class="kw">let </span>macro_use_import = |this: <span class="kw-2">&amp;</span><span class="self">Self</span>, span| {
-            <a href="#1062">this</a>.r.arenas.<a href="lib.rs.html#1169-1171">alloc_import</a>(<a href="imports.rs.html#138-173">ImportData</a> {
+            <a href="#1059">this</a>.r.arenas.<a href="lib.rs.html#1169-1171">alloc_import</a>(<a href="imports.rs.html#138-173">ImportData</a> {
                 kind: <a href="imports.rs.html#83">ImportKind::MacroUse</a>,
-                root_id: <a href="#1014">item</a>.id,
-                parent_scope: <a href="#1062">this</a>.parent_scope,
-                imported_module: Cell::new(<span class="prelude-val">Some</span>(<a href="lib.rs.html#377">ModuleOrUniformRoot::Module</a>(<a href="#1014">module</a>))),
-                use_span_with_attributes: <a href="#1014">item</a>.span_with_attributes(),
-                has_attributes: !<a href="#1014">item</a>.attrs.is_empty(),
-                use_span: <a href="#1014">item</a>.span,
-                root_span: <a href="#1062">span</a>,
-                <a href="#1062">span</a>,
+                root_id: <a href="#1011">item</a>.id,
+                parent_scope: <a href="#1059">this</a>.parent_scope,
+                imported_module: Cell::new(<span class="prelude-val">Some</span>(<a href="lib.rs.html#377">ModuleOrUniformRoot::Module</a>(<a href="#1011">module</a>))),
+                use_span_with_attributes: <a href="#1011">item</a>.span_with_attributes(),
+                has_attributes: !<a href="#1011">item</a>.attrs.is_empty(),
+                use_span: <a href="#1011">item</a>.span,
+                root_span: <a href="#1059">span</a>,
+                <a href="#1059">span</a>,
                 module_path: Vec::new(),
                 vis: Cell::new(<span class="prelude-val">Some</span>(ty::Visibility::Restricted(<a href="../../rustc_span/def_id/constant.CRATE_DEF_ID.html">CRATE_DEF_ID</a>))),
                 used: Cell::new(<span class="bool-val">false</span>),
             })
         };
 
-        <span class="kw">let </span>allow_shadowing = <a class="self" href="#1014">self</a>.parent_scope.expansion == LocalExpnId::ROOT;
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(span) = <a href="#1015">import_all</a> {
-            <span class="kw">let </span>import = <a href="#1062">macro_use_import</a>(<a class="self" href="#1014">self</a>, <a href="#1080">span</a>);
-            <a class="self" href="#1014">self</a>.r.potentially_unused_imports.push(<a href="#1081">import</a>);
-            <a href="#1014">module</a>.<a href="lib.rs.html#557-567">for_each_child</a>(<a class="self" href="#1014">self</a>, |this, ident, ns, binding| {
+        <span class="kw">let </span>allow_shadowing = <a class="self" href="#1011">self</a>.parent_scope.expansion == LocalExpnId::ROOT;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(span) = <a href="#1012">import_all</a> {
+            <span class="kw">let </span>import = <a href="#1059">macro_use_import</a>(<a class="self" href="#1011">self</a>, <a href="#1077">span</a>);
+            <a class="self" href="#1011">self</a>.r.potentially_unused_imports.push(<a href="#1078">import</a>);
+            <a href="#1011">module</a>.<a href="lib.rs.html#557-567">for_each_child</a>(<a class="self" href="#1011">self</a>, |this, ident, ns, binding| {
                 <span class="kw">if </span>ns == MacroNS {
-                    <span class="kw">let </span>imported_binding = <a href="#1083">this</a>.r.<a href="imports.rs.html#266-292">import</a>(<a href="#1083">binding</a>, <a href="#1081">import</a>);
-                    <a href="#1083">this</a>.<a href="#998-1011">add_macro_use_binding</a>(<a href="#1083">ident</a>.name, <a href="#1085">imported_binding</a>, <a href="#1080">span</a>, <a href="#1079">allow_shadowing</a>);
+                    <span class="kw">let </span>imported_binding = <a href="#1080">this</a>.r.<a href="imports.rs.html#266-292">import</a>(<a href="#1080">binding</a>, <a href="#1078">import</a>);
+                    <a href="#1080">this</a>.<a href="#995-1008">add_macro_use_binding</a>(<a href="#1080">ident</a>.name, <a href="#1082">imported_binding</a>, <a href="#1077">span</a>, <a href="#1076">allow_shadowing</a>);
                 }
             });
         } <span class="kw">else </span>{
@@ -2629,7 +2623,7 @@
                 }
             }
         }
-        <a href="#1015">import_all</a>.is_some() || !<a href="#1016">single_imports</a>.is_empty()
+        <a href="#1012">import_all</a>.is_some() || !<a href="#1013">single_imports</a>.is_empty()
     }
 
     <span class="doccomment">/// Returns `true` if this attribute list contains `macro_use`.
@@ -2660,29 +2654,29 @@
     </span>}
 
     <span class="kw">fn </span>visit_invoc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) -&gt; <a href="../../rustc_span/hygiene/struct.LocalExpnId.html">LocalExpnId</a> {
-        <span class="kw">let </span>invoc_id = <a href="#1148">id</a>.placeholder_to_expn_id();
-        <span class="kw">let </span>old_parent_scope = <a class="self" href="#1148">self</a>.r.invocation_parent_scopes.insert(<a href="#1149">invoc_id</a>, <a class="self" href="#1148">self</a>.parent_scope);
+        <span class="kw">let </span>invoc_id = <a href="#1145">id</a>.placeholder_to_expn_id();
+        <span class="kw">let </span>old_parent_scope = <a class="self" href="#1145">self</a>.r.invocation_parent_scopes.insert(<a href="#1146">invoc_id</a>, <a class="self" href="#1145">self</a>.parent_scope);
         <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(old_parent_scope.is_none(), <span class="string">&quot;invocation data is reset for an invocation&quot;</span>);
-        <a href="#1149">invoc_id</a>
+        <a href="#1146">invoc_id</a>
     }
 
     <span class="doccomment">/// Visit invocation in context in which it can emit a named item (possibly `macro_rules`)
     /// directly into its parent scope&#39;s module.
     </span><span class="kw">fn </span>visit_invoc_in_module(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: <a href="../../rustc_ast/node_id/struct.NodeId.html">NodeId</a>) -&gt; MacroRulesScopeRef&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">let </span>invoc_id = <a class="self" href="#1157">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1157">id</a>);
-        <a class="self" href="#1157">self</a>.parent_scope.module.unexpanded_invocations.borrow_mut().insert(<a href="#1158">invoc_id</a>);
-        <a class="self" href="#1157">self</a>.r.arenas.<a href="lib.rs.html#1175-1177">alloc_macro_rules_scope</a>(<a href="macros.rs.html#67">MacroRulesScope::Invocation</a>(<a href="#1158">invoc_id</a>))
+        <span class="kw">let </span>invoc_id = <a class="self" href="#1154">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1154">id</a>);
+        <a class="self" href="#1154">self</a>.parent_scope.module.unexpanded_invocations.borrow_mut().insert(<a href="#1155">invoc_id</a>);
+        <a class="self" href="#1154">self</a>.r.arenas.<a href="lib.rs.html#1175-1177">alloc_macro_rules_scope</a>(<a href="macros.rs.html#67">MacroRulesScope::Invocation</a>(<a href="#1155">invoc_id</a>))
     }
 
     <span class="kw">fn </span>proc_macro_stub(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Item.html">ast::Item</a>) -&gt; <span class="prelude-ty">Option</span>&lt;(<a href="../../rustc_span/hygiene/enum.MacroKind.html">MacroKind</a>, <a href="../../rustc_span/symbol/struct.Ident.html">Ident</a>, <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>)&gt; {
         <span class="kw">if </span>attr::contains_name(<span class="kw-2">&amp;</span>item.attrs, sym::proc_macro) {
-            <span class="kw">return </span><span class="prelude-val">Some</span>((MacroKind::Bang, <a href="#1163">item</a>.ident, <a href="#1163">item</a>.span));
+            <span class="kw">return </span><span class="prelude-val">Some</span>((MacroKind::Bang, <a href="#1160">item</a>.ident, <a href="#1160">item</a>.span));
         } <span class="kw">else if </span>attr::contains_name(<span class="kw-2">&amp;</span>item.attrs, sym::proc_macro_attribute) {
-            <span class="kw">return </span><span class="prelude-val">Some</span>((MacroKind::Attr, <a href="#1163">item</a>.ident, <a href="#1163">item</a>.span));
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(attr) = attr::find_by_name(<span class="kw-2">&amp;</span><a href="#1163">item</a>.attrs, sym::proc_macro_derive) {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(nested_meta) = <a href="#1168">attr</a>.meta_item_list().and_then(|list| <a href="#1169">list</a>.get(<span class="number">0</span>).cloned()) {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#1169">nested_meta</a>.ident() {
-                    <span class="kw">return </span><span class="prelude-val">Some</span>((MacroKind::Derive, <a href="#1170">ident</a>, <a href="#1170">ident</a>.span));
+            <span class="kw">return </span><span class="prelude-val">Some</span>((MacroKind::Attr, <a href="#1160">item</a>.ident, <a href="#1160">item</a>.span));
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(attr) = attr::find_by_name(<span class="kw-2">&amp;</span><a href="#1160">item</a>.attrs, sym::proc_macro_derive) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(nested_meta) = <a href="#1165">attr</a>.meta_item_list().and_then(|list| <a href="#1166">list</a>.get(<span class="number">0</span>).cloned()) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(ident) = <a href="#1166">nested_meta</a>.ident() {
+                    <span class="kw">return </span><span class="prelude-val">Some</span>((MacroKind::Derive, <a href="#1167">ident</a>, <a href="#1167">ident</a>.span));
                 }
             }
         }
@@ -2700,7 +2694,7 @@
         rule_spans: <span class="kw-2">&amp;</span>[(<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>)],
     ) {
         <span class="kw">if </span>!ident.as_str().starts_with(<span class="string">&#39;_&#39;</span>) {
-            <a class="self" href="#1182">self</a>.r.unused_macros.insert(<a href="#1184">def_id</a>, (<a href="#1185">node_id</a>, <a href="#1183">ident</a>));
+            <a class="self" href="#1179">self</a>.r.unused_macros.insert(<a href="#1181">def_id</a>, (<a href="#1182">node_id</a>, <a href="#1180">ident</a>));
             <span class="kw">for </span>(rule_i, rule_span) <span class="kw">in </span>rule_spans.iter() {
                 <span class="self">self</span>.r.unused_macro_rules.insert((def_id, <span class="kw-2">*</span>rule_i), (ident, <span class="kw-2">*</span>rule_span));
             }
@@ -2708,88 +2702,88 @@
     }
 
     <span class="kw">fn </span>define_macro(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><a href="../../rustc_ast/ast/struct.Item.html">ast::Item</a>) -&gt; MacroRulesScopeRef&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">let </span>parent_scope = <a class="self" href="#1196">self</a>.parent_scope;
-        <span class="kw">let </span>expansion = <a href="#1197">parent_scope</a>.expansion;
-        <span class="kw">let </span>def_id = <a class="self" href="#1196">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1196">item</a>.id);
-        <span class="kw">let </span>(ext, ident, span, macro_rules, rule_spans) = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1196">item</a>.kind {
+        <span class="kw">let </span>parent_scope = <a class="self" href="#1193">self</a>.parent_scope;
+        <span class="kw">let </span>expansion = <a href="#1194">parent_scope</a>.expansion;
+        <span class="kw">let </span>def_id = <a class="self" href="#1193">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1193">item</a>.id);
+        <span class="kw">let </span>(ext, ident, span, macro_rules, rule_spans) = <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1193">item</a>.kind {
             ItemKind::MacroDef(def) =&gt; {
-                <span class="kw">let </span>(ext, rule_spans) = <a class="self" href="#1196">self</a>.r.<a href="macros.rs.html#927-968">compile_macro</a>(<a href="#1196">item</a>, <a class="self" href="#1196">self</a>.r.tcx.sess.edition());
-                <span class="kw">let </span>ext = Lrc::new(<a href="#1202">ext</a>);
-                (<a href="#1203">ext</a>, <a href="#1196">item</a>.ident, <a href="#1196">item</a>.span, <a href="#1201">def</a>.macro_rules, <a href="#1202">rule_spans</a>)
+                <span class="kw">let </span>(ext, rule_spans) = <a class="self" href="#1193">self</a>.r.<a href="macros.rs.html#927-968">compile_macro</a>(<a href="#1193">item</a>, <a class="self" href="#1193">self</a>.r.tcx.sess.edition());
+                <span class="kw">let </span>ext = Lrc::new(<a href="#1199">ext</a>);
+                (<a href="#1200">ext</a>, <a href="#1193">item</a>.ident, <a href="#1193">item</a>.span, <a href="#1198">def</a>.macro_rules, <a href="#1199">rule_spans</a>)
             }
-            ItemKind::Fn(..) =&gt; <span class="kw">match </span><a class="self" href="#1196">self</a>.<a href="#1163-1176">proc_macro_stub</a>(<a href="#1196">item</a>) {
+            ItemKind::Fn(..) =&gt; <span class="kw">match </span><a class="self" href="#1193">self</a>.<a href="#1160-1173">proc_macro_stub</a>(<a href="#1193">item</a>) {
                 <span class="prelude-val">Some</span>((macro_kind, ident, span)) =&gt; {
-                    <a class="self" href="#1196">self</a>.r.proc_macro_stubs.insert(<a href="#1199">def_id</a>);
-                    (<a class="self" href="#1196">self</a>.r.<a href="lib.rs.html#1566-1572">dummy_ext</a>(<a href="#1207">macro_kind</a>), <a href="#1207">ident</a>, <a href="#1207">span</a>, <span class="bool-val">false</span>, Vec::new())
+                    <a class="self" href="#1193">self</a>.r.proc_macro_stubs.insert(<a href="#1196">def_id</a>);
+                    (<a class="self" href="#1193">self</a>.r.<a href="lib.rs.html#1566-1572">dummy_ext</a>(<a href="#1204">macro_kind</a>), <a href="#1204">ident</a>, <a href="#1204">span</a>, <span class="bool-val">false</span>, Vec::new())
                 }
-                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><a href="#1197">parent_scope</a>.macro_rules,
+                <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><a href="#1194">parent_scope</a>.macro_rules,
             },
             <span class="kw">_ </span>=&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.unreachable.html">unreachable!</a>(),
         };
 
-        <span class="kw">let </span>res = Res::Def(DefKind::Macro(<a href="#1200">ext</a>.macro_kind()), <a href="#1199">def_id</a>.to_def_id());
-        <a class="self" href="#1196">self</a>.r.macro_map.insert(<a href="#1199">def_id</a>.to_def_id(), <a href="lib.rs.html#926-929">MacroData</a> { <a href="#1200">ext</a>, <a href="#1200">macro_rules</a> });
-        <a class="self" href="#1196">self</a>.r.local_macro_def_scopes.insert(<a href="#1199">def_id</a>, <a href="#1197">parent_scope</a>.module);
+        <span class="kw">let </span>res = Res::Def(DefKind::Macro(<a href="#1197">ext</a>.macro_kind()), <a href="#1196">def_id</a>.to_def_id());
+        <a class="self" href="#1193">self</a>.r.macro_map.insert(<a href="#1196">def_id</a>.to_def_id(), <a href="lib.rs.html#926-929">MacroData</a> { <a href="#1197">ext</a>, <a href="#1197">macro_rules</a> });
+        <a class="self" href="#1193">self</a>.r.local_macro_def_scopes.insert(<a href="#1196">def_id</a>, <a href="#1194">parent_scope</a>.module);
 
         <span class="kw">if </span>macro_rules {
-            <span class="kw">let </span>ident = <a href="#1200">ident</a>.normalize_to_macros_2_0();
-            <a class="self" href="#1196">self</a>.r.macro_names.insert(<a href="#1221">ident</a>);
-            <span class="kw">let </span>is_macro_export = attr::contains_name(<span class="kw-2">&amp;</span><a href="#1196">item</a>.attrs, sym::macro_export);
+            <span class="kw">let </span>ident = <a href="#1197">ident</a>.normalize_to_macros_2_0();
+            <a class="self" href="#1193">self</a>.r.macro_names.insert(<a href="#1218">ident</a>);
+            <span class="kw">let </span>is_macro_export = attr::contains_name(<span class="kw-2">&amp;</span><a href="#1193">item</a>.attrs, sym::macro_export);
             <span class="kw">let </span>vis = <span class="kw">if </span>is_macro_export {
                 ty::Visibility::Public
             } <span class="kw">else </span>{
                 ty::Visibility::Restricted(<a href="../../rustc_span/def_id/constant.CRATE_DEF_ID.html">CRATE_DEF_ID</a>)
             };
-            <span class="kw">let </span>binding = (<a href="#1216">res</a>, <a href="#1224">vis</a>, <a href="#1200">span</a>, <a href="#1198">expansion</a>).<a href="lib.rs.html#677">to_name_binding</a>(<a class="self" href="#1196">self</a>.r.arenas);
-            <a class="self" href="#1196">self</a>.r.<a href="lib.rs.html#1916-1922">set_binding_parent_module</a>(<a href="#1229">binding</a>, <a href="#1197">parent_scope</a>.module);
-            <a class="self" href="#1196">self</a>.r.all_macro_rules.insert(<a href="#1221">ident</a>.name, <a href="#1216">res</a>);
+            <span class="kw">let </span>binding = (<a href="#1213">res</a>, <a href="#1221">vis</a>, <a href="#1197">span</a>, <a href="#1195">expansion</a>).<a href="lib.rs.html#677">to_name_binding</a>(<a class="self" href="#1193">self</a>.r.arenas);
+            <a class="self" href="#1193">self</a>.r.<a href="lib.rs.html#1916-1922">set_binding_parent_module</a>(<a href="#1226">binding</a>, <a href="#1194">parent_scope</a>.module);
+            <a class="self" href="#1193">self</a>.r.all_macro_rules.insert(<a href="#1218">ident</a>.name, <a href="#1213">res</a>);
             <span class="kw">if </span>is_macro_export {
-                <span class="kw">let </span>import = <a class="self" href="#1196">self</a>.r.arenas.<a href="lib.rs.html#1169-1171">alloc_import</a>(<a href="imports.rs.html#138-173">ImportData</a> {
+                <span class="kw">let </span>import = <a class="self" href="#1193">self</a>.r.arenas.<a href="lib.rs.html#1169-1171">alloc_import</a>(<a href="imports.rs.html#138-173">ImportData</a> {
                     kind: <a href="imports.rs.html#84">ImportKind::MacroExport</a>,
-                    root_id: <a href="#1196">item</a>.id,
-                    parent_scope: <a class="self" href="#1196">self</a>.parent_scope,
+                    root_id: <a href="#1193">item</a>.id,
+                    parent_scope: <a class="self" href="#1193">self</a>.parent_scope,
                     imported_module: Cell::new(<span class="prelude-val">None</span>),
                     has_attributes: <span class="bool-val">false</span>,
-                    use_span_with_attributes: <a href="#1200">span</a>,
-                    use_span: <a href="#1200">span</a>,
-                    root_span: <a href="#1200">span</a>,
-                    <a href="#1200">span</a>,
+                    use_span_with_attributes: <a href="#1197">span</a>,
+                    use_span: <a href="#1197">span</a>,
+                    root_span: <a href="#1197">span</a>,
+                    <a href="#1197">span</a>,
                     module_path: Vec::new(),
-                    vis: Cell::new(<span class="prelude-val">Some</span>(<a href="#1224">vis</a>)),
+                    vis: Cell::new(<span class="prelude-val">Some</span>(<a href="#1221">vis</a>)),
                     used: Cell::new(<span class="bool-val">true</span>),
                 });
-                <span class="kw">let </span>import_binding = <a class="self" href="#1196">self</a>.r.<a href="imports.rs.html#266-292">import</a>(<a href="#1229">binding</a>, <a href="#1233">import</a>);
-                <a class="self" href="#1196">self</a>.r.<a href="#68-77">define</a>(<a class="self" href="#1196">self</a>.r.graph_root, <a href="#1221">ident</a>, MacroNS, <a href="#1247">import_binding</a>);
+                <span class="kw">let </span>import_binding = <a class="self" href="#1193">self</a>.r.<a href="imports.rs.html#266-292">import</a>(<a href="#1226">binding</a>, <a href="#1230">import</a>);
+                <a class="self" href="#1193">self</a>.r.<a href="#68-77">define</a>(<a class="self" href="#1193">self</a>.r.graph_root, <a href="#1218">ident</a>, MacroNS, <a href="#1244">import_binding</a>);
             } <span class="kw">else </span>{
-                <a class="self" href="#1196">self</a>.r.<a href="macros.rs.html#910-922">check_reserved_macro_name</a>(<a href="#1221">ident</a>, <a href="#1216">res</a>);
-                <a class="self" href="#1196">self</a>.<a href="#1181-1194">insert_unused_macro</a>(<a href="#1221">ident</a>, <a href="#1199">def_id</a>, <a href="#1196">item</a>.id, <span class="kw-2">&amp;</span><a href="#1200">rule_spans</a>);
+                <a class="self" href="#1193">self</a>.r.<a href="macros.rs.html#910-922">check_reserved_macro_name</a>(<a href="#1218">ident</a>, <a href="#1213">res</a>);
+                <a class="self" href="#1193">self</a>.<a href="#1178-1191">insert_unused_macro</a>(<a href="#1218">ident</a>, <a href="#1196">def_id</a>, <a href="#1193">item</a>.id, <span class="kw-2">&amp;</span><a href="#1197">rule_spans</a>);
             }
-            <a class="self" href="#1196">self</a>.r.visibilities.insert(<a href="#1199">def_id</a>, <a href="#1224">vis</a>);
-            <span class="kw">let </span>scope = <a class="self" href="#1196">self</a>.r.arenas.<a href="lib.rs.html#1175-1177">alloc_macro_rules_scope</a>(<a href="macros.rs.html#64">MacroRulesScope::Binding</a>(
-                <a class="self" href="#1196">self</a>.r.arenas.<a href="lib.rs.html#1178-1183">alloc_macro_rules_binding</a>(<a href="macros.rs.html#47-52">MacroRulesBinding</a> {
-                    parent_macro_rules_scope: <a href="#1197">parent_scope</a>.macro_rules,
-                    <a href="#1229">binding</a>,
-                    <a href="#1221">ident</a>,
+            <a class="self" href="#1193">self</a>.r.visibilities.insert(<a href="#1196">def_id</a>, <a href="#1221">vis</a>);
+            <span class="kw">let </span>scope = <a class="self" href="#1193">self</a>.r.arenas.<a href="lib.rs.html#1175-1177">alloc_macro_rules_scope</a>(<a href="macros.rs.html#64">MacroRulesScope::Binding</a>(
+                <a class="self" href="#1193">self</a>.r.arenas.<a href="lib.rs.html#1178-1183">alloc_macro_rules_binding</a>(<a href="macros.rs.html#47-52">MacroRulesBinding</a> {
+                    parent_macro_rules_scope: <a href="#1194">parent_scope</a>.macro_rules,
+                    <a href="#1226">binding</a>,
+                    <a href="#1218">ident</a>,
                 }),
             ));
-            <a class="self" href="#1196">self</a>.r.macro_rules_scopes.insert(<a href="#1199">def_id</a>, <a href="#1254">scope</a>);
-            <a href="#1254">scope</a>
+            <a class="self" href="#1193">self</a>.r.macro_rules_scopes.insert(<a href="#1196">def_id</a>, <a href="#1251">scope</a>);
+            <a href="#1251">scope</a>
         } <span class="kw">else </span>{
-            <span class="kw">let </span>module = <a href="#1197">parent_scope</a>.module;
-            <span class="kw">let </span>vis = <span class="kw">match </span><a href="#1196">item</a>.kind {
+            <span class="kw">let </span>module = <a href="#1194">parent_scope</a>.module;
+            <span class="kw">let </span>vis = <span class="kw">match </span><a href="#1193">item</a>.kind {
                 <span class="comment">// Visibilities must not be resolved non-speculatively twice
                 // and we already resolved this one as a `fn` item visibility.
                 </span>ItemKind::Fn(..) =&gt; {
-                    <a class="self" href="#1196">self</a>.<a href="#227-316">try_resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1196">item</a>.vis, <span class="bool-val">false</span>).unwrap_or(ty::Visibility::Public)
+                    <a class="self" href="#1193">self</a>.<a href="#227-316">try_resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1193">item</a>.vis, <span class="bool-val">false</span>).unwrap_or(ty::Visibility::Public)
                 }
-                <span class="kw">_ </span>=&gt; <a class="self" href="#1196">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1196">item</a>.vis),
+                <span class="kw">_ </span>=&gt; <a class="self" href="#1193">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1193">item</a>.vis),
             };
             <span class="kw">if </span>!vis.is_public() {
-                <a class="self" href="#1196">self</a>.<a href="#1181-1194">insert_unused_macro</a>(<a href="#1200">ident</a>, <a href="#1199">def_id</a>, <a href="#1196">item</a>.id, <span class="kw-2">&amp;</span><a href="#1200">rule_spans</a>);
+                <a class="self" href="#1193">self</a>.<a href="#1178-1191">insert_unused_macro</a>(<a href="#1197">ident</a>, <a href="#1196">def_id</a>, <a href="#1193">item</a>.id, <span class="kw-2">&amp;</span><a href="#1197">rule_spans</a>);
             }
-            <a class="self" href="#1196">self</a>.r.<a href="#68-77">define</a>(<a href="#1264">module</a>, <a href="#1200">ident</a>, MacroNS, (<a href="#1216">res</a>, <a href="#1265">vis</a>, <a href="#1200">span</a>, <a href="#1198">expansion</a>));
-            <a class="self" href="#1196">self</a>.r.visibilities.insert(<a href="#1199">def_id</a>, <a href="#1265">vis</a>);
-            <a class="self" href="#1196">self</a>.parent_scope.macro_rules
+            <a class="self" href="#1193">self</a>.r.<a href="#68-77">define</a>(<a href="#1261">module</a>, <a href="#1197">ident</a>, MacroNS, (<a href="#1213">res</a>, <a href="#1262">vis</a>, <a href="#1197">span</a>, <a href="#1195">expansion</a>));
+            <a class="self" href="#1193">self</a>.r.visibilities.insert(<a href="#1196">def_id</a>, <a href="#1262">vis</a>);
+            <a class="self" href="#1193">self</a>.parent_scope.macro_rules
         }
     }
 }
@@ -2807,81 +2801,81 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;b</span>&gt; <span class="kw">for </span>BuildReducedGraphVisitor&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;tcx</span>&gt; {
-    <a class="macro" href="#1283-1293">method!</a>(visit_expr: <a href="../../rustc_ast/ast/struct.Expr.html">ast::Expr</a>, ast::ExprKind::MacCall, walk_expr);
-    <a class="macro" href="#1283-1293">method!</a>(visit_pat: <a href="../../rustc_ast/ast/struct.Pat.html">ast::Pat</a>, ast::PatKind::MacCall, walk_pat);
-    <a class="macro" href="#1283-1293">method!</a>(visit_ty: <a href="../../rustc_ast/ast/struct.Ty.html">ast::Ty</a>, ast::TyKind::MacCall, walk_ty);
+    <a class="macro" href="#1280-1290">method!</a>(visit_expr: <a href="../../rustc_ast/ast/struct.Expr.html">ast::Expr</a>, ast::ExprKind::MacCall, walk_expr);
+    <a class="macro" href="#1280-1290">method!</a>(visit_pat: <a href="../../rustc_ast/ast/struct.Pat.html">ast::Pat</a>, ast::PatKind::MacCall, walk_pat);
+    <a class="macro" href="#1280-1290">method!</a>(visit_ty: <a href="../../rustc_ast/ast/struct.Ty.html">ast::Ty</a>, ast::TyKind::MacCall, walk_ty);
 
     <span class="kw">fn </span>visit_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Item.html">Item</a>) {
-        <span class="kw">let </span>orig_module_scope = <a class="self" href="#1300">self</a>.parent_scope.module;
-        <a class="self" href="#1300">self</a>.parent_scope.macro_rules = <span class="kw">match </span><a href="#1300">item</a>.kind {
+        <span class="kw">let </span>orig_module_scope = <a class="self" href="#1297">self</a>.parent_scope.module;
+        <a class="self" href="#1297">self</a>.parent_scope.macro_rules = <span class="kw">match </span><a href="#1297">item</a>.kind {
             ItemKind::MacroDef(..) =&gt; {
-                <span class="kw">let </span>macro_rules_scope = <a class="self" href="#1300">self</a>.<a href="#1196-1280">define_macro</a>(<a href="#1300">item</a>);
-                visit::walk_item(<a class="self" href="#1300">self</a>, <a href="#1300">item</a>);
-                <a href="#1304">macro_rules_scope</a>
+                <span class="kw">let </span>macro_rules_scope = <a class="self" href="#1297">self</a>.<a href="#1193-1277">define_macro</a>(<a href="#1297">item</a>);
+                visit::walk_item(<a class="self" href="#1297">self</a>, <a href="#1297">item</a>);
+                <a href="#1301">macro_rules_scope</a>
             }
             ItemKind::MacCall(..) =&gt; {
-                <span class="kw">let </span>macro_rules_scope = <a class="self" href="#1300">self</a>.<a href="#1157-1161">visit_invoc_in_module</a>(<a href="#1300">item</a>.id);
-                visit::walk_item(<a class="self" href="#1300">self</a>, <a href="#1300">item</a>);
-                <a href="#1309">macro_rules_scope</a>
+                <span class="kw">let </span>macro_rules_scope = <a class="self" href="#1297">self</a>.<a href="#1154-1158">visit_invoc_in_module</a>(<a href="#1297">item</a>.id);
+                visit::walk_item(<a class="self" href="#1297">self</a>, <a href="#1297">item</a>);
+                <a href="#1306">macro_rules_scope</a>
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="kw">let </span>orig_macro_rules_scope = <a class="self" href="#1300">self</a>.parent_scope.macro_rules;
-                <a class="self" href="#1300">self</a>.<a href="#629-806">build_reduced_graph_for_item</a>(<a href="#1300">item</a>);
-                visit::walk_item(<a class="self" href="#1300">self</a>, <a href="#1300">item</a>);
-                <span class="kw">match </span><a href="#1300">item</a>.kind {
-                    ItemKind::Mod(..) <span class="kw">if </span><a class="self" href="#1300">self</a>.<a href="#1122-1146">contains_macro_use</a>(<span class="kw-2">&amp;</span><a href="#1300">item</a>.attrs) =&gt; {
-                        <a class="self" href="#1300">self</a>.parent_scope.macro_rules
+                <span class="kw">let </span>orig_macro_rules_scope = <a class="self" href="#1297">self</a>.parent_scope.macro_rules;
+                <a class="self" href="#1297">self</a>.<a href="#629-803">build_reduced_graph_for_item</a>(<a href="#1297">item</a>);
+                visit::walk_item(<a class="self" href="#1297">self</a>, <a href="#1297">item</a>);
+                <span class="kw">match </span><a href="#1297">item</a>.kind {
+                    ItemKind::Mod(..) <span class="kw">if </span><a class="self" href="#1297">self</a>.<a href="#1119-1143">contains_macro_use</a>(<span class="kw-2">&amp;</span><a href="#1297">item</a>.attrs) =&gt; {
+                        <a class="self" href="#1297">self</a>.parent_scope.macro_rules
                     }
-                    <span class="kw">_ </span>=&gt; <a href="#1314">orig_macro_rules_scope</a>,
+                    <span class="kw">_ </span>=&gt; <a href="#1311">orig_macro_rules_scope</a>,
                 }
             }
         };
-        <a class="self" href="#1300">self</a>.parent_scope.module = <a href="#1301">orig_module_scope</a>;
+        <a class="self" href="#1297">self</a>.parent_scope.module = <a href="#1298">orig_module_scope</a>;
     }
 
     <span class="kw">fn </span>visit_stmt(<span class="kw-2">&amp;mut </span><span class="self">self</span>, stmt: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Stmt.html">ast::Stmt</a>) {
-        <span class="kw">if let </span>ast::StmtKind::MacCall(..) = <a href="#1328">stmt</a>.kind {
-            <a class="self" href="#1328">self</a>.parent_scope.macro_rules = <a class="self" href="#1328">self</a>.<a href="#1157-1161">visit_invoc_in_module</a>(<a href="#1328">stmt</a>.id);
+        <span class="kw">if let </span>ast::StmtKind::MacCall(..) = <a href="#1325">stmt</a>.kind {
+            <a class="self" href="#1325">self</a>.parent_scope.macro_rules = <a class="self" href="#1325">self</a>.<a href="#1154-1158">visit_invoc_in_module</a>(<a href="#1325">stmt</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_stmt(<a class="self" href="#1328">self</a>, <a href="#1328">stmt</a>);
+            visit::walk_stmt(<a class="self" href="#1325">self</a>, <a href="#1325">stmt</a>);
         }
     }
 
     <span class="kw">fn </span>visit_foreign_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, foreign_item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/type.ForeignItem.html">ForeignItem</a>) {
-        <span class="kw">if let </span>ForeignItemKind::MacCall(<span class="kw">_</span>) = <a href="#1336">foreign_item</a>.kind {
-            <a class="self" href="#1336">self</a>.<a href="#1157-1161">visit_invoc_in_module</a>(<a href="#1336">foreign_item</a>.id);
+        <span class="kw">if let </span>ForeignItemKind::MacCall(<span class="kw">_</span>) = <a href="#1333">foreign_item</a>.kind {
+            <a class="self" href="#1333">self</a>.<a href="#1154-1158">visit_invoc_in_module</a>(<a href="#1333">foreign_item</a>.id);
             <span class="kw">return</span>;
         }
 
-        <a class="self" href="#1336">self</a>.<a href="#898-913">build_reduced_graph_for_foreign_item</a>(<a href="#1336">foreign_item</a>);
-        visit::walk_foreign_item(<a class="self" href="#1336">self</a>, <a href="#1336">foreign_item</a>);
+        <a class="self" href="#1333">self</a>.<a href="#895-910">build_reduced_graph_for_foreign_item</a>(<a href="#1333">foreign_item</a>);
+        visit::walk_foreign_item(<a class="self" href="#1333">self</a>, <a href="#1333">foreign_item</a>);
     }
 
     <span class="kw">fn </span>visit_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Block.html">Block</a>) {
-        <span class="kw">let </span>orig_current_module = <a class="self" href="#1346">self</a>.parent_scope.module;
-        <span class="kw">let </span>orig_current_macro_rules_scope = <a class="self" href="#1346">self</a>.parent_scope.macro_rules;
-        <a class="self" href="#1346">self</a>.<a href="#915-929">build_reduced_graph_for_block</a>(<a href="#1346">block</a>);
-        visit::walk_block(<a class="self" href="#1346">self</a>, <a href="#1346">block</a>);
-        <a class="self" href="#1346">self</a>.parent_scope.module = <a href="#1347">orig_current_module</a>;
-        <a class="self" href="#1346">self</a>.parent_scope.macro_rules = <a href="#1348">orig_current_macro_rules_scope</a>;
+        <span class="kw">let </span>orig_current_module = <a class="self" href="#1343">self</a>.parent_scope.module;
+        <span class="kw">let </span>orig_current_macro_rules_scope = <a class="self" href="#1343">self</a>.parent_scope.macro_rules;
+        <a class="self" href="#1343">self</a>.<a href="#912-926">build_reduced_graph_for_block</a>(<a href="#1343">block</a>);
+        visit::walk_block(<a class="self" href="#1343">self</a>, <a href="#1343">block</a>);
+        <a class="self" href="#1343">self</a>.parent_scope.module = <a href="#1344">orig_current_module</a>;
+        <a class="self" href="#1343">self</a>.parent_scope.macro_rules = <a href="#1345">orig_current_macro_rules_scope</a>;
     }
 
     <span class="kw">fn </span>visit_assoc_item(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/type.AssocItem.html">AssocItem</a>, ctxt: <a href="../../rustc_ast/visit/enum.AssocCtxt.html">AssocCtxt</a>) {
-        <span class="kw">if let </span>AssocItemKind::MacCall(<span class="kw">_</span>) = <a href="#1355">item</a>.kind {
-            <span class="kw">match </span><a href="#1355">ctxt</a> {
+        <span class="kw">if let </span>AssocItemKind::MacCall(<span class="kw">_</span>) = <a href="#1352">item</a>.kind {
+            <span class="kw">match </span><a href="#1352">ctxt</a> {
                 AssocCtxt::Trait =&gt; {
-                    <a class="self" href="#1355">self</a>.<a href="#1157-1161">visit_invoc_in_module</a>(<a href="#1355">item</a>.id);
+                    <a class="self" href="#1352">self</a>.<a href="#1154-1158">visit_invoc_in_module</a>(<a href="#1352">item</a>.id);
                 }
                 AssocCtxt::Impl =&gt; {
-                    <a class="self" href="#1355">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1355">item</a>.id);
+                    <a class="self" href="#1352">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1352">item</a>.id);
                 }
             }
             <span class="kw">return</span>;
         }
 
-        <span class="kw">let </span>vis = <a class="self" href="#1355">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1355">item</a>.vis);
-        <span class="kw">let </span>local_def_id = <a class="self" href="#1355">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1355">item</a>.id);
-        <span class="kw">let </span>def_id = <a href="#1369">local_def_id</a>.to_def_id();
+        <span class="kw">let </span>vis = <a class="self" href="#1352">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1352">item</a>.vis);
+        <span class="kw">let </span>local_def_id = <a class="self" href="#1352">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1352">item</a>.id);
+        <span class="kw">let </span>def_id = <a href="#1366">local_def_id</a>.to_def_id();
 
         <span class="kw">if </span>!(ctxt == AssocCtxt::Impl
             &amp;&amp; <span class="macro">matches!</span>(item.vis.kind, ast::VisibilityKind::Inherited)
@@ -2890,15 +2884,15 @@
             <span class="comment">// Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,
             // so we leave a hole in the visibility table to be filled later.
-            </span><a class="self" href="#1355">self</a>.r.visibilities.insert(<a href="#1369">local_def_id</a>, <a href="#1368">vis</a>);
+            </span><a class="self" href="#1352">self</a>.r.visibilities.insert(<a href="#1366">local_def_id</a>, <a href="#1365">vis</a>);
         }
 
         <span class="kw">if </span>ctxt == AssocCtxt::Trait {
-            <span class="kw">let </span>(def_kind, ns) = <span class="kw">match </span><a href="#1355">item</a>.kind {
+            <span class="kw">let </span>(def_kind, ns) = <span class="kw">match </span><a href="#1352">item</a>.kind {
                 AssocItemKind::Const(..) =&gt; (DefKind::AssocConst, ValueNS),
                 AssocItemKind::Fn(<span class="kw">box </span><a href="../../rustc_ast/ast/struct.Fn.html">Fn</a> { <span class="kw-2">ref </span>sig, .. }) =&gt; {
                     <span class="kw">if </span>sig.decl.has_self() {
-                        <a class="self" href="#1355">self</a>.r.has_self.insert(<a href="#1369">local_def_id</a>);
+                        <a class="self" href="#1352">self</a>.r.has_self.insert(<a href="#1366">local_def_id</a>);
                     }
                     (DefKind::AssocFn, ValueNS)
                 }
@@ -2906,71 +2900,71 @@
                 AssocItemKind::MacCall(<span class="kw">_</span>) =&gt; <a class="macro" href="../../rustc_middle/macro.bug.html">bug!</a>(), <span class="comment">// handled above
             </span>};
 
-            <span class="kw">let </span>parent = <a class="self" href="#1355">self</a>.parent_scope.module;
-            <span class="kw">let </span>expansion = <a class="self" href="#1355">self</a>.parent_scope.expansion;
-            <span class="kw">let </span>res = Res::Def(<a href="#1383">def_kind</a>, <a href="#1370">def_id</a>);
-            <a class="self" href="#1355">self</a>.r.<a href="#68-77">define</a>(<a href="#1395">parent</a>, <a href="#1355">item</a>.ident, <a href="#1383">ns</a>, (<a href="#1397">res</a>, <a href="#1368">vis</a>, <a href="#1355">item</a>.span, <a href="#1396">expansion</a>));
+            <span class="kw">let </span>parent = <a class="self" href="#1352">self</a>.parent_scope.module;
+            <span class="kw">let </span>expansion = <a class="self" href="#1352">self</a>.parent_scope.expansion;
+            <span class="kw">let </span>res = Res::Def(<a href="#1380">def_kind</a>, <a href="#1367">def_id</a>);
+            <a class="self" href="#1352">self</a>.r.<a href="#68-77">define</a>(<a href="#1392">parent</a>, <a href="#1352">item</a>.ident, <a href="#1380">ns</a>, (<a href="#1394">res</a>, <a href="#1365">vis</a>, <a href="#1352">item</a>.span, <a href="#1393">expansion</a>));
         }
 
-        visit::walk_assoc_item(<a class="self" href="#1355">self</a>, <a href="#1355">item</a>, <a href="#1355">ctxt</a>);
+        visit::walk_assoc_item(<a class="self" href="#1352">self</a>, <a href="#1352">item</a>, <a href="#1352">ctxt</a>);
     }
 
     <span class="kw">fn </span>visit_attribute(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Attribute.html">ast::Attribute</a>) {
         <span class="kw">if </span>!attr.is_doc_comment() &amp;&amp; attr::is_builtin_attr(attr) {
-            <a class="self" href="#1404">self</a>.r
+            <a class="self" href="#1401">self</a>.r
                 .builtin_attrs
-                .push((<a href="#1404">attr</a>.get_normal_item().path.segments[<span class="number">0</span>].ident, <a class="self" href="#1404">self</a>.parent_scope));
+                .push((<a href="#1401">attr</a>.get_normal_item().path.segments[<span class="number">0</span>].ident, <a class="self" href="#1401">self</a>.parent_scope));
         }
-        visit::walk_attribute(<a class="self" href="#1404">self</a>, <a href="#1404">attr</a>);
+        visit::walk_attribute(<a class="self" href="#1401">self</a>, <a href="#1401">attr</a>);
     }
 
     <span class="kw">fn </span>visit_arm(<span class="kw-2">&amp;mut </span><span class="self">self</span>, arm: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Arm.html">ast::Arm</a>) {
         <span class="kw">if </span>arm.is_placeholder {
-            <a class="self" href="#1413">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1413">arm</a>.id);
+            <a class="self" href="#1410">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1410">arm</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_arm(<a class="self" href="#1413">self</a>, <a href="#1413">arm</a>);
+            visit::walk_arm(<a class="self" href="#1410">self</a>, <a href="#1410">arm</a>);
         }
     }
 
     <span class="kw">fn </span>visit_expr_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, f: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.ExprField.html">ast::ExprField</a>) {
         <span class="kw">if </span>f.is_placeholder {
-            <a class="self" href="#1421">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1421">f</a>.id);
+            <a class="self" href="#1418">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1418">f</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_expr_field(<a class="self" href="#1421">self</a>, <a href="#1421">f</a>);
+            visit::walk_expr_field(<a class="self" href="#1418">self</a>, <a href="#1418">f</a>);
         }
     }
 
     <span class="kw">fn </span>visit_pat_field(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fp: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.PatField.html">ast::PatField</a>) {
         <span class="kw">if </span>fp.is_placeholder {
-            <a class="self" href="#1429">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1429">fp</a>.id);
+            <a class="self" href="#1426">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1426">fp</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_pat_field(<a class="self" href="#1429">self</a>, <a href="#1429">fp</a>);
+            visit::walk_pat_field(<a class="self" href="#1426">self</a>, <a href="#1426">fp</a>);
         }
     }
 
     <span class="kw">fn </span>visit_generic_param(<span class="kw-2">&amp;mut </span><span class="self">self</span>, param: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.GenericParam.html">ast::GenericParam</a>) {
         <span class="kw">if </span>param.is_placeholder {
-            <a class="self" href="#1437">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1437">param</a>.id);
+            <a class="self" href="#1434">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1434">param</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_generic_param(<a class="self" href="#1437">self</a>, <a href="#1437">param</a>);
+            visit::walk_generic_param(<a class="self" href="#1434">self</a>, <a href="#1434">param</a>);
         }
     }
 
     <span class="kw">fn </span>visit_param(<span class="kw-2">&amp;mut </span><span class="self">self</span>, p: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Param.html">ast::Param</a>) {
         <span class="kw">if </span>p.is_placeholder {
-            <a class="self" href="#1445">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1445">p</a>.id);
+            <a class="self" href="#1442">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1442">p</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_param(<a class="self" href="#1445">self</a>, <a href="#1445">p</a>);
+            visit::walk_param(<a class="self" href="#1442">self</a>, <a href="#1442">p</a>);
         }
     }
 
     <span class="kw">fn </span>visit_field_def(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sf: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.FieldDef.html">ast::FieldDef</a>) {
         <span class="kw">if </span>sf.is_placeholder {
-            <a class="self" href="#1453">self</a>.<a href="#1148-1153">visit_invoc</a>(<a href="#1453">sf</a>.id);
+            <a class="self" href="#1450">self</a>.<a href="#1145-1150">visit_invoc</a>(<a href="#1450">sf</a>.id);
         } <span class="kw">else </span>{
-            <span class="kw">let </span>vis = <a class="self" href="#1453">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1453">sf</a>.vis);
-            <a class="self" href="#1453">self</a>.r.visibilities.insert(<a class="self" href="#1453">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1453">sf</a>.id), <a href="#1457">vis</a>);
-            visit::walk_field_def(<a class="self" href="#1453">self</a>, <a href="#1453">sf</a>);
+            <span class="kw">let </span>vis = <a class="self" href="#1450">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1450">sf</a>.vis);
+            <a class="self" href="#1450">self</a>.r.visibilities.insert(<a class="self" href="#1450">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1450">sf</a>.id), <a href="#1454">vis</a>);
+            visit::walk_field_def(<a class="self" href="#1450">self</a>, <a href="#1450">sf</a>);
         }
     }
 
@@ -2978,51 +2972,51 @@
     // type and value namespaces.
     </span><span class="kw">fn </span>visit_variant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, variant: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Variant.html">ast::Variant</a>) {
         <span class="kw">if </span>variant.is_placeholder {
-            <a class="self" href="#1465">self</a>.<a href="#1157-1161">visit_invoc_in_module</a>(<a href="#1465">variant</a>.id);
+            <a class="self" href="#1462">self</a>.<a href="#1154-1158">visit_invoc_in_module</a>(<a href="#1462">variant</a>.id);
             <span class="kw">return</span>;
         }
 
-        <span class="kw">let </span>parent = <a class="self" href="#1465">self</a>.parent_scope.module;
-        <span class="kw">let </span>expn_id = <a class="self" href="#1465">self</a>.parent_scope.expansion;
-        <span class="kw">let </span>ident = <a href="#1465">variant</a>.ident;
+        <span class="kw">let </span>parent = <a class="self" href="#1462">self</a>.parent_scope.module;
+        <span class="kw">let </span>expn_id = <a class="self" href="#1462">self</a>.parent_scope.expansion;
+        <span class="kw">let </span>ident = <a href="#1462">variant</a>.ident;
 
         <span class="comment">// Define a name in the type namespace.
-        </span><span class="kw">let </span>def_id = <a class="self" href="#1465">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1465">variant</a>.id);
-        <span class="kw">let </span>res = Res::Def(DefKind::Variant, <a href="#1476">def_id</a>.to_def_id());
-        <span class="kw">let </span>vis = <a class="self" href="#1465">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1465">variant</a>.vis);
-        <a class="self" href="#1465">self</a>.r.<a href="#68-77">define</a>(<a href="#1471">parent</a>, <a href="#1473">ident</a>, TypeNS, (<a href="#1477">res</a>, <a href="#1478">vis</a>, <a href="#1465">variant</a>.span, <a href="#1472">expn_id</a>));
-        <a class="self" href="#1465">self</a>.r.visibilities.insert(<a href="#1476">def_id</a>, <a href="#1478">vis</a>);
+        </span><span class="kw">let </span>def_id = <a class="self" href="#1462">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1462">variant</a>.id);
+        <span class="kw">let </span>res = Res::Def(DefKind::Variant, <a href="#1473">def_id</a>.to_def_id());
+        <span class="kw">let </span>vis = <a class="self" href="#1462">self</a>.<a href="#220-225">resolve_visibility</a>(<span class="kw-2">&amp;</span><a href="#1462">variant</a>.vis);
+        <a class="self" href="#1462">self</a>.r.<a href="#68-77">define</a>(<a href="#1468">parent</a>, <a href="#1470">ident</a>, TypeNS, (<a href="#1474">res</a>, <a href="#1475">vis</a>, <a href="#1462">variant</a>.span, <a href="#1469">expn_id</a>));
+        <a class="self" href="#1462">self</a>.r.visibilities.insert(<a href="#1473">def_id</a>, <a href="#1475">vis</a>);
 
         <span class="comment">// If the variant is marked as non_exhaustive then lower the visibility to within the crate.
         </span><span class="kw">let </span>ctor_vis =
             <span class="kw">if </span>vis.is_public() &amp;&amp; attr::contains_name(<span class="kw-2">&amp;</span>variant.attrs, sym::non_exhaustive) {
                 ty::Visibility::Restricted(<a href="../../rustc_span/def_id/constant.CRATE_DEF_ID.html">CRATE_DEF_ID</a>)
             } <span class="kw">else </span>{
-                <a href="#1478">vis</a>
+                <a href="#1475">vis</a>
             };
 
         <span class="comment">// Define a constructor name in the value namespace.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((ctor_kind, ctor_node_id)) = CtorKind::from_ast(<span class="kw-2">&amp;</span><a href="#1465">variant</a>.data) {
-            <span class="kw">let </span>ctor_def_id = <a class="self" href="#1465">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1491">ctor_node_id</a>);
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((ctor_kind, ctor_node_id)) = CtorKind::from_ast(<span class="kw-2">&amp;</span><a href="#1462">variant</a>.data) {
+            <span class="kw">let </span>ctor_def_id = <a class="self" href="#1462">self</a>.r.<a href="lib.rs.html#1203-1205">local_def_id</a>(<a href="#1488">ctor_node_id</a>);
             <span class="kw">let </span>ctor_res =
-                Res::Def(DefKind::Ctor(CtorOf::Variant, <a href="#1491">ctor_kind</a>), <a href="#1492">ctor_def_id</a>.to_def_id());
-            <a class="self" href="#1465">self</a>.r.<a href="#68-77">define</a>(<a href="#1471">parent</a>, <a href="#1473">ident</a>, ValueNS, (<a href="#1493">ctor_res</a>, <a href="#1483">ctor_vis</a>, <a href="#1465">variant</a>.span, <a href="#1472">expn_id</a>));
-            <a class="self" href="#1465">self</a>.r.visibilities.insert(<a href="#1492">ctor_def_id</a>, <a href="#1483">ctor_vis</a>);
+                Res::Def(DefKind::Ctor(CtorOf::Variant, <a href="#1488">ctor_kind</a>), <a href="#1489">ctor_def_id</a>.to_def_id());
+            <a class="self" href="#1462">self</a>.r.<a href="#68-77">define</a>(<a href="#1468">parent</a>, <a href="#1470">ident</a>, ValueNS, (<a href="#1490">ctor_res</a>, <a href="#1480">ctor_vis</a>, <a href="#1462">variant</a>.span, <a href="#1469">expn_id</a>));
+            <a class="self" href="#1462">self</a>.r.visibilities.insert(<a href="#1489">ctor_def_id</a>, <a href="#1480">ctor_vis</a>);
         }
 
         <span class="comment">// Record field names for error reporting.
-        </span><a class="self" href="#1465">self</a>.<a href="#318-325">insert_field_def_ids</a>(<a href="#1476">def_id</a>, <span class="kw-2">&amp;</span><a href="#1465">variant</a>.data);
-        <a class="self" href="#1465">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#1476">def_id</a>.to_def_id(), <span class="kw-2">&amp;</span><a href="#1465">variant</a>.data);
+        </span><a class="self" href="#1462">self</a>.<a href="#318-325">insert_field_def_ids</a>(<a href="#1473">def_id</a>, <span class="kw-2">&amp;</span><a href="#1462">variant</a>.data);
+        <a class="self" href="#1462">self</a>.<a href="#327-334">insert_field_visibilities_local</a>(<a href="#1473">def_id</a>.to_def_id(), <span class="kw-2">&amp;</span><a href="#1462">variant</a>.data);
 
-        visit::walk_variant(<a class="self" href="#1465">self</a>, <a href="#1465">variant</a>);
+        visit::walk_variant(<a class="self" href="#1462">self</a>, <a href="#1462">variant</a>);
     }
 
     <span class="kw">fn </span>visit_crate(<span class="kw-2">&amp;mut </span><span class="self">self</span>, krate: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><a href="../../rustc_ast/ast/struct.Crate.html">ast::Crate</a>) {
         <span class="kw">if </span>krate.is_placeholder {
-            <a class="self" href="#1506">self</a>.<a href="#1157-1161">visit_invoc_in_module</a>(<a href="#1506">krate</a>.id);
+            <a class="self" href="#1503">self</a>.<a href="#1154-1158">visit_invoc_in_module</a>(<a href="#1503">krate</a>.id);
         } <span class="kw">else </span>{
-            visit::walk_crate(<a class="self" href="#1506">self</a>, <a href="#1506">krate</a>);
-            <a class="self" href="#1506">self</a>.<a href="#1122-1146">contains_macro_use</a>(<span class="kw-2">&amp;</span><a href="#1506">krate</a>.attrs);
+            visit::walk_crate(<a class="self" href="#1503">self</a>, <a href="#1503">krate</a>);
+            <a class="self" href="#1503">self</a>.<a href="#1119-1143">contains_macro_use</a>(<span class="kw-2">&amp;</span><a href="#1503">krate</a>.attrs);
         }
     }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/solve/trait_goals.rs`."><title>trait_goals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_trait_selection/src/solve/trait_goals.rs`."><title>trait_goals.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_trait_selection" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_trait_selection/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_trait_selection"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -937,7 +937,6 @@
 <a href="#937" id="937">937</a>
 <a href="#938" id="938">938</a>
 <a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Dealing with trait goals, i.e. `T: Trait&lt;&#39;a, U&gt;`.
 
 </span><span class="kw">use </span><span class="kw">super</span>::assembly::{<a class="self" href="mod.rs.html#31">self</a>, <a href="assembly/mod.rs.html#20">structural_traits</a>};
@@ -975,7 +974,7 @@
         goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, TraitPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         impl_def_id: <a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a href="#34">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a href="#34">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
 
         <span class="kw">let </span>impl_trait_ref = <a href="#38">tcx</a>.impl_trait_ref(<a href="#36">impl_def_id</a>).unwrap();
         <span class="kw">let </span>drcx = <a href="../../../rustc_middle/ty/fast_reject/struct.DeepRejectCtxt.html">DeepRejectCtxt</a> { treat_obligation_params: TreatParams::ForLookup };
@@ -1002,7 +1001,7 @@
         };
 
         <a href="#34">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;impl&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
-            <span class="kw">let </span>impl_args = <a href="#64">ecx</a>.<a href="eval_ctxt.rs.html#815-817">fresh_args_for_item</a>(<a href="#36">impl_def_id</a>);
+            <span class="kw">let </span>impl_args = <a href="#64">ecx</a>.<a href="eval_ctxt.rs.html#816-818">fresh_args_for_item</a>(<a href="#36">impl_def_id</a>);
             <span class="kw">let </span>impl_trait_ref = <a href="#40">impl_trait_ref</a>.instantiate(<a href="#38">tcx</a>, <a href="#65">impl_args</a>);
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)<span class="question-mark">?</span>;
@@ -1014,7 +1013,7 @@
                 .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|pred| <a href="#35">goal</a>.with(<a href="#38">tcx</a>, <a href="#74">pred</a>));
             <a href="#64">ecx</a>.<a href="mod.rs.html#242">add_goals</a>(<a href="#69">where_clause_bounds</a>);
 
-            <a href="#64">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(<a href="#51">maximal_certainty</a>)
+            <a href="#64">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(<a href="#51">maximal_certainty</a>)
         })
     }
 
@@ -1022,7 +1021,7 @@
         ecx: <span class="kw-2">&amp;mut </span>EvalCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;,
         _guar: <a href="../../../rustc_span/struct.ErrorGuaranteed.html">ErrorGuaranteed</a>,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a href="#82">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        <a href="#82">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="kw">fn </span>probe_and_match_goal_against_assumption(
@@ -1037,7 +1036,7 @@
             {
                 <span class="comment">// FIXME: Constness
                 </span><a href="#89">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;assumption&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
-                    <span class="kw">let </span>assumption_trait_pred = <a href="#99">ecx</a>.<a href="eval_ctxt.rs.html#790-799">instantiate_binder_with_infer</a>(<a href="#94">trait_clause</a>);
+                    <span class="kw">let </span>assumption_trait_pred = <a href="#99">ecx</a>.<a href="eval_ctxt.rs.html#791-800">instantiate_binder_with_infer</a>(<a href="#94">trait_clause</a>);
                     ecx.eq(
                         goal.param_env,
                         goal.predicate.trait_ref,
@@ -1061,7 +1060,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(result) = <a href="#117">ecx</a>.<a href="#821-910">disqualify_auto_trait_candidate_due_to_possible_impl</a>(<a href="#118">goal</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(result) = <a href="#117">ecx</a>.<a href="#821-909">disqualify_auto_trait_candidate_due_to_possible_impl</a>(<a href="#118">goal</a>) {
             <span class="kw">return </span><a href="#124">result</a>;
         }
 
@@ -1091,9 +1090,9 @@
             }
         }
 
-        <a href="#117">ecx</a>.<a href="#916-930">probe_and_evaluate_goal_for_constituent_tys</a>(
+        <a href="#117">ecx</a>.<a href="#915-929">probe_and_evaluate_goal_for_constituent_tys</a>(
             <a href="#118">goal</a>,
-            <a href="assembly/structural_traits.rs.html#17-89">structural_traits::instantiate_constituent_tys_for_auto_trait</a>,
+            <a href="assembly/structural_traits.rs.html#17-87">structural_traits::instantiate_constituent_tys_for_auto_trait</a>,
         )
     }
 
@@ -1105,14 +1104,14 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
 
-        <span class="kw">let </span>tcx = <a href="#161">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a href="#161">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
 
         <a href="#161">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;trait alias&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
             <span class="kw">let </span>nested_obligations = <a href="#168">tcx</a>
                 .predicates_of(<a href="#162">goal</a>.predicate.def_id())
                 .instantiate(<a href="#168">tcx</a>, <a href="#162">goal</a>.predicate.trait_ref.args);
             <a href="#170">ecx</a>.<a href="mod.rs.html#242">add_goals</a>(<a href="#171">nested_obligations</a>.predicates.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|p| <a href="#162">goal</a>.with(<a href="#168">tcx</a>, <a href="#174">p</a>)));
-            <a href="#170">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#170">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         })
     }
 
@@ -1124,9 +1123,9 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
 
-        <a href="#180">ecx</a>.<a href="#916-930">probe_and_evaluate_goal_for_constituent_tys</a>(
+        <a href="#180">ecx</a>.<a href="#915-929">probe_and_evaluate_goal_for_constituent_tys</a>(
             <a href="#181">goal</a>,
-            <a href="assembly/structural_traits.rs.html#113-157">structural_traits::instantiate_constituent_tys_for_sized_trait</a>,
+            <a href="assembly/structural_traits.rs.html#110-153">structural_traits::instantiate_constituent_tys_for_sized_trait</a>,
         )
     }
 
@@ -1138,9 +1137,9 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
 
-        <a href="#194">ecx</a>.<a href="#916-930">probe_and_evaluate_goal_for_constituent_tys</a>(
+        <a href="#194">ecx</a>.<a href="#915-929">probe_and_evaluate_goal_for_constituent_tys</a>(
             <a href="#195">goal</a>,
-            <a href="assembly/structural_traits.rs.html#159-220">structural_traits::instantiate_constituent_tys_for_copy_clone_trait</a>,
+            <a href="assembly/structural_traits.rs.html#155-214">structural_traits::instantiate_constituent_tys_for_copy_clone_trait</a>,
         )
     }
 
@@ -1153,21 +1152,21 @@
         }
 
         <span class="comment">// The regions of a type don&#39;t affect the size of the type
-        </span><span class="kw">let </span>tcx = <a href="#208">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        </span><span class="kw">let </span>tcx = <a href="#208">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="comment">// We should erase regions from both the param-env and type, since both
         // may have infer regions. Specifically, after canonicalizing and instantiating,
         // early bound regions turn into region vars in both the new and old solver.
         </span><span class="kw">let </span>key = <a href="#216">tcx</a>.erase_regions(<a href="#209">goal</a>.param_env.and(<a href="#209">goal</a>.predicate.self_ty()));
         <span class="comment">// But if there are inference variables, we have to wait until it&#39;s resolved.
         </span><span class="kw">if </span>key.has_non_region_infer() {
-            <span class="kw">return </span><a href="#208">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
+            <span class="kw">return </span><a href="#208">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
         }
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(layout) = <a href="#216">tcx</a>.layout_of(<a href="#220">key</a>)
             &amp;&amp; layout.layout.is_pointer_like(<span class="kw-2">&amp;</span>tcx.data_layout)
         {
             <span class="comment">// FIXME: We could make this faster by making a no-constraints response
-            </span><a href="#208">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            </span><a href="#208">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(NoSolution)
         }
@@ -1182,7 +1181,7 @@
         }
 
         <span class="kw">if let </span>ty::FnPtr(..) = <a href="#238">goal</a>.predicate.self_ty().kind() {
-            <a href="#237">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#237">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(NoSolution)
         }
@@ -1197,7 +1196,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
 
-        <span class="kw">let </span>tcx = <a href="#252">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a href="#252">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">let </span>tupled_inputs_and_output =
             <span class="kw">match </span>structural_traits::extract_tupled_inputs_and_output_from_callable(
                 tcx,
@@ -1207,7 +1206,7 @@
                 <span class="prelude-val">Some</span>(a) =&gt; <a href="#267">a</a>,
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="kw">return </span><a href="#252">ecx</a>
-                        .<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
+                        .<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS);
                 }
             };
         <span class="kw">let </span>output_is_sized_pred = <a href="#261">tupled_inputs_and_output</a>.map_bound(|(<span class="kw">_</span>, output)| {
@@ -1233,7 +1232,7 @@
         }
 
         <span class="kw">if let </span>ty::Tuple(..) = <a href="#289">goal</a>.predicate.self_ty().kind() {
-            <a href="#288">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#288">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(NoSolution)
         }
@@ -1247,7 +1246,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
 
-        <a href="#303">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        <a href="#303">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="kw">fn </span>consider_builtin_future_candidate(
@@ -1263,7 +1262,7 @@
         };
 
         <span class="comment">// Generators are not futures unless they come from `async` desugaring
-        </span><span class="kw">let </span>tcx = <a href="#314">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        </span><span class="kw">let </span>tcx = <a href="#314">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">if </span>!tcx.generator_is_async(def_id) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
@@ -1271,7 +1270,7 @@
         <span class="comment">// Async generator unconditionally implement `Future`
         // Technically, we need to check that the future output type is Sized,
         // but that&#39;s already proven by the generator being WF.
-        </span><a href="#314">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        </span><a href="#314">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="kw">fn </span>consider_builtin_generator_candidate(
@@ -1288,7 +1287,7 @@
         };
 
         <span class="comment">// `async`-desugared generators do not implement the generator trait
-        </span><span class="kw">let </span>tcx = <a href="#338">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        </span><span class="kw">let </span>tcx = <a href="#338">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">if </span>tcx.generator_is_async(def_id) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         }
@@ -1314,7 +1313,7 @@
         }
 
         <span class="comment">// `DiscriminantKind` is automatically implemented for every type.
-        </span><a href="#369">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        </span><a href="#369">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="kw">fn </span>consider_builtin_destruct_candidate(
@@ -1329,7 +1328,7 @@
 
         // `Destruct` is automatically implemented for every type in
         // non-const environments.
-        </span><a href="#381">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        </span><a href="#381">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="kw">fn </span>consider_builtin_transmute_candidate(
@@ -1347,10 +1346,10 @@
 
         <span class="comment">// Erase regions because we compute layouts in `rustc_transmute`,
         // which will ICE for region vars.
-        </span><span class="kw">let </span>args = <a href="#396">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>().erase_regions(<a href="#397">goal</a>.predicate.trait_ref.args);
+        </span><span class="kw">let </span>args = <a href="#396">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>().erase_regions(<a href="#397">goal</a>.predicate.trait_ref.args);
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(assume) =
-            rustc_transmute::Assume::from_const(<a href="#396">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>(), <a href="#397">goal</a>.param_env, <a href="#410">args</a>.const_at(<span class="number">3</span>))
+            rustc_transmute::Assume::from_const(<a href="#396">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>(), <a href="#397">goal</a>.param_env, <a href="#410">args</a>.const_at(<span class="number">3</span>))
         <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
         };
@@ -1360,7 +1359,7 @@
             args.type_at(<span class="number">2</span>),
             assume,
         )<span class="question-mark">?</span>;
-        <a href="#396">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(<a href="#418">certainty</a>)
+        <a href="#396">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(<a href="#418">certainty</a>)
     }
 
     <span class="kw">fn </span>consider_unsize_to_dyn_candidate(
@@ -1373,14 +1372,14 @@
             </span><span class="kw">let </span><span class="prelude-val">Some</span>(b_ty) =
                 ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(<span class="number">1</span>))<span class="question-mark">?
             </span><span class="kw">else </span>{
-                <span class="kw">return </span><a href="#430">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::OVERFLOW);
+                <span class="kw">return </span><a href="#430">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::OVERFLOW);
             };
 
             <span class="kw">let </span>ty::Dynamic(b_data, b_region, ty::Dyn) = <span class="kw-2">*</span><a href="#433">b_ty</a>.kind() <span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(NoSolution);
             };
 
-            <span class="kw">let </span>tcx = <a href="#430">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+            <span class="kw">let </span>tcx = <a href="#430">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
 
             <span class="comment">// Can only unsize to an object-safe trait.
             </span><span class="kw">if </span>b_data.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
@@ -1400,7 +1399,7 @@
 
             <span class="comment">// The type must outlive the lifetime of the `dyn` we&#39;re unsizing into.
             </span><a href="#430">ecx</a>.<a href="mod.rs.html#236">add_goal</a>(<a href="#428">goal</a>.with(<a href="#443">tcx</a>, ty::OutlivesPredicate(<a href="#431">a_ty</a>, <a href="#439">b_region</a>)));
-            <a href="#430">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#430">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         })
     }
 
@@ -1421,7 +1420,7 @@
 
         <span class="kw">let </span>misc_candidate = |ecx: <span class="kw-2">&amp;mut </span>EvalCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;, certainty| {
             (
-                <a href="#482">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(<a href="#482">certainty</a>).unwrap(),
+                <a href="#482">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(<a href="#482">certainty</a>).unwrap(),
                 BuiltinImplSource::Misc,
             )
         };
@@ -1443,7 +1442,7 @@
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[],
             };
 
-            <span class="kw">let </span>goal = <a href="#476">goal</a>.with(<a href="#494">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>(), (<a href="#495">a_ty</a>, <a href="#498">b_ty</a>));
+            <span class="kw">let </span>goal = <a href="#476">goal</a>.with(<a href="#494">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>(), (<a href="#495">a_ty</a>, <a href="#498">b_ty</a>));
             <span class="kw">match </span>(<a href="#495">a_ty</a>.kind(), <a href="#498">b_ty</a>.kind()) {
                 (ty::Infer(ty::TyVar(..)), ..) =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unexpected infer {a_ty:?} {b_ty:?}&quot;</span>),
                 (<span class="kw">_</span>, ty::Infer(ty::TyVar(..))) =&gt; <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[misc_candidate(ecx, Certainty::AMBIGUOUS)],
@@ -1509,7 +1508,7 @@
         b_data: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::List&lt;ty::PolyExistentialPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         b_region: ty::Region&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; Vec&lt;(CanonicalResponse&lt;<span class="lifetime">&#39;tcx</span>&gt;, <a href="../../../rustc_trait_selection/traits/enum.BuiltinImplSource.html">BuiltinImplSource</a>)&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#565">self</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a class="self" href="#565">self</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">let </span><a href="../../../rustc_trait_selection/traits/solve/struct.Goal.html">Goal</a> { predicate: (a_ty, _b_ty), .. } = <a href="#566">goal</a>;
 
         <span class="comment">// All of a&#39;s auto traits need to be in b&#39;s auto traits.
@@ -1534,7 +1533,7 @@
                 <a href="#582">responses</a>.push((<a href="#586">resp</a>, BuiltinImplSource::Misc));
             }
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(a_principal) = <a href="#567">a_data</a>.principal() {
-            <a class="self" href="#565">self</a>.<a href="eval_ctxt.rs.html#969-999">walk_vtable</a>(
+            <a class="self" href="#565">self</a>.<a href="eval_ctxt.rs.html#970-1000">walk_vtable</a>(
                 <a href="#596">a_principal</a>.with_self_ty(<a href="#572">tcx</a>, <a href="#573">a_ty</a>),
                 |ecx, new_a_principal, <span class="kw">_</span>, vtable_vptr_slot| {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(resp) = <a href="#599">ecx</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;dyn upcast&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
@@ -1628,12 +1627,12 @@
 
         <span class="comment">// Also require that a_ty&#39;s lifetime outlives b_ty&#39;s lifetime.
         </span><a class="self" href="#623">self</a>.<a href="mod.rs.html#236">add_goal</a>(Goal::new(
-            <a class="self" href="#623">self</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>(),
+            <a class="self" href="#623">self</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>(),
             <a href="#631">param_env</a>,
             ty::Binder::dummy(ty::OutlivesPredicate(<a href="#626">a_region</a>, <a href="#628">b_region</a>)),
         ));
 
-        <a class="self" href="#623">self</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        <a class="self" href="#623">self</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="doccomment">/// We have the following builtin impls for arrays:
@@ -1651,7 +1650,7 @@
         b_elem_ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
         <span class="self">self</span>.eq(goal.param_env, a_elem_ty, b_elem_ty)<span class="question-mark">?</span>;
-        <a class="self" href="#708">self</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        <a class="self" href="#708">self</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="doccomment">/// We generate a builtin `Unsize` impls for structs with generic parameters only
@@ -1674,7 +1673,7 @@
         a_args: ty::GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         b_args: ty::GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#731">self</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a class="self" href="#731">self</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">let </span><a href="../../../rustc_trait_selection/traits/solve/struct.Goal.html">Goal</a> { predicate: (_a_ty, b_ty), .. } = <a href="#732">goal</a>;
 
         <span class="kw">let </span>unsizing_params = <a href="#737">tcx</a>.unsizing_params_for_adt(<a href="#733">def</a>.did());
@@ -1712,7 +1711,7 @@
                 [<a href="#750">a_tail_ty</a>, <a href="#751">b_tail_ty</a>],
             ),
         ));
-        <a class="self" href="#731">self</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        <a class="self" href="#731">self</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="doccomment">/// We generate the following builtin impl for tuples of all sizes.
@@ -1731,7 +1730,7 @@
         a_tys: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         b_tys: <span class="kw-2">&amp;</span><span class="lifetime">&#39;tcx </span>ty::List&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>tcx = <a class="self" href="#789">self</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>();
+        <span class="kw">let </span>tcx = <a class="self" href="#789">self</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>();
         <span class="kw">let </span><a href="../../../rustc_trait_selection/traits/solve/struct.Goal.html">Goal</a> { predicate: (_a_ty, b_ty), .. } = <a href="#790">goal</a>;
 
         <span class="kw">let </span>(<span class="kw-2">&amp;</span>a_last_ty, a_rest_tys) = <a href="#791">a_tys</a>.split_last().unwrap();
@@ -1751,7 +1750,7 @@
                 [<a href="#797">a_last_ty</a>, <a href="#798">b_last_ty</a>],
             ),
         ));
-        <a class="self" href="#789">self</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+        <a class="self" href="#789">self</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
     }
 
     <span class="comment">// Return `Some` if there is an impl (built-in or user provided) that may
@@ -1770,7 +1769,7 @@
             // we probably don&#39;t want to treat an `impl !AutoTrait for i32` as
             // disqualifying the built-in auto impl for `i64: AutoTrait` either.
             </span>ty::Infer(ty::IntVar(<span class="kw">_</span>) | ty::FloatVar(<span class="kw">_</span>)) =&gt; {
-                <span class="prelude-val">Some</span>(<a class="self" href="#822">self</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS))
+                <span class="prelude-val">Some</span>(<a class="self" href="#822">self</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::AMBIGUOUS))
             }
 
             <span class="comment">// These types cannot be structurally decomposed into constituent
@@ -1787,12 +1786,12 @@
             // takes precedence over the structural auto trait candidate being
             // assembled.
             </span>ty::Generator(<span class="kw">_</span>, <span class="kw">_</span>, movability)
-                <span class="kw">if </span><span class="prelude-val">Some</span>(<a href="#823">goal</a>.predicate.def_id()) == <a class="self" href="#822">self</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>().lang_items().unpin_trait() =&gt;
+                <span class="kw">if </span><span class="prelude-val">Some</span>(<a href="#823">goal</a>.predicate.def_id()) == <a class="self" href="#822">self</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>().lang_items().unpin_trait() =&gt;
             {
                 <span class="kw">match </span><a href="#849">movability</a> {
                     Movability::Static =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(NoSolution)),
                     Movability::Movable =&gt; {
-                        <span class="prelude-val">Some</span>(<a class="self" href="#822">self</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes))
+                        <span class="prelude-val">Some</span>(<a class="self" href="#822">self</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes))
                     }
                 }
             }
@@ -1819,8 +1818,7 @@
             | ty::FnPtr(<span class="kw">_</span>)
             | ty::Closure(<span class="kw">_</span>, <span class="kw">_</span>)
             | ty::Generator(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
-            | ty::GeneratorWitness(<span class="kw">_</span>)
-            | ty::GeneratorWitnessMIR(<span class="kw">_</span>, <span class="kw">_</span>)
+            | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(<span class="kw">_</span>)
             | ty::Adt(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1828,15 +1826,15 @@
             // simplify them to SimplifiedType::Placeholder.
             </span>| ty::Alias(ty::Opaque, <span class="kw">_</span>) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>disqualifying_impl = <span class="prelude-val">None</span>;
-                <a class="self" href="#822">self</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>().for_each_relevant_impl_treating_projections(
+                <a class="self" href="#822">self</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>().for_each_relevant_impl_treating_projections(
                     <a href="#823">goal</a>.predicate.def_id(),
                     <a href="#823">goal</a>.predicate.self_ty(),
                     TreatProjections::NextSolverLookup,
                     |impl_def_id| {
-                        <a href="#890">disqualifying_impl</a> = <span class="prelude-val">Some</span>(<a href="#895">impl_def_id</a>);
+                        <a href="#889">disqualifying_impl</a> = <span class="prelude-val">Some</span>(<a href="#894">impl_def_id</a>);
                     },
                 );
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#890">disqualifying_impl</a> {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(def_id) = <a href="#889">disqualifying_impl</a> {
                     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="question-mark">?</span>def_id, <span class="question-mark">?</span>goal, <span class="string">&quot;disqualified auto-trait implementation&quot;</span>);
                     <span class="comment">// No need to actually consider the candidate here,
                     // since we do that in `consider_impl_candidate`.
@@ -1858,14 +1856,14 @@
         goal: Goal&lt;<span class="lifetime">&#39;tcx</span>, TraitPredicate&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
         constituent_tys: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;</span>EvalCtxt&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;tcx</span>&gt;, Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;, <a href="../../../rustc_trait_selection/traits/util/traits/query/struct.NoSolution.html">NoSolution</a>&gt;,
     ) -&gt; QueryResult&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#917">self</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;constituent tys&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
-            <a href="#921">ecx</a>.<a href="mod.rs.html#242">add_goals</a>(
+        <a class="self" href="#916">self</a>.<a href="eval_ctxt/probe.rs.html#49-67">probe_misc_candidate</a>(<span class="string">&quot;constituent tys&quot;</span>).<a href="eval_ctxt/probe.rs.html#15-36">enter</a>(|ecx| {
+            <a href="#920">ecx</a>.<a href="mod.rs.html#242">add_goals</a>(
                 constituent_tys(ecx, goal.predicate.self_ty())<span class="question-mark">?
                     </span>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.IntoIterator.html">into_iter</a>()
-                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| <a href="#918">goal</a>.with(<a href="#921">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>(), <a href="#918">goal</a>.predicate.with_self_ty(<a href="#921">ecx</a>.<a href="eval_ctxt.rs.html#627-629">tcx</a>(), <a href="#925">ty</a>)))
+                    .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|ty| <a href="#917">goal</a>.with(<a href="#920">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>(), <a href="#917">goal</a>.predicate.with_self_ty(<a href="#920">ecx</a>.<a href="eval_ctxt.rs.html#628-630">tcx</a>(), <a href="#924">ty</a>)))
                     .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             );
-            <a href="#921">ecx</a>.<a href="eval_ctxt/canonical.rs.html#65">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
+            <a href="#920">ecx</a>.<a href="eval_ctxt/canonical.rs.html#85">evaluate_added_goals_and_make_canonical_response</a>(Certainty::Yes)
         })
     }
 

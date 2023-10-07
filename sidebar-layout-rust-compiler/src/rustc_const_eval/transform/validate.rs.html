@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/transform/validate.rs`."><title>validate.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_const_eval/src/transform/validate.rs`."><title>validate.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_const_eval" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1269,6 +1269,42 @@
 <a href="#1269" id="1269">1269</a>
 <a href="#1270" id="1270">1270</a>
 <a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Validates the MIR to ensure that invariants are upheld.
 
 </span><span class="kw">use </span>rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -1278,14 +1314,16 @@
 <span class="kw">use </span><a href="../../../rustc_const_eval/interpret/enum.Scalar.html">rustc_middle::mir::interpret::Scalar</a>;
 <span class="kw">use </span>rustc_middle::mir::visit::{<a href="../../../rustc_middle/mir/visit/enum.NonUseContext.html">NonUseContext</a>, <a href="../../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, <a href="../../../rustc_middle/mir/visit/trait.Visitor.html">Visitor</a>};
 <span class="kw">use </span><a href="../../../rustc_middle/mir/index.html">rustc_middle::mir</a>::<span class="kw-2">*</span>;
-<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/instance/enum.InstanceDef.html">InstanceDef</a>, <a href="../../../rustc_middle/ty/struct.ParamEnv.html">ParamEnv</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>};
+<span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../../rustc_middle/ty/index.html">self</a>, <a href="../../../rustc_middle/ty/instance/enum.InstanceDef.html">InstanceDef</a>, <a href="../../../rustc_middle/ty/struct.ParamEnv.html">ParamEnv</a>, <a href="../../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../../rustc_middle/ty/visit/trait.TypeVisitableExt.html">TypeVisitableExt</a>, <a href="../../../rustc_type_ir/enum.Variance.html">Variance</a>};
 <span class="kw">use </span><a href="../../../rustc_mir_dataflow/impls/storage_liveness/struct.MaybeStorageLive.html">rustc_mir_dataflow::impls::MaybeStorageLive</a>;
 <span class="kw">use </span><a href="../../../rustc_mir_dataflow/storage/fn.always_storage_live_locals.html">rustc_mir_dataflow::storage::always_storage_live_locals</a>;
 <span class="kw">use </span>rustc_mir_dataflow::{<a href="../../../rustc_mir_dataflow/framework/trait.Analysis.html">Analysis</a>, <a href="../../../rustc_mir_dataflow/framework/cursor/struct.ResultsCursor.html">ResultsCursor</a>};
-<span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
+<span class="kw">use </span>rustc_target::abi::{<a href="../../../rustc_abi/struct.Size.html">Size</a>, <a href="../../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>};
 <span class="kw">use </span><a href="../../../rustc_target/spec/abi/enum.Abi.html">rustc_target::spec::abi::Abi</a>;
 
 <span class="kw">use </span><a href="../util/alignment.rs.html#44-64"><span class="kw">crate</span>::util::is_within_packed</a>;
+
+<span class="kw">use </span><a href="../util/compare_types.rs.html#39-77"><span class="kw">crate</span>::util::relate_types</a>;
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">enum </span><a href="../../../rustc_const_eval/transform/validate/enum.EdgeKind.html">EdgeKind</a> {
@@ -1304,7 +1342,7 @@
     </span><span class="kw">pub </span>mir_phase: <a href="../../../rustc_middle/mir/syntax/enum.MirPhase.html">MirPhase</a>,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirPass&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#25-34">Validator</a> {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; MirPass&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span><a href="#27-36">Validator</a> {
     <span class="kw">fn </span>run_pass(<span class="kw-2">&amp;</span><span class="self">self</span>, tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, body: <span class="kw-2">&amp;mut </span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
         <span class="comment">// FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it&#39;s not
         // terribly important that they pass the validator. However, I think other passes might
@@ -1313,18 +1351,18 @@
         </span><span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(body.source.instance, InstanceDef::Intrinsic(..) | InstanceDef::Virtual(..)) {
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>def_id = <a href="#37">body</a>.source.def_id();
-        <span class="kw">let </span>mir_phase = <a class="self" href="#37">self</a>.mir_phase;
-        <span class="kw">let </span>param_env = <span class="kw">match </span><a href="#46">mir_phase</a>.reveal() {
-            Reveal::UserFacing =&gt; <a href="#37">tcx</a>.param_env(<a href="#45">def_id</a>),
-            Reveal::All =&gt; <a href="#37">tcx</a>.param_env_reveal_all_normalized(<a href="#45">def_id</a>),
+        <span class="kw">let </span>def_id = <a href="#39">body</a>.source.def_id();
+        <span class="kw">let </span>mir_phase = <a class="self" href="#39">self</a>.mir_phase;
+        <span class="kw">let </span>param_env = <span class="kw">match </span><a href="#48">mir_phase</a>.reveal() {
+            Reveal::UserFacing =&gt; <a href="#39">tcx</a>.param_env(<a href="#47">def_id</a>),
+            Reveal::All =&gt; <a href="#39">tcx</a>.param_env_reveal_all_normalized(<a href="#47">def_id</a>),
         };
 
-        <span class="kw">let </span>always_live_locals = <a href="../../../rustc_mir_dataflow/storage/fn.always_storage_live_locals.html">always_storage_live_locals</a>(<a href="#37">body</a>);
-        <span class="kw">let </span>storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(<a href="#52">always_live_locals</a>))
-            .<a href="../../../rustc_mir_dataflow/framework/trait.Analysis.html">into_engine</a>(<a href="#37">tcx</a>, <a href="#37">body</a>)
+        <span class="kw">let </span>always_live_locals = <a href="../../../rustc_mir_dataflow/storage/fn.always_storage_live_locals.html">always_storage_live_locals</a>(<a href="#39">body</a>);
+        <span class="kw">let </span>storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(<a href="#54">always_live_locals</a>))
+            .<a href="../../../rustc_mir_dataflow/framework/trait.Analysis.html">into_engine</a>(<a href="#39">tcx</a>, <a href="#39">body</a>)
             .iterate_to_fixpoint()
-            .into_results_cursor(<a href="#37">body</a>);
+            .into_results_cursor(<a href="#39">body</a>);
 
         <span class="kw">let </span>can_unwind = <span class="kw">if </span>mir_phase &lt;= MirPhase::Runtime(RuntimePhase::Initial) {
             <span class="comment">// In this case `AbortUnwindingCalls` haven&#39;t yet been executed.
@@ -1332,9 +1370,9 @@
         </span>} <span class="kw">else if </span>!tcx.def_kind(def_id).is_fn_like() {
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
-            <span class="kw">let </span>body_ty = <a href="#37">tcx</a>.type_of(<a href="#45">def_id</a>).skip_binder();
-            <span class="kw">let </span>body_abi = <span class="kw">match </span><a href="#64">body_ty</a>.kind() {
-                ty::FnDef(..) =&gt; <a href="#64">body_ty</a>.fn_sig(<a href="#37">tcx</a>).abi(),
+            <span class="kw">let </span>body_ty = <a href="#39">tcx</a>.type_of(<a href="#47">def_id</a>).skip_binder();
+            <span class="kw">let </span>body_abi = <span class="kw">match </span><a href="#66">body_ty</a>.kind() {
+                ty::FnDef(..) =&gt; <a href="#66">body_ty</a>.fn_sig(<a href="#39">tcx</a>).abi(),
                 ty::Closure(..) =&gt; Abi::RustCall,
                 ty::Generator(..) =&gt; Abi::Rust,
                 <span class="kw">_ </span>=&gt; {
@@ -1342,33 +1380,33 @@
                 }
             };
 
-            ty::layout::fn_can_unwind(<a href="#37">tcx</a>, <span class="prelude-val">Some</span>(<a href="#45">def_id</a>), <a href="#65">body_abi</a>)
+            ty::layout::fn_can_unwind(<a href="#39">tcx</a>, <span class="prelude-val">Some</span>(<a href="#47">def_id</a>), <a href="#67">body_abi</a>)
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>cfg_checker = <a href="#110-123">CfgChecker</a> {
-            when: <span class="kw-2">&amp;</span><a class="self" href="#37">self</a>.when,
-            <a href="#37">body</a>,
-            <a href="#37">tcx</a>,
-            <a href="#46">mir_phase</a>,
+        <span class="kw">let </span><span class="kw-2">mut </span>cfg_checker = <a href="#112-125">CfgChecker</a> {
+            when: <span class="kw-2">&amp;</span><a class="self" href="#39">self</a>.when,
+            <a href="#39">body</a>,
+            <a href="#39">tcx</a>,
+            <a href="#48">mir_phase</a>,
             unwind_edge_count: <span class="number">0</span>,
-            reachable_blocks: traversal::reachable_as_bitset(<a href="#37">body</a>),
-            <a href="#53">storage_liveness</a>,
+            reachable_blocks: traversal::reachable_as_bitset(<a href="#39">body</a>),
+            <a href="#55">storage_liveness</a>,
             place_cache: FxHashSet::default(),
             value_cache: FxHashSet::default(),
-            <a href="#58">can_unwind</a>,
+            <a href="#60">can_unwind</a>,
         };
-        <a href="#77">cfg_checker</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#37">body</a>);
-        <a href="#77">cfg_checker</a>.<a href="#177-254">check_cleanup_control_flow</a>();
+        <a href="#79">cfg_checker</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#39">body</a>);
+        <a href="#79">cfg_checker</a>.<a href="#179-256">check_cleanup_control_flow</a>();
 
         <span class="comment">// Also run the TypeChecker.
         </span><span class="kw">for </span>(location, msg) <span class="kw">in </span>validate_types(tcx, <span class="self">self</span>.mir_phase, param_env, body) {
             cfg_checker.fail(location, msg);
         }
 
-        <span class="kw">if let </span>MirPhase::Runtime(<span class="kw">_</span>) = <a href="#37">body</a>.phase {
-            <span class="kw">if let </span>ty::InstanceDef::Item(<span class="kw">_</span>) = <a href="#37">body</a>.source.instance {
+        <span class="kw">if let </span>MirPhase::Runtime(<span class="kw">_</span>) = <a href="#39">body</a>.phase {
+            <span class="kw">if let </span>ty::InstanceDef::Item(<span class="kw">_</span>) = <a href="#39">body</a>.source.instance {
                 <span class="kw">if </span>body.has_free_regions() {
-                    <a href="#77">cfg_checker</a>.<a href="#127-141">fail</a>(
+                    <a href="#79">cfg_checker</a>.<a href="#129-143">fail</a>(
                         Location::START,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Free regions in optimized {} MIR&quot;</span>, body.phase.name()),
                     );
@@ -1396,11 +1434,11 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; CfgChecker&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="attr">#[track_caller]
     </span><span class="kw">fn </span>fail(<span class="kw-2">&amp;</span><span class="self">self</span>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, msg: <span class="kw">impl </span>AsRef&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;) {
-        <span class="kw">let </span>span = <a class="self" href="#127">self</a>.body.source_info(<a href="#127">location</a>).span;
+        <span class="kw">let </span>span = <a class="self" href="#129">self</a>.body.source_info(<a href="#129">location</a>).span;
         <span class="comment">// We use `delay_span_bug` as we might see broken MIR when other errors have already
         // occurred.
-        </span><a class="self" href="#127">self</a>.tcx.sess.diagnostic().delay_span_bug(
-            <a href="#128">span</a>,
+        </span><a class="self" href="#129">self</a>.tcx.sess.diagnostic().delay_span_bug(
+            <a href="#130">span</a>,
             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                 <span class="string">&quot;broken MIR in {:?} ({}) at {:?}:\n{}&quot;</span>,
                 <span class="self">self</span>.body.source.instance,
@@ -1411,25 +1449,25 @@
         );
     }
 
-    <span class="kw">fn </span>check_edge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, edge_kind: <a href="#20-23">EdgeKind</a>) {
+    <span class="kw">fn </span>check_edge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, bb: <a href="../../../rustc_middle/mir/struct.BasicBlock.html">BasicBlock</a>, edge_kind: <a href="#22-25">EdgeKind</a>) {
         <span class="kw">if </span>bb == START_BLOCK {
-            <a class="self" href="#143">self</a>.<a href="#127-141">fail</a>(<a href="#143">location</a>, <span class="string">&quot;start block must not have predecessors&quot;</span>)
+            <a class="self" href="#145">self</a>.<a href="#129-143">fail</a>(<a href="#145">location</a>, <span class="string">&quot;start block must not have predecessors&quot;</span>)
         }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(bb) = <a class="self" href="#143">self</a>.body.basic_blocks.get(<a href="#143">bb</a>) {
-            <span class="kw">let </span>src = <a class="self" href="#143">self</a>.body.basic_blocks.get(<a href="#143">location</a>.block).unwrap();
-            <span class="kw">match </span>(<a href="#148">src</a>.is_cleanup, <a href="#147">bb</a>.is_cleanup, <a href="#143">edge_kind</a>) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(bb) = <a class="self" href="#145">self</a>.body.basic_blocks.get(<a href="#145">bb</a>) {
+            <span class="kw">let </span>src = <a class="self" href="#145">self</a>.body.basic_blocks.get(<a href="#145">location</a>.block).unwrap();
+            <span class="kw">match </span>(<a href="#150">src</a>.is_cleanup, <a href="#149">bb</a>.is_cleanup, <a href="#145">edge_kind</a>) {
                 <span class="comment">// Non-cleanup blocks can jump to non-cleanup blocks along non-unwind edges
-                </span>(<span class="bool-val">false</span>, <span class="bool-val">false</span>, <a href="#22">EdgeKind::Normal</a>)
+                </span>(<span class="bool-val">false</span>, <span class="bool-val">false</span>, <a href="#24">EdgeKind::Normal</a>)
                 <span class="comment">// Cleanup blocks can jump to cleanup blocks along non-unwind edges
-                </span>| (<span class="bool-val">true</span>, <span class="bool-val">true</span>, <a href="#22">EdgeKind::Normal</a>) =&gt; {}
+                </span>| (<span class="bool-val">true</span>, <span class="bool-val">true</span>, <a href="#24">EdgeKind::Normal</a>) =&gt; {}
                 <span class="comment">// Non-cleanup blocks can jump to cleanup blocks along unwind edges
-                </span>(<span class="bool-val">false</span>, <span class="bool-val">true</span>, <a href="#21">EdgeKind::Unwind</a>) =&gt; {
-                    <a class="self" href="#143">self</a>.unwind_edge_count += <span class="number">1</span>;
+                </span>(<span class="bool-val">false</span>, <span class="bool-val">true</span>, <a href="#23">EdgeKind::Unwind</a>) =&gt; {
+                    <a class="self" href="#145">self</a>.unwind_edge_count += <span class="number">1</span>;
                 }
                 <span class="comment">// All other jumps are invalid
                 </span><span class="kw">_ </span>=&gt; {
-                    <a class="self" href="#143">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#143">location</a>,
+                    <a class="self" href="#145">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#145">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;{:?} edge to {:?} violates unwind invariants (cleanup {:?} -&gt; {:?})&quot;</span>,
                             edge_kind,
@@ -1441,7 +1479,7 @@
                 }
             }
         } <span class="kw">else </span>{
-            <a class="self" href="#143">self</a>.<a href="#127-141">fail</a>(<a href="#143">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;encountered jump to invalid basic block {bb:?}&quot;</span>))
+            <a class="self" href="#145">self</a>.<a href="#129-143">fail</a>(<a href="#145">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;encountered jump to invalid basic block {bb:?}&quot;</span>))
         }
     }
 
@@ -1449,29 +1487,29 @@
         <span class="kw">if </span><span class="self">self</span>.unwind_edge_count &lt;= <span class="number">1 </span>{
             <span class="kw">return</span>;
         }
-        <span class="kw">let </span>doms = <a class="self" href="#177">self</a>.body.basic_blocks.dominators();
+        <span class="kw">let </span>doms = <a class="self" href="#179">self</a>.body.basic_blocks.dominators();
         <span class="kw">let </span><span class="kw-2">mut </span>post_contract_node = FxHashMap::default();
         <span class="comment">// Reusing the allocation across invocations of the closure
         </span><span class="kw">let </span><span class="kw-2">mut </span>dom_path = <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.vec.html">vec!</a>[];
         <span class="kw">let </span><span class="kw-2">mut </span>get_post_contract_node = |<span class="kw-2">mut </span>bb| {
             <span class="kw">let </span>root = <span class="kw">loop </span>{
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(root) = <a href="#182">post_contract_node</a>.get(<span class="kw-2">&amp;</span><a href="#185">bb</a>) {
-                    <span class="kw">break </span><span class="kw-2">*</span><a href="#187">root</a>;
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(root) = <a href="#184">post_contract_node</a>.get(<span class="kw-2">&amp;</span><a href="#187">bb</a>) {
+                    <span class="kw">break </span><span class="kw-2">*</span><a href="#189">root</a>;
                 }
-                <span class="kw">let </span>parent = <a href="#181">doms</a>.immediate_dominator(<a href="#185">bb</a>).unwrap();
-                <a href="#184">dom_path</a>.push(<a href="#185">bb</a>);
+                <span class="kw">let </span>parent = <a href="#183">doms</a>.immediate_dominator(<a href="#187">bb</a>).unwrap();
+                <a href="#186">dom_path</a>.push(<a href="#187">bb</a>);
                 <span class="kw">if </span>!<span class="self">self</span>.body.basic_blocks[parent].is_cleanup {
-                    <span class="kw">break </span><a href="#185">bb</a>;
+                    <span class="kw">break </span><a href="#187">bb</a>;
                 }
-                <a href="#185">bb</a> = <a href="#190">parent</a>;
+                <a href="#187">bb</a> = <a href="#192">parent</a>;
             };
             <span class="kw">for </span>bb <span class="kw">in </span>dom_path.drain(..) {
                 post_contract_node.insert(bb, root);
             }
-            <a href="#186">root</a>
+            <a href="#188">root</a>
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>parent = IndexVec::from_elem(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span><a class="self" href="#177">self</a>.body.basic_blocks);
+        <span class="kw">let </span><span class="kw-2">mut </span>parent = IndexVec::from_elem(<span class="prelude-val">None</span>, <span class="kw-2">&amp;</span><a class="self" href="#179">self</a>.body.basic_blocks);
         <span class="kw">for </span>(bb, bb_data) <span class="kw">in </span><span class="self">self</span>.body.basic_blocks.iter_enumerated() {
             <span class="kw">if </span>!bb_data.is_cleanup || !<span class="self">self</span>.reachable_blocks.contains(bb) {
                 <span class="kw">continue</span>;
@@ -1525,27 +1563,27 @@
     }
 
     <span class="kw">fn </span>check_unwind_edge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, unwind: <a href="../../../rustc_middle/mir/syntax/enum.UnwindAction.html">UnwindAction</a>) {
-        <span class="kw">let </span>is_cleanup = <a class="self" href="#256">self</a>.body.basic_blocks[<a href="#256">location</a>.block].is_cleanup;
-        <span class="kw">match </span><a href="#256">unwind</a> {
+        <span class="kw">let </span>is_cleanup = <a class="self" href="#258">self</a>.body.basic_blocks[<a href="#258">location</a>.block].is_cleanup;
+        <span class="kw">match </span><a href="#258">unwind</a> {
             UnwindAction::Cleanup(unwind) =&gt; {
                 <span class="kw">if </span>is_cleanup {
-                    <a class="self" href="#256">self</a>.<a href="#127-141">fail</a>(<a href="#256">location</a>, <span class="string">&quot;`UnwindAction::Cleanup` in cleanup block&quot;</span>);
+                    <a class="self" href="#258">self</a>.<a href="#129-143">fail</a>(<a href="#258">location</a>, <span class="string">&quot;`UnwindAction::Cleanup` in cleanup block&quot;</span>);
                 }
-                <a class="self" href="#256">self</a>.<a href="#143-175">check_edge</a>(<a href="#256">location</a>, <a href="#259">unwind</a>, <a href="#21">EdgeKind::Unwind</a>);
+                <a class="self" href="#258">self</a>.<a href="#145-177">check_edge</a>(<a href="#258">location</a>, <a href="#261">unwind</a>, <a href="#23">EdgeKind::Unwind</a>);
             }
             UnwindAction::Continue =&gt; {
                 <span class="kw">if </span>is_cleanup {
-                    <a class="self" href="#256">self</a>.<a href="#127-141">fail</a>(<a href="#256">location</a>, <span class="string">&quot;`UnwindAction::Continue` in cleanup block&quot;</span>);
+                    <a class="self" href="#258">self</a>.<a href="#129-143">fail</a>(<a href="#258">location</a>, <span class="string">&quot;`UnwindAction::Continue` in cleanup block&quot;</span>);
                 }
 
                 <span class="kw">if </span>!<span class="self">self</span>.can_unwind {
-                    <a class="self" href="#256">self</a>.<a href="#127-141">fail</a>(<a href="#256">location</a>, <span class="string">&quot;`UnwindAction::Continue` in no-unwind function&quot;</span>);
+                    <a class="self" href="#258">self</a>.<a href="#129-143">fail</a>(<a href="#258">location</a>, <span class="string">&quot;`UnwindAction::Continue` in no-unwind function&quot;</span>);
                 }
             }
             UnwindAction::Terminate(UnwindTerminateReason::InCleanup) =&gt; {
                 <span class="kw">if </span>!is_cleanup {
-                    <a class="self" href="#256">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#256">location</a>,
+                    <a class="self" href="#258">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#258">location</a>,
                         <span class="string">&quot;`UnwindAction::Terminate(InCleanup)` in a non-cleanup block&quot;</span>,
                     );
                 }
@@ -1559,8 +1597,8 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; Visitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>CfgChecker&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>visit_local(<span class="kw-2">&amp;mut </span><span class="self">self</span>, local: <a href="../../../rustc_middle/mir/struct.Local.html">Local</a>, context: <a href="../../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <span class="kw">if </span><span class="self">self</span>.body.local_decls.get(local).is_none() {
-            <a class="self" href="#289">self</a>.<a href="#127-141">fail</a>(
-                <a href="#289">location</a>,
+            <a class="self" href="#291">self</a>.<a href="#129-143">fail</a>(
+                <a href="#291">location</a>,
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;local {local:?} has no corresponding declaration in `body.local_decls`&quot;</span>),
             );
         }
@@ -1573,24 +1611,24 @@
             // and so we include this check anyway to help us catch bugs. If you happen to write an
             // optimization that might cause this to incorrectly fire, feel free to remove this
             // check.
-            </span><a class="self" href="#289">self</a>.storage_liveness.seek_after_primary_effect(<a href="#289">location</a>);
-            <span class="kw">let </span>locals_with_storage = <a class="self" href="#289">self</a>.storage_liveness.get();
+            </span><a class="self" href="#291">self</a>.storage_liveness.seek_after_primary_effect(<a href="#291">location</a>);
+            <span class="kw">let </span>locals_with_storage = <a class="self" href="#291">self</a>.storage_liveness.get();
             <span class="kw">if </span>!locals_with_storage.contains(local) {
-                <a class="self" href="#289">self</a>.<a href="#127-141">fail</a>(<a href="#289">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;use of local {local:?}, which has no storage here&quot;</span>));
+                <a class="self" href="#291">self</a>.<a href="#129-143">fail</a>(<a href="#291">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;use of local {local:?}, which has no storage here&quot;</span>));
             }
         }
     }
 
     <span class="kw">fn </span>visit_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, statement: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#313">statement</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#315">statement</a>.kind {
             StatementKind::Assign(<span class="kw">box </span>(dest, rvalue)) =&gt; {
                 <span class="comment">// FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                </span><span class="kw">if let </span>Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = <a href="#315">rvalue</a> {
+                </span><span class="kw">if let </span>Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = <a href="#317">rvalue</a> {
                     <span class="comment">// The sides of an assignment must not alias. Currently this just checks whether
                     // the places are identical.
                     </span><span class="kw">if </span>dest == src {
-                        <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(
-                            <a href="#313">location</a>,
+                        <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(
+                            <a href="#315">location</a>,
                             <span class="string">&quot;encountered `Assign` statement with overlapping memory&quot;</span>,
                         );
                     }
@@ -1598,28 +1636,28 @@
             }
             StatementKind::AscribeUserType(..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#313">location</a>,
+                    <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#315">location</a>,
                         <span class="string">&quot;`AscribeUserType` should have been removed after drop lowering phase&quot;</span>,
                     );
                 }
             }
             StatementKind::FakeRead(..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#313">location</a>,
+                    <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#315">location</a>,
                         <span class="string">&quot;`FakeRead` should have been removed after drop lowering phase&quot;</span>,
                     );
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { .. } =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &lt; MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(<a href="#313">location</a>, <span class="string">&quot;`SetDiscriminant`is not allowed until deaggregation&quot;</span>);
+                    <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(<a href="#315">location</a>, <span class="string">&quot;`SetDiscriminant`is not allowed until deaggregation&quot;</span>);
                 }
             }
             StatementKind::Deinit(..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &lt; MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(<a href="#313">location</a>, <span class="string">&quot;`Deinit`is not allowed until deaggregation&quot;</span>);
+                    <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(<a href="#315">location</a>, <span class="string">&quot;`Deinit`is not allowed until deaggregation&quot;</span>);
                 }
             }
             StatementKind::Retag(kind, <span class="kw">_</span>) =&gt; {
@@ -1627,7 +1665,7 @@
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
                 </span><span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(kind, RetagKind::Raw | RetagKind::TwoPhase) {
-                    <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(<a href="#313">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;explicit `{kind:?}` is forbidden&quot;</span>));
+                    <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(<a href="#315">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;explicit `{kind:?}` is forbidden&quot;</span>));
                 }
             }
             StatementKind::StorageLive(local) =&gt; {
@@ -1639,11 +1677,11 @@
                 // to help us catch bugs. If you happen to write an optimization that might cause
                 // this to incorrectly fire, feel free to remove this check.
                 </span><span class="kw">if </span><span class="self">self</span>.reachable_blocks.contains(location.block) {
-                    <a class="self" href="#313">self</a>.storage_liveness.seek_before_primary_effect(<a href="#313">location</a>);
-                    <span class="kw">let </span>locals_with_storage = <a class="self" href="#313">self</a>.storage_liveness.get();
+                    <a class="self" href="#315">self</a>.storage_liveness.seek_before_primary_effect(<a href="#315">location</a>);
+                    <span class="kw">let </span>locals_with_storage = <a class="self" href="#315">self</a>.storage_liveness.get();
                     <span class="kw">if </span>locals_with_storage.contains(<span class="kw-2">*</span>local) {
-                        <a class="self" href="#313">self</a>.<a href="#127-141">fail</a>(
-                            <a href="#313">location</a>,
+                        <a class="self" href="#315">self</a>.<a href="#129-143">fail</a>(
+                            <a href="#315">location</a>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;StorageLive({local:?}) which already has storage here&quot;</span>),
                         );
                     }
@@ -1657,26 +1695,26 @@
             | StatementKind::Nop =&gt; {}
         }
 
-        <a class="self" href="#313">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#313">statement</a>, <a href="#313">location</a>);
+        <a class="self" href="#315">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#315">statement</a>, <a href="#315">location</a>);
     }
 
     <span class="kw">fn </span>visit_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, terminator: <span class="kw-2">&amp;</span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#392">terminator</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#394">terminator</a>.kind {
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Goto</a> { target } =&gt; {
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#394">target</a>, <a href="#22">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#396">target</a>, <a href="#24">EdgeKind::Normal</a>);
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { targets, discr: <span class="kw">_ </span>} =&gt; {
                 <span class="kw">for </span>(<span class="kw">_</span>, target) <span class="kw">in </span>targets.iter() {
                     <span class="self">self</span>.check_edge(location, target, EdgeKind::Normal);
                 }
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <a href="#397">targets</a>.otherwise(), <a href="#22">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <a href="#399">targets</a>.otherwise(), <a href="#24">EdgeKind::Normal</a>);
 
-                <a class="self" href="#392">self</a>.value_cache.clear();
-                <a class="self" href="#392">self</a>.value_cache.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#397">targets</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(value, <span class="kw">_</span>)| <a href="#404">value</a>));
-                <span class="kw">let </span>has_duplicates = <a href="#397">targets</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">len</a>() != <a class="self" href="#392">self</a>.value_cache.len();
+                <a class="self" href="#394">self</a>.value_cache.clear();
+                <a class="self" href="#394">self</a>.value_cache.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/collect/trait.Extend.html">extend</a>(<a href="#399">targets</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(|(value, <span class="kw">_</span>)| <a href="#406">value</a>));
+                <span class="kw">let </span>has_duplicates = <a href="#399">targets</a>.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/exact_size/trait.ExactSizeIterator.html">len</a>() != <a class="self" href="#394">self</a>.value_cache.len();
                 <span class="kw">if </span>has_duplicates {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#392">location</a>,
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#394">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;duplicated values in `SwitchInt` terminator: {:?}&quot;</span>,
                             terminator.kind,
@@ -1685,24 +1723,24 @@
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Drop</a> { target, unwind, .. } =&gt; {
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#416">target</a>, <a href="#22">EdgeKind::Normal</a>);
-                <a class="self" href="#392">self</a>.<a href="#256-285">check_unwind_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#416">unwind</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#418">target</a>, <a href="#24">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#258-287">check_unwind_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#418">unwind</a>);
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Call</a> { args, destination, target, unwind, .. } =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#420">target</a> {
-                    <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#421">target</a>, <a href="#22">EdgeKind::Normal</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(target) = <a href="#422">target</a> {
+                    <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#423">target</a>, <a href="#24">EdgeKind::Normal</a>);
                 }
-                <a class="self" href="#392">self</a>.<a href="#256-285">check_unwind_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#420">unwind</a>);
+                <a class="self" href="#394">self</a>.<a href="#258-287">check_unwind_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#422">unwind</a>);
 
                 <span class="comment">// The call destination place and Operand::Move place used as an argument might be
                 // passed by a reference to the callee. Consequently they must be non-overlapping
                 // and cannot be packed. Currently this simply checks for duplicate places.
-                </span><a class="self" href="#392">self</a>.place_cache.clear();
-                <a class="self" href="#392">self</a>.place_cache.insert(<a href="#420">destination</a>.as_ref());
+                </span><a class="self" href="#394">self</a>.place_cache.clear();
+                <a class="self" href="#394">self</a>.place_cache.insert(<a href="#422">destination</a>.as_ref());
                 <span class="kw">if </span>is_within_packed(<span class="self">self</span>.tcx, <span class="kw-2">&amp;</span><span class="self">self</span>.body.local_decls, <span class="kw-2">*</span>destination).is_some() {
                     <span class="comment">// This is bad! The callee will expect the memory to be aligned.
-                    </span><a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#392">location</a>,
+                    </span><a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#394">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;encountered packed place in `Call` terminator destination: {:?}&quot;</span>,
                             terminator.kind,
@@ -1727,8 +1765,8 @@
                 }
 
                 <span class="kw">if </span>has_duplicates {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#392">location</a>,
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#394">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}&quot;</span>,
                             terminator.kind,
@@ -1737,89 +1775,89 @@
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Assert</a> { target, unwind, .. } =&gt; {
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#468">target</a>, <a href="#22">EdgeKind::Normal</a>);
-                <a class="self" href="#392">self</a>.<a href="#256-285">check_unwind_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#468">unwind</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#470">target</a>, <a href="#24">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#258-287">check_unwind_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#470">unwind</a>);
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Yield</a> { resume, drop, .. } =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.body.generator.is_none() {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;`Yield` cannot appear outside generator bodies&quot;</span>);
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;`Yield` cannot appear outside generator bodies&quot;</span>);
                 }
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;`Yield` should have been replaced by generator lowering&quot;</span>);
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;`Yield` should have been replaced by generator lowering&quot;</span>);
                 }
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#472">resume</a>, <a href="#22">EdgeKind::Normal</a>);
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(drop) = <a href="#472">drop</a> {
-                    <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#480">drop</a>, <a href="#22">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#474">resume</a>, <a href="#24">EdgeKind::Normal</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(drop) = <a href="#474">drop</a> {
+                    <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#482">drop</a>, <a href="#24">EdgeKind::Normal</a>);
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseEdge</a> { real_target, imaginary_target } =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#392">location</a>,
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#394">location</a>,
                         <span class="string">&quot;`FalseEdge` should have been removed after drop elaboration&quot;</span>,
                     );
                 }
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#484">real_target</a>, <a href="#22">EdgeKind::Normal</a>);
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#484">imaginary_target</a>, <a href="#22">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#486">real_target</a>, <a href="#24">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#486">imaginary_target</a>, <a href="#24">EdgeKind::Normal</a>);
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::FalseUnwind</a> { real_target, unwind } =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#392">location</a>,
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#394">location</a>,
                         <span class="string">&quot;`FalseUnwind` should have been removed after drop elaboration&quot;</span>,
                     );
                 }
-                <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#494">real_target</a>, <a href="#22">EdgeKind::Normal</a>);
-                <a class="self" href="#392">self</a>.<a href="#256-285">check_unwind_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#494">unwind</a>);
+                <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#496">real_target</a>, <a href="#24">EdgeKind::Normal</a>);
+                <a class="self" href="#394">self</a>.<a href="#258-287">check_unwind_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#496">unwind</a>);
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::InlineAsm</a> { destination, unwind, .. } =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(destination) = <a href="#504">destination</a> {
-                    <a class="self" href="#392">self</a>.<a href="#143-175">check_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#505">destination</a>, <a href="#22">EdgeKind::Normal</a>);
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(destination) = <a href="#506">destination</a> {
+                    <a class="self" href="#394">self</a>.<a href="#145-177">check_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#507">destination</a>, <a href="#24">EdgeKind::Normal</a>);
                 }
-                <a class="self" href="#392">self</a>.<a href="#256-285">check_unwind_edge</a>(<a href="#392">location</a>, <span class="kw-2">*</span><a href="#504">unwind</a>);
+                <a class="self" href="#394">self</a>.<a href="#258-287">check_unwind_edge</a>(<a href="#394">location</a>, <span class="kw-2">*</span><a href="#506">unwind</a>);
             }
             TerminatorKind::GeneratorDrop =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.body.generator.is_none() {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;`GeneratorDrop` cannot appear outside generator bodies&quot;</span>);
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;`GeneratorDrop` cannot appear outside generator bodies&quot;</span>);
                 }
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(
-                        <a href="#392">location</a>,
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(
+                        <a href="#394">location</a>,
                         <span class="string">&quot;`GeneratorDrop` should have been replaced by generator lowering&quot;</span>,
                     );
                 }
             }
             TerminatorKind::UnwindResume =&gt; {
-                <span class="kw">let </span>bb = <a href="#392">location</a>.block;
+                <span class="kw">let </span>bb = <a href="#394">location</a>.block;
                 <span class="kw">if </span>!<span class="self">self</span>.body.basic_blocks[bb].is_cleanup {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;Cannot `UnwindResume` from non-cleanup basic block&quot;</span>)
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;Cannot `UnwindResume` from non-cleanup basic block&quot;</span>)
                 }
                 <span class="kw">if </span>!<span class="self">self</span>.can_unwind {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;Cannot `UnwindResume` in a function that cannot unwind&quot;</span>)
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;Cannot `UnwindResume` in a function that cannot unwind&quot;</span>)
                 }
             }
             TerminatorKind::UnwindTerminate(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>bb = <a href="#392">location</a>.block;
+                <span class="kw">let </span>bb = <a href="#394">location</a>.block;
                 <span class="kw">if </span>!<span class="self">self</span>.body.basic_blocks[bb].is_cleanup {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;Cannot `UnwindTerminate` from non-cleanup basic block&quot;</span>)
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;Cannot `UnwindTerminate` from non-cleanup basic block&quot;</span>)
                 }
             }
             TerminatorKind::Return =&gt; {
-                <span class="kw">let </span>bb = <a href="#392">location</a>.block;
+                <span class="kw">let </span>bb = <a href="#394">location</a>.block;
                 <span class="kw">if </span><span class="self">self</span>.body.basic_blocks[bb].is_cleanup {
-                    <a class="self" href="#392">self</a>.<a href="#127-141">fail</a>(<a href="#392">location</a>, <span class="string">&quot;Cannot `Return` from cleanup basic block&quot;</span>)
+                    <a class="self" href="#394">self</a>.<a href="#129-143">fail</a>(<a href="#394">location</a>, <span class="string">&quot;Cannot `Return` from cleanup basic block&quot;</span>)
                 }
             }
             TerminatorKind::Unreachable =&gt; {}
         }
 
-        <a class="self" href="#392">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_terminator</a>(<a href="#392">terminator</a>, <a href="#392">location</a>);
+        <a class="self" href="#394">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_terminator</a>(<a href="#394">terminator</a>, <a href="#394">location</a>);
     }
 
     <span class="kw">fn </span>visit_source_scope(<span class="kw-2">&amp;mut </span><span class="self">self</span>, scope: <a href="../../../rustc_middle/mir/struct.SourceScope.html">SourceScope</a>) {
         <span class="kw">if </span><span class="self">self</span>.body.source_scopes.get(scope).is_none() {
-            <a class="self" href="#548">self</a>.tcx.sess.diagnostic().delay_span_bug(
-                <a class="self" href="#548">self</a>.body.span,
+            <a class="self" href="#550">self</a>.tcx.sess.diagnostic().delay_span_bug(
+                <a class="self" href="#550">self</a>.body.span,
                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                     <span class="string">&quot;broken MIR in {:?} ({}):\ninvalid source scope {:?}&quot;</span>,
                     <span class="self">self</span>.body.source.instance, <span class="self">self</span>.when, scope,
@@ -1829,17 +1867,17 @@
     }
 }
 
-<span class="doccomment">/// A faster version of the validation pass that only checks those things which may break when apply
-/// generic substitutions.
+<span class="doccomment">/// A faster version of the validation pass that only checks those things which may break when
+/// instantiating any generic parameters.
 </span><span class="kw">pub fn </span><a href="../../../rustc_const_eval/transform/validate/fn.validate_types.html">validate_types</a>&lt;<span class="lifetime">&#39;tcx</span>&gt;(
     tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     mir_phase: <a href="../../../rustc_middle/mir/syntax/enum.MirPhase.html">MirPhase</a>,
     param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     body: <span class="kw-2">&amp;</span>Body&lt;<span class="lifetime">&#39;tcx</span>&gt;,
 ) -&gt; Vec&lt;(<a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>)&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>type_checker = <a href="#574-580">TypeChecker</a> { <a href="#567">body</a>, <a href="#564">tcx</a>, <a href="#566">param_env</a>, <a href="#565">mir_phase</a>, failures: Vec::new() };
-    <a href="#569">type_checker</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#567">body</a>);
-    <a href="#569">type_checker</a>.failures
+    <span class="kw">let </span><span class="kw-2">mut </span>type_checker = <a href="#576-582">TypeChecker</a> { <a href="#569">body</a>, <a href="#566">tcx</a>, <a href="#568">param_env</a>, <a href="#567">mir_phase</a>, failures: Vec::new() };
+    <a href="#571">type_checker</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">visit_body</a>(<a href="#569">body</a>);
+    <a href="#571">type_checker</a>.failures
 }
 
 <span class="kw">struct </span><a href="../../../rustc_const_eval/transform/validate/struct.TypeChecker.html">TypeChecker</a>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
@@ -1852,7 +1890,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; TypeChecker&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>fail(<span class="kw-2">&amp;mut </span><span class="self">self</span>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>, msg: <span class="kw">impl </span>Into&lt;<a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html">String</a>&gt;) {
-        <a class="self" href="#583">self</a>.failures.push((<a href="#583">location</a>, <a href="#583">msg</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()));
+        <a class="self" href="#585">self</a>.failures.push((<a href="#585">location</a>, <a href="#585">msg</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()));
     }
 
     <span class="doccomment">/// Check if src can be assigned into dest.
@@ -1873,7 +1911,15 @@
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
 
-        <a href="../util/compare_types.rs.html#34-71"><span class="kw">crate</span>::util::is_subtype</a>(<a class="self" href="#589">self</a>.tcx, <a class="self" href="#589">self</a>.param_env, <a href="#589">src</a>, <a href="#589">dest</a>)
+        <span class="comment">// After borrowck subtyping should be fully explicit via
+        // `Subtype` projections.
+        </span><span class="kw">let </span>variance = <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
+            Variance::Invariant
+        } <span class="kw">else </span>{
+            Variance::Covariant
+        };
+
+        <a href="../util/compare_types.rs.html#39-77"><span class="kw">crate</span>::util::relate_types</a>(<a class="self" href="#591">self</a>.tcx, <a class="self" href="#591">self</a>.param_env, <a href="#609">variance</a>, <a href="#591">src</a>, <a href="#591">dest</a>)
     }
 }
 
@@ -1884,16 +1930,16 @@
             &amp;&amp; <span class="self">self</span>.mir_phase &lt; MirPhase::Runtime(RuntimePhase::Initial)
         {
             <span class="comment">// `Operand::Copy` is only supposed to be used with `Copy` types.
-            </span><span class="kw">if let </span>Operand::Copy(place) = <a href="#610">operand</a> {
-                <span class="kw">let </span>ty = <a href="#616">place</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#610">self</a>.body.local_decls, <a class="self" href="#610">self</a>.tcx).ty;
+            </span><span class="kw">if let </span>Operand::Copy(place) = <a href="#620">operand</a> {
+                <span class="kw">let </span>ty = <a href="#626">place</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#620">self</a>.body.local_decls, <a class="self" href="#620">self</a>.tcx).ty;
 
                 <span class="kw">if </span>!ty.is_copy_modulo_regions(<span class="self">self</span>.tcx, <span class="self">self</span>.param_env) {
-                    <a class="self" href="#610">self</a>.<a href="#583-585">fail</a>(<a href="#610">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`Operand::Copy` with non-`Copy` type {ty}&quot;</span>));
+                    <a class="self" href="#620">self</a>.<a href="#585-587">fail</a>(<a href="#620">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`Operand::Copy` with non-`Copy` type {ty}&quot;</span>));
                 }
             }
         }
 
-        <a class="self" href="#610">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#610">operand</a>, <a href="#610">location</a>);
+        <a class="self" href="#620">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#620">operand</a>, <a href="#620">location</a>);
     }
 
     <span class="kw">fn </span>visit_projection_elem(
@@ -1903,34 +1949,42 @@
         context: <a href="../../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>,
         location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>,
     ) {
-        <span class="kw">match </span><a href="#631">elem</a> {
+        <span class="kw">match </span><a href="#641">elem</a> {
+            ProjectionElem::OpaqueCast(ty)
+                <span class="kw">if </span><a class="self" href="#639">self</a>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) =&gt;
+            {
+                <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(
+                    <a href="#643">location</a>,
+                    <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;explicit opaque type cast to `{ty}` after `RevealAll`&quot;</span>),
+                )
+            }
             ProjectionElem::Index(index) =&gt; {
-                <span class="kw">let </span>index_ty = <a class="self" href="#629">self</a>.body.local_decls[<a href="#636">index</a>].ty;
+                <span class="kw">let </span>index_ty = <a class="self" href="#639">self</a>.body.local_decls[<a href="#654">index</a>].ty;
                 <span class="kw">if </span>index_ty != <span class="self">self</span>.tcx.types.usize {
-                    <a class="self" href="#629">self</a>.<a href="#583-585">fail</a>(<a href="#633">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;bad index ({index_ty:?} != usize)&quot;</span>))
+                    <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(<a href="#643">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;bad index ({index_ty:?} != usize)&quot;</span>))
                 }
             }
             ProjectionElem::Deref
-                <span class="kw">if </span><a class="self" href="#629">self</a>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::PostCleanup) =&gt;
+                <span class="kw">if </span><a class="self" href="#639">self</a>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::PostCleanup) =&gt;
             {
-                <span class="kw">let </span>base_ty = <a href="#630">place_ref</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#629">self</a>.body.local_decls, <a class="self" href="#629">self</a>.tcx).ty;
+                <span class="kw">let </span>base_ty = <a href="#640">place_ref</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#639">self</a>.body.local_decls, <a class="self" href="#639">self</a>.tcx).ty;
 
                 <span class="kw">if </span>base_ty.is_box() {
-                    <a class="self" href="#629">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#633">location</a>,
+                    <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#643">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{base_ty:?} dereferenced after ElaborateBoxDerefs&quot;</span>),
                     )
                 }
             }
             ProjectionElem::Field(f, ty) =&gt; {
-                <span class="kw">let </span>parent_ty = <a href="#630">place_ref</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#629">self</a>.body.local_decls, <a class="self" href="#629">self</a>.tcx);
+                <span class="kw">let </span>parent_ty = <a href="#640">place_ref</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#639">self</a>.body.local_decls, <a class="self" href="#639">self</a>.tcx);
                 <span class="kw">let </span>fail_out_of_bounds = |this: <span class="kw-2">&amp;mut </span><span class="self">Self</span>, location| {
-                    <a href="#656">this</a>.<a href="#583-585">fail</a>(<a href="#656">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Out of bounds field {f:?} for {parent_ty:?}&quot;</span>));
+                    <a href="#674">this</a>.<a href="#585-587">fail</a>(<a href="#674">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Out of bounds field {f:?} for {parent_ty:?}&quot;</span>));
                 };
                 <span class="kw">let </span>check_equal = |this: <span class="kw-2">&amp;mut </span><span class="self">Self</span>, location, f_ty| {
                     <span class="kw">if </span>!this.mir_assign_valid_types(ty, f_ty) {
-                        <a href="#659">this</a>.<a href="#583-585">fail</a>(
-                            <a href="#659">location</a>,
+                        <a href="#677">this</a>.<a href="#585-587">fail</a>(
+                            <a href="#677">location</a>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                                 <span class="string">&quot;Field projection `{place_ref:?}.{f:?}` specified type `{ty:?}`, but actual type is `{f_ty:?}`&quot;
                             </span>)
@@ -1938,105 +1992,122 @@
                     }
                 };
 
-                <span class="kw">let </span>kind = <span class="kw">match </span><a href="#655">parent_ty</a>.ty.kind() {
+                <span class="kw">let </span>kind = <span class="kw">match </span><a href="#673">parent_ty</a>.ty.kind() {
                     <span class="kw-2">&amp;</span>ty::Alias(ty::Opaque, <a href="../../../rustc_middle/ty/sty/struct.AliasTy.html">ty::AliasTy</a> { def_id, args, .. }) =&gt; {
-                        <a class="self" href="#629">self</a>.tcx.type_of(<a href="#671">def_id</a>).instantiate(<a class="self" href="#629">self</a>.tcx, <a href="#671">args</a>).kind()
+                        <a class="self" href="#639">self</a>.tcx.type_of(<a href="#689">def_id</a>).instantiate(<a class="self" href="#639">self</a>.tcx, <a href="#689">args</a>).kind()
                     }
-                    kind =&gt; <a href="#674">kind</a>,
+                    kind =&gt; <a href="#692">kind</a>,
                 };
 
-                <span class="kw">match </span><a href="#670">kind</a> {
+                <span class="kw">match </span><a href="#688">kind</a> {
                     ty::Tuple(fields) =&gt; {
-                        <span class="kw">let </span><span class="prelude-val">Some</span>(f_ty) = <a href="#678">fields</a>.get(<a href="#654">f</a>.as_usize()) <span class="kw">else </span>{
-                            <a href="#656">fail_out_of_bounds</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>);
+                        <span class="kw">let </span><span class="prelude-val">Some</span>(f_ty) = <a href="#696">fields</a>.get(<a href="#672">f</a>.as_usize()) <span class="kw">else </span>{
+                            <a href="#674">fail_out_of_bounds</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>);
                             <span class="kw">return</span>;
                         };
-                        <a href="#659">check_equal</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>, <span class="kw-2">*</span><a href="#679">f_ty</a>);
+                        <a href="#677">check_equal</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>, <span class="kw-2">*</span><a href="#697">f_ty</a>);
                     }
                     ty::Adt(adt_def, args) =&gt; {
-                        <span class="kw">let </span>var = <a href="#655">parent_ty</a>.variant_index.unwrap_or(<a href="../../../rustc_abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>);
-                        <span class="kw">let </span><span class="prelude-val">Some</span>(field) = <a href="#685">adt_def</a>.variant(<a href="#686">var</a>).fields.get(<a href="#654">f</a>) <span class="kw">else </span>{
-                            <a href="#656">fail_out_of_bounds</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>);
+                        <span class="kw">let </span>var = <a href="#673">parent_ty</a>.variant_index.unwrap_or(<a href="../../../rustc_target/abi/constant.FIRST_VARIANT.html">FIRST_VARIANT</a>);
+                        <span class="kw">let </span><span class="prelude-val">Some</span>(field) = <a href="#703">adt_def</a>.variant(<a href="#704">var</a>).fields.get(<a href="#672">f</a>) <span class="kw">else </span>{
+                            <a href="#674">fail_out_of_bounds</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>);
                             <span class="kw">return</span>;
                         };
-                        <a href="#659">check_equal</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>, <a href="#687">field</a>.ty(<a class="self" href="#629">self</a>.tcx, <a href="#685">args</a>));
+                        <a href="#677">check_equal</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>, <a href="#705">field</a>.ty(<a class="self" href="#639">self</a>.tcx, <a href="#703">args</a>));
                     }
                     ty::Closure(<span class="kw">_</span>, args) =&gt; {
-                        <span class="kw">let </span>args = <a href="#693">args</a>.as_closure();
-                        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>f_ty) = <a href="#694">args</a>.upvar_tys().get(<a href="#654">f</a>.as_usize()) <span class="kw">else </span>{
-                            <a href="#656">fail_out_of_bounds</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>);
+                        <span class="kw">let </span>args = <a href="#711">args</a>.as_closure();
+                        <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>f_ty) = <a href="#712">args</a>.upvar_tys().get(<a href="#672">f</a>.as_usize()) <span class="kw">else </span>{
+                            <a href="#674">fail_out_of_bounds</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>);
                             <span class="kw">return</span>;
                         };
-                        <a href="#659">check_equal</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>, <a href="#695">f_ty</a>);
+                        <a href="#677">check_equal</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>, <a href="#713">f_ty</a>);
                     }
                     <span class="kw-2">&amp;</span>ty::Generator(def_id, args, <span class="kw">_</span>) =&gt; {
-                        <span class="kw">let </span>f_ty = <span class="kw">if let </span><span class="prelude-val">Some</span>(var) = <a href="#655">parent_ty</a>.variant_index {
+                        <span class="kw">let </span>f_ty = <span class="kw">if let </span><span class="prelude-val">Some</span>(var) = <a href="#673">parent_ty</a>.variant_index {
                             <span class="kw">let </span>gen_body = <span class="kw">if </span>def_id == <span class="self">self</span>.body.source.def_id() {
-                                <a class="self" href="#629">self</a>.body
+                                <a class="self" href="#639">self</a>.body
                             } <span class="kw">else </span>{
-                                <a class="self" href="#629">self</a>.tcx.optimized_mir(<a href="#701">def_id</a>)
+                                <a class="self" href="#639">self</a>.tcx.optimized_mir(<a href="#719">def_id</a>)
                             };
 
-                            <span class="kw">let </span><span class="prelude-val">Some</span>(layout) = <a href="#703">gen_body</a>.generator_layout() <span class="kw">else </span>{
-                                <a class="self" href="#629">self</a>.<a href="#583-585">fail</a>(
-                                    <a href="#633">location</a>,
+                            <span class="kw">let </span><span class="prelude-val">Some</span>(layout) = <a href="#721">gen_body</a>.generator_layout() <span class="kw">else </span>{
+                                <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(
+                                    <a href="#643">location</a>,
                                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;No generator layout for {parent_ty:?}&quot;</span>),
                                 );
                                 <span class="kw">return</span>;
                             };
 
-                            <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>local) = <a href="#709">layout</a>.variant_fields[<a href="#702">var</a>].get(<a href="#654">f</a>) <span class="kw">else </span>{
-                                <a href="#656">fail_out_of_bounds</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>);
+                            <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>local) = <a href="#727">layout</a>.variant_fields[<a href="#720">var</a>].get(<a href="#672">f</a>) <span class="kw">else </span>{
+                                <a href="#674">fail_out_of_bounds</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>);
                                 <span class="kw">return</span>;
                             };
 
-                            <span class="kw">let </span><span class="prelude-val">Some</span>(f_ty) = <a href="#709">layout</a>.field_tys.get(<a href="#717">local</a>) <span class="kw">else </span>{
-                                <a class="self" href="#629">self</a>.<a href="#583-585">fail</a>(
-                                    <a href="#633">location</a>,
+                            <span class="kw">let </span><span class="prelude-val">Some</span>(f_ty) = <a href="#727">layout</a>.field_tys.get(<a href="#735">local</a>) <span class="kw">else </span>{
+                                <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(
+                                    <a href="#643">location</a>,
                                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Out of bounds local {local:?} for {parent_ty:?}&quot;</span>),
                                 );
                                 <span class="kw">return</span>;
                             };
 
-                            ty::EarlyBinder::bind(<a href="#722">f_ty</a>.ty).instantiate(<a class="self" href="#629">self</a>.tcx, <a href="#701">args</a>)
+                            ty::EarlyBinder::bind(<a href="#740">f_ty</a>.ty).instantiate(<a class="self" href="#639">self</a>.tcx, <a href="#719">args</a>)
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>f_ty) = <a href="#701">args</a>.as_generator().prefix_tys().get(<a href="#654">f</a>.index())
+                            <span class="kw">let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>f_ty) = <a href="#719">args</a>.as_generator().prefix_tys().get(<a href="#672">f</a>.index())
                             <span class="kw">else </span>{
-                                <a href="#656">fail_out_of_bounds</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>);
+                                <a href="#674">fail_out_of_bounds</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>);
                                 <span class="kw">return</span>;
                             };
 
-                            <a href="#732">f_ty</a>
+                            <a href="#750">f_ty</a>
                         };
 
-                        <a href="#659">check_equal</a>(<a class="self" href="#629">self</a>, <a href="#633">location</a>, <a href="#702">f_ty</a>);
+                        <a href="#677">check_equal</a>(<a class="self" href="#639">self</a>, <a href="#643">location</a>, <a href="#720">f_ty</a>);
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <a class="self" href="#629">self</a>.<a href="#583-585">fail</a>(<a href="#633">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{:?} does not have fields&quot;</span>, parent_ty.ty));
+                        <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(<a href="#643">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{:?} does not have fields&quot;</span>, parent_ty.ty));
                     }
+                }
+            }
+            ProjectionElem::Subtype(ty) =&gt; {
+                <span class="kw">if </span>!relate_types(
+                    <span class="self">self</span>.tcx,
+                    <span class="self">self</span>.param_env,
+                    Variance::Covariant,
+                    ty,
+                    place_ref.ty(<span class="kw-2">&amp;</span><span class="self">self</span>.body.local_decls, <span class="self">self</span>.tcx).ty,
+                ) {
+                    <a class="self" href="#639">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#643">location</a>,
+                        <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
+                            <span class="string">&quot;Failed subtyping {ty:#?} and {:#?}&quot;</span>,
+                            place_ref.ty(<span class="kw-2">&amp;</span><span class="self">self</span>.body.local_decls, <span class="self">self</span>.tcx).ty
+                        ),
+                    )
                 }
             }
             <span class="kw">_ </span>=&gt; {}
         }
-        <a class="self" href="#629">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_projection_elem</a>(<a href="#630">place_ref</a>, <a href="#631">elem</a>, <a href="#632">context</a>, <a href="#633">location</a>);
+        <a class="self" href="#639">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_projection_elem</a>(<a href="#640">place_ref</a>, <a href="#641">elem</a>, <a href="#642">context</a>, <a href="#643">location</a>);
     }
 
     <span class="kw">fn </span>visit_var_debug_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, debuginfo: <span class="kw-2">&amp;</span>VarDebugInfo&lt;<span class="lifetime">&#39;tcx</span>&gt;) {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw">box </span><a href="../../../rustc_middle/mir/struct.VarDebugInfoFragment.html">VarDebugInfoFragment</a> { ty, <span class="kw-2">ref </span>projection }) = <a href="#753">debuginfo</a>.composite {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw">box </span><a href="../../../rustc_middle/mir/struct.VarDebugInfoFragment.html">VarDebugInfoFragment</a> { ty, <span class="kw-2">ref </span>projection }) = <a href="#788">debuginfo</a>.composite {
             <span class="kw">if </span>ty.is_union() || ty.is_enum() {
-                <a class="self" href="#753">self</a>.<a href="#583-585">fail</a>(
+                <a class="self" href="#788">self</a>.<a href="#585-587">fail</a>(
                     START_BLOCK.start_location(),
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;invalid type {ty:?} in debuginfo for {:?}&quot;</span>, debuginfo.name),
                 );
             }
             <span class="kw">if </span>projection.is_empty() {
-                <a class="self" href="#753">self</a>.<a href="#583-585">fail</a>(
+                <a class="self" href="#788">self</a>.<a href="#585-587">fail</a>(
                     START_BLOCK.start_location(),
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;invalid empty projection in debuginfo for {:?}&quot;</span>, debuginfo.name),
                 );
             }
             <span class="kw">if </span>projection.iter().any(|p| !<span class="macro">matches!</span>(p, PlaceElem::Field(..))) {
-                <a class="self" href="#753">self</a>.<a href="#583-585">fail</a>(
+                <a class="self" href="#788">self</a>.<a href="#585-587">fail</a>(
                     START_BLOCK.start_location(),
                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                         <span class="string">&quot;illegal projection {:?} in debuginfo for {:?}&quot;</span>,
@@ -2045,33 +2116,33 @@
                 );
             }
         }
-        <span class="kw">match </span><a href="#753">debuginfo</a>.value {
+        <span class="kw">match </span><a href="#788">debuginfo</a>.value {
             VarDebugInfoContents::Const(<span class="kw">_</span>) =&gt; {}
             VarDebugInfoContents::Place(place) =&gt; {
                 <span class="kw">if </span>place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
-                    <a class="self" href="#753">self</a>.<a href="#583-585">fail</a>(
+                    <a class="self" href="#788">self</a>.<a href="#585-587">fail</a>(
                         START_BLOCK.start_location(),
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;illegal place {:?} in debuginfo for {:?}&quot;</span>, place, debuginfo.name),
                     );
                 }
             }
         }
-        <a class="self" href="#753">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_var_debug_info</a>(<a href="#753">debuginfo</a>);
+        <a class="self" href="#788">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_var_debug_info</a>(<a href="#788">debuginfo</a>);
     }
 
     <span class="kw">fn </span>visit_place(<span class="kw-2">&amp;mut </span><span class="self">self</span>, place: <span class="kw-2">&amp;</span>Place&lt;<span class="lifetime">&#39;tcx</span>&gt;, cntxt: <a href="../../../rustc_middle/mir/visit/enum.PlaceContext.html">PlaceContext</a>, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <span class="comment">// Set off any `bug!`s in the type computation code
-        </span><span class="kw">let _ </span>= <a href="#791">place</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#791">self</a>.body.local_decls, <a class="self" href="#791">self</a>.tcx);
+        </span><span class="kw">let _ </span>= <a href="#826">place</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#826">self</a>.body.local_decls, <a class="self" href="#826">self</a>.tcx);
 
         <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial)
             &amp;&amp; place.projection.len() &gt; <span class="number">1
             </span>&amp;&amp; cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             &amp;&amp; place.projection[<span class="number">1</span>..].contains(<span class="kw-2">&amp;</span>ProjectionElem::Deref)
         {
-            <a class="self" href="#791">self</a>.<a href="#583-585">fail</a>(<a href="#791">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{place:?}, has deref at the wrong place&quot;</span>));
+            <a class="self" href="#826">self</a>.<a href="#585-587">fail</a>(<a href="#826">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;{place:?}, has deref at the wrong place&quot;</span>));
         }
 
-        <a class="self" href="#791">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_place</a>(<a href="#791">place</a>, <a href="#791">cntxt</a>, <a href="#791">location</a>);
+        <a class="self" href="#826">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_place</a>(<a href="#826">place</a>, <a href="#826">cntxt</a>, <a href="#826">location</a>);
     }
 
     <span class="kw">fn </span>visit_rvalue(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rvalue: <span class="kw-2">&amp;</span>Rvalue&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
@@ -2082,20 +2153,20 @@
                 }
             };
         }
-        <span class="kw">match </span><a href="#806">rvalue</a> {
+        <span class="kw">match </span><a href="#841">rvalue</a> {
             Rvalue::Use(<span class="kw">_</span>) | Rvalue::CopyForDeref(<span class="kw">_</span>) | Rvalue::Aggregate(..) =&gt; {}
             Rvalue::Ref(<span class="kw">_</span>, BorrowKind::Shallow, <span class="kw">_</span>) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#806">location</a>,
+                    <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#841">location</a>,
                         <span class="string">&quot;`Assign` statement with a `Shallow` borrow should have been removed in runtime MIR&quot;</span>,
                     );
                 }
             }
             Rvalue::Ref(..) =&gt; {}
             Rvalue::Len(p) =&gt; {
-                <span class="kw">let </span>pty = <a href="#825">p</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx).ty;
-                <a class="macro" href="#807-813">check_kinds!</a>(
+                <span class="kw">let </span>pty = <a href="#860">p</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx).ty;
+                <a class="macro" href="#842-848">check_kinds!</a>(
                     pty,
                     <span class="string">&quot;Cannot compute length of non-array type {:?}&quot;</span>,
                     ty::Array(..) | ty::Slice(..)
@@ -2103,20 +2174,20 @@
             }
             Rvalue::BinaryOp(op, vals) =&gt; {
                 <span class="kw">use </span><a href="../../../rustc_middle/mir/syntax/enum.BinOp.html">BinOp</a>::<span class="kw-2">*</span>;
-                <span class="kw">let </span>a = <a href="#833">vals</a>.<span class="number">0</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx);
-                <span class="kw">let </span>b = <a href="#833">vals</a>.<span class="number">1</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx);
+                <span class="kw">let </span>a = <a href="#868">vals</a>.<span class="number">0</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx);
+                <span class="kw">let </span>b = <a href="#868">vals</a>.<span class="number">1</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx);
                 <span class="kw">if </span><span class="kw">crate</span>::util::binop_right_homogeneous(<span class="kw-2">*</span>op) {
-                    <span class="kw">if let </span>Eq | Lt | Le | Ne | Ge | Gt = <a href="#833">op</a> {
+                    <span class="kw">if let </span>Eq | Lt | Le | Ne | Ge | Gt = <a href="#868">op</a> {
                         <span class="comment">// The function pointer types can have lifetimes
                         </span><span class="kw">if </span>!<span class="self">self</span>.mir_assign_valid_types(a, b) {
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                <a href="#806">location</a>,
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                <a href="#841">location</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Cannot {op:?} compare incompatible types {a:?} and {b:?}&quot;</span>),
                             );
                         }
                     } <span class="kw">else if </span>a != b {
-                        <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                            <a href="#806">location</a>,
+                        <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                            <a href="#841">location</a>,
                             <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                                 <span class="string">&quot;Cannot perform binary op {op:?} on unequal types {a:?} and {b:?}&quot;
                             </span>),
@@ -2124,11 +2195,11 @@
                     }
                 }
 
-                <span class="kw">match </span><a href="#833">op</a> {
+                <span class="kw">match </span><a href="#868">op</a> {
                     Offset =&gt; {
-                        <a class="macro" href="#807-813">check_kinds!</a>(a, <span class="string">&quot;Cannot offset non-pointer type {:?}&quot;</span>, ty::RawPtr(..));
+                        <a class="macro" href="#842-848">check_kinds!</a>(a, <span class="string">&quot;Cannot offset non-pointer type {:?}&quot;</span>, ty::RawPtr(..));
                         <span class="kw">if </span>b != <span class="self">self</span>.tcx.types.isize &amp;&amp; b != <span class="self">self</span>.tcx.types.usize {
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(<a href="#806">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Cannot offset by non-isize type {b:?}&quot;</span>));
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(<a href="#841">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Cannot offset by non-isize type {b:?}&quot;</span>));
                         }
                     }
                     Eq | Lt | Le | Ne | Ge | Gt =&gt; {
@@ -2178,9 +2249,9 @@
             }
             Rvalue::CheckedBinaryOp(op, vals) =&gt; {
                 <span class="kw">use </span><a href="../../../rustc_middle/mir/syntax/enum.BinOp.html">BinOp</a>::<span class="kw-2">*</span>;
-                <span class="kw">let </span>a = <a href="#908">vals</a>.<span class="number">0</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx);
-                <span class="kw">let </span>b = <a href="#908">vals</a>.<span class="number">1</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx);
-                <span class="kw">match </span><a href="#908">op</a> {
+                <span class="kw">let </span>a = <a href="#943">vals</a>.<span class="number">0</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx);
+                <span class="kw">let </span>b = <a href="#943">vals</a>.<span class="number">1</span>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx);
+                <span class="kw">match </span><a href="#943">op</a> {
                     Add | Sub | Mul =&gt; {
                         <span class="kw">for </span>x <span class="kw">in </span>[a, b] {
                             <span class="macro">check_kinds!</span>(
@@ -2190,25 +2261,25 @@
                             )
                         }
                         <span class="kw">if </span>a != b {
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                <a href="#806">location</a>,
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                <a href="#841">location</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                                     <span class="string">&quot;Cannot perform checked arithmetic on unequal types {a:?} and {b:?}&quot;
                                 </span>),
                             );
                         }
                     }
-                    <span class="kw">_ </span>=&gt; <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(<a href="#806">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;There is no checked version of {op:?}&quot;</span>)),
+                    <span class="kw">_ </span>=&gt; <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(<a href="#841">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;There is no checked version of {op:?}&quot;</span>)),
                 }
             }
             Rvalue::UnaryOp(op, operand) =&gt; {
-                <span class="kw">let </span>a = <a href="#933">operand</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx);
-                <span class="kw">match </span><a href="#933">op</a> {
+                <span class="kw">let </span>a = <a href="#968">operand</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx);
+                <span class="kw">match </span><a href="#968">op</a> {
                     UnOp::Neg =&gt; {
-                        <a class="macro" href="#807-813">check_kinds!</a>(a, <span class="string">&quot;Cannot negate type {:?}&quot;</span>, ty::Int(..) | ty::Float(..))
+                        <a class="macro" href="#842-848">check_kinds!</a>(a, <span class="string">&quot;Cannot negate type {:?}&quot;</span>, ty::Int(..) | ty::Float(..))
                     }
                     UnOp::Not =&gt; {
-                        <a class="macro" href="#807-813">check_kinds!</a>(
+                        <a class="macro" href="#842-848">check_kinds!</a>(
                             a,
                             <span class="string">&quot;Cannot binary not type {:?}&quot;</span>,
                             ty::Int(..) | ty::Uint(..) | ty::Bool
@@ -2217,12 +2288,12 @@
                 }
             }
             Rvalue::ShallowInitBox(operand, <span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>a = <a href="#948">operand</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#806">self</a>.body.local_decls, <a class="self" href="#806">self</a>.tcx);
-                <a class="macro" href="#807-813">check_kinds!</a>(a, <span class="string">&quot;Cannot shallow init type {:?}&quot;</span>, ty::RawPtr(..));
+                <span class="kw">let </span>a = <a href="#983">operand</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#841">self</a>.body.local_decls, <a class="self" href="#841">self</a>.tcx);
+                <a class="macro" href="#842-848">check_kinds!</a>(a, <span class="string">&quot;Cannot shallow init type {:?}&quot;</span>, ty::RawPtr(..));
             }
             Rvalue::Cast(kind, operand, target_type) =&gt; {
-                <span class="kw">let </span>op_ty = <a href="#952">operand</a>.ty(<a class="self" href="#806">self</a>.body, <a class="self" href="#806">self</a>.tcx);
-                <span class="kw">match </span><a href="#952">kind</a> {
+                <span class="kw">let </span>op_ty = <a href="#987">operand</a>.ty(<a class="self" href="#841">self</a>.body, <a class="self" href="#841">self</a>.tcx);
+                <span class="kw">match </span><a href="#987">kind</a> {
                     CastKind::DynStar =&gt; {
                         <span class="comment">// FIXME(dyn-star): make sure nothing needs to be done here.
                     </span>}
@@ -2231,24 +2302,24 @@
                     | CastKind::PointerExposeAddress
                     | CastKind::PointerCoercion(<span class="kw">_</span>) =&gt; {}
                     CastKind::IntToInt | CastKind::IntToFloat =&gt; {
-                        <span class="kw">let </span>input_valid = <a href="#953">op_ty</a>.is_integral() || <a href="#953">op_ty</a>.is_char() || <a href="#953">op_ty</a>.is_bool();
-                        <span class="kw">let </span>target_valid = <a href="#952">target_type</a>.is_numeric() || <a href="#952">target_type</a>.is_char();
+                        <span class="kw">let </span>input_valid = <a href="#988">op_ty</a>.is_integral() || <a href="#988">op_ty</a>.is_char() || <a href="#988">op_ty</a>.is_bool();
+                        <span class="kw">let </span>target_valid = <a href="#987">target_type</a>.is_numeric() || <a href="#987">target_type</a>.is_char();
                         <span class="kw">if </span>!input_valid || !target_valid {
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                <a href="#806">location</a>,
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                <a href="#841">location</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Wrong cast kind {kind:?} for the type {op_ty}&quot;</span>,),
                             );
                         }
                     }
                     CastKind::FnPtrToPtr | CastKind::PtrToPtr =&gt; {
                         <span class="kw">if </span>!(op_ty.is_any_ptr() &amp;&amp; target_type.is_unsafe_ptr()) {
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(<a href="#806">location</a>, <span class="string">&quot;Can&#39;t cast {op_ty} into &#39;Ptr&#39;&quot;</span>);
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(<a href="#841">location</a>, <span class="string">&quot;Can&#39;t cast {op_ty} into &#39;Ptr&#39;&quot;</span>);
                         }
                     }
                     CastKind::FloatToFloat | CastKind::FloatToInt =&gt; {
                         <span class="kw">if </span>!op_ty.is_floating_point() || !target_type.is_numeric() {
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                <a href="#806">location</a>,
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                <a href="#841">location</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                                     <span class="string">&quot;Trying to cast non &#39;Float&#39; as {kind:?} into {target_type:?}&quot;
                                 </span>),
@@ -2256,7 +2327,7 @@
                         }
                     }
                     CastKind::Transmute =&gt; {
-                        <span class="kw">if let </span>MirPhase::Runtime(..) = <a class="self" href="#806">self</a>.mir_phase {
+                        <span class="kw">if let </span>MirPhase::Runtime(..) = <a class="self" href="#841">self</a>.mir_phase {
                             <span class="comment">// Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                             // for any two `Sized` types, just potentially UB to run.
 
@@ -2265,8 +2336,8 @@
                                 .normalize_erasing_regions(<span class="self">self</span>.param_env, op_ty)
                                 .is_sized(<span class="self">self</span>.tcx, <span class="self">self</span>.param_env)
                             {
-                                <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                    <a href="#806">location</a>,
+                                <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                    <a href="#841">location</a>,
                                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Cannot transmute from non-`Sized` type {op_ty:?}&quot;</span>),
                                 );
                             }
@@ -2275,14 +2346,14 @@
                                 .normalize_erasing_regions(<span class="self">self</span>.param_env, <span class="kw-2">*</span>target_type)
                                 .is_sized(<span class="self">self</span>.tcx, <span class="self">self</span>.param_env)
                             {
-                                <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                    <a href="#806">location</a>,
+                                <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                    <a href="#841">location</a>,
                                     <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Cannot transmute to non-`Sized` type {target_type:?}&quot;</span>),
                                 );
                             }
                         } <span class="kw">else </span>{
-                            <a class="self" href="#806">self</a>.<a href="#583-585">fail</a>(
-                                <a href="#806">location</a>,
+                            <a class="self" href="#841">self</a>.<a href="#585-587">fail</a>(
+                                <a href="#841">location</a>,
                                 <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                                     <span class="string">&quot;Transmute is not supported in non-runtime phase {:?}.&quot;</span>,
                                     <span class="self">self</span>.mir_phase
@@ -2294,10 +2365,10 @@
             }
             Rvalue::NullaryOp(NullOp::OffsetOf(fields), container) =&gt; {
                 <span class="kw">let </span>fail_out_of_bounds = |this: <span class="kw-2">&amp;mut </span><span class="self">Self</span>, location, field, ty| {
-                    <a href="#1025">this</a>.<a href="#583-585">fail</a>(<a href="#1025">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Out of bounds field {field:?} for {ty:?}&quot;</span>));
+                    <a href="#1060">this</a>.<a href="#585-587">fail</a>(<a href="#1060">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Out of bounds field {field:?} for {ty:?}&quot;</span>));
                 };
 
-                <span class="kw">let </span><span class="kw-2">mut </span>current_ty = <span class="kw-2">*</span><a href="#1024">container</a>;
+                <span class="kw">let </span><span class="kw-2">mut </span>current_ty = <span class="kw-2">*</span><a href="#1059">container</a>;
 
                 <span class="kw">for </span>field <span class="kw">in </span>fields.iter() {
                     <span class="kw">match </span>current_ty.kind() {
@@ -2342,18 +2413,19 @@
             | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, <span class="kw">_</span>)
             | Rvalue::Discriminant(<span class="kw">_</span>) =&gt; {}
         }
-        <a class="self" href="#806">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_rvalue</a>(<a href="#806">rvalue</a>, <a href="#806">location</a>);
+        <a class="self" href="#841">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_rvalue</a>(<a href="#841">rvalue</a>, <a href="#841">location</a>);
     }
 
     <span class="kw">fn </span>visit_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, statement: <span class="kw-2">&amp;</span>Statement&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1077">statement</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1112">statement</a>.kind {
             StatementKind::Assign(<span class="kw">box </span>(dest, rvalue)) =&gt; {
                 <span class="comment">// LHS and RHS of the assignment must have the same type.
-                </span><span class="kw">let </span>left_ty = <a href="#1079">dest</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx).ty;
-                <span class="kw">let </span>right_ty = <a href="#1079">rvalue</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx);
+                </span><span class="kw">let </span>left_ty = <a href="#1114">dest</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx).ty;
+                <span class="kw">let </span>right_ty = <a href="#1114">rvalue</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx);
+
                 <span class="kw">if </span>!<span class="self">self</span>.mir_assign_valid_types(right_ty, left_ty) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;encountered `{:?}` with incompatible types:\n\
                             left-hand side has type: {}\n\
@@ -2362,21 +2434,21 @@
                         ),
                     );
                 }
-                <span class="kw">if let </span>Rvalue::CopyForDeref(place) = <a href="#1079">rvalue</a> {
+                <span class="kw">if let </span>Rvalue::CopyForDeref(place) = <a href="#1114">rvalue</a> {
                     <span class="kw">if </span>place.ty(<span class="kw-2">&amp;</span><span class="self">self</span>.body.local_decls, <span class="self">self</span>.tcx).ty.builtin_deref(<span class="bool-val">true</span>).is_none() {
-                        <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                            <a href="#1077">location</a>,
+                        <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                            <a href="#1112">location</a>,
                             <span class="string">&quot;`CopyForDeref` should only be used for dereferenceable types&quot;</span>,
                         )
                     }
                 }
                 <span class="comment">// FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                </span><span class="kw">if let </span>Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = <a href="#1079">rvalue</a> {
+                </span><span class="kw">if let </span>Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = <a href="#1114">rvalue</a> {
                     <span class="comment">// The sides of an assignment must not alias. Currently this just checks whether
                     // the places are identical.
                     </span><span class="kw">if </span>dest == src {
-                        <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                            <a href="#1077">location</a>,
+                        <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                            <a href="#1112">location</a>,
                             <span class="string">&quot;encountered `Assign` statement with overlapping memory&quot;</span>,
                         );
                     }
@@ -2384,25 +2456,25 @@
             }
             StatementKind::AscribeUserType(..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <span class="string">&quot;`AscribeUserType` should have been removed after drop lowering phase&quot;</span>,
                     );
                 }
             }
             StatementKind::FakeRead(..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &gt;= MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <span class="string">&quot;`FakeRead` should have been removed after drop lowering phase&quot;</span>,
                     );
                 }
             }
             StatementKind::Intrinsic(<span class="kw">box </span>NonDivergingIntrinsic::Assume(op)) =&gt; {
-                <span class="kw">let </span>ty = <a href="#1130">op</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx);
+                <span class="kw">let </span>ty = <a href="#1166">op</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx);
                 <span class="kw">if </span>!ty.is_bool() {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;`assume` argument must be `bool`, but got: `{ty}`&quot;</span>),
                     );
                 }
@@ -2410,22 +2482,22 @@
             StatementKind::Intrinsic(<span class="kw">box </span>NonDivergingIntrinsic::CopyNonOverlapping(
                 <a href="../../../rustc_middle/mir/syntax/struct.CopyNonOverlapping.html">CopyNonOverlapping</a> { src, dst, count },
             )) =&gt; {
-                <span class="kw">let </span>src_ty = <a href="#1140">src</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx);
-                <span class="kw">let </span>op_src_ty = <span class="kw">if let </span><span class="prelude-val">Some</span>(src_deref) = <a href="#1142">src_ty</a>.builtin_deref(<span class="bool-val">true</span>) {
-                    <a href="#1143">src_deref</a>.ty
+                <span class="kw">let </span>src_ty = <a href="#1176">src</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx);
+                <span class="kw">let </span>op_src_ty = <span class="kw">if let </span><span class="prelude-val">Some</span>(src_deref) = <a href="#1178">src_ty</a>.builtin_deref(<span class="bool-val">true</span>) {
+                    <a href="#1179">src_deref</a>.ty
                 } <span class="kw">else </span>{
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Expected src to be ptr in copy_nonoverlapping, got: {src_ty}&quot;</span>),
                     );
                     <span class="kw">return</span>;
                 };
-                <span class="kw">let </span>dst_ty = <a href="#1140">dst</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx);
-                <span class="kw">let </span>op_dst_ty = <span class="kw">if let </span><span class="prelude-val">Some</span>(dst_deref) = <a href="#1152">dst_ty</a>.builtin_deref(<span class="bool-val">true</span>) {
-                    <a href="#1153">dst_deref</a>.ty
+                <span class="kw">let </span>dst_ty = <a href="#1176">dst</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx);
+                <span class="kw">let </span>op_dst_ty = <span class="kw">if let </span><span class="prelude-val">Some</span>(dst_deref) = <a href="#1188">dst_ty</a>.builtin_deref(<span class="bool-val">true</span>) {
+                    <a href="#1189">dst_deref</a>.ty
                 } <span class="kw">else </span>{
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;Expected dst to be ptr in copy_nonoverlapping, got: {dst_ty}&quot;</span>),
                     );
                     <span class="kw">return</span>;
@@ -2433,22 +2505,22 @@
                 <span class="comment">// since CopyNonOverlapping is parametrized by 1 type,
                 // we only need to check that they are equal and not keep an extra parameter.
                 </span><span class="kw">if </span>!<span class="self">self</span>.mir_assign_valid_types(op_src_ty, op_dst_ty) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(<a href="#1077">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;bad arg ({op_src_ty:?} != {op_dst_ty:?})&quot;</span>));
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(<a href="#1112">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;bad arg ({op_src_ty:?} != {op_dst_ty:?})&quot;</span>));
                 }
 
-                <span class="kw">let </span>op_cnt_ty = <a href="#1140">count</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx);
+                <span class="kw">let </span>op_cnt_ty = <a href="#1176">count</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx);
                 <span class="kw">if </span>op_cnt_ty != <span class="self">self</span>.tcx.types.usize {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(<a href="#1077">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;bad arg ({op_cnt_ty:?} != usize)&quot;</span>))
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(<a href="#1112">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;bad arg ({op_cnt_ty:?} != usize)&quot;</span>))
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.StatementKind.html">StatementKind::SetDiscriminant</a> { place, .. } =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &lt; MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(<a href="#1077">location</a>, <span class="string">&quot;`SetDiscriminant`is not allowed until deaggregation&quot;</span>);
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(<a href="#1112">location</a>, <span class="string">&quot;`SetDiscriminant`is not allowed until deaggregation&quot;</span>);
                 }
-                <span class="kw">let </span>pty = <a href="#1173">place</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1077">self</a>.body.local_decls, <a class="self" href="#1077">self</a>.tcx).ty.kind();
+                <span class="kw">let </span>pty = <a href="#1209">place</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1112">self</a>.body.local_decls, <a class="self" href="#1112">self</a>.tcx).ty.kind();
                 <span class="kw">if </span>!<span class="macro">matches!</span>(pty, ty::Adt(..) | ty::Generator(..) | ty::Alias(ty::Opaque, ..)) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1077">location</a>,
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1112">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;`SetDiscriminant` is only allowed on ADTs and generators, not {pty:?}&quot;
                         </span>),
@@ -2457,7 +2529,7 @@
             }
             StatementKind::Deinit(..) =&gt; {
                 <span class="kw">if </span><span class="self">self</span>.mir_phase &lt; MirPhase::Runtime(RuntimePhase::Initial) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(<a href="#1077">location</a>, <span class="string">&quot;`Deinit`is not allowed until deaggregation&quot;</span>);
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(<a href="#1112">location</a>, <span class="string">&quot;`Deinit`is not allowed until deaggregation&quot;</span>);
                 }
             }
             StatementKind::Retag(kind, <span class="kw">_</span>) =&gt; {
@@ -2465,7 +2537,7 @@
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
                 </span><span class="kw">if </span><a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.matches.html">matches!</a>(kind, RetagKind::Raw | RetagKind::TwoPhase) {
-                    <a class="self" href="#1077">self</a>.<a href="#583-585">fail</a>(<a href="#1077">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;explicit `{kind:?}` is forbidden&quot;</span>));
+                    <a class="self" href="#1112">self</a>.<a href="#585-587">fail</a>(<a href="#1112">location</a>, <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;explicit `{kind:?}` is forbidden&quot;</span>));
                 }
             }
             StatementKind::StorageLive(<span class="kw">_</span>)
@@ -2476,19 +2548,19 @@
             | StatementKind::Nop =&gt; {}
         }
 
-        <a class="self" href="#1077">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#1077">statement</a>, <a href="#1077">location</a>);
+        <a class="self" href="#1112">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_statement</a>(<a href="#1112">statement</a>, <a href="#1112">location</a>);
     }
 
     <span class="kw">fn </span>visit_terminator(<span class="kw-2">&amp;mut </span><span class="self">self</span>, terminator: <span class="kw-2">&amp;</span>Terminator&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1211">terminator</a>.kind {
+        <span class="kw">match </span><span class="kw-2">&amp;</span><a href="#1247">terminator</a>.kind {
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::SwitchInt</a> { targets, discr } =&gt; {
-                <span class="kw">let </span>switch_ty = <a href="#1213">discr</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1211">self</a>.body.local_decls, <a class="self" href="#1211">self</a>.tcx);
+                <span class="kw">let </span>switch_ty = <a href="#1249">discr</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1247">self</a>.body.local_decls, <a class="self" href="#1247">self</a>.tcx);
 
-                <span class="kw">let </span>target_width = <a class="self" href="#1211">self</a>.tcx.sess.target.pointer_width;
+                <span class="kw">let </span>target_width = <a class="self" href="#1247">self</a>.tcx.sess.target.pointer_width;
 
-                <span class="kw">let </span>size = Size::from_bits(<span class="kw">match </span><a href="#1214">switch_ty</a>.kind() {
-                    ty::Uint(uint) =&gt; <a href="#1219">uint</a>.normalize(<a href="#1216">target_width</a>).bit_width().unwrap(),
-                    ty::Int(int) =&gt; <a href="#1220">int</a>.normalize(<a href="#1216">target_width</a>).bit_width().unwrap(),
+                <span class="kw">let </span>size = Size::from_bits(<span class="kw">match </span><a href="#1250">switch_ty</a>.kind() {
+                    ty::Uint(uint) =&gt; <a href="#1255">uint</a>.normalize(<a href="#1252">target_width</a>).bit_width().unwrap(),
+                    ty::Int(int) =&gt; <a href="#1256">int</a>.normalize(<a href="#1252">target_width</a>).bit_width().unwrap(),
                     ty::Char =&gt; <span class="number">32</span>,
                     ty::Bool =&gt; <span class="number">1</span>,
                     other =&gt; <a class="macro" href="../../../rustc_middle/rustc_middle/macro.bug.html">bug!</a>(<span class="string">&quot;unhandled type: {:?}&quot;</span>, other),
@@ -2504,20 +2576,20 @@
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Call</a> { func, .. } =&gt; {
-                <span class="kw">let </span>func_ty = <a href="#1235">func</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1211">self</a>.body.local_decls, <a class="self" href="#1211">self</a>.tcx);
-                <span class="kw">match </span><a href="#1236">func_ty</a>.kind() {
+                <span class="kw">let </span>func_ty = <a href="#1271">func</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1247">self</a>.body.local_decls, <a class="self" href="#1247">self</a>.tcx);
+                <span class="kw">match </span><a href="#1272">func_ty</a>.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) =&gt; {}
-                    <span class="kw">_ </span>=&gt; <a class="self" href="#1211">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1211">location</a>,
+                    <span class="kw">_ </span>=&gt; <a class="self" href="#1247">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1247">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(<span class="string">&quot;encountered non-callable type {func_ty} in `Call` terminator&quot;</span>),
                     ),
                 }
             }
             <a href="../../../rustc_middle/mir/syntax/enum.TerminatorKind.html">TerminatorKind::Assert</a> { cond, .. } =&gt; {
-                <span class="kw">let </span>cond_ty = <a href="#1245">cond</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1211">self</a>.body.local_decls, <a class="self" href="#1211">self</a>.tcx);
+                <span class="kw">let </span>cond_ty = <a href="#1281">cond</a>.ty(<span class="kw-2">&amp;</span><a class="self" href="#1247">self</a>.body.local_decls, <a class="self" href="#1247">self</a>.tcx);
                 <span class="kw">if </span>cond_ty != <span class="self">self</span>.tcx.types.bool {
-                    <a class="self" href="#1211">self</a>.<a href="#583-585">fail</a>(
-                        <a href="#1211">location</a>,
+                    <a class="self" href="#1247">self</a>.<a href="#585-587">fail</a>(
+                        <a href="#1247">location</a>,
                         <a class="macro" href="https://doc.rust-lang.org/nightly/alloc/macro.format.html">format!</a>(
                             <span class="string">&quot;encountered non-boolean condition of type {cond_ty} in `Assert` terminator&quot;
                         </span>),
@@ -2537,7 +2609,7 @@
             | TerminatorKind::Unreachable =&gt; {}
         }
 
-        <a class="self" href="#1211">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_terminator</a>(<a href="#1211">terminator</a>, <a href="#1211">location</a>);
+        <a class="self" href="#1247">self</a>.<a href="../../../rustc_middle/mir/visit/trait.Visitor.html">super_terminator</a>(<a href="#1247">terminator</a>, <a href="#1247">location</a>);
     }
 }
 </code></pre></div></section></main></body></html>

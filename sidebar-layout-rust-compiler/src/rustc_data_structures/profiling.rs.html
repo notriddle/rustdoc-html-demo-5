@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_data_structures/src/profiling.rs`."><title>profiling.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_data_structures" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_data_structures/src/profiling.rs`."><title>profiling.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_data_structures" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1004,8 +1004,8 @@
 //!
 //! [mm]: https://github.com/rust-lang/measureme/
 
-</span><span class="kw">use </span><a href="lib.rs.html#54-56"><span class="kw">crate</span>::cold_path</a>;
-<span class="kw">use </span><a href="../../rustc_data_structures/fx/type.FxHashMap.html"><span class="kw">crate</span>::fx::FxHashMap</a>;
+</span><span class="kw">use </span><a href="../../rustc_data_structures/fx/type.FxHashMap.html"><span class="kw">crate</span>::fx::FxHashMap</a>;
+<span class="kw">use </span><a href="lib.rs.html#57-59"><span class="kw">crate</span>::outline</a>;
 
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/borrow/trait.Borrow.html">std::borrow::Borrow</a>;
 <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/std/collections/hash/map/enum.Entry.html">std::collections::hash_map::Entry</a>;
@@ -1620,7 +1620,7 @@
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>finish_with_query_invocation_id(<span class="self">self</span>, query_invocation_id: <a href="#147">QueryInvocationId</a>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(guard) = <a class="self" href="#698">self</a>.<span class="number">0 </span>{
-            <a href="lib.rs.html#54-56">cold_path</a>(|| {
+            <a href="lib.rs.html#57-59">outline</a>(|| {
                 <span class="kw">let </span>event_id = StringId::new_virtual(<a href="#698">query_invocation_id</a>.<span class="number">0</span>);
                 <span class="kw">let </span>event_id = EventId::from_virtual(<a href="#701">event_id</a>);
                 <a href="#699">guard</a>.finish_with_override_event_id(<a href="#702">event_id</a>);
@@ -1662,7 +1662,7 @@
             <a href="#736">_guard</a>,
             info: <a href="#735">message_and_format</a>.map(|(message, format)| <a href="#720-725">VerboseInfo</a> {
                 start_time: Instant::now(),
-                start_rss: <a href="#907-914">get_resident_set_size</a>(),
+                start_rss: <a href="#889-905">get_resident_set_size</a>(),
                 <a href="#740">message</a>,
                 <a href="#740">format</a>,
             }),
@@ -1679,7 +1679,7 @@
 <span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html">Drop</a> <span class="kw">for </span>VerboseTimingGuard&lt;<span class="lifetime">&#39;_</span>&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = <span class="kw-2">&amp;</span><a class="self" href="#757">self</a>.info {
-            <span class="kw">let </span>end_rss = <a href="#907-914">get_resident_set_size</a>();
+            <span class="kw">let </span>end_rss = <a href="#889-905">get_resident_set_size</a>();
             <span class="kw">let </span>dur = <a href="#758">info</a>.start_time.elapsed();
             <a href="#791-849">print_time_passes_entry</a>(<span class="kw-2">&amp;</span><a href="#758">info</a>.message, <a href="#760">dur</a>, <a href="#758">info</a>.start_rss, <a href="#759">end_rss</a>, <a href="#758">info</a>.format);
         }
@@ -1809,31 +1809,31 @@
             <span class="prelude-val">Some</span>(pmc.WorkingSetSize)
         }
     } <span class="kw">else if </span><span class="attr">#[cfg(target_os = <span class="string">&quot;macos&quot;</span>)] </span>{
-        <span class="kw">pub fn </span>get_resident_set_size() -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
-            <span class="kw">use </span>libc::{c_int, c_void, getpid, proc_pidinfo, proc_taskinfo, PROC_PIDTASKINFO};
-            <span class="kw">use </span>std::mem;
-            <span class="kw">const </span>PROC_TASKINFO_SIZE: c_int = mem::size_of::&lt;proc_taskinfo&gt;() <span class="kw">as </span>c_int;
+        <span class="kw">pub fn </span><a href="../../rustc_data_structures/profiling/fn.get_resident_set_size.html">get_resident_set_size</a>() -&gt; <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt; {
+            <span class="kw">use </span>libc::{c_int, <a href="https://doc.rust-lang.org/nightly/core/ffi/enum.c_void.html">c_void</a>, getpid, proc_pidinfo, <a href="https://docs.rs/libc/0.2.148/libc/unix/bsd/apple/struct.proc_taskinfo.html">proc_taskinfo</a>, PROC_PIDTASKINFO};
+            <span class="kw">use </span><a href="https://doc.rust-lang.org/nightly/core/mem/index.html">std::mem</a>;
+            <span class="kw">const </span>PROC_TASKINFO_SIZE: c_int = mem::size_of::&lt;<a href="https://docs.rs/libc/0.2.148/libc/unix/bsd/apple/struct.proc_taskinfo.html">proc_taskinfo</a>&gt;() <span class="kw">as </span>c_int;
 
             <span class="kw">unsafe </span>{
-                <span class="kw">let </span><span class="kw-2">mut </span>info: proc_taskinfo = mem::zeroed();
-                <span class="kw">let </span>info_ptr = <span class="kw-2">&amp;mut </span>info <span class="kw">as </span><span class="kw-2">*mut </span>proc_taskinfo <span class="kw">as </span><span class="kw-2">*mut </span>c_void;
+                <span class="kw">let </span><span class="kw-2">mut </span>info: <a href="https://docs.rs/libc/0.2.148/libc/unix/bsd/apple/struct.proc_taskinfo.html">proc_taskinfo</a> = mem::zeroed();
+                <span class="kw">let </span>info_ptr = <span class="kw-2">&amp;mut </span><a href="#895">info</a> <span class="kw">as </span><span class="kw-2">*mut </span><a href="https://docs.rs/libc/0.2.148/libc/unix/bsd/apple/struct.proc_taskinfo.html">proc_taskinfo</a> <span class="kw">as </span><span class="kw-2">*mut </span><a href="https://doc.rust-lang.org/nightly/core/ffi/enum.c_void.html">c_void</a>;
                 <span class="kw">let </span>pid = getpid() <span class="kw">as </span>c_int;
-                <span class="kw">let </span>ret = proc_pidinfo(pid, PROC_PIDTASKINFO, <span class="number">0</span>, info_ptr, PROC_TASKINFO_SIZE);
+                <span class="kw">let </span>ret = proc_pidinfo(<a href="#897">pid</a>, PROC_PIDTASKINFO, <span class="number">0</span>, <a href="#896">info_ptr</a>, <a href="#892">PROC_TASKINFO_SIZE</a>);
                 <span class="kw">if </span>ret == PROC_TASKINFO_SIZE {
-                    <span class="prelude-val">Some</span>(info.pti_resident_size <span class="kw">as </span>usize)
+                    <span class="prelude-val">Some</span>(<a href="#895">info</a>.pti_resident_size <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>}
             }
         }
     } <span class="kw">else if </span><span class="attr">#[cfg(unix)] </span>{
-        <span class="kw">pub fn </span><a href="../../rustc_data_structures/profiling/fn.get_resident_set_size.html">get_resident_set_size</a>() -&gt; <span class="prelude-ty">Option</span>&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt; {
+        <span class="kw">pub fn </span>get_resident_set_size() -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
             <span class="kw">let </span>field = <span class="number">1</span>;
             <span class="kw">let </span>contents = fs::read(<span class="string">&quot;/proc/self/statm&quot;</span>).ok()<span class="question-mark">?</span>;
             <span class="kw">let </span>contents = String::from_utf8(contents).ok()<span class="question-mark">?</span>;
             <span class="kw">let </span>s = contents.split_whitespace().nth(field)<span class="question-mark">?</span>;
             <span class="kw">let </span>npages = s.parse::&lt;usize&gt;().ok()<span class="question-mark">?</span>;
-            <span class="prelude-val">Some</span>(<a href="#912">npages</a> * <span class="number">4096</span>)
+            <span class="prelude-val">Some</span>(npages * <span class="number">4096</span>)
         }
     } <span class="kw">else </span>{
         <span class="kw">pub fn </span>get_resident_set_size() -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_llvm/src/coverageinfo/mapgen.rs`."><title>mapgen.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_llvm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_codegen_llvm/src/coverageinfo/mapgen.rs`."><title>mapgen.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_codegen_llvm" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -341,11 +341,14 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><a href="../context.rs.html#45-106"><span class="kw">crate</span>::common::CodegenCx</a>;
-<span class="kw">use </span><a href="../lib.rs.html#69"><span class="kw">crate</span>::coverageinfo</a>;
-<span class="kw">use </span><a href="ffi.rs.html#130-162"><span class="kw">crate</span>::coverageinfo::ffi::CounterMappingRegion</a>;
-<span class="kw">use </span><a href="map_data.rs.html#31-38"><span class="kw">crate</span>::coverageinfo::map_data::FunctionCoverage</a>;
-<span class="kw">use </span><a href="../lib.rs.html#78-80"><span class="kw">crate</span>::llvm</a>;
+<span class="kw">use </span><a href="../lib.rs.html#71"><span class="kw">crate</span>::coverageinfo</a>;
+<span class="kw">use </span><a href="ffi.rs.html#128-160"><span class="kw">crate</span>::coverageinfo::ffi::CounterMappingRegion</a>;
+<span class="kw">use </span><a href="map_data.rs.html#29-36"><span class="kw">crate</span>::coverageinfo::map_data::FunctionCoverage</a>;
+<span class="kw">use </span><a href="../lib.rs.html#80-82"><span class="kw">crate</span>::llvm</a>;
 
 <span class="kw">use </span><a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">rustc_codegen_ssa::traits::ConstMethods</a>;
 <span class="kw">use </span><a href="../../../rustc_data_structures/fx/type.FxIndexSet.html">rustc_data_structures::fx::FxIndexSet</a>;
@@ -376,7 +379,7 @@
 
     <span class="comment">// Ensure the installed version of LLVM supports Coverage Map Version 6
     // (encoded as a zero-based value: 5), which was introduced with LLVM 13.
-    </span><span class="kw">let </span>version = <a href="mod.rs.html#311-313">coverageinfo::mapping_version</a>();
+    </span><span class="kw">let </span>version = <a href="mod.rs.html#284-286">coverageinfo::mapping_version</a>();
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert_eq.html">assert_eq!</a>(version, <span class="number">5</span>, <span class="string">&quot;The `CoverageMappingVersion` exposed by `llvm-wrapper` is out of sync&quot;</span>);
 
     <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(<span class="string">&quot;Generating coverage map for CodegenUnit: `{}`&quot;</span>, cx.codegen_unit.name());
@@ -386,7 +389,7 @@
     // MIR `Coverage` code regions to the `function_coverage_map`, before calling
     // `ctx.take_function_coverage_map()`.
     </span><span class="kw">if </span>cx.codegen_unit.is_code_coverage_dead_code_cgu() {
-        <a href="#296-343">add_unused_functions</a>(<a href="#31">cx</a>);
+        <a href="#299-346">add_unused_functions</a>(<a href="#31">cx</a>);
     }
 
     <span class="kw">let </span>function_coverage_map = <span class="kw">match </span><a href="#31">cx</a>.<a href="../context.rs.html#492-494">coverage_context</a>() {
@@ -403,8 +406,11 @@
 
     <span class="comment">// Encode coverage mappings and generate function records
     </span><span class="kw">let </span><span class="kw-2">mut </span>function_data = Vec::new();
-    <span class="kw">for </span>(instance, function_coverage) <span class="kw">in </span>function_coverage_map {
+    <span class="kw">for </span>(instance, <span class="kw-2">mut </span>function_coverage) <span class="kw">in </span>function_coverage_map {
         <span class="macro">debug!</span>(<span class="string">&quot;Generate function coverage for {}, {:?}&quot;</span>, cx.codegen_unit.name(), instance);
+        function_coverage.simplify_expressions();
+        <span class="kw">let </span>function_coverage = function_coverage;
+
         <span class="kw">let </span>mangled_function_name = tcx.symbol_name(instance).name;
         <span class="kw">let </span>source_hash = function_coverage.source_hash();
         <span class="kw">let </span>is_used = function_coverage.is_used();
@@ -428,16 +434,16 @@
     }
 
     <span class="comment">// Encode all filenames referenced by counters/expressions in this module
-    </span><span class="kw">let </span>filenames_buffer = <a href="#59">global_file_table</a>.<a href="#138-148">into_filenames_buffer</a>();
+    </span><span class="kw">let </span>filenames_buffer = <a href="#59">global_file_table</a>.<a href="#141-151">into_filenames_buffer</a>();
 
-    <span class="kw">let </span>filenames_size = <a href="#88">filenames_buffer</a>.len();
-    <span class="kw">let </span>filenames_val = <a href="#31">cx</a>.<a href="../common.rs.html#105-107">const_bytes</a>(<span class="kw-2">&amp;</span><a href="#88">filenames_buffer</a>);
-    <span class="kw">let </span>filenames_ref = <a href="mod.rs.html#307-309">coverageinfo::hash_bytes</a>(<span class="kw-2">&amp;</span><a href="#88">filenames_buffer</a>);
+    <span class="kw">let </span>filenames_size = <a href="#91">filenames_buffer</a>.len();
+    <span class="kw">let </span>filenames_val = <a href="#31">cx</a>.<a href="../common.rs.html#105-107">const_bytes</a>(<span class="kw-2">&amp;</span><a href="#91">filenames_buffer</a>);
+    <span class="kw">let </span>filenames_ref = <a href="mod.rs.html#280-282">coverageinfo::hash_bytes</a>(<span class="kw-2">&amp;</span><a href="#91">filenames_buffer</a>);
 
     <span class="comment">// Generate the LLVM IR representation of the coverage map and store it in a well-known global
-    </span><span class="kw">let </span>cov_data_val = <a href="#216-237">generate_coverage_map</a>(<a href="#31">cx</a>, <a href="#36">version</a>, <a href="#90">filenames_size</a>, <a href="#91">filenames_val</a>);
+    </span><span class="kw">let </span>cov_data_val = <a href="#219-240">generate_coverage_map</a>(<a href="#31">cx</a>, <a href="#36">version</a>, <a href="#93">filenames_size</a>, <a href="#94">filenames_val</a>);
 
-    <span class="kw">let </span>covfun_section_name = <a href="mod.rs.html#382-387">coverageinfo::covfun_section_name</a>(<a href="#31">cx</a>);
+    <span class="kw">let </span>covfun_section_name = <a href="mod.rs.html#355-360">coverageinfo::covfun_section_name</a>(<a href="#31">cx</a>);
     <span class="kw">for </span>(mangled_function_name, source_hash, is_used, coverage_mapping_buffer) <span class="kw">in </span>function_data {
         save_function_record(
             cx,
@@ -451,14 +457,14 @@
     }
 
     <span class="comment">// Save the coverage data value to LLVM IR
-    </span><a href="mod.rs.html#315-338">coverageinfo::save_cov_data_to_mod</a>(<a href="#31">cx</a>, <a href="#95">cov_data_val</a>);
+    </span><a href="mod.rs.html#288-311">coverageinfo::save_cov_data_to_mod</a>(<a href="#31">cx</a>, <a href="#98">cov_data_val</a>);
 }
 
 <span class="kw">struct </span><a href="../../../rustc_codegen_llvm/coverageinfo/mapgen/struct.GlobalFileTable.html">GlobalFileTable</a> {
     global_file_table: FxIndexSet&lt;<a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>&gt;,
 }
 
-<span class="kw">impl </span><a href="#114-116">GlobalFileTable</a> {
+<span class="kw">impl </span><a href="#117-119">GlobalFileTable</a> {
     <span class="kw">fn </span>new(tcx: TyCtxt&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>global_file_table = FxIndexSet::default();
         <span class="comment">// LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
@@ -467,15 +473,15 @@
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
         </span><span class="kw">let </span>working_dir = Symbol::intern(
-            <span class="kw-2">&amp;</span><a href="#119">tcx</a>.sess.opts.working_dir.remapped_path_if_available().to_string_lossy(),
+            <span class="kw-2">&amp;</span><a href="#122">tcx</a>.sess.opts.working_dir.remapped_path_if_available().to_string_lossy(),
         );
-        <a href="#120">global_file_table</a>.insert(<a href="#126">working_dir</a>);
-        <span class="self">Self </span>{ <a href="#120">global_file_table</a> }
+        <a href="#123">global_file_table</a>.insert(<a href="#129">working_dir</a>);
+        <span class="self">Self </span>{ <a href="#123">global_file_table</a> }
     }
 
     <span class="kw">fn </span>global_file_id_for_file_name(<span class="kw-2">&amp;mut </span><span class="self">self</span>, file_name: <a href="../../../rustc_span/symbol/struct.Symbol.html">Symbol</a>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> {
-        <span class="kw">let </span>(global_file_id, <span class="kw">_</span>) = <a class="self" href="#133">self</a>.global_file_table.insert_full(<a href="#133">file_name</a>);
-        <a href="#134">global_file_id</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
+        <span class="kw">let </span>(global_file_id, <span class="kw">_</span>) = <a class="self" href="#136">self</a>.global_file_table.insert_full(<a href="#136">file_name</a>);
+        <a href="#137">global_file_id</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>
     }
 
     <span class="kw">fn </span>into_filenames_buffer(<span class="self">self</span>) -&gt; Vec&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt; {
@@ -483,9 +489,9 @@
         // modify the original file table after encoding it into a buffer.
 
         </span><a href="../llvm/mod.rs.html#280-284">llvm::build_byte_buffer</a>(|buffer| {
-            <a href="mod.rs.html#268-286">coverageinfo::write_filenames_section_to_buffer</a>(
-                <a class="self" href="#138">self</a>.global_file_table.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(Symbol::as_str),
-                <a href="#142">buffer</a>,
+            <a href="mod.rs.html#241-259">coverageinfo::write_filenames_section_to_buffer</a>(
+                <a class="self" href="#141">self</a>.global_file_table.iter().<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">map</a>(Symbol::as_str),
+                <a href="#145">buffer</a>,
             );
         })
     }
@@ -497,23 +503,23 @@
 ///
 /// Newly-encountered filenames will be added to the global file table.
 </span><span class="kw">fn </span><a href="../../../rustc_codegen_llvm/coverageinfo/mapgen/fn.encode_mappings_for_function.html">encode_mappings_for_function</a>(
-    global_file_table: <span class="kw-2">&amp;mut </span><a href="#114-116">GlobalFileTable</a>,
+    global_file_table: <span class="kw-2">&amp;mut </span><a href="#117-119">GlobalFileTable</a>,
     function_coverage: <span class="kw-2">&amp;</span>FunctionCoverage&lt;<span class="lifetime">&#39;_</span>&gt;,
 ) -&gt; Vec&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html">u8</a>&gt; {
-    <span class="kw">let </span>(expressions, counter_regions) = <a href="#158">function_coverage</a>.<a href="map_data.rs.html#140-156">get_expressions_and_counter_regions</a>();
+    <span class="kw">let </span>(expressions, counter_regions) = <a href="#161">function_coverage</a>.<a href="map_data.rs.html#204-226">get_expressions_and_counter_regions</a>();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>counter_regions = <a href="#160">counter_regions</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+    <span class="kw">let </span><span class="kw-2">mut </span>counter_regions = <a href="#163">counter_regions</a>.<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
     <span class="kw">if </span>counter_regions.is_empty() {
         <span class="kw">return </span>Vec::new();
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>virtual_file_mapping = IndexVec::&lt;<a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>&gt;::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>mapping_regions = Vec::with_capacity(<a href="#162">counter_regions</a>.len());
+    <span class="kw">let </span><span class="kw-2">mut </span>mapping_regions = Vec::with_capacity(<a href="#165">counter_regions</a>.len());
 
     <span class="comment">// Sort the list of (counter, region) mapping pairs by region, so that they
     // can be grouped by filename. Prepare file IDs for each filename, and
     // prepare the mapping data so that we can pass it through FFI to LLVM.
-    </span><a href="#162">counter_regions</a>.sort_by_key(|(_counter, region)| <span class="kw-2">*</span><a href="#173">region</a>);
+    </span><a href="#165">counter_regions</a>.sort_by_key(|(_counter, region)| <span class="kw-2">*</span><a href="#176">region</a>);
     <span class="kw">for </span>counter_regions_for_file <span class="kw">in
         </span>counter_regions.group_by(|(<span class="kw">_</span>, a), (<span class="kw">_</span>, b)| a.file_name == b.file_name)
     {
@@ -544,11 +550,11 @@
 
     <span class="comment">// Encode the function&#39;s coverage mappings into a buffer.
     </span><a href="../llvm/mod.rs.html#280-284">llvm::build_byte_buffer</a>(|buffer| {
-        <a href="mod.rs.html#288-305">coverageinfo::write_mapping_to_buffer</a>(
-            <a href="#167">virtual_file_mapping</a>.raw,
-            <a href="#160">expressions</a>,
-            <a href="#168">mapping_regions</a>,
-            <a href="#203">buffer</a>,
+        <a href="mod.rs.html#261-278">coverageinfo::write_mapping_to_buffer</a>(
+            <a href="#170">virtual_file_mapping</a>.raw,
+            <a href="#163">expressions</a>,
+            <a href="#171">mapping_regions</a>,
+            <a href="#206">buffer</a>,
         );
     })
 }
@@ -566,17 +572,17 @@
 
     <span class="comment">// Create the coverage data header (Note, fields 0 and 2 are now always zero,
     // as of `llvm::coverage::CovMapVersion::Version4`.)
-    </span><span class="kw">let </span>zero_was_n_records_val = <a href="#217">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<span class="number">0</span>);
-    <span class="kw">let </span>filenames_size_val = <a href="#217">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<a href="#219">filenames_size</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>);
-    <span class="kw">let </span>zero_was_coverage_size_val = <a href="#217">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<span class="number">0</span>);
-    <span class="kw">let </span>version_val = <a href="#217">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<a href="#218">version</a>);
-    <span class="kw">let </span>cov_data_header_val = <a href="#217">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_struct</a>(
-        <span class="kw-2">&amp;</span>[<a href="#226">zero_was_n_records_val</a>, <a href="#227">filenames_size_val</a>, <a href="#228">zero_was_coverage_size_val</a>, <a href="#229">version_val</a>],
+    </span><span class="kw">let </span>zero_was_n_records_val = <a href="#220">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<span class="number">0</span>);
+    <span class="kw">let </span>filenames_size_val = <a href="#220">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<a href="#222">filenames_size</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>);
+    <span class="kw">let </span>zero_was_coverage_size_val = <a href="#220">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<span class="number">0</span>);
+    <span class="kw">let </span>version_val = <a href="#220">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<a href="#221">version</a>);
+    <span class="kw">let </span>cov_data_header_val = <a href="#220">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_struct</a>(
+        <span class="kw-2">&amp;</span>[<a href="#229">zero_was_n_records_val</a>, <a href="#230">filenames_size_val</a>, <a href="#231">zero_was_coverage_size_val</a>, <a href="#232">version_val</a>],
         <span class="comment">/*packed=*/ </span><span class="bool-val">false</span>,
     );
 
     <span class="comment">// Create the complete LLVM coverage data value to add to the LLVM IR
-    </span><a href="#217">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_struct</a>(<span class="kw-2">&amp;</span>[<a href="#230">cov_data_header_val</a>, <a href="#220">filenames_val</a>], <span class="comment">/*packed=*/ </span><span class="bool-val">false</span>)
+    </span><a href="#220">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_struct</a>(<span class="kw-2">&amp;</span>[<a href="#233">cov_data_header_val</a>, <a href="#223">filenames_val</a>], <span class="comment">/*packed=*/ </span><span class="bool-val">false</span>)
 }
 
 <span class="doccomment">/// Construct a function record and combine it with the function&#39;s coverage mapping data.
@@ -592,31 +598,31 @@
     is_used: <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
 ) {
     <span class="comment">// Concatenate the encoded coverage mappings
-    </span><span class="kw">let </span>coverage_mapping_size = <a href="#248">coverage_mapping_buffer</a>.len();
-    <span class="kw">let </span>coverage_mapping_val = <a href="#243">cx</a>.<a href="../common.rs.html#105-107">const_bytes</a>(<span class="kw-2">&amp;</span><a href="#248">coverage_mapping_buffer</a>);
+    </span><span class="kw">let </span>coverage_mapping_size = <a href="#251">coverage_mapping_buffer</a>.len();
+    <span class="kw">let </span>coverage_mapping_val = <a href="#246">cx</a>.<a href="../common.rs.html#105-107">const_bytes</a>(<span class="kw-2">&amp;</span><a href="#251">coverage_mapping_buffer</a>);
 
-    <span class="kw">let </span>func_name_hash = <a href="mod.rs.html#307-309">coverageinfo::hash_bytes</a>(<a href="#245">mangled_function_name</a>.as_bytes());
-    <span class="kw">let </span>func_name_hash_val = <a href="#243">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u64</a>(<a href="#255">func_name_hash</a>);
-    <span class="kw">let </span>coverage_mapping_size_val = <a href="#243">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<a href="#252">coverage_mapping_size</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>);
-    <span class="kw">let </span>source_hash_val = <a href="#243">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u64</a>(<a href="#246">source_hash</a>);
-    <span class="kw">let </span>filenames_ref_val = <a href="#243">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u64</a>(<a href="#247">filenames_ref</a>);
-    <span class="kw">let </span>func_record_val = <a href="#243">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_struct</a>(
+    <span class="kw">let </span>func_name_hash = <a href="mod.rs.html#280-282">coverageinfo::hash_bytes</a>(<a href="#248">mangled_function_name</a>.as_bytes());
+    <span class="kw">let </span>func_name_hash_val = <a href="#246">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u64</a>(<a href="#258">func_name_hash</a>);
+    <span class="kw">let </span>coverage_mapping_size_val = <a href="#246">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u32</a>(<a href="#255">coverage_mapping_size</a> <span class="kw">as </span><a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>);
+    <span class="kw">let </span>source_hash_val = <a href="#246">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u64</a>(<a href="#249">source_hash</a>);
+    <span class="kw">let </span>filenames_ref_val = <a href="#246">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_u64</a>(<a href="#250">filenames_ref</a>);
+    <span class="kw">let </span>func_record_val = <a href="#246">cx</a>.<a href="../../../rustc_codegen_ssa/traits/consts/trait.ConstMethods.html">const_struct</a>(
         <span class="kw-2">&amp;</span>[
-            <a href="#256">func_name_hash_val</a>,
-            <a href="#257">coverage_mapping_size_val</a>,
-            <a href="#258">source_hash_val</a>,
-            <a href="#259">filenames_ref_val</a>,
-            <a href="#253">coverage_mapping_val</a>,
+            <a href="#259">func_name_hash_val</a>,
+            <a href="#260">coverage_mapping_size_val</a>,
+            <a href="#261">source_hash_val</a>,
+            <a href="#262">filenames_ref_val</a>,
+            <a href="#256">coverage_mapping_val</a>,
         ],
         <span class="comment">/*packed=*/ </span><span class="bool-val">true</span>,
     );
 
-    <a href="mod.rs.html#340-369">coverageinfo::save_func_record_to_mod</a>(
-        <a href="#243">cx</a>,
-        <a href="#244">covfun_section_name</a>,
-        <a href="#255">func_name_hash</a>,
-        <a href="#260">func_record_val</a>,
-        <a href="#249">is_used</a>,
+    <a href="mod.rs.html#313-342">coverageinfo::save_func_record_to_mod</a>(
+        <a href="#246">cx</a>,
+        <a href="#247">covfun_section_name</a>,
+        <a href="#258">func_name_hash</a>,
+        <a href="#263">func_record_val</a>,
+        <a href="#252">is_used</a>,
     );
 }
 
@@ -639,16 +645,16 @@
 </span><span class="kw">fn </span><a href="../../../rustc_codegen_llvm/coverageinfo/mapgen/fn.add_unused_functions.html">add_unused_functions</a>(cx: <span class="kw-2">&amp;</span>CodegenCx&lt;<span class="lifetime">&#39;_</span>, <span class="lifetime">&#39;_</span>&gt;) {
     <a class="macro" href="https://doc.rust-lang.org/nightly/core/macro.assert.html">assert!</a>(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
-    <span class="kw">let </span>tcx = <a href="#296">cx</a>.tcx;
+    <span class="kw">let </span>tcx = <a href="#299">cx</a>.tcx;
 
-    <span class="kw">let </span>ignore_unused_generics = <a href="#299">tcx</a>.sess.instrument_coverage_except_unused_generics();
+    <span class="kw">let </span>ignore_unused_generics = <a href="#302">tcx</a>.sess.instrument_coverage_except_unused_generics();
 
-    <span class="kw">let </span>eligible_def_ids: Vec&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt; = <a href="#299">tcx</a>
+    <span class="kw">let </span>eligible_def_ids: Vec&lt;<a href="../../../rustc_span/def_id/struct.DefId.html">DefId</a>&gt; = <a href="#302">tcx</a>
         .mir_keys(())
         .iter()
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">filter_map</a>(|local_def_id| {
-            <span class="kw">let </span>def_id = <a href="#306">local_def_id</a>.to_def_id();
-            <span class="kw">let </span>kind = <a href="#299">tcx</a>.def_kind(<a href="#307">def_id</a>);
+            <span class="kw">let </span>def_id = <a href="#309">local_def_id</a>.to_def_id();
+            <span class="kw">let </span>kind = <a href="#302">tcx</a>.def_kind(<a href="#310">def_id</a>);
             <span class="comment">// `mir_keys` will give us `DefId`s for all kinds of things, not
             // just &quot;functions&quot;, like consts, statics, etc. Filter those out.
             // If `ignore_unused_generics` was specified, filter out any
@@ -662,11 +668,11 @@
             <span class="kw">if </span>ignore_unused_generics &amp;&amp; tcx.generics_of(def_id).requires_monomorphization(tcx) {
                 <span class="kw">return </span><span class="prelude-val">None</span>;
             }
-            <span class="prelude-val">Some</span>(<a href="#306">local_def_id</a>.to_def_id())
+            <span class="prelude-val">Some</span>(<a href="#309">local_def_id</a>.to_def_id())
         })
         .<a href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html">collect</a>();
 
-    <span class="kw">let </span>codegenned_def_ids = <a href="#299">tcx</a>.codegened_and_inlined_items(());
+    <span class="kw">let </span>codegenned_def_ids = <a href="#302">tcx</a>.codegened_and_inlined_items(());
 
     <span class="kw">for </span>non_codegenned_def_id <span class="kw">in
         </span>eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/renumber.rs`."><title>renumber.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_borrowck/src/renumber.rs`."><title>renumber.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_borrowck" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -116,24 +116,16 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="attr">#![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 </span><span class="kw">use </span><a href="lib.rs.html#463-466"><span class="kw">crate</span>::BorrowckInferCtxt</a>;
 <span class="kw">use </span><a href="../../rustc_index/slice/struct.IndexSlice.html">rustc_index::IndexSlice</a>;
 <span class="kw">use </span><a href="../../rustc_infer/infer/enum.NllRegionVariableOrigin.html">rustc_infer::infer::NllRegionVariableOrigin</a>;
 <span class="kw">use </span>rustc_middle::mir::visit::{<a href="../../rustc_middle/mir/visit/trait.MutVisitor.html">MutVisitor</a>, <a href="../../rustc_middle/mir/visit/enum.TyContext.html">TyContext</a>};
-<span class="kw">use </span><a href="../../rustc_middle/mir/struct.Constant.html">rustc_middle::mir::Constant</a>;
-<span class="kw">use </span>rustc_middle::mir::{<a href="../../rustc_middle/mir/struct.Body.html">Body</a>, <a href="../../rustc_middle/mir/struct.Location.html">Location</a>, <a href="../../rustc_middle/mir/struct.Promoted.html">Promoted</a>};
+<span class="kw">use </span>rustc_middle::mir::{<a href="../../rustc_middle/mir/struct.Body.html">Body</a>, <a href="../../rustc_middle/mir/syntax/struct.ConstOperand.html">ConstOperand</a>, <a href="../../rustc_middle/mir/struct.Location.html">Location</a>, <a href="../../rustc_middle/mir/struct.Promoted.html">Promoted</a>};
 <span class="kw">use </span><a href="../../rustc_middle/ty/generic_args/type.GenericArgsRef.html">rustc_middle::ty::GenericArgsRef</a>;
 <span class="kw">use </span>rustc_middle::ty::{<a class="self" href="../../rustc_middle/ty/index.html">self</a>, <a href="../../rustc_middle/ty/struct.Ty.html">Ty</a>, <a href="../../rustc_middle/ty/context/struct.TyCtxt.html">TyCtxt</a>, <a href="../../rustc_type_ir/fold/trait.TypeFoldable.html">TypeFoldable</a>};
-<span class="kw">use </span>rustc_span::{<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>, <a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>};
+<span class="kw">use </span><a href="../../rustc_span/symbol/struct.Symbol.html">rustc_span::Symbol</a>;
 
 <span class="doccomment">/// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
@@ -155,33 +147,27 @@
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span><a href="../../rustc_borrowck/renumber/enum.BoundRegionInfo.html">BoundRegionInfo</a> {
-    Name(<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
-    Span(<a href="../../rustc_span/span_encoding/struct.Span.html">Span</a>),
-}
-
-<span class="attr">#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span><a href="../../rustc_borrowck/renumber/enum.RegionCtxt.html">RegionCtxt</a> {
     Location(<a href="../../rustc_middle/mir/struct.Location.html">Location</a>),
     TyContext(<a href="../../rustc_middle/mir/visit/enum.TyContext.html">TyContext</a>),
     Free(<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
-    Bound(<a href="#33-36">BoundRegionInfo</a>),
-    LateBound(<a href="#33-36">BoundRegionInfo</a>),
+    Bound(<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
+    LateBound(<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
     Existential(<span class="prelude-ty">Option</span>&lt;<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>&gt;),
-    Placeholder(<a href="#33-36">BoundRegionInfo</a>),
+    Placeholder(<a href="../../rustc_span/symbol/struct.Symbol.html">Symbol</a>),
     Unknown,
 }
 
-<span class="kw">impl </span><a href="#39-48">RegionCtxt</a> {
+<span class="kw">impl </span><a href="#32-41">RegionCtxt</a> {
     <span class="doccomment">/// Used to determine the representative of a component in the strongly connected
     /// constraint graph
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>preference_value(<span class="self">self</span>) -&gt; <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a> {
-        <span class="kw">match </span><span class="self"><a href="#53">self</a> </span>{
-            <a href="#47">RegionCtxt::Unknown</a> =&gt; <span class="number">1</span>,
-            <a href="#45">RegionCtxt::Existential</a>(<span class="prelude-val">None</span>) =&gt; <span class="number">2</span>,
-            <a href="#45">RegionCtxt::Existential</a>(<span class="prelude-val">Some</span>(<span class="kw">_</span>)) | <a href="#42">RegionCtxt::Free</a>(<span class="kw">_</span>) =&gt; <span class="number">2</span>,
-            <a href="#40">RegionCtxt::Location</a>(<span class="kw">_</span>) =&gt; <span class="number">3</span>,
-            <a href="#41">RegionCtxt::TyContext</a>(<span class="kw">_</span>) =&gt; <span class="number">4</span>,
+        <span class="kw">match </span><span class="self"><a href="#46">self</a> </span>{
+            <a href="#40">RegionCtxt::Unknown</a> =&gt; <span class="number">1</span>,
+            <a href="#38">RegionCtxt::Existential</a>(<span class="prelude-val">None</span>) =&gt; <span class="number">2</span>,
+            <a href="#38">RegionCtxt::Existential</a>(<span class="prelude-val">Some</span>(<span class="kw">_</span>)) | <a href="#35">RegionCtxt::Free</a>(<span class="kw">_</span>) =&gt; <span class="number">2</span>,
+            <a href="#33">RegionCtxt::Location</a>(<span class="kw">_</span>) =&gt; <span class="number">3</span>,
+            <a href="#34">RegionCtxt::TyContext</a>(<span class="kw">_</span>) =&gt; <span class="number">4</span>,
             <span class="kw">_ </span>=&gt; <span class="number">5</span>,
         }
     }
@@ -197,18 +183,18 @@
     </span><span class="kw">fn </span>renumber_regions&lt;T, F&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: T, region_ctxt_fn: F) -&gt; T
     <span class="kw">where
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
-        F: Fn() -&gt; <a href="#39-48">RegionCtxt</a>,
+        F: Fn() -&gt; <a href="#32-41">RegionCtxt</a>,
     {
         <span class="kw">let </span>origin = <a href="../../rustc_infer/infer/enum.NllRegionVariableOrigin.html">NllRegionVariableOrigin::Existential</a> { from_forall: <span class="bool-val">false </span>};
-        <a class="self" href="#72">self</a>.infcx.tcx.fold_regions(<a href="#72">value</a>, |_region, _depth| {
-            <a class="self" href="#72">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#77">origin</a>, || <a href="#72">region_ctxt_fn</a>())
+        <a class="self" href="#65">self</a>.infcx.tcx.fold_regions(<a href="#65">value</a>, |_region, _depth| {
+            <a class="self" href="#65">self</a>.infcx.<a href="lib.rs.html#494">next_nll_region_var</a>(<a href="#70">origin</a>, || <a href="#65">region_ctxt_fn</a>())
         })
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; MutVisitor&lt;<span class="lifetime">&#39;tcx</span>&gt; <span class="kw">for </span>RegionRenumberer&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>tcx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#85">self</a>.infcx.tcx
+        <a class="self" href="#78">self</a>.infcx.tcx
     }
 
     <span class="attr">#[instrument(skip(<span class="self">self</span>), level = <span class="string">&quot;debug&quot;</span>)]
@@ -242,9 +228,9 @@
     }
 
     <span class="attr">#[instrument(skip(<span class="self">self</span>), level = <span class="string">&quot;debug&quot;</span>)]
-    </span><span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="kw-2">&amp;mut </span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
-        <span class="kw">let </span>literal = constant.literal;
-        constant.literal = <span class="self">self</span>.renumber_regions(literal, || RegionCtxt::Location(location));
+    </span><span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="kw-2">&amp;mut </span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
+        <span class="kw">let </span>const_ = constant.const_;
+        constant.const_ = <span class="self">self</span>.renumber_regions(const_, || RegionCtxt::Location(location));
         <span class="macro">debug!</span>(<span class="string">&quot;constant: {:#?}&quot;</span>, constant);
     }
 }

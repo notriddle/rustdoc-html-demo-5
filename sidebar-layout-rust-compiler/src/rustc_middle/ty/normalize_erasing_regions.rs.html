@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/normalize_erasing_regions.rs`."><title>normalize_erasing_regions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_middle/src/ty/normalize_erasing_regions.rs`."><title>normalize_erasing_regions.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rustc_middle" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../rustc_middle/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="rustc_middle"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -244,18 +244,6 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
-<a href="#247" id="247">247</a>
-<a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Methods for normalizing when you don&#39;t care about regions (and
 //! aren&#39;t doing type inference). If either of those things don&#39;t
 //! apply to you, use `infcx.normalize(...)`.
@@ -267,7 +255,7 @@
 
 </span><span class="kw">use </span><a href="../traits/query.rs.html#91"><span class="kw">crate</span>::traits::query::NoSolution</a>;
 <span class="kw">use </span><span class="kw">crate</span>::ty::fold::{<a href="../../../rustc_middle/ty/trait.FallibleTypeFolder.html">FallibleTypeFolder</a>, <a href="../../../rustc_middle/ty/trait.TypeFoldable.html">TypeFoldable</a>, <a href="../../../rustc_middle/ty/trait.TypeFolder.html">TypeFolder</a>};
-<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#101">self</a>, <a href="generic_args.rs.html#546-548">EarlyBinder</a>, <a href="generic_args.rs.html#247">GenericArgsRef</a>, <a href="mod.rs.html#451">Ty</a>, <a href="context.rs.html#510-512">TyCtxt</a>, <a href="visit.rs.html#10-132">TypeVisitableExt</a>};
+<span class="kw">use </span><span class="kw">crate</span>::ty::{<a class="self" href="../lib.rs.html#102">self</a>, <a href="generic_args.rs.html#546-548">EarlyBinder</a>, <a href="generic_args.rs.html#247">GenericArgsRef</a>, <a href="mod.rs.html#463">Ty</a>, <a href="context.rs.html#510-512">TyCtxt</a>, <a href="visit.rs.html#10-132">TypeVisitableExt</a>};
 
 <span class="attr">#[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
 </span><span class="kw">pub enum </span><a href="../../../rustc_middle/ty/normalize_erasing_regions/enum.NormalizationError.html">NormalizationError</a>&lt;<span class="lifetime">&#39;tcx</span>&gt; {
@@ -392,8 +380,9 @@
     /// in-scope substitutions and then normalizing any associated
     /// types.
     /// Panics if normalization fails. In case normalization might fail
-    /// use `try_subst_and_normalize_erasing_regions` instead.
-    </span><span class="kw">pub fn </span>subst_and_normalize_erasing_regions&lt;T&gt;(
+    /// use `try_instantiate_and_normalize_erasing_regions` instead.
+    </span><span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(<span class="self">self</span>))]
+    </span><span class="kw">pub fn </span>instantiate_and_normalize_erasing_regions&lt;T&gt;(
         <span class="self">self</span>,
         param_args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
@@ -402,22 +391,16 @@
     <span class="kw">where
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     {
-        <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
-            <span class="string">&quot;subst_and_normalize_erasing_regions(\
-             param_args={:?}, \
-             value={:?}, \
-             param_env={:?})&quot;</span>,
-            param_args, value, param_env,
-        );
-        <span class="kw">let </span>substituted = <a href="#142">value</a>.<a href="generic_args.rs.html#764-767">instantiate</a>(<a class="self" href="#139">self</a>, <a href="#140">param_args</a>);
-        <a class="self" href="#139">self</a>.<a href="#35">normalize_erasing_regions</a>(<a href="#141">param_env</a>, <a href="#154">substituted</a>)
+        <span class="kw">let </span>substituted = value.instantiate(<span class="self">self</span>, param_args);
+        <span class="self">self</span>.normalize_erasing_regions(param_env, substituted)
     }
 
     <span class="doccomment">/// Monomorphizes a type from the AST by first applying the
     /// in-scope substitutions and then trying to normalize any associated
-    /// types. Contrary to `subst_and_normalize_erasing_regions` this does
+    /// types. Contrary to `instantiate_and_normalize_erasing_regions` this does
     /// not assume that normalization succeeds.
-    </span><span class="kw">pub fn </span>try_subst_and_normalize_erasing_regions&lt;T&gt;(
+    </span><span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip(<span class="self">self</span>))]
+    </span><span class="kw">pub fn </span>try_instantiate_and_normalize_erasing_regions&lt;T&gt;(
         <span class="self">self</span>,
         param_args: GenericArgsRef&lt;<span class="lifetime">&#39;tcx</span>&gt;,
         param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;,
@@ -426,15 +409,8 @@
     <span class="kw">where
         </span>T: TypeFoldable&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt;,
     {
-        <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.debug.html">debug!</a>(
-            <span class="string">&quot;subst_and_normalize_erasing_regions(\
-             param_args={:?}, \
-             value={:?}, \
-             param_env={:?})&quot;</span>,
-            param_args, value, param_env,
-        );
-        <span class="kw">let </span>substituted = <a href="#166">value</a>.<a href="generic_args.rs.html#764-767">instantiate</a>(<a class="self" href="#163">self</a>, <a href="#164">param_args</a>);
-        <a class="self" href="#163">self</a>.<a href="#64-90">try_normalize_erasing_regions</a>(<a href="#165">param_env</a>, <a href="#178">substituted</a>)
+        <span class="kw">let </span>substituted = value.instantiate(<span class="self">self</span>, param_args);
+        <span class="self">self</span>.try_normalize_erasing_regions(param_env, substituted)
     }
 }
 
@@ -448,9 +424,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         arg: ty::GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt;,
     ) -&gt; ty::GenericArg&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <span class="kw">let </span>arg = <a class="self" href="#190">self</a>.param_env.<a href="mod.rs.html#1780-1792">and</a>(<a href="#191">arg</a>);
+        <span class="kw">let </span>arg = <a class="self" href="#178">self</a>.param_env.<a href="mod.rs.html#1756-1758">and</a>(<a href="#179">arg</a>);
 
-        <a class="self" href="#190">self</a>.tcx.<a href="../query/mod.rs.html#2217">try_normalize_generic_arg_after_erasing_regions</a>(<a href="#193">arg</a>).unwrap_or_else(|<span class="kw">_</span>| <a class="macro" href="../macros.rs.html#12-19">bug!</a>(
+        <a class="self" href="#178">self</a>.tcx.<a href="../query/mod.rs.html#2207">try_normalize_generic_arg_after_erasing_regions</a>(<a href="#181">arg</a>).unwrap_or_else(|<span class="kw">_</span>| <a class="macro" href="../macros.rs.html#12-19">bug!</a>(
             <span class="string">&quot;Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead&quot;</span>,
             arg.value
         ))
@@ -459,15 +435,15 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TypeFolder&lt;TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; <span class="kw">for </span>NormalizeAfterErasingRegionsFolder&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>interner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#203">self</a>.tcx
+        <a class="self" href="#191">self</a>.tcx
     }
 
     <span class="kw">fn </span>fold_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; Ty&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#207">self</a>.<a href="#189-199">normalize_generic_arg_after_erasing_regions</a>(<a href="#207">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()).<a href="generic_args.rs.html#179-181">expect_ty</a>()
+        <a class="self" href="#195">self</a>.<a href="#177-187">normalize_generic_arg_after_erasing_regions</a>(<a href="#195">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()).<a href="generic_args.rs.html#179-181">expect_ty</a>()
     }
 
     <span class="kw">fn </span>fold_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#211">self</a>.<a href="#189-199">normalize_generic_arg_after_erasing_regions</a>(<a href="#211">c</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()).<a href="generic_args.rs.html#184-186">expect_const</a>()
+        <a class="self" href="#199">self</a>.<a href="#177-187">normalize_generic_arg_after_erasing_regions</a>(<a href="#199">c</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()).<a href="generic_args.rs.html#184-186">expect_const</a>()
     }
 }
 
@@ -478,7 +454,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;tcx</span>&gt; TryNormalizeAfterErasingRegionsFolder&lt;<span class="lifetime">&#39;tcx</span>&gt; {
     <span class="kw">fn </span>new(tcx: TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt;, param_env: ty::ParamEnv&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="self">Self </span>{
-        <a href="#216-219">TryNormalizeAfterErasingRegionsFolder</a> { <a href="#222">tcx</a>, <a href="#222">param_env</a> }
+        <a href="#204-207">TryNormalizeAfterErasingRegionsFolder</a> { <a href="#210">tcx</a>, <a href="#210">param_env</a> }
     }
 
     <span class="attr">#[instrument(skip(<span class="self">self</span>), level = <span class="string">&quot;debug&quot;</span>)]
@@ -497,20 +473,20 @@
     <span class="kw">type </span>Error = NormalizationError&lt;<span class="lifetime">&#39;tcx</span>&gt;;
 
     <span class="kw">fn </span>interner(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TyCtxt&lt;<span class="lifetime">&#39;tcx</span>&gt; {
-        <a class="self" href="#241">self</a>.tcx
+        <a class="self" href="#229">self</a>.tcx
     }
 
     <span class="kw">fn </span>try_fold_ty(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ty: Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Ty&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span><a class="self" href="#245">self</a>.<a href="#226">try_normalize_generic_arg_after_erasing_regions</a>(<a href="#245">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()) {
-            <span class="prelude-val">Ok</span>(t) =&gt; <span class="prelude-val">Ok</span>(<a href="#247">t</a>.<a href="generic_args.rs.html#179-181">expect_ty</a>()),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<a href="#16">NormalizationError::Type</a>(<a href="#245">ty</a>)),
+        <span class="kw">match </span><a class="self" href="#233">self</a>.<a href="#214">try_normalize_generic_arg_after_erasing_regions</a>(<a href="#233">ty</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()) {
+            <span class="prelude-val">Ok</span>(t) =&gt; <span class="prelude-val">Ok</span>(<a href="#235">t</a>.<a href="generic_args.rs.html#179-181">expect_ty</a>()),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<a href="#16">NormalizationError::Type</a>(<a href="#233">ty</a>)),
         }
     }
 
     <span class="kw">fn </span>try_fold_const(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ty::Const&lt;<span class="lifetime">&#39;tcx</span>&gt;, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span><a class="self" href="#252">self</a>.<a href="#226">try_normalize_generic_arg_after_erasing_regions</a>(<a href="#252">c</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()) {
-            <span class="prelude-val">Ok</span>(t) =&gt; <span class="prelude-val">Ok</span>(<a href="#254">t</a>.<a href="generic_args.rs.html#184-186">expect_const</a>()),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<a href="#17">NormalizationError::Const</a>(<a href="#252">c</a>)),
+        <span class="kw">match </span><a class="self" href="#240">self</a>.<a href="#214">try_normalize_generic_arg_after_erasing_regions</a>(<a href="#240">c</a>.<a href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html">into</a>()) {
+            <span class="prelude-val">Ok</span>(t) =&gt; <span class="prelude-val">Ok</span>(<a href="#242">t</a>.<a href="generic_args.rs.html#184-186">expect_const</a>()),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<a href="#17">NormalizationError::Const</a>(<a href="#240">c</a>)),
         }
     }
 }

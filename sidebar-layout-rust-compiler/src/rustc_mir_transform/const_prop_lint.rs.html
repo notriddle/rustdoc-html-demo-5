@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/const_prop_lint.rs`."><title>const_prop_lint.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e55129dfe7097f57.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0-nightly (e9d5254f8 2023-09-23)" data-channel="nightly" data-search-js="search-5d3eaacf19ebf04f.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `compiler/rustc_mir_transform/src/const_prop_lint.rs`."><title>const_prop_lint.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="rustc_mir_transform" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-dev" data-channel="nightly" data-search-js="search-5f5ec5419eadd0c9.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-2d896f5a7792e603.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -757,7 +757,7 @@
 <span class="kw">use </span><a href="const_prop.rs.html#591-595"><span class="kw">crate</span>::const_prop::CanConstProp</a>;
 <span class="kw">use </span><a href="const_prop.rs.html#117-122"><span class="kw">crate</span>::const_prop::ConstPropMachine</a>;
 <span class="kw">use </span><a href="const_prop.rs.html#581-589"><span class="kw">crate</span>::const_prop::ConstPropMode</a>;
-<span class="kw">use </span><a href="errors.rs.html#171-174"><span class="kw">crate</span>::errors::AssertLint</a>;
+<span class="kw">use </span><a href="errors.rs.html#173-176"><span class="kw">crate</span>::errors::AssertLint</a>;
 <span class="kw">use </span><a href="pass_manager.rs.html#8-19"><span class="kw">crate</span>::MirLint</a>;
 
 <span class="doccomment">/// The maximum number of bytes that we&#39;ll allocate space for a local or the return value.
@@ -1011,7 +1011,7 @@
     }
 
     <span class="doccomment">/// Returns the value, if any, of evaluating `c`.
-    </span><span class="kw">fn </span>eval_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) -&gt; <span class="prelude-ty">Option</span>&lt;OpTy&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
+    </span><span class="kw">fn </span>eval_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) -&gt; <span class="prelude-ty">Option</span>&lt;OpTy&lt;<span class="lifetime">&#39;tcx</span>&gt;&gt; {
         <span class="comment">// FIXME we need to revisit this for #67176
         </span><span class="kw">if </span>c.has_param() {
             <span class="kw">return </span><span class="prelude-val">None</span>;
@@ -1023,7 +1023,7 @@
         // that the `RevealAll` pass has happened and that the body&#39;s consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        </span><span class="kw">let </span>val = <span class="self">self</span>.tcx.try_normalize_erasing_regions(<span class="self">self</span>.param_env, c.literal).ok()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>val = <span class="self">self</span>.tcx.try_normalize_erasing_regions(<span class="self">self</span>.param_env, c.const_).ok()<span class="question-mark">?</span>;
 
         <a class="self" href="#284">self</a>.<a href="#260-281">use_ecx</a>(<a href="#284">location</a>, |this| <a href="#298">this</a>.ecx.eval_mir_constant(<span class="kw-2">&amp;</span><a href="#296">val</a>, <span class="prelude-val">Some</span>(<a href="#284">c</a>.span), <span class="prelude-val">None</span>))
     }
@@ -1045,14 +1045,14 @@
 
     <span class="kw">fn </span>report_assert_as_lint(<span class="kw-2">&amp;</span><span class="self">self</span>, source_info: <span class="kw-2">&amp;</span><a href="../../rustc_middle/mir/struct.SourceInfo.html">SourceInfo</a>, lint: AssertLint&lt;<span class="kw">impl </span><a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html">Debug</a>&gt;) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(lint_root) = <a class="self" href="#316">self</a>.<a href="#256-258">lint_root</a>(<span class="kw-2">*</span><a href="#316">source_info</a>) {
-            <a class="self" href="#316">self</a>.tcx.emit_spanned_lint(<a href="#316">lint</a>.<a href="errors.rs.html#205-210">lint</a>(), <a href="#317">lint_root</a>, <a href="#316">source_info</a>.span, <a href="#316">lint</a>);
+            <a class="self" href="#316">self</a>.tcx.emit_spanned_lint(<a href="#316">lint</a>.<a href="errors.rs.html#207-212">lint</a>(), <a href="#317">lint_root</a>, <a href="#316">source_info</a>.span, <a href="#316">lint</a>);
         }
     }
 
     <span class="kw">fn </span>check_unary_op(<span class="kw-2">&amp;mut </span><span class="self">self</span>, op: <a href="../../rustc_middle/mir/syntax/enum.UnOp.html">UnOp</a>, arg: <span class="kw-2">&amp;</span>Operand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
         <span class="kw">if let </span>(val, <span class="bool-val">true</span>) = <span class="self">self</span>.use_ecx(location, |this| {
             <span class="kw">let </span>val = this.ecx.read_immediate(<span class="kw-2">&amp;</span>this.ecx.eval_operand(arg, <span class="prelude-val">None</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-            <span class="kw">let </span>(_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, <span class="kw-2">&amp;</span>val)<span class="question-mark">?</span>;
+            <span class="kw">let </span>(_res, overflow) = this.ecx.overflowing_unary_op(op, <span class="kw-2">&amp;</span>val)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>((val, overflow))
         })<span class="question-mark">? </span>{
             <span class="comment">// `AssertKind` only has an `OverflowNeg` variant, so make sure that is
@@ -1061,7 +1061,7 @@
             <span class="kw">let </span>source_info = <a class="self" href="#322">self</a>.<a href="#214-216">body</a>().source_info(<a href="#322">location</a>);
             <a class="self" href="#322">self</a>.<a href="#316-320">report_assert_as_lint</a>(
                 <a href="#331">source_info</a>,
-                <a href="errors.rs.html#172">AssertLint::ArithmeticOverflow</a>(
+                <a href="errors.rs.html#174">AssertLint::ArithmeticOverflow</a>(
                     <a href="#331">source_info</a>.span,
                     AssertKind::OverflowNeg(<a href="#323">val</a>.to_const_int()),
                 ),
@@ -1111,7 +1111,7 @@
                 );
                 <a class="self" href="#346">self</a>.<a href="#316-320">report_assert_as_lint</a>(
                     <a href="#368">source_info</a>,
-                    <a href="errors.rs.html#172">AssertLint::ArithmeticOverflow</a>(<a href="#368">source_info</a>.span, <a href="#369">panic</a>),
+                    <a href="errors.rs.html#174">AssertLint::ArithmeticOverflow</a>(<a href="#368">source_info</a>.span, <a href="#369">panic</a>),
                 );
                 <span class="kw">return </span><span class="prelude-val">None</span>;
             }
@@ -1120,13 +1120,13 @@
         <span class="kw">if let </span>(<span class="prelude-val">Some</span>(l), <span class="prelude-val">Some</span>(r)) = (<a href="#355">l</a>, <a href="#352">r</a>) {
             <span class="comment">// The remaining operators are handled through `overflowing_binary_op`.
             </span><span class="kw">if </span><span class="self">self</span>.use_ecx(location, |this| {
-                <span class="kw">let </span>(_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, <span class="kw-2">&amp;</span>l, <span class="kw-2">&amp;</span>r)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(_res, overflow) = this.ecx.overflowing_binary_op(op, <span class="kw-2">&amp;</span>l, <span class="kw-2">&amp;</span>r)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(overflow)
             })<span class="question-mark">? </span>{
                 <span class="kw">let </span>source_info = <a class="self" href="#346">self</a>.<a href="#214-216">body</a>().source_info(<a href="#350">location</a>);
                 <a class="self" href="#346">self</a>.<a href="#316-320">report_assert_as_lint</a>(
                     <a href="#396">source_info</a>,
-                    <a href="errors.rs.html#172">AssertLint::ArithmeticOverflow</a>(
+                    <a href="errors.rs.html#174">AssertLint::ArithmeticOverflow</a>(
                         <a href="#396">source_info</a>.span,
                         AssertKind::Overflow(<a href="#347">op</a>, <a href="#390">l</a>.to_const_int(), <a href="#390">r</a>.to_const_int()),
                     ),
@@ -1273,7 +1273,7 @@
             <span class="kw">let </span>source_info = <a class="self" href="#487">self</a>.<a href="#214-216">body</a>().source_info(<a href="#491">location</a>);
             <a class="self" href="#487">self</a>.<a href="#316-320">report_assert_as_lint</a>(
                 <a href="#543">source_info</a>,
-                <a href="errors.rs.html#173">AssertLint::UnconditionalPanic</a>(<a href="#543">source_info</a>.span, <a href="#525">msg</a>),
+                <a href="errors.rs.html#175">AssertLint::UnconditionalPanic</a>(<a href="#543">source_info</a>.span, <a href="#525">msg</a>),
             );
         }
 
@@ -1310,7 +1310,7 @@
         <a class="self" href="#579">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_operand</a>(<a href="#579">operand</a>, <a href="#579">location</a>);
     }
 
-    <span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="kw-2">&amp;</span>Constant&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
+    <span class="kw">fn </span>visit_constant(<span class="kw-2">&amp;mut </span><span class="self">self</span>, constant: <span class="kw-2">&amp;</span>ConstOperand&lt;<span class="lifetime">&#39;tcx</span>&gt;, location: <a href="../../rustc_middle/mir/struct.Location.html">Location</a>) {
         <a class="macro" href="https://docs.rs/tracing/0.1.37/tracing/macro.trace.html">trace!</a>(<span class="string">&quot;visit_constant: {:?}&quot;</span>, constant);
         <a class="self" href="#583">self</a>.<a href="../../rustc_middle/mir/visit/trait.Visitor.html">super_constant</a>(<a href="#583">constant</a>, <a href="#583">location</a>);
         <a class="self" href="#583">self</a>.<a href="#284-299">eval_constant</a>(<a href="#583">constant</a>, <a href="#583">location</a>);

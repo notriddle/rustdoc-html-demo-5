@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ConstValue","Scalar"],"struct":["ConstAlloc"]};
+window.SIDEBAR_ITEMS = {"enum":["Scalar"]};
