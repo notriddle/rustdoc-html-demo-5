@@ -1267,7 +1267,7 @@ function initSearch(rawSearchIndex) {
                         }
                     } else {
                         push(fnType.name, fnType.highlighted);
-                        if (fnType.generics &&
+                        if (fnType.generics && fnType.generics.length > 0 &&
                             (fnType.generics.some(isTransitivelyHighlighted) || fnType.implDisambiguator !== null)
                         ) {
                             pushNotHighlighted("<");
