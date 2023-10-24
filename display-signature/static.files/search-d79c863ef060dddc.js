@@ -1713,7 +1713,7 @@ function initSearch(rawSearchIndex) {
                 ) {
                     // [] matches primitive:array or primitive:slice
                     // if it matches, then we're fine, and this is an appropriate match candidate
-                } else if (fnType.id !== queryElem.id) {
+                } else if (fnType.id !== queryElem.id || queryElem.id === null) {
                     return false;
                 }
                 // If the query elem has generics, and the function doesn't,
