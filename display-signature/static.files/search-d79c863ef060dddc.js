@@ -1187,7 +1187,8 @@ function initSearch(rawSearchIndex) {
          *
          * @returns string?
          */
-        function formatResultTypeSignature(type) {
+        function formatResultTypeSignature(row) {
+            const type = row.type;
             if (type === null) {
                 return null;
             }
@@ -1269,7 +1270,7 @@ function initSearch(rawSearchIndex) {
                         push(fnType.name, fnType.highlighted);
                         if (fnType.generics && fnType.generics.length > 0 &&
                             (fnType.generics.some(isTransitivelyHighlighted)
-                                || type.implDisambiguator !== null)
+                                || row.implDisambiguator !== null)
                         ) {
                             pushNotHighlighted("<");
                             formatTypeList(fnType.generics, ", ");
@@ -1983,7 +1984,7 @@ function initSearch(rawSearchIndex) {
                     }
                 }
                 const displayTypeSignature = isType ?
-                    formatResultTypeSignature(searchIndex[id].type) :
+                    formatResultTypeSignature(searchIndex[id]) :
                     null;
                 results.set(fullId, {
                     id: id,
