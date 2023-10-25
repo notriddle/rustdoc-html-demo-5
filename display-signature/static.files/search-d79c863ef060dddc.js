@@ -1268,7 +1268,8 @@ function initSearch(rawSearchIndex) {
                     } else {
                         push(fnType.name, fnType.highlighted);
                         if (fnType.generics && fnType.generics.length > 0 &&
-                            (fnType.generics.some(isTransitivelyHighlighted) || fnType.implDisambiguator !== null)
+                            (fnType.generics.some(isTransitivelyHighlighted)
+                                || type.implDisambiguator !== null)
                         ) {
                             pushNotHighlighted("<");
                             formatTypeList(fnType.generics, ", ");
