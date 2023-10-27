@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ConfigError","SinkContextKind"],"mod":["sinks"],"struct":["BinaryDetection","Encoding","LineIter","LineStep","MmapChoice","Searcher","SearcherBuilder","SinkContext","SinkFinish","SinkMatch"],"trait":["Sink","SinkError"]};

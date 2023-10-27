@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Advice","Mmap","MmapMut","MmapOptions","MmapRaw","MmapRawDescriptor"],"trait":["MmapAsRawDesc"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Command","EncodingMode","OutputKind","SortByKind"],"fn":["clap_matches","current_dir","hostname","load_timestamps","platform_hostname","sort_by_option","suggest","suggest_multiline","suggest_pcre2","u64_to_usize","wsl_prefix"],"struct":["ArgMatches","Args","ArgsImp","SortBy"]};

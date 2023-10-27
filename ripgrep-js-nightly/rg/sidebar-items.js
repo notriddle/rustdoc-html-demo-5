@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["eprint_nothing_searched","files","files_parallel","main","pcre2_version","search","search_parallel","try_main","types"],"macro":["eprintln_locked","err_message","ignore_message","message"],"mod":["app","args","config","logger","messages","search","subject"],"type":["Result"]};

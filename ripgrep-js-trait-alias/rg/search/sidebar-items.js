@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PatternMatcher","Printer"],"fn":["fractional_seconds","search_path","search_reader"],"struct":["Config","SearchResult","SearchWorker","SearchWorkerBuilder"]};

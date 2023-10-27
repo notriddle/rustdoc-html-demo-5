@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ColorError","SummaryKind"],"fn":["default_color_specs"],"struct":["ColorSpecs","HyperlinkConfig","HyperlinkEnvironment","HyperlinkFormat","HyperlinkFormatError","JSON","JSONBuilder","JSONSink","PathPrinter","PathPrinterBuilder","Standard","StandardBuilder","StandardSink","Stats","Summary","SummaryBuilder","SummarySink","UserColorSpec"]};
